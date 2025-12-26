@@ -71,6 +71,22 @@ const Index = () => {
     });
   };
 
+  const handleUpdateQuantity = (id: string, quantity: number) => {
+    setItems(items.map((item) => {
+      if (item.id === id) {
+        return {
+          ...item,
+          quantity,
+          subtotal: item.unitPrice * quantity,
+        };
+      }
+      return item;
+    }));
+    toast({
+      title: 'Quantidade atualizada',
+    });
+  };
+
   const createQuotation = (): Quotation => {
     return {
       id: editingQuotationId || crypto.randomUUID(),
@@ -308,7 +324,12 @@ const Index = () => {
             </div>
 
             <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
-              <ItemsList items={items} onRemoveItem={handleRemoveItem} total={total} />
+              <ItemsList 
+                items={items} 
+                onRemoveItem={handleRemoveItem} 
+                onUpdateQuantity={handleUpdateQuantity}
+                total={total} 
+              />
             </div>
 
             <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">

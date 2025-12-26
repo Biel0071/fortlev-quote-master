@@ -6,6 +6,7 @@ import { CustomerForm } from '@/components/CustomerForm';
 import { ProductSelector } from '@/components/ProductSelector';
 import { ItemsList } from '@/components/ItemsList';
 import { QuotationActions } from '@/components/QuotationActions';
+import { QuotationPreview } from '@/components/QuotationPreview';
 import { Dashboard } from '@/components/Dashboard';
 import { useQuotations } from '@/hooks/useQuotations';
 import { Customer, CompanyInfo, PaymentConditions, QuotationItem, Quotation } from '@/types/quotation';
@@ -51,6 +52,8 @@ const Index = () => {
     downPayment: 'Parcelamento sem juros - consultar',
   });
   const [quotationNumber, setQuotationNumber] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
 
   const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
   const total = subtotal - discount + freight;
@@ -215,6 +218,52 @@ const Index = () => {
     setQuotationNumber(null);
   };
 
+  const handlePreview = () => {
+    if (!customer.name.trim() || !customer.phone.trim() || items.length === 0) {
+      toast({
+        title: 'Preencha os dados',
+        description: 'Nome, telefone e pelo menos um item são necessários para pré-visualizar',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const quotation = createQuotation();
+    setPreviewQuotation(quotation);
+    setPreviewOpen(true);
+  };
+
+  const handlePreviewDownloadPDF = () => {
+    if (previewQuotation) {
+      if (editingQuotationId) {
+        updateQuotation(editingQuotationId, previewQuotation);
+      } else {
+        saveQuotation(previewQuotation);
+      }
+      downloadPDF(previewQuotation);
+      toast({
+        title: 'PDF gerado com sucesso!',
+        description: `Orçamento ${previewQuotation.number} salvo e PDF baixado`,
+      });
+      resetForm();
+    }
+  };
+
+  const handlePreviewDownloadPNG = async () => {
+    if (previewQuotation) {
+      if (editingQuotationId) {
+        updateQuotation(editingQuotationId, previewQuotation);
+      } else {
+        saveQuotation(previewQuotation);
+      }
+      await downloadPNG(previewQuotation);
+      toast({
+        title: 'PNG gerado com sucesso!',
+        description: `Orçamento ${previewQuotation.number} salvo e imagem baixada`,
+      });
+      resetForm();
+    }
+  };
+
   const handleEditQuotation = (quotation: Quotation) => {
     // Load quotation data into form
     setEditingQuotationId(quotation.id);
@@ -350,6 +399,7 @@ const Index = () => {
                 onGeneratePDF={handleGeneratePDF}
                 onGeneratePNG={handleGeneratePNG}
                 onSendWhatsApp={handleSendWhatsApp}
+                onPreview={handlePreview}
                 disabled={!isFormValid}
               />
             </div>
@@ -364,6 +414,14 @@ const Index = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      <QuotationPreview
+        quotation={previewQuotation}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        onDownloadPDF={handlePreviewDownloadPDF}
+        onDownloadPNG={handlePreviewDownloadPNG}
+      />
 
       <footer className="text-center py-6 text-sm text-muted-foreground border-t border-border mt-12">
         <p>Sistema de Orçamentos Fortlev • {new Date().getFullYear()}</p>

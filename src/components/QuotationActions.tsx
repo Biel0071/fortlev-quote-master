@@ -11,12 +11,14 @@ interface QuotationActionsProps {
   validity: string;
   observations: string;
   discount: number;
+  freight: number;
   subtotal: number;
   deliveryTime: string;
   paymentConditions: PaymentConditions;
   onValidityChange: (value: string) => void;
   onObservationsChange: (value: string) => void;
   onDiscountChange: (value: number) => void;
+  onFreightChange: (value: number) => void;
   onDeliveryTimeChange: (value: string) => void;
   onPaymentConditionsChange: (conditions: PaymentConditions) => void;
   onGeneratePDF: () => void;
@@ -29,12 +31,14 @@ export const QuotationActions = ({
   validity,
   observations,
   discount,
+  freight,
   subtotal,
   deliveryTime,
   paymentConditions,
   onValidityChange,
   onObservationsChange,
   onDiscountChange,
+  onFreightChange,
   onDeliveryTimeChange,
   onPaymentConditionsChange,
   onGeneratePDF,
@@ -44,6 +48,13 @@ export const QuotationActions = ({
 }: QuotationActionsProps) => {
   const [discountType, setDiscountType] = useState<'value' | 'percent'>('percent');
   const [discountInput, setDiscountInput] = useState('');
+  const [freightInput, setFreightInput] = useState('');
+
+  const handleFreightChange = (value: string) => {
+    setFreightInput(value);
+    const numValue = parseFloat(value) || 0;
+    onFreightChange(numValue);
+  };
 
   const handlePaymentChange = (field: keyof PaymentConditions, value: string) => {
     onPaymentConditionsChange({ ...paymentConditions, [field]: value });
@@ -144,6 +155,35 @@ export const QuotationActions = ({
               <SelectItem value="A combinar">A combinar</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="freight" className="text-sm font-medium flex items-center gap-1">
+            <Truck className="h-4 w-4" />
+            Valor do Frete
+          </Label>
+          <Input
+            id="freight"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="R$ 0,00 (Grátis)"
+            value={freightInput}
+            onChange={(e) => handleFreightChange(e.target.value)}
+            className="h-11"
+          />
+          {freight === 0 && (
+            <p className="text-xs text-green-600 font-medium">
+              Frete Grátis
+            </p>
+          )}
+          {freight > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Frete: R$ {freight.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+          )}
         </div>
       </div>
 

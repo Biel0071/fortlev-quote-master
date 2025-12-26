@@ -186,6 +186,14 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   doc.text(formatCurrency(quotation.discount).replace('R$', '').trim(), totalsX + totalsWidth - 3, finalY + 5.5, { align: 'right' });
   finalY += 8;
   
+  // Freight row
+  doc.rect(totalsX, finalY, totalsWidth, 8);
+  doc.text('Frete:', totalsX + 3, finalY + 5.5);
+  const freightValue = quotation.freight || 0;
+  const freightText = freightValue === 0 ? 'Grátis' : formatCurrency(freightValue).replace('R$', '').trim();
+  doc.text(freightText, totalsX + totalsWidth - 3, finalY + 5.5, { align: 'right' });
+  finalY += 8;
+  
   // Total row
   doc.setFillColor(...primaryBlue);
   doc.rect(totalsX, finalY, totalsWidth, 10, 'F');
@@ -540,6 +548,16 @@ const generateCanvasPNG = (quotation: Quotation) => {
   ctx.fillText('Desconto:', totalsX + 10, yPos + 17);
   ctx.textAlign = 'right';
   ctx.fillText(formatCurrency(quotation.discount).replace('R$', '').trim(), totalsX + totalsWidth - 10, yPos + 17);
+  ctx.textAlign = 'left';
+  yPos += 26;
+  
+  // Freight row
+  ctx.strokeRect(totalsX, yPos, totalsWidth, 26);
+  ctx.fillText('Frete:', totalsX + 10, yPos + 17);
+  ctx.textAlign = 'right';
+  const freightValue = quotation.freight || 0;
+  const freightText = freightValue === 0 ? 'Grátis' : formatCurrency(freightValue).replace('R$', '').trim();
+  ctx.fillText(freightText, totalsX + totalsWidth - 10, yPos + 17);
   ctx.textAlign = 'left';
   yPos += 26;
   

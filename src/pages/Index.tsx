@@ -40,6 +40,7 @@ const Index = () => {
   const [validity, setValidity] = useState('7 dias');
   const [observations, setObservations] = useState('');
   const [discount, setDiscount] = useState(0);
+  const [freight, setFreight] = useState(0);
   const [deliveryTime, setDeliveryTime] = useState('7 a 10 dias úteis');
   const [paymentConditions, setPaymentConditions] = useState<PaymentConditions>({
     cashDiscount: '7% de desconto à vista',
@@ -48,7 +49,7 @@ const Index = () => {
   });
 
   const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
-  const total = subtotal - discount;
+  const total = subtotal - discount + freight;
 
   const handleAddItem = (item: QuotationItem) => {
     setItems([...items, item]);
@@ -75,6 +76,7 @@ const Index = () => {
       items,
       subtotal,
       discount,
+      freight,
       total,
       validity,
       observations,
@@ -164,6 +166,7 @@ const Index = () => {
     setItems([]);
     setObservations('');
     setDiscount(0);
+    setFreight(0);
   };
 
   const handleDeleteQuotation = (id: string) => {
@@ -225,12 +228,14 @@ const Index = () => {
                 validity={validity}
                 observations={observations}
                 discount={discount}
+                freight={freight}
                 subtotal={subtotal}
                 deliveryTime={deliveryTime}
                 paymentConditions={paymentConditions}
                 onValidityChange={setValidity}
                 onObservationsChange={setObservations}
                 onDiscountChange={setDiscount}
+                onFreightChange={setFreight}
                 onDeliveryTimeChange={setDeliveryTime}
                 onPaymentConditionsChange={setPaymentConditions}
                 onGeneratePDF={handleGeneratePDF}

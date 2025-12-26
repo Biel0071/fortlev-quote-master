@@ -49,6 +49,7 @@ export interface Quotation {
   items: QuotationItem[];
   subtotal: number;
   discount: number;
+  freight: number;
   total: number;
   validity: string;
   observations: string;

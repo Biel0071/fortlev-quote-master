@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { products, getProductLabel } from '@/data/products';
+import { products, getProductPrice } from '@/data/products';
 import { Product, QuotationItem } from '@/types/quotation';
 import { Plus, Package } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
@@ -20,6 +20,14 @@ export const ProductSelector = ({ onAddItem }: ProductSelectorProps) => {
   const handleProductChange = (productId: string) => {
     const product = products.find(p => p.id === productId);
     setSelectedProduct(product || null);
+    
+    // Auto-preencher preço base
+    if (product) {
+      const price = getProductPrice(product);
+      setUnitPrice(formatCurrency(price));
+    } else {
+      setUnitPrice('');
+    }
   };
 
   const handleAddItem = () => {
@@ -72,9 +80,16 @@ export const ProductSelector = ({ onAddItem }: ProductSelectorProps) => {
               {products.map(product => (
                 <SelectItem key={product.id} value={product.id}>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{product.capacity}{product.unit}</span>
+                    <span className="font-medium">
+                      {product.capacity}{product.unit}
+                      {product.type === 'tanque' && (
+                        <span className="ml-1 text-xs bg-fortlev-yellow/20 text-fortlev-yellow px-1.5 py-0.5 rounded">
+                          Tanque
+                        </span>
+                      )}
+                    </span>
                     <span className="text-muted-foreground text-sm">
-                      ({product.height} x {product.diameter})
+                      - {formatCurrency(product.basePrice)}
                     </span>
                   </div>
                 </SelectItem>

@@ -5,6 +5,8 @@ export interface Product {
   unit: string;
   height: string;
   diameter: string;
+  basePrice: number;
+  type: 'caixa' | 'tanque';
 }
 
 export interface QuotationItem {

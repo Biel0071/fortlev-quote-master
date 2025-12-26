@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PaymentConditions } from '@/types/quotation';
-import { FileText, Send, Calendar, MessageSquare, CreditCard, Truck, Image, Percent, DollarSign } from 'lucide-react';
+import { FileText, Send, Calendar, MessageSquare, CreditCard, Truck, Image, Percent, DollarSign, Eye } from 'lucide-react';
 import { useState } from 'react';
 
 interface QuotationActionsProps {
@@ -24,6 +24,7 @@ interface QuotationActionsProps {
   onGeneratePDF: () => void;
   onGeneratePNG: () => void;
   onSendWhatsApp: () => void;
+  onPreview: () => void;
   disabled: boolean;
 }
 
@@ -44,6 +45,7 @@ export const QuotationActions = ({
   onGeneratePDF,
   onGeneratePNG,
   onSendWhatsApp,
+  onPreview,
   disabled,
 }: QuotationActionsProps) => {
   const [discountType, setDiscountType] = useState<'value' | 'percent'>('percent');
@@ -250,6 +252,17 @@ export const QuotationActions = ({
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 pt-4">
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={onPreview}
+          disabled={disabled}
+          className="flex-1"
+        >
+          <Eye className="h-5 w-5" />
+          Pré-visualizar
+        </Button>
+
         <Button
           variant="fortlev"
           size="lg"

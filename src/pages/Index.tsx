@@ -112,21 +112,16 @@ const Index = () => {
   };
 
   const validateForm = () => {
-    if (!customer.name.trim()) {
-      toast({
-        title: 'Erro',
-        description: 'Preencha o nome do cliente',
-        variant: 'destructive',
-      });
-      return false;
-    }
-    if (!customer.phone.trim()) {
-      toast({
-        title: 'Erro',
-        description: 'Preencha o telefone do cliente',
-        variant: 'destructive',
-      });
-      return false;
+    // Só valida dados do cliente se showClientData estiver ativo
+    if (showClientData) {
+      if (!customer.name.trim()) {
+        toast({
+          title: 'Erro',
+          description: 'Preencha o nome do cliente',
+          variant: 'destructive',
+        });
+        return false;
+      }
     }
     if (items.length === 0) {
       toast({

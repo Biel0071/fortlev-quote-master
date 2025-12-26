@@ -214,14 +214,7 @@ const Index = () => {
   };
 
   const handlePreview = () => {
-    if (!customer.name.trim() || !customer.phone.trim() || items.length === 0) {
-      toast({
-        title: 'Preencha os dados',
-        description: 'Nome, telefone e pelo menos um item são necessários para pré-visualizar',
-        variant: 'destructive',
-      });
-      return;
-    }
+    if (!validateForm()) return;
     const quotation = createQuotation();
     setPreviewQuotation(quotation);
     setPreviewOpen(true);

@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Quotation } from '@/types/quotation';
 import { formatCurrency, formatDate } from './formatters';
+import { getProductFullDescription } from './taxCalculator';
 
 export const generatePDF = (quotation: Quotation): jsPDF => {
   const doc = new jsPDF();
@@ -122,9 +123,9 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
     yPos += 4;
   }
   
-  // Items table
+  // Items table - discriminando tipo do produto (Caixa ou Tanque)
   const tableData = quotation.items.map(item => [
-    `Caixa d'água Fortlev ${item.product.capacity} ${item.product.unit}`,
+    getProductFullDescription(item.product.type, item.product.capacity, item.product.unit),
     'Un.',
     item.quantity.toString(),
     formatCurrency(item.unitPrice).replace('R$', '').trim(),
@@ -508,7 +509,7 @@ const generateCanvasPNG = (quotation: Quotation) => {
     ctx.strokeRect(padding, yPos, tableWidth, rowHeight);
     
     ctx.fillStyle = textDark;
-    ctx.fillText(`Caixa d'água Fortlev ${item.product.capacity} ${item.product.unit}`, colStarts[0] + 8, yPos + 20);
+    ctx.fillText(getProductFullDescription(item.product.type, item.product.capacity, item.product.unit), colStarts[0] + 8, yPos + 20);
     ctx.fillText('Un.', colStarts[1] + 8, yPos + 20);
     ctx.fillText(item.quantity.toString(), colStarts[2] + 12, yPos + 20);
     ctx.fillText(formatCurrency(item.unitPrice).replace('R$', '').trim(), colStarts[3] + 8, yPos + 20);

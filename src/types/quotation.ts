@@ -41,6 +41,17 @@ export interface PaymentConditions {
   downPayment: string;
 }
 
+export interface TaxInfo {
+  icmsBase: number;
+  icmsValue: number;
+  icmsRate: number;
+  ipiValue: number;
+  pisValue: number;
+  cofinsValue: number;
+  totalTaxes: number;
+  taxPercentage: number;
+}
+
 export interface Quotation {
   id: string;
   number: string;
@@ -51,6 +62,7 @@ export interface Quotation {
   discount: number;
   freight: number;
   total: number;
+  taxes?: TaxInfo;
   validity: string;
   observations: string;
   paymentConditions: PaymentConditions;

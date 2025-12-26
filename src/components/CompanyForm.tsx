@@ -1,7 +1,11 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CompanyInfo } from '@/types/quotation';
-import { Building2, Phone, Mail, Globe, User } from 'lucide-react';
+import { Building2, Phone, Mail, Globe, User, Save, Trash2 } from 'lucide-react';
+import { useSavedCompanies } from '@/hooks/useSavedCompanies';
+import { toast } from '@/hooks/use-toast';
 
 interface CompanyFormProps {
   companyInfo: CompanyInfo;
@@ -9,6 +13,8 @@ interface CompanyFormProps {
 }
 
 export const CompanyForm = ({ companyInfo, onChange }: CompanyFormProps) => {
+  const { companies, saveCompany, deleteCompany } = useSavedCompanies();
+
   const handleChange = (field: keyof CompanyInfo, value: string) => {
     onChange({ ...companyInfo, [field]: value });
   };
@@ -22,12 +28,90 @@ export const CompanyForm = ({ companyInfo, onChange }: CompanyFormProps) => {
     return `${cleaned.slice(0, 2)}.${cleaned.slice(2, 5)}.${cleaned.slice(5, 8)}/${cleaned.slice(8, 12)}-${cleaned.slice(12, 14)}`;
   };
 
+  const handleSaveCompany = () => {
+    if (!companyInfo.name.trim() || !companyInfo.cnpj.trim()) {
+      toast({
+        title: 'Erro',
+        description: 'Preencha pelo menos o nome e CNPJ da empresa',
+        variant: 'destructive',
+      });
+      return;
+    }
+    saveCompany(companyInfo);
+    toast({
+      title: 'Empresa salva!',
+      description: `${companyInfo.name} foi salva com sucesso`,
+    });
+  };
+
+  const handleSelectCompany = (cnpj: string) => {
+    const selected = companies.find(c => c.cnpj === cnpj);
+    if (selected) {
+      onChange(selected);
+      toast({
+        title: 'Empresa carregada',
+        description: `Dados de ${selected.name} carregados`,
+      });
+    }
+  };
+
+  const handleDeleteCompany = () => {
+    if (!companyInfo.cnpj) return;
+    deleteCompany(companyInfo.cnpj);
+    toast({
+      title: 'Empresa removida',
+      variant: 'destructive',
+    });
+  };
+
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-        <Building2 className="h-5 w-5 text-fortlev-yellow" />
-        Dados da Empresa Emissora
-      </h3>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+          <Building2 className="h-5 w-5 text-fortlev-yellow" />
+          Dados da Empresa Emissora
+        </h3>
+        
+        <div className="flex items-center gap-2">
+          {companies.length > 0 && (
+            <Select onValueChange={handleSelectCompany}>
+              <SelectTrigger className="w-[200px] h-9">
+                <SelectValue placeholder="Empresas salvas" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((company) => (
+                  <SelectItem key={company.cnpj} value={company.cnpj}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleSaveCompany}
+            className="gap-1"
+          >
+            <Save className="h-4 w-4" />
+            Salvar
+          </Button>
+          
+          {companyInfo.cnpj && companies.some(c => c.cnpj === companyInfo.cnpj) && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleDeleteCompany}
+              className="gap-1 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">

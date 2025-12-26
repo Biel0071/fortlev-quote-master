@@ -37,14 +37,14 @@ const Index = () => {
 
   const [showClientData, setShowClientData] = useState(true);
   const [items, setItems] = useState<QuotationItem[]>([]);
-  const [validity, setValidity] = useState('15 dias');
+  const [validity, setValidity] = useState('7 dias');
   const [observations, setObservations] = useState('');
   const [discount, setDiscount] = useState(0);
-  const [deliveryTime, setDeliveryTime] = useState('7 dias úteis');
+  const [deliveryTime, setDeliveryTime] = useState('7 a 10 dias úteis');
   const [paymentConditions, setPaymentConditions] = useState<PaymentConditions>({
-    cashDiscount: '5% de desconto via PIX ou transferência',
-    installments: '3x no cartão ou boleto bancário',
-    downPayment: '30%',
+    cashDiscount: '7% de desconto à vista',
+    installments: '10x no cartão',
+    downPayment: 'Parcelamento sem juros - consultar',
   });
 
   const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
@@ -225,6 +225,7 @@ const Index = () => {
                 validity={validity}
                 observations={observations}
                 discount={discount}
+                subtotal={subtotal}
                 deliveryTime={deliveryTime}
                 paymentConditions={paymentConditions}
                 onValidityChange={setValidity}

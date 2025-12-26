@@ -2,13 +2,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PaymentConditions } from '@/types/quotation';
-import { FileText, Send, Calendar, MessageSquare, CreditCard, Truck, Image } from 'lucide-react';
+import { FileText, Send, Calendar, MessageSquare, CreditCard, Truck, Image, Percent, DollarSign } from 'lucide-react';
+import { useState } from 'react';
 
 interface QuotationActionsProps {
   validity: string;
   observations: string;
   discount: number;
+  subtotal: number;
   deliveryTime: string;
   paymentConditions: PaymentConditions;
   onValidityChange: (value: string) => void;
@@ -26,6 +29,7 @@ export const QuotationActions = ({
   validity,
   observations,
   discount,
+  subtotal,
   deliveryTime,
   paymentConditions,
   onValidityChange,
@@ -38,8 +42,29 @@ export const QuotationActions = ({
   onSendWhatsApp,
   disabled,
 }: QuotationActionsProps) => {
+  const [discountType, setDiscountType] = useState<'value' | 'percent'>('percent');
+  const [discountInput, setDiscountInput] = useState('');
+
   const handlePaymentChange = (field: keyof PaymentConditions, value: string) => {
     onPaymentConditionsChange({ ...paymentConditions, [field]: value });
+  };
+
+  const handleDiscountChange = (value: string) => {
+    setDiscountInput(value);
+    const numValue = parseFloat(value) || 0;
+    
+    if (discountType === 'percent') {
+      const discountValue = (subtotal * numValue) / 100;
+      onDiscountChange(discountValue);
+    } else {
+      onDiscountChange(numValue);
+    }
+  };
+
+  const handleDiscountTypeChange = (type: 'value' | 'percent') => {
+    setDiscountType(type);
+    setDiscountInput('');
+    onDiscountChange(0);
   };
 
   return (
@@ -50,29 +75,55 @@ export const QuotationActions = ({
             <Calendar className="h-4 w-4" />
             Validade do Orçamento
           </Label>
-          <Input
-            id="validity"
-            placeholder="Ex: 15 dias"
-            value={validity}
-            onChange={(e) => onValidityChange(e.target.value)}
-            className="h-11"
-          />
+          <Select value={validity} onValueChange={onValidityChange}>
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder="Selecione a validade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3 dias">3 dias</SelectItem>
+              <SelectItem value="5 dias">5 dias</SelectItem>
+              <SelectItem value="7 dias">7 dias (1 semana)</SelectItem>
+              <SelectItem value="10 dias">10 dias</SelectItem>
+              <SelectItem value="15 dias">15 dias</SelectItem>
+              <SelectItem value="30 dias">30 dias</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="discount" className="text-sm font-medium">
-            Desconto (R$)
+            Desconto
           </Label>
-          <Input
-            id="discount"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0,00"
-            value={discount || ''}
-            onChange={(e) => onDiscountChange(parseFloat(e.target.value) || 0)}
-            className="h-11"
-          />
+          <div className="flex gap-2">
+            <Select value={discountType} onValueChange={(v) => handleDiscountTypeChange(v as 'value' | 'percent')}>
+              <SelectTrigger className="w-20 h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="percent">
+                  <Percent className="h-4 w-4" />
+                </SelectItem>
+                <SelectItem value="value">
+                  <DollarSign className="h-4 w-4" />
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              id="discount"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder={discountType === 'percent' ? '0%' : 'R$ 0,00'}
+              value={discountInput}
+              onChange={(e) => handleDiscountChange(e.target.value)}
+              className="h-11 flex-1"
+            />
+          </div>
+          {discount > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Desconto: R$ {discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -80,13 +131,19 @@ export const QuotationActions = ({
             <Truck className="h-4 w-4" />
             Prazo de Entrega
           </Label>
-          <Input
-            id="deliveryTime"
-            placeholder="Ex: 7 dias úteis"
-            value={deliveryTime}
-            onChange={(e) => onDeliveryTimeChange(e.target.value)}
-            className="h-11"
-          />
+          <Select value={deliveryTime} onValueChange={onDeliveryTimeChange}>
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder="Selecione o prazo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3 a 5 dias úteis">3 a 5 dias úteis</SelectItem>
+              <SelectItem value="5 a 7 dias úteis">5 a 7 dias úteis</SelectItem>
+              <SelectItem value="7 a 10 dias úteis">7 a 10 dias úteis</SelectItem>
+              <SelectItem value="10 a 15 dias úteis">10 a 15 dias úteis</SelectItem>
+              <SelectItem value="15 a 20 dias úteis">15 a 20 dias úteis</SelectItem>
+              <SelectItem value="A combinar">A combinar</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -103,7 +160,7 @@ export const QuotationActions = ({
             </Label>
             <Input
               id="cashDiscount"
-              placeholder="Ex: 5% de desconto via PIX"
+              placeholder="Ex: 7% de desconto"
               value={paymentConditions.cashDiscount}
               onChange={(e) => handlePaymentChange('cashDiscount', e.target.value)}
               className="h-11"
@@ -112,11 +169,11 @@ export const QuotationActions = ({
 
           <div className="space-y-2">
             <Label htmlFor="installments" className="text-sm font-medium">
-              Parcelado
+              Cartão
             </Label>
             <Input
               id="installments"
-              placeholder="Ex: 3x no cartão"
+              placeholder="Ex: 10x sem juros"
               value={paymentConditions.installments}
               onChange={(e) => handlePaymentChange('installments', e.target.value)}
               className="h-11"
@@ -125,11 +182,11 @@ export const QuotationActions = ({
 
           <div className="space-y-2">
             <Label htmlFor="downPayment" className="text-sm font-medium">
-              Entrada Mínima
+              Parcelamento
             </Label>
             <Input
               id="downPayment"
-              placeholder="Ex: 30% no fechamento"
+              placeholder="Ex: Sem juros - consultar"
               value={paymentConditions.downPayment}
               onChange={(e) => handlePaymentChange('downPayment', e.target.value)}
               className="h-11"

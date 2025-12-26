@@ -39,6 +39,31 @@ export const QuotationPreview = ({
 }: QuotationPreviewProps) => {
   if (!quotation) return null;
 
+  // Default values for backwards compatibility with old quotations
+  const companyInfo = quotation.companyInfo || {
+    name: '',
+    cnpj: '',
+    address: '',
+    phone: '',
+    email: '',
+    website: '',
+    sellerName: '',
+    sellerRole: '',
+  };
+
+  const customer = quotation.customer || {
+    name: '',
+    cnpj: '',
+    phone: '',
+    address: '',
+  };
+
+  const paymentConditions = quotation.paymentConditions || {
+    cashDiscount: '',
+    installments: '',
+    downPayment: '',
+  };
+
   const formatDate = (date: Date) => {
     return format(new Date(date), "dd/MM/yyyy", { locale: ptBR });
   };
@@ -69,23 +94,23 @@ export const QuotationPreview = ({
             <div className="p-6 border-b border-border">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1 text-sm">
-                  {quotation.companyInfo.name && (
-                    <p><span className="text-muted-foreground">Emitido por:</span> {quotation.companyInfo.name}</p>
+                  {companyInfo.name && (
+                    <p><span className="text-muted-foreground">Emitido por:</span> {companyInfo.name}</p>
                   )}
-                  {quotation.companyInfo.cnpj && (
-                    <p><span className="text-muted-foreground">CNPJ:</span> {quotation.companyInfo.cnpj}</p>
+                  {companyInfo.cnpj && (
+                    <p><span className="text-muted-foreground">CNPJ:</span> {companyInfo.cnpj}</p>
                   )}
-                  {quotation.companyInfo.address && (
-                    <p><span className="text-muted-foreground">Endereço:</span> {quotation.companyInfo.address}</p>
+                  {companyInfo.address && (
+                    <p><span className="text-muted-foreground">Endereço:</span> {companyInfo.address}</p>
                   )}
-                  {quotation.companyInfo.phone && (
-                    <p><span className="text-muted-foreground">Telefone:</span> {quotation.companyInfo.phone}</p>
+                  {companyInfo.phone && (
+                    <p><span className="text-muted-foreground">Telefone:</span> {companyInfo.phone}</p>
                   )}
-                  {quotation.companyInfo.email && (
-                    <p><span className="text-muted-foreground">E-mail:</span> {quotation.companyInfo.email}</p>
+                  {companyInfo.email && (
+                    <p><span className="text-muted-foreground">E-mail:</span> {companyInfo.email}</p>
                   )}
-                  {quotation.companyInfo.website && (
-                    <p><span className="text-muted-foreground">Site:</span> {quotation.companyInfo.website}</p>
+                  {companyInfo.website && (
+                    <p><span className="text-muted-foreground">Site:</span> {companyInfo.website}</p>
                   )}
                 </div>
                 <div className="text-right space-y-1 text-sm">
@@ -102,19 +127,19 @@ export const QuotationPreview = ({
             </div>
 
             {/* Client Info */}
-            {quotation.showClientData && quotation.customer.name && (
+            {quotation.showClientData && customer.name && (
               <div className="p-6 border-b border-border">
                 <h3 className="font-semibold text-sm mb-2">Cliente:</h3>
                 <div className="space-y-1 text-sm">
-                  <p className="font-medium">{quotation.customer.name}</p>
-                  {quotation.customer.cnpj && (
-                    <p><span className="text-muted-foreground">CNPJ:</span> {quotation.customer.cnpj}</p>
+                  <p className="font-medium">{customer.name}</p>
+                  {customer.cnpj && (
+                    <p><span className="text-muted-foreground">CNPJ:</span> {customer.cnpj}</p>
                   )}
-                  {quotation.customer.address && (
-                    <p><span className="text-muted-foreground">Endereço:</span> {quotation.customer.address}</p>
+                  {customer.address && (
+                    <p><span className="text-muted-foreground">Endereço:</span> {customer.address}</p>
                   )}
-                  {quotation.customer.phone && (
-                    <p><span className="text-muted-foreground">Telefone:</span> {quotation.customer.phone}</p>
+                  {customer.phone && (
+                    <p><span className="text-muted-foreground">Telefone:</span> {customer.phone}</p>
                   )}
                 </div>
               </div>
@@ -182,14 +207,14 @@ export const QuotationPreview = ({
             <div className="p-6 border-b border-border">
               <h3 className="font-semibold text-sm mb-2">Condições de Pagamento:</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
-                {quotation.paymentConditions.cashDiscount && (
-                  <li>• À vista: {quotation.paymentConditions.cashDiscount}</li>
+                {paymentConditions.cashDiscount && (
+                  <li>• À vista: {paymentConditions.cashDiscount}</li>
                 )}
-                {quotation.paymentConditions.installments && (
-                  <li>• Parcelado: {quotation.paymentConditions.installments}</li>
+                {paymentConditions.installments && (
+                  <li>• Parcelado: {paymentConditions.installments}</li>
                 )}
-                {quotation.paymentConditions.downPayment && (
-                  <li>• Entrada mínima de {quotation.paymentConditions.downPayment}</li>
+                {paymentConditions.downPayment && (
+                  <li>• Entrada mínima de {paymentConditions.downPayment}</li>
                 )}
               </ul>
             </div>
@@ -208,9 +233,9 @@ export const QuotationPreview = ({
             {/* Signature */}
             <div className="p-6">
               <p className="text-sm text-muted-foreground">Atenciosamente,</p>
-              <p className="font-semibold text-sm mt-2">{quotation.companyInfo.sellerName || 'Vendedor'}</p>
-              <p className="text-sm text-muted-foreground">{quotation.companyInfo.sellerRole || 'Consultor de Vendas'}</p>
-              <p className="text-sm text-muted-foreground">{quotation.companyInfo.name}</p>
+              <p className="font-semibold text-sm mt-2">{companyInfo.sellerName || 'Vendedor'}</p>
+              <p className="text-sm text-muted-foreground">{companyInfo.sellerRole || 'Consultor de Vendas'}</p>
+              <p className="text-sm text-muted-foreground">{companyInfo.name}</p>
             </div>
           </div>
         </div>

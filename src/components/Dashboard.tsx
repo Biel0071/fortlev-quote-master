@@ -225,11 +225,11 @@ export const Dashboard = ({ quotations, onDelete, onEdit }: DashboardProps) => {
     setViewDialogOpen(true);
   };
 
-  const confirmGenerateNFe = () => {
+  const confirmGenerateNFe = async () => {
     if (!selectedQuotation || !nfeNumber) return;
 
     // Generate and download NFe PDF
-    downloadNFePDF(selectedQuotation, nfeNumber);
+    await downloadNFePDF(selectedQuotation, nfeNumber);
     
     toast({
       title: 'NFe Gerada com Sucesso!',

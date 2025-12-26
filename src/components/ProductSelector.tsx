@@ -3,14 +3,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { productCategories, getProductPrice } from '@/data/products';
+import { productCategories, getProductPrice, products } from '@/data/products';
 import { Product, QuotationItem } from '@/types/quotation';
-import { Plus, Package } from 'lucide-react';
+import { Plus, Package, Filter } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
+import { Badge } from '@/components/ui/badge';
 
 interface ProductSelectorProps {
   onAddItem: (item: QuotationItem) => void;
 }
+
+const categoryFilters = [
+  { key: 'all', label: 'Todos' },
+  { key: 'caixa', label: "Caixas d'Água" },
+  { key: 'tanque', label: 'Tanques' },
+  { key: 'tanque-industrial', label: 'Industriais' },
+  { key: 'tanque-verde', label: 'Verdes' },
+];
 
 const typeLabels: Record<string, { label: string; color: string }> = {
   'caixa': { label: '', color: '' },
@@ -23,10 +32,14 @@ export const ProductSelector = ({ onAddItem }: ProductSelectorProps) => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+
+  const filteredProducts = categoryFilter === 'all' 
+    ? products 
+    : products.filter(p => p.type === categoryFilter);
 
   const handleProductChange = (productId: string) => {
-    const allProducts = Object.values(productCategories).flatMap(cat => cat.products);
-    const product = allProducts.find(p => p.id === productId);
+    const product = products.find(p => p.id === productId);
     setSelectedProduct(product || null);
     
     // Auto-preencher preço base
@@ -74,6 +87,35 @@ export const ProductSelector = ({ onAddItem }: ProductSelectorProps) => {
         Adicionar Produto
       </h3>
 
+      {/* Category Filters */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium flex items-center gap-1">
+          <Filter className="h-4 w-4" />
+          Filtrar por Categoria
+        </Label>
+        <div className="flex flex-wrap gap-2">
+          {categoryFilters.map(filter => (
+            <Badge
+              key={filter.key}
+              variant={categoryFilter === filter.key ? 'default' : 'outline'}
+              className={`cursor-pointer transition-all hover:scale-105 ${
+                categoryFilter === filter.key 
+                  ? 'bg-fortlev-navy text-white' 
+                  : 'hover:bg-fortlev-navy/10'
+              }`}
+              onClick={() => setCategoryFilter(filter.key)}
+            >
+              {filter.label}
+              {filter.key !== 'all' && (
+                <span className="ml-1 text-xs opacity-70">
+                  ({products.filter(p => p.type === filter.key).length})
+                </span>
+              )}
+            </Badge>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="md:col-span-2 space-y-2">
           <Label className="text-sm font-medium">Produto</Label>
@@ -84,14 +126,41 @@ export const ProductSelector = ({ onAddItem }: ProductSelectorProps) => {
             <SelectTrigger className="h-11">
               <SelectValue placeholder="Selecione o produto" />
             </SelectTrigger>
-            <SelectContent className="max-h-[400px]">
-              {Object.entries(productCategories).map(([key, category]) => (
-                <SelectGroup key={key}>
-                  <SelectLabel className="font-bold text-fortlev-navy py-2">
-                    {category.label}
+            <SelectContent className="max-h-[400px] bg-background z-50">
+              {categoryFilter === 'all' ? (
+                // Show grouped by category
+                Object.entries(productCategories).map(([key, category]) => (
+                  <SelectGroup key={key}>
+                    <SelectLabel className="font-bold text-fortlev-navy py-2 bg-muted/50">
+                      {category.label}
+                    </SelectLabel>
+                    {category.products.map(product => (
+                      <SelectItem key={product.id} value={product.id} className="bg-background hover:bg-muted">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {product.capacity.toLocaleString('pt-BR')}{product.unit}
+                            {typeLabels[product.type]?.label && (
+                              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${typeLabels[product.type].color}`}>
+                                {typeLabels[product.type].label}
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-muted-foreground text-sm">
+                            - {formatCurrency(product.basePrice)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))
+              ) : (
+                // Show filtered list
+                <SelectGroup>
+                  <SelectLabel className="font-bold text-fortlev-navy py-2 bg-muted/50">
+                    {categoryFilters.find(f => f.key === categoryFilter)?.label}
                   </SelectLabel>
-                  {category.products.map(product => (
-                    <SelectItem key={product.id} value={product.id}>
+                  {filteredProducts.map(product => (
+                    <SelectItem key={product.id} value={product.id} className="bg-background hover:bg-muted">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">
                           {product.capacity.toLocaleString('pt-BR')}{product.unit}
@@ -108,7 +177,7 @@ export const ProductSelector = ({ onAddItem }: ProductSelectorProps) => {
                     </SelectItem>
                   ))}
                 </SelectGroup>
-              ))}
+              )}
             </SelectContent>
           </Select>
         </div>

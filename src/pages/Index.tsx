@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Header } from '@/components/Header';
 import { CompanyForm } from '@/components/CompanyForm';
@@ -12,10 +12,13 @@ import { Customer, CompanyInfo, PaymentConditions, QuotationItem, Quotation } fr
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
-import { FilePlus, LayoutDashboard } from 'lucide-react';
+import { FilePlus, LayoutDashboard, Pencil } from 'lucide-react';
 
 const Index = () => {
-  const { quotations, saveQuotation, deleteQuotation, generateQuotationNumber } = useQuotations();
+  const { quotations, saveQuotation, updateQuotation, deleteQuotation, generateQuotationNumber } = useQuotations();
+
+  const [activeTab, setActiveTab] = useState('new');
+  const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
 
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: '',
@@ -47,6 +50,7 @@ const Index = () => {
     installments: '10x no cartão',
     downPayment: 'Parcelamento sem juros - consultar',
   });
+  const [quotationNumber, setQuotationNumber] = useState<string | null>(null);
 
   const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
   const total = subtotal - discount + freight;
@@ -69,8 +73,8 @@ const Index = () => {
 
   const createQuotation = (): Quotation => {
     return {
-      id: crypto.randomUUID(),
-      number: generateQuotationNumber(),
+      id: editingQuotationId || crypto.randomUUID(),
+      number: quotationNumber || generateQuotationNumber(),
       customer,
       companyInfo,
       items,
@@ -120,14 +124,24 @@ const Index = () => {
     if (!validateForm()) return;
 
     const quotation = createQuotation();
-    saveQuotation(quotation);
+    
+    if (editingQuotationId) {
+      // Update existing quotation
+      updateQuotation(editingQuotationId, quotation);
+      toast({
+        title: 'Orçamento atualizado!',
+        description: `Orçamento ${quotation.number} atualizado e PDF baixado`,
+      });
+    } else {
+      // Save new quotation
+      saveQuotation(quotation);
+      toast({
+        title: 'PDF gerado com sucesso!',
+        description: `Orçamento ${quotation.number} salvo e PDF baixado`,
+      });
+    }
+    
     downloadPDF(quotation);
-
-    toast({
-      title: 'PDF gerado com sucesso!',
-      description: `Orçamento ${quotation.number} salvo e PDF baixado`,
-    });
-
     resetForm();
   };
 
@@ -135,14 +149,22 @@ const Index = () => {
     if (!validateForm()) return;
 
     const quotation = createQuotation();
-    saveQuotation(quotation);
+    
+    if (editingQuotationId) {
+      updateQuotation(editingQuotationId, quotation);
+      toast({
+        title: 'Orçamento atualizado!',
+        description: `Orçamento ${quotation.number} atualizado e imagem baixada`,
+      });
+    } else {
+      saveQuotation(quotation);
+      toast({
+        title: 'PNG gerado com sucesso!',
+        description: `Orçamento ${quotation.number} salvo e imagem baixada`,
+      });
+    }
+    
     await downloadPNG(quotation);
-
-    toast({
-      title: 'PNG gerado com sucesso!',
-      description: `Orçamento ${quotation.number} salvo e imagem baixada`,
-    });
-
     resetForm();
   };
 
@@ -150,7 +172,13 @@ const Index = () => {
     if (!validateForm()) return;
 
     const quotation = createQuotation();
-    saveQuotation({ ...quotation, status: 'sent' });
+    
+    if (editingQuotationId) {
+      updateQuotation(editingQuotationId, { ...quotation, status: 'sent' });
+    } else {
+      saveQuotation({ ...quotation, status: 'sent' });
+    }
+    
     openWhatsApp(quotation);
 
     toast({
@@ -167,6 +195,32 @@ const Index = () => {
     setObservations('');
     setDiscount(0);
     setFreight(0);
+    setEditingQuotationId(null);
+    setQuotationNumber(null);
+  };
+
+  const handleEditQuotation = (quotation: Quotation) => {
+    // Load quotation data into form
+    setEditingQuotationId(quotation.id);
+    setQuotationNumber(quotation.number);
+    setCustomer(quotation.customer);
+    setCompanyInfo(quotation.companyInfo);
+    setItems(quotation.items);
+    setValidity(quotation.validity);
+    setObservations(quotation.observations);
+    setDiscount(quotation.discount);
+    setFreight(quotation.freight || 0);
+    setDeliveryTime(quotation.deliveryTime);
+    setPaymentConditions(quotation.paymentConditions);
+    setShowClientData(quotation.showClientData);
+    
+    // Switch to new quotation tab
+    setActiveTab('new');
+    
+    toast({
+      title: 'Modo de edição',
+      description: `Editando orçamento ${quotation.number}`,
+    });
   };
 
   const handleDeleteQuotation = (id: string) => {
@@ -177,6 +231,14 @@ const Index = () => {
     });
   };
 
+  const handleCancelEdit = () => {
+    resetForm();
+    toast({
+      title: 'Edição cancelada',
+      description: 'Formulário limpo',
+    });
+  };
+
   const isFormValid = customer.name.trim() && customer.phone.trim() && items.length > 0;
 
   return (
@@ -184,11 +246,20 @@ const Index = () => {
       <Header />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <Tabs defaultValue="new" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full max-w-md grid-cols-2 h-12">
             <TabsTrigger value="new" className="flex items-center gap-2 text-sm font-medium">
-              <FilePlus className="h-4 w-4" />
-              Novo Orçamento
+              {editingQuotationId ? (
+                <>
+                  <Pencil className="h-4 w-4" />
+                  Editando Orçamento
+                </>
+              ) : (
+                <>
+                  <FilePlus className="h-4 w-4" />
+                  Novo Orçamento
+                </>
+              )}
             </TabsTrigger>
             <TabsTrigger value="dashboard" className="flex items-center gap-2 text-sm font-medium">
               <LayoutDashboard className="h-4 w-4" />
@@ -202,6 +273,23 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="new" className="space-y-6 animate-fade-in">
+            {editingQuotationId && (
+              <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Pencil className="h-5 w-5 text-orange-600" />
+                  <span className="font-medium text-orange-700">
+                    Editando orçamento: {quotationNumber}
+                  </span>
+                </div>
+                <button 
+                  onClick={handleCancelEdit}
+                  className="text-sm text-orange-600 hover:text-orange-800 underline"
+                >
+                  Cancelar edição
+                </button>
+              </div>
+            )}
+
             <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
               <CompanyForm companyInfo={companyInfo} onChange={setCompanyInfo} />
             </div>
@@ -247,7 +335,11 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="dashboard" className="animate-fade-in">
-            <Dashboard quotations={quotations} onDelete={handleDeleteQuotation} />
+            <Dashboard 
+              quotations={quotations} 
+              onDelete={handleDeleteQuotation}
+              onEdit={handleEditQuotation}
+            />
           </TabsContent>
         </Tabs>
       </main>

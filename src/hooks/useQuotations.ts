@@ -42,14 +42,13 @@ export const useQuotations = () => {
   };
 
   const generateQuotationNumber = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const count = quotations.filter(q => {
-      const qDate = new Date(q.createdAt);
-      return qDate.getFullYear() === year && qDate.getMonth() === date.getMonth();
-    }).length + 1;
-    return `ORC-${year}${month}-${String(count).padStart(4, '0')}`;
+    // Generate random alphanumeric string like "4SML1IQRJ80"
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 10; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
   };
 
   return {

@@ -430,7 +430,7 @@ export const generateNFePDF = async (quotation: Quotation, nfeNumber: string): P
   doc.text('DADOS DO PRODUTO / SERVIÇO', 12, yPos + 3.5);
   yPos += 5;
   
-  // Products table
+  // Products table - simplified columns to fit within margins
   const tableData = quotation.items.map((item, index) => {
     const ncm = getNcmCode(item.product.type);
     const cfop = getCfopCode(false);
@@ -454,43 +454,53 @@ export const generateNFePDF = async (quotation: Quotation, nfeNumber: string): P
     ];
   });
   
+  // Calculate available width (page width minus margins)
+  const availableWidth = pageWidth - 20; // 10mm each side
+  
   autoTable(doc, {
     startY: yPos,
-    head: [['CÓD.', 'DESCRIÇÃO DO PRODUTO / SERVIÇO', 'NCM/SH', 'CST', 'CFOP', 'UN', 'QUANT.', 'VL. UNIT.', 'VL. TOTAL', 'BC ICMS', 'VL. ICMS', 'ALÍQ.']],
+    head: [['CÓD', 'DESCRIÇÃO DO PRODUTO/SERVIÇO', 'NCM/SH', 'CST', 'CFOP', 'UN', 'QTD', 'VL.UNIT', 'VL.TOT', 'BC ICMS', 'ICMS', '%']],
     body: tableData,
     theme: 'grid',
+    styles: {
+      overflow: 'linebreak',
+      cellWidth: 'wrap',
+      fontSize: 5.5,
+      cellPadding: 1,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.2,
+    },
     headStyles: {
       fillColor: [245, 245, 245],
       textColor: [0, 0, 0],
       fontStyle: 'bold',
       fontSize: 5,
       halign: 'center',
+      valign: 'middle',
       cellPadding: 1.5,
-      lineColor: [0, 0, 0],
-      lineWidth: 0.2,
     },
     bodyStyles: {
-      fontSize: 6,
+      fontSize: 5.5,
       textColor: [0, 0, 0],
-      cellPadding: 2,
-      lineColor: [0, 0, 0],
-      lineWidth: 0.2,
+      cellPadding: 1.5,
+      valign: 'middle',
     },
     columnStyles: {
-      0: { cellWidth: 10, halign: 'center' },
-      1: { cellWidth: 50, halign: 'left' },
-      2: { cellWidth: 16, halign: 'center' },
-      3: { cellWidth: 10, halign: 'center' },
-      4: { cellWidth: 12, halign: 'center' },
-      5: { cellWidth: 10, halign: 'center' },
-      6: { cellWidth: 14, halign: 'right' },
-      7: { cellWidth: 16, halign: 'right' },
-      8: { cellWidth: 16, halign: 'right' },
-      9: { cellWidth: 16, halign: 'right' },
-      10: { cellWidth: 14, halign: 'right' },
-      11: { cellWidth: 10, halign: 'center' },
+      0: { cellWidth: 8, halign: 'center' },
+      1: { cellWidth: 45, halign: 'left' },
+      2: { cellWidth: 15, halign: 'center' },
+      3: { cellWidth: 8, halign: 'center' },
+      4: { cellWidth: 10, halign: 'center' },
+      5: { cellWidth: 8, halign: 'center' },
+      6: { cellWidth: 10, halign: 'center' },
+      7: { cellWidth: 18, halign: 'right' },
+      8: { cellWidth: 18, halign: 'right' },
+      9: { cellWidth: 18, halign: 'right' },
+      10: { cellWidth: 15, halign: 'right' },
+      11: { cellWidth: 8, halign: 'center' },
     },
     margin: { left: 10, right: 10 },
+    tableWidth: availableWidth,
     tableLineColor: [0, 0, 0],
     tableLineWidth: 0.2,
   });

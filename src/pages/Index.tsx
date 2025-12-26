@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Header } from '@/components/Header';
+import { CompanyForm } from '@/components/CompanyForm';
 import { CustomerForm } from '@/components/CustomerForm';
 import { ProductSelector } from '@/components/ProductSelector';
 import { ItemsList } from '@/components/ItemsList';
 import { QuotationActions } from '@/components/QuotationActions';
 import { Dashboard } from '@/components/Dashboard';
 import { useQuotations } from '@/hooks/useQuotations';
-import { Customer, QuotationItem, Quotation } from '@/types/quotation';
-import { downloadPDF } from '@/utils/pdfGenerator';
+import { Customer, CompanyInfo, PaymentConditions, QuotationItem, Quotation } from '@/types/quotation';
+import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
 import { FilePlus, LayoutDashboard } from 'lucide-react';
@@ -16,16 +17,38 @@ import { FilePlus, LayoutDashboard } from 'lucide-react';
 const Index = () => {
   const { quotations, saveQuotation, deleteQuotation, generateQuotationNumber } = useQuotations();
 
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
+    name: '',
+    cnpj: '',
+    address: '',
+    phone: '',
+    email: '',
+    website: '',
+    sellerName: '',
+    sellerRole: 'Gerente de Vendas',
+  });
+
   const [customer, setCustomer] = useState<Customer>({
     name: '',
+    cnpj: '',
     phone: '',
     address: '',
   });
+
+  const [showClientData, setShowClientData] = useState(true);
   const [items, setItems] = useState<QuotationItem[]>([]);
   const [validity, setValidity] = useState('15 dias');
   const [observations, setObservations] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [deliveryTime, setDeliveryTime] = useState('7 dias úteis');
+  const [paymentConditions, setPaymentConditions] = useState<PaymentConditions>({
+    cashDiscount: '5% de desconto via PIX ou transferência',
+    installments: '3x no cartão ou boleto bancário',
+    downPayment: '30%',
+  });
 
-  const total = items.reduce((acc, item) => acc + item.subtotal, 0);
+  const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
+  const total = subtotal - discount;
 
   const handleAddItem = (item: QuotationItem) => {
     setItems([...items, item]);
@@ -48,10 +71,16 @@ const Index = () => {
       id: crypto.randomUUID(),
       number: generateQuotationNumber(),
       customer,
+      companyInfo,
       items,
+      subtotal,
+      discount,
       total,
       validity,
       observations,
+      paymentConditions,
+      deliveryTime,
+      showClientData,
       createdAt: new Date(),
       status: 'pending',
     };
@@ -100,6 +129,21 @@ const Index = () => {
     resetForm();
   };
 
+  const handleGeneratePNG = async () => {
+    if (!validateForm()) return;
+
+    const quotation = createQuotation();
+    saveQuotation(quotation);
+    await downloadPNG(quotation);
+
+    toast({
+      title: 'PNG gerado com sucesso!',
+      description: `Orçamento ${quotation.number} salvo e imagem baixada`,
+    });
+
+    resetForm();
+  };
+
   const handleSendWhatsApp = () => {
     if (!validateForm()) return;
 
@@ -116,9 +160,10 @@ const Index = () => {
   };
 
   const resetForm = () => {
-    setCustomer({ name: '', phone: '', address: '' });
+    setCustomer({ name: '', cnpj: '', phone: '', address: '' });
     setItems([]);
     setObservations('');
+    setDiscount(0);
   };
 
   const handleDeleteQuotation = (id: string) => {
@@ -155,7 +200,16 @@ const Index = () => {
 
           <TabsContent value="new" className="space-y-6 animate-fade-in">
             <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
-              <CustomerForm customer={customer} onChange={setCustomer} />
+              <CompanyForm companyInfo={companyInfo} onChange={setCompanyInfo} />
+            </div>
+
+            <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
+              <CustomerForm 
+                customer={customer} 
+                onChange={setCustomer}
+                showClientData={showClientData}
+                onShowClientDataChange={setShowClientData}
+              />
             </div>
 
             <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
@@ -170,9 +224,16 @@ const Index = () => {
               <QuotationActions
                 validity={validity}
                 observations={observations}
+                discount={discount}
+                deliveryTime={deliveryTime}
+                paymentConditions={paymentConditions}
                 onValidityChange={setValidity}
                 onObservationsChange={setObservations}
+                onDiscountChange={setDiscount}
+                onDeliveryTimeChange={setDeliveryTime}
+                onPaymentConditionsChange={setPaymentConditions}
                 onGeneratePDF={handleGeneratePDF}
+                onGeneratePNG={handleGeneratePNG}
                 onSendWhatsApp={handleSendWhatsApp}
                 disabled={!isFormValid}
               />

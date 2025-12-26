@@ -361,35 +361,24 @@ const generateCanvasPNG = (quotation: Quotation) => {
   // White background
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  // Top bar
-  ctx.fillStyle = primaryBlue;
-  ctx.fillRect(0, 0, canvas.width, 35);
-  
-  // Filename in top bar
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 14px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  const filename = `Orcamento_${quotation.number}_${quotation.customer.name.replace(/\s/g, '_')}.png`;
-  ctx.fillText(filename, canvas.width / 2, 23);
   ctx.textAlign = 'left';
   
   // Title section
   ctx.fillStyle = lightGray;
-  ctx.fillRect(0, 35, canvas.width, 55);
+  ctx.fillRect(0, 0, canvas.width, 55);
   
   ctx.fillStyle = darkBlue;
   ctx.font = 'bold 24px Arial, sans-serif';
-  ctx.fillText('ORÇAMENTO OFICIAL', padding, 70);
+  ctx.fillText('ORÇAMENTO OFICIAL', padding, 38);
   
   ctx.fillStyle = primaryBlue;
   ctx.font = 'bold 28px Arial, sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('FORTLEV', canvas.width - padding, 70);
+  ctx.fillText('FORTLEV', canvas.width - padding, 38);
   ctx.textAlign = 'left';
   
   // Company info
-  let yPos = 115;
+  let yPos = 80;
   ctx.fillStyle = textDark;
   ctx.font = '13px Arial, sans-serif';
   

@@ -325,13 +325,23 @@ const generateCanvasPNG = (quotation: Quotation) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   
-  // A4 dimensions at 150 DPI
-  canvas.width = 1240;
-  canvas.height = 1754;
+  // Mobile-optimized dimensions (9:16 aspect ratio for better mobile viewing)
+  const baseWidth = 800;
+  const padding = 40;
+  const contentWidth = baseWidth - (padding * 2);
+  
+  // Calculate dynamic height based on content
+  let estimatedHeight = 400; // Base header + company info
+  estimatedHeight += quotation.showClientData && quotation.customer.name ? 180 : 0;
+  estimatedHeight += 60 + (quotation.items.length * 50); // Table
+  estimatedHeight += 200; // Totals
+  estimatedHeight += 280; // Payment + Info + Signature
+  estimatedHeight += 60; // Footer
+  
+  canvas.width = baseWidth;
+  canvas.height = Math.max(estimatedHeight, 900);
   
   if (!ctx) return;
-  
-  const scale = canvas.width / 210; // mm to pixels
   
   // Colors
   const primaryBlue = '#005293';
@@ -346,236 +356,300 @@ const generateCanvasPNG = (quotation: Quotation) => {
   
   // Top bar
   ctx.fillStyle = primaryBlue;
-  ctx.fillRect(0, 0, canvas.width, 50);
+  ctx.fillRect(0, 0, canvas.width, 35);
+  
+  // Filename in top bar
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 14px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  const filename = `Orcamento_${quotation.number}_${quotation.customer.name.replace(/\s/g, '_')}.png`;
+  ctx.fillText(filename, canvas.width / 2, 23);
+  ctx.textAlign = 'left';
   
   // Title section
   ctx.fillStyle = lightGray;
-  ctx.fillRect(0, 50, canvas.width, 80);
+  ctx.fillRect(0, 35, canvas.width, 55);
   
   ctx.fillStyle = darkBlue;
-  ctx.font = 'bold 36px Helvetica';
-  ctx.fillText('ORÇAMENTO OFICIAL', 60, 105);
+  ctx.font = 'bold 24px Arial, sans-serif';
+  ctx.fillText('ORÇAMENTO OFICIAL', padding, 70);
   
   ctx.fillStyle = primaryBlue;
-  ctx.font = 'bold 44px Helvetica';
-  ctx.fillText('FORTLEV', canvas.width - 220, 105);
+  ctx.font = 'bold 28px Arial, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('FORTLEV', canvas.width - padding, 70);
+  ctx.textAlign = 'left';
   
   // Company info
-  let yPos = 170;
+  let yPos = 115;
   ctx.fillStyle = textDark;
-  ctx.font = '18px Helvetica';
+  ctx.font = '13px Arial, sans-serif';
+  
+  const rightColX = canvas.width - 200;
   
   if (quotation.companyInfo.name) {
-    ctx.fillText(`Emitido por: ${quotation.companyInfo.name}`, 60, yPos);
-    ctx.fillText(`Data de Emissão: ${formatDate(quotation.createdAt)}`, canvas.width - 350, yPos);
-    yPos += 28;
+    ctx.fillText(`Emitido por: ${quotation.companyInfo.name}`, padding, yPos);
+    ctx.textAlign = 'right';
+    ctx.fillText(`Data de Emissão: ${formatDate(quotation.createdAt)}`, canvas.width - padding, yPos);
+    ctx.textAlign = 'left';
+    yPos += 18;
   }
   
   if (quotation.companyInfo.cnpj) {
-    ctx.fillText(`CNPJ: ${quotation.companyInfo.cnpj}`, 60, yPos);
-    ctx.fillText(`Validade: ${quotation.validity}`, canvas.width - 350, yPos);
-    yPos += 28;
+    ctx.fillText(`CNPJ: ${quotation.companyInfo.cnpj}`, padding, yPos);
+    ctx.textAlign = 'right';
+    ctx.fillText(`Validade: ${quotation.validity}`, canvas.width - padding, yPos);
+    ctx.textAlign = 'left';
+    yPos += 18;
   }
   
   if (quotation.companyInfo.address) {
-    ctx.fillText(`Endereço: ${quotation.companyInfo.address}`, 60, yPos);
-    yPos += 28;
+    ctx.fillText(`Endereço: ${quotation.companyInfo.address}`, padding, yPos);
+    yPos += 18;
   }
   
   if (quotation.companyInfo.phone) {
-    ctx.fillText(`Telefone / WhatsApp: ${quotation.companyInfo.phone}`, 60, yPos);
-    yPos += 28;
+    ctx.fillText(`Telefone / WhatsApp: ${quotation.companyInfo.phone}`, padding, yPos);
+    yPos += 18;
   }
   
   if (quotation.companyInfo.email) {
-    ctx.fillText(`E-mail: ${quotation.companyInfo.email}`, 60, yPos);
-    yPos += 28;
+    ctx.fillText(`E-mail: ${quotation.companyInfo.email}`, padding, yPos);
+    yPos += 18;
   }
   
   if (quotation.companyInfo.website) {
-    ctx.fillText(`Site: ${quotation.companyInfo.website}`, 60, yPos);
-    yPos += 28;
+    ctx.fillText(`Site: ${quotation.companyInfo.website}`, padding, yPos);
+    yPos += 18;
   }
   
-  yPos += 10;
+  yPos += 8;
   
   // Divider
   ctx.strokeStyle = '#cccccc';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(60, yPos);
-  ctx.lineTo(canvas.width - 60, yPos);
+  ctx.moveTo(padding, yPos);
+  ctx.lineTo(canvas.width - padding, yPos);
   ctx.stroke();
-  yPos += 30;
+  yPos += 20;
   
   // Quotation number
-  ctx.font = 'bold 18px Helvetica';
-  ctx.fillText(`Orçamento nº: ${quotation.number}`, 60, yPos);
-  ctx.font = '18px Helvetica';
-  ctx.fillText(`Data de Emissão: ${formatDate(quotation.createdAt)}`, canvas.width / 2, yPos);
-  yPos += 30;
+  ctx.font = 'bold 13px Arial, sans-serif';
+  ctx.fillText(`Orçamento nº: ${quotation.number}`, padding, yPos);
+  ctx.font = '13px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`Data de Emissão: ${formatDate(quotation.createdAt)}`, canvas.width / 2 + 50, yPos);
+  ctx.textAlign = 'left';
+  yPos += 20;
   
   // Divider
   ctx.beginPath();
-  ctx.moveTo(60, yPos);
-  ctx.lineTo(canvas.width - 60, yPos);
+  ctx.moveTo(padding, yPos);
+  ctx.lineTo(canvas.width - padding, yPos);
   ctx.stroke();
-  yPos += 30;
+  yPos += 20;
   
   // Client section
   if (quotation.showClientData && quotation.customer.name) {
-    ctx.font = 'bold 18px Helvetica';
-    ctx.fillText('Cliente:', 60, yPos);
-    yPos += 28;
+    ctx.font = 'bold 13px Arial, sans-serif';
+    ctx.fillText('Cliente:', padding, yPos);
+    yPos += 20;
     
-    ctx.font = 'bold 18px Helvetica';
-    ctx.fillText(quotation.customer.name, 60, yPos);
-    yPos += 24;
+    ctx.font = 'bold 13px Arial, sans-serif';
+    ctx.fillText(quotation.customer.name, padding, yPos);
+    yPos += 18;
     
-    ctx.font = '18px Helvetica';
+    ctx.font = '13px Arial, sans-serif';
     if (quotation.customer.cnpj) {
-      ctx.fillText(`CNPJ: ${quotation.customer.cnpj}`, 60, yPos);
-      yPos += 24;
+      ctx.fillText(`CNPJ: ${quotation.customer.cnpj}`, padding, yPos);
+      yPos += 18;
     }
     
     if (quotation.customer.address) {
-      ctx.fillText(`Endereço de entrega: ${quotation.customer.address}`, 60, yPos);
-      yPos += 24;
+      ctx.fillText(`Endereço de entrega: ${quotation.customer.address}`, padding, yPos);
+      yPos += 18;
     }
     
     if (quotation.customer.phone) {
-      ctx.fillText(`Telefone / WhatsApp: ${quotation.customer.phone}`, 60, yPos);
-      yPos += 24;
+      ctx.fillText(`Telefone / WhatsApp: ${quotation.customer.phone}`, padding, yPos);
+      yPos += 18;
     }
     
-    yPos += 20;
+    yPos += 15;
   }
   
   // Table header
+  const tableWidth = contentWidth;
+  const colWidths = [tableWidth * 0.45, tableWidth * 0.1, tableWidth * 0.1, tableWidth * 0.18, tableWidth * 0.17];
+  const colStarts = [padding];
+  for (let i = 1; i < colWidths.length; i++) {
+    colStarts.push(colStarts[i-1] + colWidths[i-1]);
+  }
+  
   ctx.fillStyle = primaryBlue;
-  ctx.fillRect(60, yPos, canvas.width - 120, 40);
+  ctx.fillRect(padding, yPos, tableWidth, 32);
   
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 16px Helvetica';
-  ctx.fillText('Itens Orçados', 70, yPos + 26);
-  ctx.fillText('Un.', 520, yPos + 26);
-  ctx.fillText('Qtd.', 600, yPos + 26);
-  ctx.fillText('Valor Unit. (R$)', 680, yPos + 26);
-  ctx.fillText('Total (R$)', 870, yPos + 26);
-  yPos += 40;
+  ctx.font = 'bold 11px Arial, sans-serif';
+  ctx.fillText('Itens Orçados', colStarts[0] + 8, yPos + 20);
+  ctx.fillText('Un.', colStarts[1] + 8, yPos + 20);
+  ctx.fillText('Qtd.', colStarts[2] + 8, yPos + 20);
+  ctx.fillText('Valor Unit. (R$)', colStarts[3] + 4, yPos + 20);
+  ctx.fillText('Total (R$)', colStarts[4] + 4, yPos + 20);
+  yPos += 32;
   
   // Table rows
-  ctx.font = '16px Helvetica';
+  ctx.font = '11px Arial, sans-serif';
   quotation.items.forEach((item, index) => {
+    const rowHeight = 32;
     ctx.fillStyle = index % 2 === 0 ? '#ffffff' : '#fafbfc';
-    ctx.fillRect(60, yPos, canvas.width - 120, 36);
+    ctx.fillRect(padding, yPos, tableWidth, rowHeight);
     
     ctx.strokeStyle = '#e0e0e0';
-    ctx.strokeRect(60, yPos, canvas.width - 120, 36);
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(padding, yPos, tableWidth, rowHeight);
     
     ctx.fillStyle = textDark;
-    ctx.fillText(`Caixa d'água Fortlev ${item.product.capacity} ${item.product.unit}`, 70, yPos + 24);
-    ctx.fillText('Un.', 530, yPos + 24);
-    ctx.fillText(item.quantity.toString(), 615, yPos + 24);
-    ctx.fillText(formatCurrency(item.unitPrice).replace('R$', '').trim(), 710, yPos + 24);
-    ctx.fillText(formatCurrency(item.subtotal).replace('R$', '').trim(), 880, yPos + 24);
-    yPos += 36;
+    ctx.fillText(`Caixa d'água Fortlev ${item.product.capacity} ${item.product.unit}`, colStarts[0] + 8, yPos + 20);
+    ctx.fillText('Un.', colStarts[1] + 8, yPos + 20);
+    ctx.fillText(item.quantity.toString(), colStarts[2] + 12, yPos + 20);
+    ctx.fillText(formatCurrency(item.unitPrice).replace('R$', '').trim(), colStarts[3] + 8, yPos + 20);
+    ctx.fillText(formatCurrency(item.subtotal).replace('R$', '').trim(), colStarts[4] + 8, yPos + 20);
+    yPos += rowHeight;
   });
   
-  yPos += 20;
+  yPos += 15;
   
-  // Totals
-  const totalsX = canvas.width - 320;
+  // Totals - aligned to right
+  const totalsWidth = 180;
+  const totalsX = canvas.width - padding - totalsWidth;
   
   ctx.strokeStyle = '#cccccc';
-  ctx.strokeRect(totalsX, yPos, 260, 32);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(totalsX, yPos, totalsWidth, 26);
   ctx.fillStyle = textDark;
-  ctx.font = '16px Helvetica';
-  ctx.fillText('Subtotal:', totalsX + 10, yPos + 22);
-  ctx.fillText(formatCurrency(quotation.subtotal).replace('R$', '').trim(), totalsX + 240, yPos + 22);
-  yPos += 32;
+  ctx.font = '12px Arial, sans-serif';
+  ctx.fillText('Subtotal:', totalsX + 10, yPos + 17);
+  ctx.textAlign = 'right';
+  ctx.fillText(formatCurrency(quotation.subtotal).replace('R$', '').trim(), totalsX + totalsWidth - 10, yPos + 17);
+  ctx.textAlign = 'left';
+  yPos += 26;
   
-  ctx.strokeRect(totalsX, yPos, 260, 32);
-  ctx.fillText('Desconto:', totalsX + 10, yPos + 22);
-  ctx.fillText(formatCurrency(quotation.discount).replace('R$', '').trim(), totalsX + 240, yPos + 22);
-  yPos += 32;
+  ctx.strokeRect(totalsX, yPos, totalsWidth, 26);
+  ctx.fillText('Desconto:', totalsX + 10, yPos + 17);
+  ctx.textAlign = 'right';
+  ctx.fillText(formatCurrency(quotation.discount).replace('R$', '').trim(), totalsX + totalsWidth - 10, yPos + 17);
+  ctx.textAlign = 'left';
+  yPos += 26;
   
   ctx.fillStyle = primaryBlue;
-  ctx.fillRect(totalsX, yPos, 260, 40);
+  ctx.fillRect(totalsX, yPos, totalsWidth, 30);
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 18px Helvetica';
-  ctx.fillText('Total Geral:', totalsX + 10, yPos + 27);
-  ctx.fillText(`R$ ${formatCurrency(quotation.total).replace('R$', '').trim()}`, totalsX + 220, yPos + 27);
-  yPos += 60;
+  ctx.font = 'bold 13px Arial, sans-serif';
+  ctx.fillText('Total Geral:', totalsX + 10, yPos + 20);
+  ctx.textAlign = 'right';
+  ctx.fillText(`R$ ${formatCurrency(quotation.total).replace('R$', '').trim()}`, totalsX + totalsWidth - 10, yPos + 20);
+  ctx.textAlign = 'left';
+  yPos += 45;
   
   // Payment conditions
   ctx.fillStyle = textDark;
-  ctx.font = 'bold 18px Helvetica';
-  ctx.fillText('Condições de Pagamento:', 60, yPos);
-  yPos += 28;
+  ctx.font = 'bold 13px Arial, sans-serif';
+  ctx.fillText('Condições de Pagamento:', padding, yPos);
+  yPos += 20;
   
-  ctx.font = '16px Helvetica';
+  ctx.font = '12px Arial, sans-serif';
   if (quotation.paymentConditions.cashDiscount) {
-    ctx.fillText(`• À vista: ${quotation.paymentConditions.cashDiscount}`, 60, yPos);
-    yPos += 24;
+    ctx.fillText(`• À vista: ${quotation.paymentConditions.cashDiscount}`, padding, yPos);
+    yPos += 18;
   }
   
   if (quotation.paymentConditions.installments) {
-    ctx.fillText(`• Parcelado: ${quotation.paymentConditions.installments}`, 60, yPos);
-    yPos += 24;
+    ctx.fillText(`• Parcelado: ${quotation.paymentConditions.installments}`, padding, yPos);
+    yPos += 18;
   }
   
   if (quotation.paymentConditions.downPayment) {
-    ctx.fillText(`• Entrada mínima de ${quotation.paymentConditions.downPayment} no fechamento.`, 60, yPos);
-    yPos += 24;
+    ctx.fillText(`• Entrada mínima de ${quotation.paymentConditions.downPayment} no fechamento.`, padding, yPos);
+    yPos += 18;
+  }
+  
+  yPos += 15;
+  
+  // Additional info
+  ctx.font = 'bold 13px Arial, sans-serif';
+  ctx.fillText('Informações Adicionais:', padding, yPos);
+  yPos += 20;
+  
+  ctx.font = '12px Arial, sans-serif';
+  if (quotation.deliveryTime) {
+    ctx.fillText(`• Prazo de entrega: ${quotation.deliveryTime} após confirmação do pagamento.`, padding, yPos);
+    yPos += 18;
+  }
+  
+  ctx.fillText('• Instalação realizada por equipe especializada.', padding, yPos);
+  yPos += 18;
+  ctx.fillText('• Valores sujeitos a alteração sem aviso prévio.', padding, yPos);
+  yPos += 18;
+  
+  if (quotation.observations) {
+    // Word wrap for observations
+    const maxWidth = contentWidth;
+    const words = quotation.observations.split(' ');
+    let line = '• ';
+    for (const word of words) {
+      const testLine = line + word + ' ';
+      if (ctx.measureText(testLine).width > maxWidth) {
+        ctx.fillText(line, padding, yPos);
+        yPos += 18;
+        line = word + ' ';
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, padding, yPos);
+    yPos += 18;
   }
   
   yPos += 20;
   
-  // Additional info
-  ctx.font = 'bold 18px Helvetica';
-  ctx.fillText('Informações Adicionais:', 60, yPos);
-  yPos += 28;
-  
-  ctx.font = '16px Helvetica';
-  if (quotation.deliveryTime) {
-    ctx.fillText(`• Prazo de entrega: ${quotation.deliveryTime} após confirmação do pagamento.`, 60, yPos);
-    yPos += 24;
-  }
-  
-  ctx.fillText('• Instalação realizada por equipe especializada.', 60, yPos);
-  yPos += 24;
-  ctx.fillText('• Valores sujeitos a alteração sem aviso prévio.', 60, yPos);
-  yPos += 24;
-  
-  if (quotation.observations) {
-    ctx.fillText(`• ${quotation.observations}`, 60, yPos);
-    yPos += 24;
-  }
-  
-  yPos += 30;
-  
   // Signature
-  ctx.fillText('Atenciosamente,', 60, yPos);
-  yPos += 28;
+  ctx.fillText('Atenciosamente,', padding, yPos);
+  yPos += 22;
   
-  ctx.font = 'bold 18px Helvetica';
-  ctx.fillText(quotation.companyInfo.sellerName || 'Vendedor', 60, yPos);
-  yPos += 24;
+  ctx.font = 'bold 13px Arial, sans-serif';
+  ctx.fillText(quotation.companyInfo.sellerName || 'Vendedor', padding, yPos);
+  yPos += 18;
   
-  ctx.font = '16px Helvetica';
+  ctx.font = '12px Arial, sans-serif';
   ctx.fillStyle = textGray;
-  ctx.fillText(quotation.companyInfo.sellerRole || 'Gerente de Vendas', 60, yPos);
-  yPos += 24;
-  ctx.fillText(quotation.companyInfo.name || 'Empresa', 60, yPos);
+  ctx.fillText(quotation.companyInfo.sellerRole || 'Gerente de Vendas', padding, yPos);
+  yPos += 18;
+  ctx.fillText(quotation.companyInfo.name || 'Empresa', padding, yPos);
   
-  // Bottom bar
-  ctx.fillStyle = primaryBlue;
-  ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+  // Resize canvas to actual content height
+  const finalHeight = yPos + 60;
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = finalHeight;
+  const tempCtx = tempCanvas.getContext('2d');
+  
+  if (tempCtx) {
+    tempCtx.drawImage(canvas, 0, 0);
+    canvas.height = finalHeight;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(tempCanvas, 0, 0);
+    
+    // Bottom bar
+    ctx.fillStyle = primaryBlue;
+    ctx.fillRect(0, finalHeight - 35, canvas.width, 35);
+  }
   
   // Download PNG
   const link = document.createElement('a');
   link.download = `Orcamento_${quotation.number}_${quotation.customer.name.replace(/\s/g, '_')}.png`;
-  link.href = canvas.toDataURL('image/png');
+  link.href = canvas.toDataURL('image/png', 1.0);
   link.click();
 };

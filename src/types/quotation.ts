@@ -6,7 +6,7 @@ export interface Product {
   height: string;
   diameter: string;
   basePrice: number;
-  type: 'caixa' | 'tanque';
+  type: 'caixa' | 'tanque' | 'tanque-industrial' | 'tanque-verde';
 }
 
 export interface QuotationItem {

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { products, getProductPrice } from '@/data/products';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { productCategories, getProductPrice } from '@/data/products';
 import { Product, QuotationItem } from '@/types/quotation';
 import { Plus, Package } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
@@ -12,13 +12,21 @@ interface ProductSelectorProps {
   onAddItem: (item: QuotationItem) => void;
 }
 
+const typeLabels: Record<string, { label: string; color: string }> = {
+  'caixa': { label: '', color: '' },
+  'tanque': { label: 'Tanque', color: 'bg-fortlev-yellow/20 text-fortlev-yellow' },
+  'tanque-industrial': { label: 'Industrial', color: 'bg-blue-500/20 text-blue-600' },
+  'tanque-verde': { label: 'Verde', color: 'bg-green-500/20 text-green-600' },
+};
+
 export const ProductSelector = ({ onAddItem }: ProductSelectorProps) => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState('');
 
   const handleProductChange = (productId: string) => {
-    const product = products.find(p => p.id === productId);
+    const allProducts = Object.values(productCategories).flatMap(cat => cat.products);
+    const product = allProducts.find(p => p.id === productId);
     setSelectedProduct(product || null);
     
     // Auto-preencher preço base
@@ -74,25 +82,32 @@ export const ProductSelector = ({ onAddItem }: ProductSelectorProps) => {
             onValueChange={handleProductChange}
           >
             <SelectTrigger className="h-11">
-              <SelectValue placeholder="Selecione a caixa d'água" />
+              <SelectValue placeholder="Selecione o produto" />
             </SelectTrigger>
-            <SelectContent>
-              {products.map(product => (
-                <SelectItem key={product.id} value={product.id}>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">
-                      {product.capacity}{product.unit}
-                      {product.type === 'tanque' && (
-                        <span className="ml-1 text-xs bg-fortlev-yellow/20 text-fortlev-yellow px-1.5 py-0.5 rounded">
-                          Tanque
+            <SelectContent className="max-h-[400px]">
+              {Object.entries(productCategories).map(([key, category]) => (
+                <SelectGroup key={key}>
+                  <SelectLabel className="font-bold text-fortlev-navy py-2">
+                    {category.label}
+                  </SelectLabel>
+                  {category.products.map(product => (
+                    <SelectItem key={product.id} value={product.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {product.capacity.toLocaleString('pt-BR')}{product.unit}
+                          {typeLabels[product.type]?.label && (
+                            <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${typeLabels[product.type].color}`}>
+                              {typeLabels[product.type].label}
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                    <span className="text-muted-foreground text-sm">
-                      - {formatCurrency(product.basePrice)}
-                    </span>
-                  </div>
-                </SelectItem>
+                        <span className="text-muted-foreground text-sm">
+                          - {formatCurrency(product.basePrice)}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               ))}
             </SelectContent>
           </Select>

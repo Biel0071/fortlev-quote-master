@@ -6,6 +6,7 @@ export type StoreCategory = {
   name: string;
   slug: string;
   description: string | null;
+  image_path?: string | null;
   sort_order: number;
   featured: boolean;
   active: boolean;
@@ -22,7 +23,7 @@ export function useStoreCategories() {
 
     const { data, error } = await cloud
       .from("store_categories")
-      .select("id, name, slug, description, sort_order, featured, active")
+      .select("id, name, slug, description, image_path, sort_order, featured, active")
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
 

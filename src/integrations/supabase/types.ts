@@ -29,12 +29,166 @@ export type Database = {
         }
         Relationships: []
       }
+      home_benefits: {
+        Row: {
+          active: boolean
+          created_at: string
+          icon: string | null
+          id: string
+          sort_order: number
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          icon?: string | null
+          id?: string
+          sort_order?: number
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          icon?: string | null
+          id?: string
+          sort_order?: number
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      home_footer: {
+        Row: {
+          active: boolean
+          address: string | null
+          created_at: string
+          extra_note: string | null
+          hours: string | null
+          id: string
+          key: string
+          logo_path: string | null
+          store_name: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          extra_note?: string | null
+          hours?: string | null
+          id?: string
+          key?: string
+          logo_path?: string | null
+          store_name?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          extra_note?: string | null
+          hours?: string | null
+          id?: string
+          key?: string
+          logo_path?: string | null
+          store_name?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      home_policies: {
+        Row: {
+          active: boolean
+          created_at: string
+          icon: string | null
+          id: string
+          link_url: string | null
+          sort_order: number
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          icon?: string | null
+          id?: string
+          link_url?: string | null
+          sort_order?: number
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          icon?: string | null
+          id?: string
+          link_url?: string | null
+          sort_order?: number
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      home_sections: {
+        Row: {
+          active: boolean
+          category_id: string
+          created_at: string
+          id: string
+          sort_order: number
+          subtitle_override: string | null
+          title_override: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category_id: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          subtitle_override?: string | null
+          title_override?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category_id?: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          subtitle_override?: string | null
+          title_override?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "home_sections_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: true
+            referencedRelation: "store_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_banners: {
         Row: {
           active: boolean
           button_label: string | null
           created_at: string
           id: string
+          image_desktop_path: string | null
+          image_mobile_path: string | null
           image_path: string | null
           link_url: string | null
           sort_order: number
@@ -47,6 +201,8 @@ export type Database = {
           button_label?: string | null
           created_at?: string
           id?: string
+          image_desktop_path?: string | null
+          image_mobile_path?: string | null
           image_path?: string | null
           link_url?: string | null
           sort_order?: number
@@ -59,6 +215,8 @@ export type Database = {
           button_label?: string | null
           created_at?: string
           id?: string
+          image_desktop_path?: string | null
+          image_mobile_path?: string | null
           image_path?: string | null
           link_url?: string | null
           sort_order?: number

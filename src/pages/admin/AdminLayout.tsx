@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   Settings,
   Home,
+  FileText,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
@@ -28,26 +29,39 @@ import {
 import { cloud } from "@/lib/cloud";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSession } from "@/hooks/useSession";
-
-const items = [
-  { title: "Dashboard", url: "/admin/dashboard", icon: LayoutGrid },
-  { title: "Home", url: "/admin/home", icon: Home },
-  { title: "Produtos", url: "/admin/produtos", icon: Package },
-  { title: "Categorias", url: "/admin/categorias", icon: Tags },
-  { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag },
-  { title: "Clientes", url: "/admin/clientes", icon: Users },
-  { title: "Cupons", url: "/admin/cupons", icon: TicketPercent },
-  { title: "Banners", url: "/admin/banners", icon: ImageIcon },
-  { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
-];
+import { StoreSwitcher } from "@/components/StoreSwitcher";
+import { useStore } from "@/contexts/StoreContext";
 
 function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { routes } = useStore();
+
+  const items = [
+    { title: "Dashboard", url: "/admin/dashboard", icon: LayoutGrid },
+    { title: "Home", url: "/admin/home", icon: Home },
+    { title: "Orçamentos", url: routes.quotations, icon: FileText, external: true },
+    { title: "Produtos", url: "/admin/produtos", icon: Package },
+    { title: "Categorias", url: "/admin/categorias", icon: Tags },
+    { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag },
+    { title: "Clientes", url: "/admin/clientes", icon: Users },
+    { title: "Cupons", url: "/admin/cupons", icon: TicketPercent },
+    { title: "Banners", url: "/admin/banners", icon: ImageIcon },
+    { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
+  ] as Array<{ title: string; url: string; icon: any; external?: boolean }>;
 
   return (
     <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible="icon">
       <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>{collapsed ? "" : "Loja"}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <div className={collapsed ? "px-2" : "px-3"}>
+              <StoreSwitcher className={collapsed ? "h-10 px-2" : "h-10"} />
+            </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupLabel>{collapsed ? "" : "Admin"}</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -55,15 +69,22 @@ function AdminSidebar() {
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end
-                      className="hover:bg-muted/50"
-                      activeClassName="bg-muted text-foreground font-medium"
-                    >
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
+                    {item.external ? (
+                      <a href={item.url} className="hover:bg-muted/50">
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </a>
+                    ) : (
+                      <NavLink
+                        to={item.url}
+                        end
+                        className="hover:bg-muted/50"
+                        activeClassName="bg-muted text-foreground font-medium"
+                      >
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -79,6 +100,7 @@ export default function AdminLayout() {
   const { user, loading: sessionLoading } = useSession();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const nav = useNavigate();
+  const { routes } = useStore();
 
   const canRender = !sessionLoading && !adminLoading;
   if (!canRender) return <div className="p-6 text-muted-foreground">Carregando...</div>;
@@ -101,7 +123,12 @@ export default function AdminLayout() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => nav("/")}>Ver loja</Button>
+              <div className="hidden md:block">
+                <StoreSwitcher className="w-[260px] bg-background" />
+              </div>
+              <Button variant="outline" size="sm" onClick={() => nav(routes.publicHome)}>
+                Ver loja
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -123,3 +150,4 @@ export default function AdminLayout() {
     </SidebarProvider>
   );
 }
+

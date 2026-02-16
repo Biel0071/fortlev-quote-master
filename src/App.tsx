@@ -32,6 +32,7 @@ import StoresDashboardLayout from "./pages/StoresDashboardLayout";
 import FortlevOverview from "./pages/dashboard/FortlevOverview";
 import ConstructionOverview from "./pages/dashboard/ConstructionOverview";
 import NotFound from "./pages/NotFound";
+import HomeSelector from "./pages/HomeSelector";
 
 const queryClient = new QueryClient();
 
@@ -42,8 +43,13 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* E-commerce */}
-          <Route path="/" element={<StoreHome />} />
+          {/* Home seletora */}
+          <Route path="/" element={<HomeSelector />} />
+
+          {/* Loja Materiais (vitrine) */}
+          <Route path="/materiais" element={<StoreHome />} />
+
+          {/* E-commerce (rotas existentes) */}
           <Route path="/loja" element={<StoreCatalog />} />
           <Route path="/produto/:id" element={<ProductPage />} />
           <Route path="/carrinho" element={<CartPage />} />
@@ -78,7 +84,7 @@ const App = () => (
           <Route path="/auth/login" element={<LoginPage />} />
           <Route path="/auth/signup" element={<SignupPage />} />
 
-          {/* Sistemas existentes */}
+          {/* Sistemas de Orçamento */}
           <Route path="/construcao" element={<Construction />} />
           <Route path="/orcamentos" element={<Index />} />
 
@@ -101,3 +107,4 @@ const App = () => (
 );
 
 export default App;
+

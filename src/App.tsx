@@ -3,6 +3,15 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import StoreHome from "./pages/store/StoreHome";
+import StoreCatalog from "./pages/store/StoreCatalog";
+import ProductPage from "./pages/store/ProductPage";
+import CartPage from "./pages/store/CartPage";
+import CheckoutPage from "./pages/store/CheckoutPage";
+import AdminProducts from "./pages/admin/AdminProducts";
+import LoginPage from "./pages/auth/LoginPage";
+import SignupPage from "./pages/auth/SignupPage";
+
 import Index from "./pages/Index";
 import Construction from "./pages/Construction";
 import StoresDashboardLayout from "./pages/StoresDashboardLayout";
@@ -19,8 +28,21 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          {/* E-commerce */}
+          <Route path="/" element={<StoreHome />} />
+          <Route path="/loja" element={<StoreCatalog />} />
+          <Route path="/produto/:id" element={<ProductPage />} />
+          <Route path="/carrinho" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+
+          {/* Admin */}
+          <Route path="/admin" element={<AdminProducts />} />
+          <Route path="/auth/login" element={<LoginPage />} />
+          <Route path="/auth/signup" element={<SignupPage />} />
+
+          {/* Sistemas existentes */}
           <Route path="/construcao" element={<Construction />} />
+          <Route path="/orcamentos" element={<Index />} />
 
           <Route path="/dashboard" element={<StoresDashboardLayout />}>
             <Route index element={<Navigate to="fortlev" replace />} />

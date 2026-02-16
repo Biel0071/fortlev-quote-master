@@ -43,11 +43,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Home seletora */}
-          <Route path="/" element={<HomeSelector />} />
-
-          {/* Loja Materiais (vitrine) */}
+          {/* Loja Materiais (HOME/vitrine) */}
+          <Route path="/" element={<StoreHome />} />
           <Route path="/materiais" element={<StoreHome />} />
+
+          {/* Página seletora (mantida) */}
+          <Route path="/selecionar" element={<HomeSelector />} />
 
           {/* E-commerce (rotas existentes) */}
           <Route path="/loja" element={<StoreCatalog />} />

@@ -64,17 +64,17 @@ function OfferCard({
   }, [effective]);
 
   return (
-    <Card className="overflow-hidden rounded-2xl glass-card card-hover">
+    <Card className="overflow-hidden rounded-2xl bg-card shadow-sm hover:shadow-md transition-shadow">
       <div className="relative aspect-[4/3] bg-muted/20 border-b border-border overflow-hidden">
         {imgUrl ? (
           <img src={imgUrl} alt={product?.name ?? "Produto"} className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <div className="h-full w-full fortlev-gradient opacity-35" />
+          <div className="h-full w-full bg-muted" />
         )}
 
         {promo > 0 ? (
           <div className="absolute left-3 top-3">
-            <div className="inline-flex items-center gap-1 rounded-full bg-accent text-accent-foreground px-2.5 py-1 text-xs font-bold">
+            <div className="inline-flex items-center gap-1 rounded-full bg-promo text-promo-foreground px-2.5 py-1 text-xs font-bold shadow-sm">
               <BadgePercent className="h-3.5 w-3.5" />
               {off > 0 ? `${off}% OFF` : badgeText || "OFERTA"}
             </div>

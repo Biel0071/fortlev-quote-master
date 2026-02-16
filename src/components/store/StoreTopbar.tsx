@@ -34,7 +34,7 @@ export function StoreTopbar({
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-3">
         {/* Logo / Nome */}
-        <Link to="/" className="flex items-center gap-2 min-w-0">
+        <Link to="/materiais" className="flex items-center gap-2 min-w-0">
           <img
             src={storeLogo}
             alt={`${brandLabel} - logo`}

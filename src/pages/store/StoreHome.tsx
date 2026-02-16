@@ -31,7 +31,8 @@ export default function StoreHome() {
 
   const seo = useMemo(() => pickHomeSeo(home.seo), [home.seo]);
   const ogImageUrl = useMemo(() => publicImageUrl("banner-images", home.seo?.og_image_path ?? null), [home.seo?.og_image_path]);
-  useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
+  useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/materiais" });
+
 
   // Map products by category for fast rendering
   const productsByCategoryId = useMemo(() => {

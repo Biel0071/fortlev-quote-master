@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Building2, Droplets, LayoutGrid, ExternalLink } from "lucide-react";
+import { Building2, Droplets, LayoutGrid, ExternalLink, FileText } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,13 +15,8 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { StoreSwitcher } from "@/components/StoreSwitcher";
+import { useStore } from "@/contexts/StoreContext";
 
 const stores = [
   { key: "fortlev" as const, label: "Fortlev (Caixas d’água)", icon: Droplets },
@@ -46,6 +41,7 @@ function useActiveStore(): StoreKey {
 function StoreSidebar({ store }: { store: StoreKey }) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { routes } = useStore();
 
   const common: SidebarItem[] = [
     {
@@ -53,29 +49,24 @@ function StoreSidebar({ store }: { store: StoreKey }) {
       url: store === "fortlev" ? "/dashboard/fortlev" : "/dashboard/construcao",
       icon: LayoutGrid,
     },
+    {
+      title: "Orçamentos",
+      url: store === "fortlev" ? "/dashboard/fortlev/orcamentos" : "/dashboard/construcao/orcamentos",
+      icon: FileText,
+    },
   ];
 
   const storeSpecific: SidebarItem[] =
     store === "fortlev"
       ? [
           {
-            title: "Orçamentos",
-            url: "/dashboard/fortlev/orcamentos",
-            icon: Droplets,
-          },
-          {
             title: "Abrir (tela cheia)",
-            url: "/",
+            url: "/orcamentos",
             icon: ExternalLink,
             external: true,
           },
         ]
       : [
-          {
-            title: "Orçamentos",
-            url: "/dashboard/construcao/orcamentos",
-            icon: Building2,
-          },
           {
             title: "Abrir (tela cheia)",
             url: "/construcao",
@@ -87,8 +78,17 @@ function StoreSidebar({ store }: { store: StoreKey }) {
   const items = [...common, ...storeSpecific];
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible="icon">
       <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>{collapsed ? "" : "Loja"}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <div className={collapsed ? "px-2" : "px-3"}>
+              <StoreSwitcher className={collapsed ? "h-10 px-2" : "h-10"} />
+            </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupLabel>{collapsed ? "" : "Menu"}</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -131,6 +131,7 @@ function StoreSidebar({ store }: { store: StoreKey }) {
 export default function StoresDashboardLayout() {
   const navigate = useNavigate();
   const store = useActiveStore();
+  const { routes } = useStore();
 
   return (
     <SidebarProvider>
@@ -148,29 +149,16 @@ export default function StoresDashboardLayout() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Select
-                value={store}
-                onValueChange={(value) => {
-                  const next = value as StoreKey;
-                  navigate(next === "fortlev" ? "/dashboard/fortlev" : "/dashboard/construcao");
-                }}
-              >
-                <SelectTrigger className="w-[220px] bg-background">
-                  <SelectValue placeholder="Selecione a loja" />
-                </SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  {stores.map((s) => (
-                    <SelectItem key={s.key} value={s.key}>
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="hidden md:block">
+                <StoreSwitcher className="w-[260px] bg-background" />
+              </div>
 
-              <Button asChild variant="outline" className="hidden sm:inline-flex">
-                <NavLink to={store === "fortlev" ? "/dashboard/fortlev" : "/dashboard/construcao"}>
-                  Ir
-                </NavLink>
+              <Button
+                variant="outline"
+                className="hidden sm:inline-flex"
+                onClick={() => navigate(routes.dashboard)}
+              >
+                Ir
               </Button>
             </div>
           </header>
@@ -183,3 +171,4 @@ export default function StoresDashboardLayout() {
     </SidebarProvider>
   );
 }
+

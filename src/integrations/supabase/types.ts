@@ -29,6 +29,183 @@ export type Database = {
         }
         Relationships: []
       }
+      store_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          featured: boolean
+          id: string
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          featured?: boolean
+          id?: string
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          featured?: boolean
+          id?: string
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      store_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total: number
+          name_snapshot: string
+          order_id: string
+          price_snapshot: number
+          product_id: string | null
+          quantity: number
+          unit_snapshot: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          name_snapshot: string
+          order_id: string
+          price_snapshot?: number
+          product_id?: string | null
+          quantity?: number
+          unit_snapshot?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          name_snapshot?: string
+          order_id?: string
+          price_snapshot?: number
+          product_id?: string | null
+          quantity?: number
+          unit_snapshot?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "store_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_orders: {
+        Row: {
+          address: string | null
+          cep: string | null
+          checkout_mode: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          shipping: number
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+          whatsapp_sent: boolean
+        }
+        Insert: {
+          address?: string | null
+          cep?: string | null
+          checkout_mode?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          shipping?: number
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          whatsapp_sent?: boolean
+        }
+        Update: {
+          address?: string | null
+          cep?: string | null
+          checkout_mode?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          shipping?: number
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          whatsapp_sent?: boolean
+        }
+        Relationships: []
+      }
+      store_pages: {
+        Row: {
+          content_md: string
+          created_at: string
+          id: string
+          published: boolean
+          slug: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content_md?: string
+          created_at?: string
+          id?: string
+          published?: boolean
+          slug: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content_md?: string
+          created_at?: string
+          id?: string
+          published?: boolean
+          slug?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       store_product_images: {
         Row: {
           created_at: string
@@ -65,6 +242,7 @@ export type Database = {
         Row: {
           active: boolean
           category: string | null
+          category_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -78,6 +256,7 @@ export type Database = {
         Insert: {
           active?: boolean
           category?: string | null
+          category_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -91,6 +270,7 @@ export type Database = {
         Update: {
           active?: boolean
           category?: string | null
+          category_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -101,7 +281,15 @@ export type Database = {
           unit?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "store_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "store_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

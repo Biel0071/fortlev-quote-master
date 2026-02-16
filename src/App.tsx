@@ -8,7 +8,11 @@ import StoreCatalog from "./pages/store/StoreCatalog";
 import ProductPage from "./pages/store/ProductPage";
 import CartPage from "./pages/store/CartPage";
 import CheckoutPage from "./pages/store/CheckoutPage";
+import StorePage from "./pages/store/StorePage";
 import AdminProducts from "./pages/admin/AdminProducts";
+import AdminCategories from "./pages/admin/AdminCategories";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminPages from "./pages/admin/AdminPages";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 
@@ -34,9 +38,13 @@ const App = () => (
           <Route path="/produto/:id" element={<ProductPage />} />
           <Route path="/carrinho" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/p/:slug" element={<StorePage />} />
 
           {/* Admin */}
           <Route path="/admin" element={<AdminProducts />} />
+          <Route path="/admin/categorias" element={<AdminCategories />} />
+          <Route path="/admin/pedidos" element={<AdminOrders />} />
+          <Route path="/admin/paginas" element={<AdminPages />} />
           <Route path="/auth/login" element={<LoginPage />} />
           <Route path="/auth/signup" element={<SignupPage />} />
 

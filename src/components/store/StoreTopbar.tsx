@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useStoreContact } from "@/hooks/useStoreContact";
+import { useHomeContent } from "@/hooks/useHomeContent";
+import storeLogo from "@/assets/store-logo-materiais.png";
 
 export function StoreTopbar({
   cartCount,
@@ -16,6 +18,7 @@ export function StoreTopbar({
   const { isAdmin } = useIsAdmin();
   const nav = useNavigate();
   const contact = useStoreContact();
+  const { footer } = useHomeContent();
 
   const [q, setQ] = useState("");
 
@@ -25,13 +28,22 @@ export function StoreTopbar({
   };
 
   const waHref = useMemo(() => contact.waLink, [contact.waLink]);
+  const brandLabel = footer?.store_name || "Materiais de Construção";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-3">
         {/* Logo / Nome */}
-        <Link to="/" className="font-semibold tracking-tight whitespace-nowrap">
-          Depósito
+        <Link to="/" className="flex items-center gap-2 min-w-0">
+          <img
+            src={storeLogo}
+            alt={`${brandLabel} - logo`}
+            className="h-8 w-8 shrink-0 rounded-md"
+            loading="eager"
+          />
+          <span className="font-semibold tracking-tight whitespace-nowrap truncate max-w-[11rem] sm:max-w-[16rem]">
+            {brandLabel}
+          </span>
         </Link>
 
         {/* Busca central */}

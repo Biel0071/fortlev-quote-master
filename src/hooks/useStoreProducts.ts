@@ -18,7 +18,9 @@ export function useStoreProducts() {
 
     const { data, error } = await cloud
       .from("store_products")
-      .select("id, source_id, name, description, category, unit, price, stock, active, store_product_images(id, product_id, path, sort_order)")
+      .select(
+        "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, active, store_product_images(id, product_id, path, sort_order)",
+      )
       .order("name", { ascending: true });
 
     if (error) {

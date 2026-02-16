@@ -553,6 +553,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_store_order: {
+        Args: {
+          _address: string
+          _cep: string
+          _checkout_mode: string
+          _coupon_code?: string
+          _customer_email: string
+          _customer_name: string
+          _customer_phone: string
+          _lines: Json
+          _notes: string
+        }
+        Returns: {
+          discount: number
+          order_id: string
+          shipping: number
+          subtotal: number
+          total: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -569,6 +589,15 @@ export type Database = {
         }
         Returns: {
           discount: number
+          message: string
+          ok: boolean
+        }[]
+      }
+      validate_coupon_cart: {
+        Args: { _code: string; _lines: Json; _subtotal: number }
+        Returns: {
+          discount: number
+          eligible_subtotal: number
           message: string
           ok: boolean
         }[]

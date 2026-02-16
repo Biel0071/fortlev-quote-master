@@ -7,8 +7,13 @@ export type StoreProduct = {
   category: string | null;
   category_id?: string | null;
   unit: string | null;
+  sku?: string | null;
   price: number;
+  promo_price?: number;
   stock: number;
+  min_stock?: number;
+  featured?: boolean;
+  best_seller?: boolean;
   active: boolean;
 };
 

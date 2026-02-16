@@ -14,29 +14,25 @@ export default function StoreHome() {
   const { activeProducts, loading } = useStoreProducts();
   const { activeCategories, featuredCategories } = useStoreCategories();
 
-  const featuredProducts = useMemo(() => activeProducts.slice(0, 8), [activeProducts]);
+  const featuredProducts = useMemo(() => activeProducts.filter((p: any) => p.featured).slice(0, 8), [activeProducts]);
 
   const sections = useMemo(() => {
-    const bySlug = new Map<string, typeof activeProducts>();
+    const byId = new Map<string, typeof activeProducts>();
     for (const c of activeCategories) {
-      bySlug.set(c.slug, []);
+      byId.set(c.id, []);
     }
 
-    for (const p of activeProducts) {
-      const cat = (p.category ?? "").trim();
-      if (!cat) continue;
-      const match = activeCategories.find(
-        (c) => c.slug.toLowerCase() === cat.toLowerCase() || c.name.toLowerCase() === cat.toLowerCase(),
-      );
-      if (match) {
-        bySlug.set(match.slug, [...(bySlug.get(match.slug) ?? []), p]);
-      }
+    for (const p of activeProducts as any[]) {
+      const cid = p.category_id as string | null | undefined;
+      if (!cid) continue;
+      if (!byId.has(cid)) continue;
+      byId.set(cid, [...(byId.get(cid) ?? []), p]);
     }
 
     return activeCategories
       .map((c) => ({
         category: c,
-        products: (bySlug.get(c.slug) ?? []).slice(0, 8),
+        products: (byId.get(c.id) ?? []).slice(0, 8),
       }))
       .filter((s) => s.products.length > 0);
   }, [activeCategories, activeProducts]);
@@ -180,27 +176,35 @@ export default function StoreHome() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {s.products.map((p) => (
-                      <Card key={p.id} className="overflow-hidden rounded-2xl">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base line-clamp-2">{p.name}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm text-muted-foreground">{p.unit ?? "un"}</div>
-                            <div className="font-semibold">{formatCurrency(p.price)}</div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button className="flex-1" onClick={() => cart.add(p.id, 1)}>
-                              Adicionar
-                            </Button>
-                            <Button asChild variant="outline">
-                              <Link to={`/produto/${p.id}`}>Ver</Link>
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    {s.products.map((p: any) => {
+                      const effectivePrice = Number(p.promo_price ?? 0) > 0 ? Number(p.promo_price) : Number(p.price);
+                      return (
+                        <Card key={p.id} className="overflow-hidden rounded-2xl">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base line-clamp-2">{p.name}</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-muted-foreground">{p.unit ?? "un"}</div>
+                              <div className="text-right">
+                                {Number(p.promo_price ?? 0) > 0 ? (
+                                  <div className="text-xs text-muted-foreground line-through">{formatCurrency(Number(p.price))}</div>
+                                ) : null}
+                                <div className="font-semibold">{formatCurrency(effectivePrice)}</div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button className="flex-1" onClick={() => cart.add(p.id, 1)}>
+                                Adicionar
+                              </Button>
+                              <Button asChild variant="outline">
+                                <Link to={`/produto/${p.id}`}>Ver</Link>
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </section>
               ))}

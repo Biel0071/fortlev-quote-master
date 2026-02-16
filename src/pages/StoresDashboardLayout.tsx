@@ -59,8 +59,8 @@ function StoreSidebar({ store }: { store: StoreKey }) {
     store === "fortlev"
       ? [
           {
-            title: "Orçamentos Fortlev",
-            url: "/dashboard/fortlev",
+            title: "Orçamentos",
+            url: "/dashboard/fortlev/orcamentos",
             icon: Droplets,
           },
           {
@@ -72,8 +72,8 @@ function StoreSidebar({ store }: { store: StoreKey }) {
         ]
       : [
           {
-            title: "Materiais de Construção",
-            url: "/dashboard/construcao",
+            title: "Orçamentos",
+            url: "/dashboard/construcao/orcamentos",
             icon: Building2,
           },
           {

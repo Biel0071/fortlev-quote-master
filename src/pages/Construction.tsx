@@ -5,7 +5,7 @@ import { ConstructionItemsList } from '@/components/ConstructionItemsList';
 import { CustomerForm } from '@/components/CustomerForm';
 import { QuotationActions } from '@/components/QuotationActions';
 import { QuotationPreview } from '@/components/QuotationPreview';
-import { ConstructionQuotationItem, ConstructionCustomer, ConstructionCompanyInfo, ConstructionQuotation } from '@/types/construction';
+import { ConstructionQuotationItem, ConstructionQuotation } from '@/types/construction';
 import { Customer, CompanyInfo, PaymentConditions, Quotation, QuotationItem } from '@/types/quotation';
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
@@ -17,8 +17,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency } from '@/utils/formatters';
+import { useConstructionQuotations } from '@/hooks/useConstructionQuotations';
 
 const ConstructionPage = () => {
+  const { saveQuotation, generateQuotationNumber } = useConstructionQuotations();
+
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: 'Material de Construção',
     cnpj: '04.925.466/0001-59',
@@ -84,16 +87,6 @@ const ConstructionPage = () => {
       return item;
     }));
   };
-
-  const generateQuotationNumber = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 11; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-
   // Convert construction items to quotation items for PDF
   const convertToQuotationItems = (): QuotationItem[] => {
     return items.map(item => ({
@@ -141,6 +134,40 @@ const ConstructionPage = () => {
     };
   };
 
+  const createConstructionQuotation = (): ConstructionQuotation => {
+    return {
+      id: crypto.randomUUID(),
+      number: generateQuotationNumber(),
+      customer: {
+        name: customer.name,
+        cpfCnpj: customer.cnpj,
+        phone: customer.phone,
+        address: customer.address,
+      },
+      companyInfo: {
+        name: companyInfo.name,
+        cnpj: companyInfo.cnpj,
+        ie: '',
+        address: companyInfo.address,
+        phone: companyInfo.phone,
+        email: companyInfo.email,
+        sellerName: companyInfo.sellerName,
+      },
+      items,
+      subtotal,
+      discount,
+      freight,
+      total,
+      validity,
+      observations,
+      paymentMethod,
+      deliveryDate: deliveryTime,
+      showClientData,
+      createdAt: new Date(),
+      status: 'pending',
+    };
+  };
+
   const validateForm = () => {
     if (items.length === 0) {
       toast({
@@ -156,6 +183,7 @@ const ConstructionPage = () => {
   const handleGeneratePDF = () => {
     if (!validateForm()) return;
     const quotation = createQuotation();
+    saveQuotation(createConstructionQuotation());
     downloadPDF(quotation);
     toast({
       title: 'PDF gerado com sucesso!',
@@ -166,6 +194,7 @@ const ConstructionPage = () => {
   const handleGeneratePNG = async () => {
     if (!validateForm()) return;
     const quotation = createQuotation();
+    saveQuotation(createConstructionQuotation());
     await downloadPNG(quotation);
     toast({
       title: 'PNG gerado com sucesso!',
@@ -175,6 +204,7 @@ const ConstructionPage = () => {
   const handleSendWhatsApp = () => {
     if (!validateForm()) return;
     const quotation = createQuotation();
+    saveQuotation(createConstructionQuotation());
     openWhatsApp(quotation);
     toast({
       title: 'WhatsApp aberto!',

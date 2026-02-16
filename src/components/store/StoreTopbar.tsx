@@ -158,14 +158,14 @@ export function StoreTopbar({
               </DropdownMenuSub>
 
               <DropdownMenuItem asChild>
-                <Link to="/#ofertas">
+                <Link to="/loja?promo=1">
                   <BadgePercent className="mr-2 h-4 w-4" />
                   Ofertas
                 </Link>
               </DropdownMenuItem>
 
               <DropdownMenuItem asChild>
-                <Link to="/loja?q=">
+                <Link to="/loja?sort=popular">
                   <Flame className="mr-2 h-4 w-4" />
                   Mais vendidos
                 </Link>
@@ -175,14 +175,14 @@ export function StoreTopbar({
               <DropdownMenuLabel>Ajuda</DropdownMenuLabel>
 
               <DropdownMenuItem asChild>
-                <Link to="/p/entrega">
+                <Link to="/institucional/entrega">
                   <Truck className="mr-2 h-4 w-4" />
                   Entrega
                 </Link>
               </DropdownMenuItem>
 
               <DropdownMenuItem asChild>
-                <Link to="/p/politica-de-privacidade">
+                <Link to="/institucional/politica">
                   <ShieldCheck className="mr-2 h-4 w-4" />
                   Política
                 </Link>

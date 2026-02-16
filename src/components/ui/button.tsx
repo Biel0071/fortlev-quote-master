@@ -17,7 +17,7 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         fortlev: "bg-gradient-to-r from-fortlev-navy to-fortlev-navy-light text-primary-foreground shadow-lg hover:shadow-xl active:scale-[0.98]",
         accent: "bg-gradient-to-r from-fortlev-yellow to-fortlev-yellow-light text-accent-foreground shadow-lg hover:shadow-xl active:scale-[0.98] font-semibold",
-        whatsapp: "bg-[#25D366] text-white hover:bg-[#20BD5A] shadow-md hover:shadow-lg active:scale-[0.98]",
+        whatsapp: "bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90 shadow-md hover:shadow-lg active:scale-[0.98]",
       },
       size: {
         default: "h-10 px-4 py-2",

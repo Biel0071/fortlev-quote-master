@@ -78,6 +78,37 @@ type Section = {
   active: boolean;
 };
 
+type Department = {
+  id: string;
+  kind: string;
+  label: string;
+  icon: string | null;
+  link_url: string | null;
+  category_id: string | null;
+  sort_order: number;
+  active: boolean;
+};
+
+type Offer = {
+  id: string;
+  product_id: string;
+  badge_text: string | null;
+  promo_price: number | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  sort_order: number;
+  active: boolean;
+};
+
+type HomeSeo = {
+  id: string;
+  key: string;
+  meta_title: string | null;
+  meta_description: string | null;
+  og_image_path: string | null;
+  active: boolean;
+};
+
 export default function AdminHome() {
   const [loading, setLoading] = useState(true);
 
@@ -88,9 +119,13 @@ export default function AdminHome() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
 
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [seoRow, setSeoRow] = useState<HomeSeo | null>(null);
+
   const loadAll = async () => {
     setLoading(true);
-    const [b, ben, pol, f, cats, sec] = await Promise.all([
+    const [b, ben, pol, f, cats, sec, deps, off, seo] = await Promise.all([
       cloud
         .from("store_banners")
         .select(
@@ -109,9 +144,22 @@ export default function AdminHome() {
         .from("home_sections")
         .select("id, category_id, title_override, subtitle_override, sort_order, active")
         .order("sort_order", { ascending: true }),
+      cloud
+        .from("home_departments")
+        .select("id, kind, label, icon, link_url, category_id, sort_order, active")
+        .order("sort_order", { ascending: true }),
+      cloud
+        .from("home_offers")
+        .select("id, product_id, badge_text, promo_price, starts_at, ends_at, sort_order, active")
+        .order("sort_order", { ascending: true }),
+      cloud
+        .from("home_seo")
+        .select("id, key, meta_title, meta_description, og_image_path, active")
+        .eq("key", "store_home")
+        .maybeSingle(),
     ]);
 
-    const firstError = b.error || ben.error || pol.error || f.error || cats.error || sec.error;
+    const firstError = b.error || ben.error || pol.error || f.error || cats.error || sec.error || deps.error || off.error || seo.error;
     if (firstError) toast({ title: "Erro", description: firstError.message, variant: "destructive" });
 
     setBanners((b.data ?? []) as any);
@@ -120,6 +168,9 @@ export default function AdminHome() {
     setFooter((f.data as any) ?? null);
     setCategories((cats.data ?? []) as any);
     setSections((sec.data ?? []) as any);
+    setDepartments((deps.data ?? []) as any);
+    setOffers((off.data ?? []) as any);
+    setSeoRow((seo.data as any) ?? null);
     setLoading(false);
   };
 
@@ -297,6 +348,60 @@ export default function AdminHome() {
     await loadAll();
   };
 
+  // --- DEPARTMENTS ---
+  const [depKind, setDepKind] = useState<string>("link");
+  const [depLabel, setDepLabel] = useState("");
+  const [depIcon, setDepIcon] = useState("boxes");
+  const [depLink, setDepLink] = useState("");
+  const [depCategoryId, setDepCategoryId] = useState<string>("");
+  const [depOrder, setDepOrder] = useState<number>(0);
+  const [depActive, setDepActive] = useState(true);
+
+  const createDepartment = async () => {
+    const label = depLabel.trim();
+    if (!label) return toast({ title: "Atenção", description: "Informe o rótulo." });
+
+    const patch: any = {
+      kind: depKind,
+      label,
+      icon: depIcon.trim() || null,
+      sort_order: Number(depOrder) || 0,
+      active: depActive,
+      link_url: depKind === "link" ? depLink.trim() || null : null,
+      category_id: depKind === "category" ? depCategoryId || null : null,
+    };
+
+    // When category type, auto-generate link for catalog filter
+    if (depKind === "category" && depCategoryId) {
+      const c = categories.find((x) => x.id === depCategoryId);
+      patch.link_url = c ? `/loja?categoria=${encodeURIComponent(c.slug)}` : null;
+    }
+
+    const { error } = await cloud.from("home_departments").insert(patch);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+
+    setDepKind("link");
+    setDepLabel("");
+    setDepIcon("boxes");
+    setDepLink("");
+    setDepCategoryId("");
+    setDepOrder(0);
+    setDepActive(true);
+    await loadAll();
+  };
+
+  const updateDepartment = async (id: string, patch: Partial<Department>) => {
+    const { error } = await cloud.from("home_departments").update(patch as any).eq("id", id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    await loadAll();
+  };
+
+  const removeDepartment = async (id: string) => {
+    const { error } = await cloud.from("home_departments").delete().eq("id", id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    await loadAll();
+  };
+
   // --- POLICIES ---
   const [polTitle, setPolTitle] = useState("");
   const [polSubtitle, setPolSubtitle] = useState("");
@@ -401,9 +506,12 @@ export default function AdminHome() {
       <Tabs defaultValue="banners">
         <TabsList className="w-full justify-start flex-wrap h-auto">
           <TabsTrigger value="banners">Banners</TabsTrigger>
+          <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
           <TabsTrigger value="vantagens">Vantagens</TabsTrigger>
+          <TabsTrigger value="ofertas">Ofertas</TabsTrigger>
           <TabsTrigger value="categorias">Categorias destaque</TabsTrigger>
           <TabsTrigger value="sessoes">Sessões produtos</TabsTrigger>
+          <TabsTrigger value="seo">SEO</TabsTrigger>
           <TabsTrigger value="politicas">Políticas</TabsTrigger>
           <TabsTrigger value="rodape">Rodapé</TabsTrigger>
         </TabsList>
@@ -543,6 +651,135 @@ export default function AdminHome() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="departamentos" className="space-y-4">
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle>Novo departamento</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <Select value={depKind} onValueChange={setDepKind}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="link">Link</SelectItem>
+                      <SelectItem value="category">Categoria</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Rótulo</Label>
+                  <Input value={depLabel} onChange={(e) => setDepLabel(e.target.value)} placeholder="Ex.: Hidráulica" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Ícone (lucide)</Label>
+                  <Input value={depIcon} onChange={(e) => setDepIcon(e.target.value)} placeholder="boxes / badge-percent / message-circle" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label>Link (quando tipo=link)</Label>
+                  <Input value={depLink} onChange={(e) => setDepLink(e.target.value)} placeholder="/loja?categoria=hidraulica" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Categoria (quando tipo=categoria)</Label>
+                  <Select value={depCategoryId} onValueChange={setDepCategoryId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories
+                        .filter((c) => c.active)
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Ordem</Label>
+                  <Input type="number" value={depOrder} onChange={(e) => setDepOrder(Number(e.target.value) || 0)} />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border border-border p-4">
+                <div>
+                  <div className="font-medium">Ativo</div>
+                  <div className="text-sm text-muted-foreground">Aparece na barra de departamentos.</div>
+                </div>
+                <Switch checked={depActive} onCheckedChange={setDepActive} />
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={createDepartment}>Criar</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle>Lista</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {loading ? (
+                <div className="text-muted-foreground">Carregando...</div>
+              ) : departments.length === 0 ? (
+                <div className="text-muted-foreground">Nenhum departamento.</div>
+              ) : (
+                departments.map((d) => (
+                  <div key={d.id} className="rounded-xl border border-border bg-card/60 backdrop-blur p-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{d.label}</div>
+                        <div className="text-xs text-muted-foreground">
+                          tipo: {d.kind} • ícone: {d.icon ?? "-"} • ordem: {d.sort_order}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => updateDepartment(d.id, { active: !d.active })}>
+                          {d.active ? "Desativar" : "Ativar"}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => removeDepartment(d.id)}>
+                          Remover
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div className="space-y-2">
+                        <Label>Ordem</Label>
+                        <Input type="number" value={d.sort_order} onChange={(e) => updateDepartment(d.id, { sort_order: Number(e.target.value) || 0 })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Rótulo</Label>
+                        <Input value={d.label} onChange={(e) => updateDepartment(d.id, { label: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Ícone</Label>
+                        <Input value={d.icon ?? ""} onChange={(e) => updateDepartment(d.id, { icon: e.target.value.trim() || null })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Link</Label>
+                        <Input value={d.link_url ?? ""} onChange={(e) => updateDepartment(d.id, { link_url: e.target.value.trim() || null })} />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="vantagens" className="space-y-4">
           <Card className="rounded-2xl">
             <CardHeader>
@@ -638,6 +875,65 @@ export default function AdminHome() {
                     </div>
                   </div>
                 ))
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ofertas" className="space-y-4">
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle>Ofertas da semana</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-2">
+              <p>
+                Nesta etapa, as ofertas podem ser curadas adicionando produtos em <code>home_offers</code>.
+                Se não houver ofertas curadas, a Home faz fallback automático para produtos com <code>promo_price</code>.
+              </p>
+              <p>
+                Próximo passo: UI completa de curadoria (selecionar produto, preço promo opcional, validade e ordenação).
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="seo" className="space-y-4">
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle>SEO da Home</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!seoRow ? (
+                <div className="text-sm text-muted-foreground">Registro de SEO não encontrado. Recarregue a página.</div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label>Meta title (até ~60 caracteres)</Label>
+                    <Input value={seoRow.meta_title ?? ""} onChange={(e) => setSeoRow({ ...seoRow, meta_title: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Meta description (até ~160 caracteres)</Label>
+                    <Textarea value={seoRow.meta_description ?? ""} onChange={(e) => setSeoRow({ ...seoRow, meta_description: e.target.value })} />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={async () => {
+                        const { error } = await cloud
+                          .from("home_seo")
+                          .update({
+                            meta_title: (seoRow.meta_title ?? "").trim() || null,
+                            meta_description: (seoRow.meta_description ?? "").trim() || null,
+                          } as any)
+                          .eq("id", seoRow.id);
+                        if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+                        toast({ title: "Salvo", description: "SEO atualizado" });
+                        await loadAll();
+                      }}
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

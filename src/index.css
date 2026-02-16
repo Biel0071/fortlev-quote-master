@@ -50,6 +50,10 @@
     --fortlev-yellow-light: 45 100% 60%;
     --fortlev-blue: 205 90% 45%;
 
+    /* CTA / WhatsApp */
+    --whatsapp: 142 70% 45%;
+    --whatsapp-foreground: 0 0% 100%;
+
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 hsl(210 20% 10% / 0.05);
     --shadow-md: 0 4px 6px -1px hsl(210 20% 10% / 0.1), 0 2px 4px -2px hsl(210 20% 10% / 0.1);
@@ -99,6 +103,11 @@
     --sidebar-foreground: 210 20% 95%;
     --sidebar-primary: 45 100% 48%;
     --sidebar-primary-foreground: 210 80% 10%;
+
+    /* CTA / WhatsApp */
+    --whatsapp: 142 70% 45%;
+    --whatsapp-foreground: 0 0% 100%;
+
     --sidebar-accent: 210 40% 15%;
     --sidebar-accent-foreground: 210 20% 95%;
     --sidebar-border: 210 40% 18%;

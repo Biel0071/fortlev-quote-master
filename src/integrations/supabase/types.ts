@@ -62,6 +62,53 @@ export type Database = {
         }
         Relationships: []
       }
+      home_departments: {
+        Row: {
+          active: boolean
+          category_id: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          kind: string
+          label: string
+          link_url: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          kind?: string
+          label: string
+          link_url?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          kind?: string
+          label?: string
+          link_url?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "home_departments_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "store_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       home_footer: {
         Row: {
           active: boolean
@@ -103,6 +150,53 @@ export type Database = {
           whatsapp?: string | null
         }
         Relationships: []
+      }
+      home_offers: {
+        Row: {
+          active: boolean
+          badge_text: string | null
+          created_at: string
+          ends_at: string | null
+          id: string
+          product_id: string
+          promo_price: number | null
+          sort_order: number
+          starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          badge_text?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          product_id: string
+          promo_price?: number | null
+          sort_order?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          badge_text?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          product_id?: string
+          promo_price?: number | null
+          sort_order?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "home_offers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       home_policies: {
         Row: {
@@ -180,6 +274,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      home_seo: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          key: string
+          meta_description: string | null
+          meta_title: string | null
+          og_image_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          key: string
+          meta_description?: string | null
+          meta_title?: string | null
+          og_image_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          key?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          og_image_path?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       store_banners: {
         Row: {

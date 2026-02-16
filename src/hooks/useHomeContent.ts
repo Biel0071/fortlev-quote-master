@@ -54,6 +54,37 @@ export type HomeFooter = {
   active: boolean;
 };
 
+export type HomeDepartment = {
+  id: string;
+  kind: string;
+  label: string;
+  icon: string | null;
+  link_url: string | null;
+  category_id: string | null;
+  sort_order: number;
+  active: boolean;
+};
+
+export type HomeOffer = {
+  id: string;
+  product_id: string;
+  badge_text: string | null;
+  promo_price: number | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  sort_order: number;
+  active: boolean;
+};
+
+export type HomeSeo = {
+  id: string;
+  key: string;
+  meta_title: string | null;
+  meta_description: string | null;
+  og_image_path: string | null;
+  active: boolean;
+};
+
 export function useHomeContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,11 +95,15 @@ export function useHomeContent() {
   const [sections, setSections] = useState<HomeSection[]>([]);
   const [footer, setFooter] = useState<HomeFooter | null>(null);
 
+  const [departments, setDepartments] = useState<HomeDepartment[]>([]);
+  const [offers, setOffers] = useState<HomeOffer[]>([]);
+  const [seo, setSeo] = useState<HomeSeo | null>(null);
+
   const load = async () => {
     setLoading(true);
     setError(null);
 
-    const [b, ben, pol, sec, f] = await Promise.all([
+    const [b, ben, pol, sec, f, deps, off, s] = await Promise.all([
       cloud
         .from("store_banners")
         .select(
@@ -97,9 +132,24 @@ export function useHomeContent() {
         .eq("active", true)
         .eq("key", "main")
         .maybeSingle(),
+      cloud
+        .from("home_departments")
+        .select("id, kind, label, icon, link_url, category_id, sort_order, active")
+        .eq("active", true)
+        .order("sort_order", { ascending: true }),
+      cloud
+        .from("home_offers")
+        .select("id, product_id, badge_text, promo_price, starts_at, ends_at, sort_order, active")
+        .order("sort_order", { ascending: true }),
+      cloud
+        .from("home_seo")
+        .select("id, key, meta_title, meta_description, og_image_path, active")
+        .eq("active", true)
+        .eq("key", "store_home")
+        .maybeSingle(),
     ]);
 
-    const firstError = b.error || ben.error || pol.error || sec.error || f.error;
+    const firstError = b.error || ben.error || pol.error || sec.error || f.error || deps.error || off.error || s.error;
     if (firstError) {
       setError(firstError.message);
       setBanners([]);
@@ -107,6 +157,9 @@ export function useHomeContent() {
       setPolicies([]);
       setSections([]);
       setFooter(null);
+      setDepartments([]);
+      setOffers([]);
+      setSeo(null);
       setLoading(false);
       return;
     }
@@ -116,6 +169,10 @@ export function useHomeContent() {
     setPolicies((pol.data ?? []) as any);
     setSections((sec.data ?? []) as any);
     setFooter((f.data as any) ?? null);
+    setDepartments((deps.data ?? []) as any);
+    setOffers((off.data ?? []) as any);
+    setSeo((s.data as any) ?? null);
+
     setLoading(false);
     return;
   };
@@ -127,5 +184,18 @@ export function useHomeContent() {
 
   const hasHero = useMemo(() => banners.length > 0, [banners]);
 
-  return { banners, benefits, policies, sections, footer, hasHero, loading, error, reload: load };
+  return {
+    banners,
+    benefits,
+    policies,
+    sections,
+    footer,
+    departments,
+    offers,
+    seo,
+    hasHero,
+    loading,
+    error,
+    reload: load,
+  };
 }

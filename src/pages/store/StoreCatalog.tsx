@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
@@ -18,6 +18,12 @@ export default function StoreCatalog() {
 
   const [q, setQ] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const urlQ = (searchParams.get("q") ?? "").toString();
+    if (urlQ && urlQ !== q) setQ(urlQ);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const selectedSlug = searchParams.get("categoria") ?? "all";
 
@@ -107,15 +113,15 @@ export default function StoreCatalog() {
 
               return (
                 <Card key={p.id} className="rounded-2xl overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base line-clamp-2">{p.name}</CardTitle>
-                    {catName && (
-                      <Badge variant="secondary" className="w-fit">
-                        {catName}
-                      </Badge>
-                    )}
-                  </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="p-5 space-y-3">
+                    <div className="space-y-2">
+                      <div className="font-semibold leading-tight line-clamp-2">{p.name}</div>
+                      {catName && (
+                        <Badge variant="secondary" className="w-fit">
+                          {catName}
+                        </Badge>
+                      )}
+                    </div>
                     {p.description && <p className="text-sm text-muted-foreground line-clamp-2">{p.description}</p>}
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-muted-foreground">{p.unit ?? "un"}</div>

@@ -10,12 +10,16 @@ import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useHomeContent } from "@/hooks/useHomeContent";
 import { HomeHeroCarousel } from "@/components/store/home/HomeHeroCarousel";
 import { HomeBenefitsBar } from "@/components/store/home/HomeBenefitsBar";
+import { HomeDepartmentsBar } from "@/components/store/home/HomeDepartmentsBar";
+import { HomeWeeklyOffers } from "@/components/store/home/HomeWeeklyOffers";
 import { HomeFeaturedCategories } from "@/components/store/home/HomeFeaturedCategories";
 import { HomeCategorySection } from "@/components/store/home/HomeCategorySection";
 import { HomePolicies } from "@/components/store/home/HomePolicies";
 import { CartDrawer } from "@/components/store/CartDrawer";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { cloud } from "@/lib/cloud";
+import { pickHomeSeo, useDynamicSeo } from "@/hooks/useDynamicSeo";
+import { publicImageUrl } from "@/utils/storage";
 
 export default function StoreHome() {
   const cart = useCart();
@@ -24,6 +28,10 @@ export default function StoreHome() {
   const home = useHomeContent();
 
   const [cartOpen, setCartOpen] = useState(false);
+
+  const seo = useMemo(() => pickHomeSeo(home.seo), [home.seo]);
+  const ogImageUrl = useMemo(() => publicImageUrl("banner-images", home.seo?.og_image_path ?? null), [home.seo?.og_image_path]);
+  useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
   // Map products by category for fast rendering
   const productsByCategoryId = useMemo(() => {
@@ -43,14 +51,17 @@ export default function StoreHome() {
   // - Else fallback to all active categories.
   const categorySections = useMemo(() => {
     const configured = (home.sections ?? []).filter((s) => Boolean(s.category_id));
-    const base = configured.length > 0 ? configured : activeCategories.map((c, idx) => ({
-      id: `fallback-${c.id}`,
-      category_id: c.id,
-      sort_order: idx,
-      title_override: null,
-      subtitle_override: null,
-      active: true,
-    }));
+    const base =
+      configured.length > 0
+        ? configured
+        : activeCategories.map((c, idx) => ({
+            id: `fallback-${c.id}`,
+            category_id: c.id,
+            sort_order: idx,
+            title_override: null,
+            subtitle_override: null,
+            active: true,
+          }));
 
     return base
       .slice()
@@ -92,14 +103,20 @@ export default function StoreHome() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10 pb-24 md:pb-10 space-y-10">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-24 md:pb-10 space-y-10">
         {/* 1) HERO / BANNERS ROTATIVOS */}
         <HomeHeroCarousel banners={home.banners} loading={home.loading} />
 
-        {/* 2) BARRA DE VANTAGENS */}
+        {/* 2) DEPARTAMENTOS (misto: links + categorias) */}
+        <HomeDepartmentsBar loading={home.loading} departments={home.departments as any} />
+
+        {/* 3) BARRA DE VANTAGENS */}
         <HomeBenefitsBar benefits={home.benefits} />
 
-        {/* 3) CATEGORIAS EM DESTAQUE */}
+        {/* 4) OFERTAS DA SEMANA (curado + fallback promo_price) */}
+        <HomeWeeklyOffers loading={loading} offers={home.offers as any} products={activeProducts as any} onAdd={onAdd} />
+
+        {/* 5) CATEGORIAS EM DESTAQUE */}
         {featuredCategories.length === 0 ? (
           <Card>
             <CardContent className="py-6 text-sm text-muted-foreground">
@@ -114,7 +131,7 @@ export default function StoreHome() {
           <HomeFeaturedCategories categories={featuredCategories as any} />
         )}
 
-        {/* 4) PRODUTOS POR CATEGORIA */}
+        {/* 6) PRODUTOS POR CATEGORIA */}
         <section className="space-y-4">
           <header className="flex items-end justify-between gap-3 flex-wrap">
             <div>
@@ -141,22 +158,17 @@ export default function StoreHome() {
           ) : (
             <div className="space-y-10">
               {categorySections.map((x) => (
-                <HomeCategorySection
-                  key={x.category.id}
-                  category={x.category}
-                  products={x.products}
-                  onAdd={onAdd}
-                />
+                <HomeCategorySection key={x.category.id} category={x.category} products={x.products} onAdd={onAdd} />
               ))}
             </div>
           )}
         </section>
 
-        {/* 8) POLÍTICAS DA LOJA */}
+        {/* 7) POLÍTICAS DA LOJA */}
         <HomePolicies policies={home.policies} />
       </main>
 
-      {/* 9) RODAPÉ COMPLETO */}
+      {/* 8) RODAPÉ COMPLETO */}
       <StoreFooter footer={home.footer} pageLinks={pageLinks} />
     </div>
   );

@@ -52,6 +52,13 @@ export interface TaxInfo {
   taxPercentage: number;
 }
 
+export interface QuotationBranding {
+  /** When false, removes the "FORTLEV" brand mark from preview/PDF/PNG/WhatsApp. */
+  showBrand: boolean;
+  /** Optional brand text to show in the header when showBrand=true. Defaults to "FORTLEV". */
+  brandText?: string;
+}
+
 export interface Quotation {
   id: string;
   number: string;
@@ -70,4 +77,6 @@ export interface Quotation {
   showClientData: boolean;
   createdAt: Date;
   status: 'pending' | 'sent' | 'approved' | 'rejected';
+  branding?: QuotationBranding;
 }
+

@@ -6,8 +6,13 @@ export const generateWhatsAppMessage = (quotation: Quotation): string => {
     .map(item => `• ${item.product.capacity}${item.product.unit} - Qtd: ${item.quantity} - ${formatCurrency(item.subtotal)}`)
     .join('\n');
 
+  const branding = quotation.branding ?? { showBrand: true, brandText: 'FORTLEV' };
+  const headerTitle = branding.showBrand
+    ? `ORÇAMENTO ${branding.brandText || 'FORTLEV'}`
+    : 'ORÇAMENTO';
+
   const message = `
-🔵 *ORÇAMENTO FORTLEV* 🔵
+🔵 *${headerTitle}* 🔵
 ━━━━━━━━━━━━━━━━━━
 
 📋 *Nº ${quotation.number}*
@@ -31,7 +36,7 @@ ${quotation.observations ? `📝 *Observações:* ${quotation.observations}\n\n`
 ✅ Aguardamos sua confirmação!
 📞 Entre em contato para mais informações.
 
-_Orçamento gerado pelo Sistema Fortlev_
+_Orçamento gerado pelo sistema_
   `.trim();
 
   return message;

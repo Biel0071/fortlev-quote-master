@@ -21,10 +21,7 @@ export default function StoreCatalog() {
   const selectedSlug = searchParams.get("categoria") ?? "all";
 
   const categories = useMemo(() => {
-    return [
-      { slug: "all", name: "Todas" },
-      ...activeCategories.map((c) => ({ slug: c.slug, name: c.name })),
-    ];
+    return [{ slug: "all", name: "Todas" }, ...activeCategories.map((c) => ({ slug: c.slug, name: c.name }))];
   }, [activeCategories]);
 
   const filtered = useMemo(() => {
@@ -45,13 +42,22 @@ export default function StoreCatalog() {
       <StoreTopbar cartCount={cart.totalItems} />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <header className="flex items-end justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Catálogo</h1>
-            <p className="text-sm text-muted-foreground">Navegue por categorias e encontre seus produtos.</p>
+        <section className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 opacity-20 fortlev-gradient" />
+            <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-muted/40 blur-3xl" />
           </div>
-          <Button asChild variant="outline"><Link to="/carrinho">Ir ao carrinho</Link></Button>
-        </header>
+
+          <header className="relative p-6 sm:p-8 flex items-end justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Catálogo</h1>
+              <p className="text-sm text-muted-foreground">Navegue por categorias e encontre seus produtos.</p>
+            </div>
+            <Button asChild variant="outline">
+              <Link to="/carrinho">Ir ao carrinho</Link>
+            </Button>
+          </header>
+        </section>
 
         <section className="flex gap-2 overflow-x-auto pb-1">
           {categories.map((c) => {
@@ -88,10 +94,14 @@ export default function StoreCatalog() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((p) => (
-              <Card key={p.id}>
+              <Card key={p.id} className="rounded-2xl overflow-hidden">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base line-clamp-2">{p.name}</CardTitle>
-                  {p.category && <Badge variant="secondary" className="w-fit">{p.category}</Badge>}
+                  {p.category && (
+                    <Badge variant="secondary" className="w-fit">
+                      {p.category}
+                    </Badge>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {p.description && <p className="text-sm text-muted-foreground line-clamp-2">{p.description}</p>}
@@ -100,8 +110,12 @@ export default function StoreCatalog() {
                     <div className="font-semibold">{formatCurrency(p.price)}</div>
                   </div>
                   <div className="flex gap-2">
-                    <Button className="flex-1" onClick={() => cart.add(p.id, 1)}>Adicionar</Button>
-                    <Button asChild variant="outline"><Link to={`/produto/${p.id}`}>Ver</Link></Button>
+                    <Button className="flex-1" onClick={() => cart.add(p.id, 1)}>
+                      Adicionar
+                    </Button>
+                    <Button asChild variant="outline">
+                      <Link to={`/produto/${p.id}`}>Ver</Link>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

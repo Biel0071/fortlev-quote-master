@@ -48,6 +48,12 @@ export function StoreSupportChat({
   const [promptOpen, setPromptOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
+  useEffect(() => {
+    const onOpen = () => setChatOpen(true);
+    window.addEventListener("store:chat-open", onOpen as any);
+    return () => window.removeEventListener("store:chat-open", onOpen as any);
+  }, []);
+
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: "Oi 👋 posso te ajudar a comprar ou acompanhar pedido?" },
   ]);
@@ -204,7 +210,7 @@ export function StoreSupportChat({
       </Dialog>
 
       {/* Small launcher button (mobile) */}
-      <div className="fixed left-4 z-50 md:hidden bottom-[6.5rem]">
+      <div className="fixed left-4 z-50 md:hidden bottom-[10.25rem]">
         <Button
           variant="secondary"
           size="icon"

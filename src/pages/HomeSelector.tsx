@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Store as StoreIcon, Droplets, Building2 } from "lucide-react";
+import { MessageCircle, Store as StoreIcon, Droplets } from "lucide-react";
 
 export default function HomeSelector() {
   return (
@@ -67,20 +67,7 @@ export default function HomeSelector() {
           </Card>
         </section>
 
-        <section>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Dica rápida
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Se você for administrador, acesse <Link className="underline" to="/admin">/admin</Link> para gerenciar vitrine,
-              banners e conteúdo.
-            </CardContent>
-          </Card>
-        </section>
+        {/* Removido qualquer CTA/admin da vitrine pública */}
       </main>
     </div>
   );

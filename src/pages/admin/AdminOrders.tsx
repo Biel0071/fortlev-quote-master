@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
 import type { StoreOrder, StoreOrderItem } from "@/types/store";
 
-const STATUS_OPTIONS = ["pending", "paid", "processing", "shipped", "cancelled"] as const;
+const STATUS_OPTIONS = ["aguardando", "pago", "separando", "enviado", "finalizado"] as const;
 
 export default function AdminOrders() {
   const { user, loading: sessionLoading } = useSession();
@@ -27,7 +27,7 @@ export default function AdminOrders() {
     setLoading(true);
     const { data, error } = await cloud
       .from("store_orders")
-      .select("id, status, customer_name, customer_email, customer_phone, cep, address, notes, subtotal, shipping, total, checkout_mode, payment_method, whatsapp_sent, created_at")
+      .select("id, status, customer_id, customer_name, customer_email, customer_phone, cep, address, notes, subtotal, shipping, discount, total, checkout_mode, payment_method, whatsapp_sent, created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -79,9 +79,9 @@ export default function AdminOrders() {
   if (!isAdmin) return <div className="p-6 text-destructive">Acesso negado.</div>;
 
   const badgeVariant = (s: string) => {
-    if (s === "paid") return "default";
-    if (s === "shipped") return "secondary";
-    if (s === "cancelled") return "destructive";
+    if (s === "pago") return "default";
+    if (s === "finalizado") return "secondary";
+    if (s === "enviado") return "outline";
     return "outline" as any;
   };
 
@@ -188,6 +188,12 @@ export default function AdminOrders() {
                     <span className="text-muted-foreground">Frete</span>
                     <span className="font-semibold">{formatCurrency(Number(selected.shipping))}</span>
                   </div>
+                  {Number((selected as any).discount ?? 0) > 0 ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Desconto</span>
+                      <span className="font-semibold">- {formatCurrency(Number((selected as any).discount))}</span>
+                    </div>
+                  ) : null}
                   <div className="border-t border-border pt-2 flex items-center justify-between">
                     <span className="font-semibold">Total</span>
                     <span className="text-lg font-bold">{formatCurrency(Number(selected.total))}</span>

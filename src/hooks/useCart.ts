@@ -6,6 +6,7 @@ export type CartLine = {
 };
 
 const STORAGE_KEY = "store-cart";
+const COUPON_KEY = "store-coupon";
 
 export function useCart() {
   const [lines, setLines] = useState<CartLine[]>(() => {
@@ -18,9 +19,15 @@ export function useCart() {
     }
   });
 
+  const [couponCode, setCouponCode] = useState<string>(() => localStorage.getItem(COUPON_KEY) ?? "");
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
   }, [lines]);
+
+  useEffect(() => {
+    localStorage.setItem(COUPON_KEY, couponCode);
+  }, [couponCode]);
 
   const add = (productId: string, quantity = 1) => {
     setLines((prev) => {
@@ -40,9 +47,12 @@ export function useCart() {
     setLines((prev) => prev.filter((l) => l.productId !== productId));
   };
 
-  const clear = () => setLines([]);
+  const clear = () => {
+    setLines([]);
+    setCouponCode("");
+  };
 
   const totalItems = useMemo(() => lines.reduce((acc, l) => acc + l.quantity, 0), [lines]);
 
-  return { lines, add, setQty, remove, clear, totalItems };
+  return { lines, add, setQty, remove, clear, totalItems, couponCode, setCouponCode };
 }

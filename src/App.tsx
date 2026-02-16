@@ -9,10 +9,19 @@ import ProductPage from "./pages/store/ProductPage";
 import CartPage from "./pages/store/CartPage";
 import CheckoutPage from "./pages/store/CheckoutPage";
 import StorePage from "./pages/store/StorePage";
-import AdminProducts from "./pages/admin/AdminProducts";
-import AdminCategories from "./pages/admin/AdminCategories";
+
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminProductsList from "./pages/admin/AdminProductsList";
+import AdminProductForm from "./pages/admin/AdminProductForm";
+import AdminCategoriesList from "./pages/admin/AdminCategoriesList";
+import AdminCategoryForm from "./pages/admin/AdminCategoryForm";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminPages from "./pages/admin/AdminPages";
+import AdminCustomers from "./pages/admin/AdminCustomers";
+import AdminCoupons from "./pages/admin/AdminCoupons";
+import AdminBanners from "./pages/admin/AdminBanners";
+import AdminSettings from "./pages/admin/AdminSettings";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 
@@ -40,11 +49,33 @@ const App = () => (
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/p/:slug" element={<StorePage />} />
 
-          {/* Admin */}
-          <Route path="/admin" element={<AdminProducts />} />
-          <Route path="/admin/categorias" element={<AdminCategories />} />
-          <Route path="/admin/pedidos" element={<AdminOrders />} />
-          <Route path="/admin/paginas" element={<AdminPages />} />
+          {/* Admin (protegido) */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+
+            <Route path="produtos" element={<AdminProductsList />} />
+            <Route path="produtos/novo" element={<AdminProductForm />} />
+            <Route path="produtos/editar/:id" element={<AdminProductForm />} />
+
+            <Route path="categorias" element={<AdminCategoriesList />} />
+            <Route path="categorias/nova" element={<AdminCategoryForm />} />
+            <Route path="categorias/editar/:id" element={<AdminCategoryForm />} />
+
+            <Route path="pedidos" element={<AdminOrders />} />
+            <Route path="paginas" element={<AdminPages />} />
+            <Route path="clientes" element={<AdminCustomers />} />
+            <Route path="cupons" element={<AdminCoupons />} />
+            <Route path="banners" element={<AdminBanners />} />
+            <Route path="configuracoes" element={<AdminSettings />} />
+
+            {/* rotas reservadas */}
+            <Route
+              path="ofertas"
+              element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>}
+            />
+          </Route>
+
           <Route path="/auth/login" element={<LoginPage />} />
           <Route path="/auth/signup" element={<SignupPage />} />
 

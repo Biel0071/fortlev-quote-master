@@ -16,12 +16,14 @@ export default function CartPage() {
   const lines = useMemo(() => {
     return cart.lines
       .map((l) => {
-        const p = activeProducts.find((p) => p.id === l.productId);
+        const p: any = activeProducts.find((p) => p.id === l.productId);
         if (!p) return null;
+        const effectivePrice = Number(p.promo_price ?? 0) > 0 ? Number(p.promo_price) : Number(p.price);
         return {
           ...l,
           product: p,
-          lineTotal: p.price * l.quantity,
+          effectivePrice,
+          lineTotal: effectivePrice * l.quantity,
         };
       })
       .filter(Boolean) as Array<any>;
@@ -37,26 +39,41 @@ export default function CartPage() {
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Carrinho</h1>
-            <p className="text-sm text-muted-foreground">Revise itens e quantidades.</p>
+            <p className="text-sm text-muted-foreground">Revise itens, cupom e quantidades.</p>
           </div>
           <Button asChild variant="outline"><Link to="/loja">Continuar comprando</Link></Button>
         </div>
 
         {lines.length === 0 ? (
           <Card>
-            <CardContent className="py-10 text-center text-muted-foreground">
-              Seu carrinho está vazio.
-            </CardContent>
+            <CardContent className="py-10 text-center text-muted-foreground">Seu carrinho está vazio.</CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Cupom</CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center gap-2 flex-wrap">
+                <Input
+                  placeholder="Digite seu cupom (ex.: OBRA10)"
+                  value={cart.couponCode}
+                  onChange={(e) => cart.setCouponCode(e.target.value.toUpperCase())}
+                />
+                <Button variant="outline" onClick={() => cart.setCouponCode("")}>Limpar</Button>
+              </CardContent>
+            </Card>
+
             {lines.map((l) => (
               <Card key={l.productId}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">{l.product.name}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="text-sm text-muted-foreground">{formatCurrency(l.product.price)} / {l.product.unit ?? "un"}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {formatCurrency(l.effectivePrice)} / {l.product.unit ?? "un"}
+                    {Number(l.product.promo_price ?? 0) > 0 ? <span className="ml-2 text-xs">(promo)</span> : null}
+                  </div>
                   <div className="flex items-center gap-2">
                     <Input
                       className="w-24"

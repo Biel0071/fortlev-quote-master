@@ -49,7 +49,7 @@ export function StoreSupportChat({
   const [chatOpen, setChatOpen] = useState(false);
 
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "assistant", content: "Oi! Posso te ajudar a escolher produtos, frete e entrega. Qual sua dúvida?" },
+    { role: "assistant", content: "Oi 👋 posso te ajudar a comprar ou acompanhar pedido?" },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -71,7 +71,7 @@ export function StoreSupportChat({
     const t = window.setTimeout(() => {
       if (!chatOpen) setPromptOpen(true);
       sessionStorage.setItem(STORAGE_KEY, "1");
-    }, 9000);
+    }, 8000);
 
     return () => window.clearTimeout(t);
   }, [canShowPrompt, chatOpen]);
@@ -108,7 +108,7 @@ export function StoreSupportChat({
               Precisa de ajuda?
             </DialogTitle>
             <DialogDescription>
-              Posso tirar dúvidas rápidas sobre produtos, entrega e pagamento.
+              Oi 👋 posso te ajudar a comprar ou acompanhar pedido?
             </DialogDescription>
           </DialogHeader>
 
@@ -117,22 +117,31 @@ export function StoreSupportChat({
               onClick={() => {
                 setPromptOpen(false);
                 setChatOpen(true);
+                // dica rápida: ofertas
+                setInput("Quero ver as ofertas da semana");
               }}
-              className="gap-2"
             >
-              <MessageCircle className="h-4 w-4" />
-              Continuar no chat
+              Ver ofertas
             </Button>
 
-            <Button asChild variant="outline" className="gap-2" disabled={!waHref}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setPromptOpen(false);
+                setChatOpen(true);
+                setInput("Quero calcular frete. Meu CEP é ");
+              }}
+            >
+              Calcular frete
+            </Button>
+
+            <Button asChild variant="outline" disabled={!waHref}>
               <a href={waHref || "#"} target="_blank" rel="noreferrer">
-                <MessageCircle className="h-4 w-4" />
-                Chamar no WhatsApp
+                Falar no WhatsApp
               </a>
             </Button>
 
-            <Button variant="ghost" onClick={() => setPromptOpen(false)} className="gap-2">
-              <X className="h-4 w-4" />
+            <Button variant="ghost" onClick={() => setPromptOpen(false)}>
               Agora não
             </Button>
           </div>
@@ -195,7 +204,7 @@ export function StoreSupportChat({
       </Dialog>
 
       {/* Small launcher button (mobile) */}
-      <div className="fixed right-4 z-50 md:hidden bottom-[6.5rem]">
+      <div className="fixed left-4 z-50 md:hidden bottom-[6.5rem]">
         <Button
           variant="secondary"
           size="icon"

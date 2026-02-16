@@ -47,6 +47,10 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        promo: {
+          DEFAULT: "hsl(var(--promo))",
+          foreground: "hsl(var(--promo-foreground))",
+        },
         whatsapp: {
           DEFAULT: "hsl(var(--whatsapp))",
           foreground: "hsl(var(--whatsapp-foreground))",

@@ -24,12 +24,12 @@ export function StoreProductCard({
   const imgUrl = publicImageUrl("product-images", imgPath);
 
   return (
-    <Card className="overflow-hidden rounded-2xl glass-card card-hover">
+    <Card className="overflow-hidden rounded-2xl bg-card shadow-sm hover:shadow-md transition-shadow">
       <div className="aspect-[4/3] bg-muted/20 border-b border-border overflow-hidden">
         {imgUrl ? (
           <img src={imgUrl} alt={product?.name ?? "Produto"} className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <div className="h-full w-full fortlev-gradient opacity-35" />
+          <div className="h-full w-full bg-muted" />
         )}
       </div>
 

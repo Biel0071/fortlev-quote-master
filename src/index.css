@@ -20,13 +20,17 @@
     --popover: 0 0% 100%;
     --popover-foreground: 210 50% 10%;
 
-    /* Navy Blue - Primary */
-    --primary: 210 80% 15%;
-    --primary-foreground: 45 100% 97%;
+    /* Primary (botões azul escuro) */
+    --primary: 214 85% 18%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Yellow Accent */
+    /* Accent (amarelo - apoio) */
     --accent: 45 100% 48%;
-    --accent-foreground: 210 80% 15%;
+    --accent-foreground: 214 85% 12%;
+
+    /* Promo badge (laranja) */
+    --promo: 24 95% 52%;
+    --promo-foreground: 0 0% 100%;
 
     --secondary: 210 20% 94%;
     --secondary-foreground: 210 50% 20%;
@@ -39,7 +43,7 @@
 
     --border: 210 20% 88%;
     --input: 210 20% 88%;
-    --ring: 45 100% 48%;
+    --ring: 214 85% 38%;
 
     --radius: 0.625rem;
 
@@ -80,8 +84,8 @@
     --popover: 210 50% 12%;
     --popover-foreground: 210 20% 95%;
 
-    --primary: 45 100% 48%;
-    --primary-foreground: 210 80% 10%;
+    --primary: 214 85% 58%;
+    --primary-foreground: 214 85% 10%;
 
     --secondary: 210 40% 18%;
     --secondary-foreground: 210 20% 90%;
@@ -91,6 +95,9 @@
 
     --accent: 45 100% 48%;
     --accent-foreground: 210 80% 10%;
+
+    --promo: 24 95% 52%;
+    --promo-foreground: 0 0% 100%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;

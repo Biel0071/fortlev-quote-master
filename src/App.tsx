@@ -55,10 +55,11 @@ const App = () => (
 
           {/* E-commerce */}
           <Route path="/loja" element={<StoreCatalog />} />
-          <Route path="/produto/:slug" element={<ProductPage />} />
+          <Route path="/produto/:id" element={<ProductPage />} />
           <Route path="/carrinho" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/p/:slug" element={<StorePage />} />
+          <Route path="/institucional/:slug" element={<StorePage />} />
 
           {/* Área do cliente */}
           <Route path="/conta" element={<AccountPage />} />

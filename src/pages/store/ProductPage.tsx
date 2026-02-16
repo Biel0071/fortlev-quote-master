@@ -9,11 +9,11 @@ import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { formatCurrency } from "@/utils/formatters";
 
 export default function ProductPage() {
-  const { slug } = useParams();
+  const { id } = useParams();
   const cart = useCart();
   const { activeProducts, loading } = useStoreProducts();
 
-  const product = useMemo(() => activeProducts.find((p) => p.id === slug), [activeProducts, slug]);
+  const product = useMemo(() => activeProducts.find((p) => p.id === id), [activeProducts, id]);
 
   return (
     <div className="min-h-screen bg-background">

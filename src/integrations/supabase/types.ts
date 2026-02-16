@@ -818,6 +818,7 @@ export type Database = {
           best_seller: boolean
           category: string | null
           category_id: string | null
+          clicks: number
           created_at: string
           description: string | null
           featured: boolean
@@ -826,17 +827,20 @@ export type Database = {
           name: string
           price: number
           promo_price: number
+          sales: number
           sku: string | null
           source_id: string | null
           stock: number
           unit: string | null
           updated_at: string
+          views: number
         }
         Insert: {
           active?: boolean
           best_seller?: boolean
           category?: string | null
           category_id?: string | null
+          clicks?: number
           created_at?: string
           description?: string | null
           featured?: boolean
@@ -845,17 +849,20 @@ export type Database = {
           name: string
           price?: number
           promo_price?: number
+          sales?: number
           sku?: string | null
           source_id?: string | null
           stock?: number
           unit?: string | null
           updated_at?: string
+          views?: number
         }
         Update: {
           active?: boolean
           best_seller?: boolean
           category?: string | null
           category_id?: string | null
+          clicks?: number
           created_at?: string
           description?: string | null
           featured?: boolean
@@ -864,11 +871,13 @@ export type Database = {
           name?: string
           price?: number
           promo_price?: number
+          sales?: number
           sku?: string | null
           source_id?: string | null
           stock?: number
           unit?: string | null
           updated_at?: string
+          views?: number
         }
         Relationships: [
           {

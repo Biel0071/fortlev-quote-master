@@ -1,7 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
@@ -9,17 +6,18 @@ import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useHomeContent } from "@/hooks/useHomeContent";
 import { HomeHeroCarousel } from "@/components/store/home/HomeHeroCarousel";
+import { HomeCategoriesCarousel } from "@/components/store/home/HomeCategoriesCarousel";
 import { HomeBenefitsBar } from "@/components/store/home/HomeBenefitsBar";
-import { HomeDepartmentsBar } from "@/components/store/home/HomeDepartmentsBar";
+import { HomeFeaturedProducts } from "@/components/store/home/HomeFeaturedProducts";
 import { HomeWeeklyOffers } from "@/components/store/home/HomeWeeklyOffers";
-import { HomeFeaturedCategories } from "@/components/store/home/HomeFeaturedCategories";
-import { HomeCategorySection } from "@/components/store/home/HomeCategorySection";
+import { HomeFeaturedCategoriesGrid } from "@/components/store/home/HomeFeaturedCategoriesGrid";
 import { HomePolicies } from "@/components/store/home/HomePolicies";
 import { CartDrawer } from "@/components/store/CartDrawer";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { cloud } from "@/lib/cloud";
 import { pickHomeSeo, useDynamicSeo } from "@/hooks/useDynamicSeo";
 import { publicImageUrl } from "@/utils/storage";
+
 
 export default function StoreHome() {
   const cart = useCart();
@@ -33,59 +31,14 @@ export default function StoreHome() {
   const ogImageUrl = useMemo(() => publicImageUrl("banner-images", home.seo?.og_image_path ?? null), [home.seo?.og_image_path]);
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
-
-  // Map products by category for fast rendering
-  const productsByCategoryId = useMemo(() => {
-    const map = new Map<string, any[]>();
-    for (const c of activeCategories) map.set(c.id, []);
-    for (const p of activeProducts as any[]) {
-      const cid = p.category_id as string | null | undefined;
-      if (!cid) continue;
-      if (!map.has(cid)) continue;
-      map.set(cid, [...(map.get(cid) ?? []), p]);
-    }
-    return map;
-  }, [activeCategories, activeProducts]);
-
-  // Determine which category sections to show:
-  // - If admin configured home_sections, follow that order.
-  // - Else fallback to all active categories.
-  const categorySections = useMemo(() => {
-    const configured = (home.sections ?? []).filter((s) => Boolean(s.category_id));
-    const base =
-      configured.length > 0
-        ? configured
-        : activeCategories.map((c, idx) => ({
-            id: `fallback-${c.id}`,
-            category_id: c.id,
-            sort_order: idx,
-            title_override: null,
-            subtitle_override: null,
-            active: true,
-          }));
-
-    return base
-      .slice()
-      .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-      .map((s: any) => {
-        const cat = activeCategories.find((c) => c.id === s.category_id);
-        if (!cat) return null;
-        const products = (productsByCategoryId.get(cat.id) ?? []).slice(0, 8);
-        return {
-          section: s,
-          category: cat,
-          products,
-        };
-      })
-      .filter(Boolean) as Array<any>;
-  }, [home.sections, activeCategories, productsByCategoryId]);
+  const loading = productsLoading || categoriesLoading || home.loading;
 
   const onAdd = (productId: string, qty: number) => {
     cart.add(productId, qty);
     setCartOpen(true);
   };
 
-  // Pull published pages for footer links (CMS already exists)
+  // Pull published pages for footer links
   const [pageLinks, setPageLinks] = useState<Array<{ title: string; slug: string }>>([]);
   useEffect(() => {
     cloud
@@ -96,7 +49,6 @@ export default function StoreHome() {
       .then(({ data }) => setPageLinks(((data ?? []) as any).map((x: any) => ({ title: x.title, slug: x.slug }))));
   }, []);
 
-  const loading = productsLoading || categoriesLoading || home.loading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,71 +57,29 @@ export default function StoreHome() {
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-24 md:pb-10 space-y-10">
-        {/* 1) HERO / BANNERS ROTATIVOS */}
+        {/* 1) HERO */}
         <HomeHeroCarousel banners={home.banners} loading={home.loading} />
 
-        {/* 2) DEPARTAMENTOS (misto: links + categorias) */}
-        <HomeDepartmentsBar loading={home.loading} departments={home.departments as any} />
+        {/* 2) CATEGORIAS (carrossel) */}
+        <HomeCategoriesCarousel categories={activeCategories as any} />
 
-        {/* 3) BARRA DE VANTAGENS */}
+        {/* 3) BENEFÍCIOS */}
         <HomeBenefitsBar benefits={home.benefits} />
 
-        {/* 4) OFERTAS DA SEMANA (curado + fallback promo_price) */}
+        {/* 4) PRODUTOS EM DESTAQUE (híbrido: métricas + flags) */}
+        <HomeFeaturedProducts loading={loading} products={activeProducts as any} onAdd={onAdd} />
+
+        {/* 5) OFERTAS DA SEMANA (maior % off, com fallback) */}
         <HomeWeeklyOffers loading={loading} offers={home.offers as any} products={activeProducts as any} onAdd={onAdd} />
 
-        {/* 5) CATEGORIAS EM DESTAQUE */}
-        {featuredCategories.length === 0 ? (
-          <Card>
-            <CardContent className="py-6 text-sm text-muted-foreground">
-              Cadastre e marque categorias como <span className="font-medium">Destaque</span> em{" "}
-              <Link className="underline" to="/admin/categorias">
-                /admin/categorias
-              </Link>
-              .
-            </CardContent>
-          </Card>
-        ) : (
-          <HomeFeaturedCategories categories={featuredCategories as any} />
-        )}
+        {/* 6) CATEGORIAS EM DESTAQUE (grid) */}
+        <HomeFeaturedCategoriesGrid categories={featuredCategories as any} />
 
-        {/* 6) PRODUTOS POR CATEGORIA */}
-        <section className="space-y-4">
-          <header className="flex items-end justify-between gap-3 flex-wrap">
-            <div>
-              <h2 className="text-xl font-semibold">Produtos por categoria</h2>
-              <p className="text-sm text-muted-foreground">Escolha a quantidade e adicione ao carrinho sem sair da Home.</p>
-            </div>
-            <Button asChild variant="ghost">
-              <Link to="/loja">Ver tudo</Link>
-            </Button>
-          </header>
-
-          {loading ? (
-            <div className="text-muted-foreground">Carregando vitrine...</div>
-          ) : categorySections.length === 0 ? (
-            <Card>
-              <CardContent className="py-6 text-sm text-muted-foreground">
-                Não encontrei produtos com categoria vinculada. Em{" "}
-                <Link className="underline" to="/admin/produtos">
-                  /admin/produtos
-                </Link>
-                , vincule a categoria do produto.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-10">
-              {categorySections.map((x) => (
-                <HomeCategorySection key={x.category.id} category={x.category} products={x.products} onAdd={onAdd} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* 7) POLÍTICAS DA LOJA */}
+        {/* 7) POLÍTICAS */}
         <HomePolicies policies={home.policies} />
       </main>
 
-      {/* 8) RODAPÉ COMPLETO */}
+      {/* 8) RODAPÉ */}
       <StoreFooter footer={home.footer} pageLinks={pageLinks} />
     </div>
   );

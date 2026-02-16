@@ -39,14 +39,40 @@ export default function StoreCatalog() {
         ? null
         : (activeCategories.find((c) => c.slug === selectedSlug)?.id ?? null);
 
-    return activeProducts.filter((p: any) => {
-      if (selectedCategoryId) {
-        if ((p.category_id ?? null) !== selectedCategoryId) return false;
-      }
-      if (!search) return true;
-      return p.name.toLowerCase().includes(search) || (p.description ?? "").toLowerCase().includes(search);
-    });
-  }, [activeProducts, q, selectedSlug, activeCategories]);
+    return activeProducts
+      .filter((p: any) => {
+        if (selectedCategoryId) {
+          if ((p.category_id ?? null) !== selectedCategoryId) return false;
+        }
+
+        // promo filter
+        const promoOnly = searchParams.get("promo") === "1";
+        if (promoOnly) {
+          const price = Number(p?.price ?? 0);
+          const promo = Number(p?.promo_price ?? 0);
+          if (!(promo > 0 && promo < price)) return false;
+        }
+
+        if (!search) return true;
+        return p.name.toLowerCase().includes(search) || (p.description ?? "").toLowerCase().includes(search);
+      })
+      .slice()
+      .sort((a: any, b: any) => {
+        const sort = (searchParams.get("sort") ?? "").toLowerCase();
+        if (sort === "popular") {
+          const av = Number(a.views ?? 0);
+          const bv = Number(b.views ?? 0);
+          if (bv !== av) return bv - av;
+          const ac = Number(a.clicks ?? 0);
+          const bc = Number(b.clicks ?? 0);
+          if (bc !== ac) return bc - ac;
+          const as = Number(a.sales ?? 0);
+          const bs = Number(b.sales ?? 0);
+          if (bs !== as) return bs - as;
+        }
+        return String(a.name ?? "").localeCompare(String(b.name ?? ""));
+      });
+  }, [activeProducts, q, selectedSlug, activeCategories, searchParams]);
 
   return (
     <div className="min-h-screen bg-background">

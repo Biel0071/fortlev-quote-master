@@ -12,6 +12,7 @@ import StorePage from "./pages/store/StorePage";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminHome from "./pages/admin/AdminHome";
 import AdminProductsList from "./pages/admin/AdminProductsList";
 import AdminProductForm from "./pages/admin/AdminProductForm";
 import AdminCategoriesList from "./pages/admin/AdminCategoriesList";
@@ -53,6 +54,7 @@ const App = () => (
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="home" element={<AdminHome />} />
 
             <Route path="produtos" element={<AdminProductsList />} />
             <Route path="produtos/novo" element={<AdminProductForm />} />
@@ -70,10 +72,7 @@ const App = () => (
             <Route path="configuracoes" element={<AdminSettings />} />
 
             {/* rotas reservadas */}
-            <Route
-              path="ofertas"
-              element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>}
-            />
+            <Route path="ofertas" element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>} />
           </Route>
 
           <Route path="/auth/login" element={<LoginPage />} />

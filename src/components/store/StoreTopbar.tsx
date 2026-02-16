@@ -3,7 +3,13 @@ import { ShoppingCart, Shield, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 
-export function StoreTopbar({ cartCount }: { cartCount: number }) {
+export function StoreTopbar({
+  cartCount,
+  onCartClick,
+}: {
+  cartCount: number;
+  onCartClick?: () => void;
+}) {
   const { isAdmin } = useIsAdmin();
 
   return (
@@ -25,8 +31,8 @@ export function StoreTopbar({ cartCount }: { cartCount: number }) {
             </Link>
           </Button>
 
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/carrinho" className="gap-2">
+          {onCartClick ? (
+            <Button variant="ghost" size="sm" className="gap-2" onClick={onCartClick}>
               <ShoppingCart className="h-4 w-4" />
               <span className="hidden sm:inline">Carrinho</span>
               {cartCount > 0 && (
@@ -34,8 +40,20 @@ export function StoreTopbar({ cartCount }: { cartCount: number }) {
                   {cartCount}
                 </span>
               )}
-            </Link>
-          </Button>
+            </Button>
+          ) : (
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/carrinho" className="gap-2">
+                <ShoppingCart className="h-4 w-4" />
+                <span className="hidden sm:inline">Carrinho</span>
+                {cartCount > 0 && (
+                  <span className="ml-1 rounded-full bg-accent text-accent-foreground px-2 py-0.5 text-xs font-semibold">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+            </Button>
+          )}
 
           {isAdmin && (
             <Button asChild variant="outline" size="sm" className="gap-2">

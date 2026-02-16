@@ -1,5 +1,15 @@
 import { Outlet, Navigate, useNavigate } from "react-router-dom";
-import { Package, LayoutGrid, Tags, ShoppingBag, Users, TicketPercent, Image as ImageIcon, Settings } from "lucide-react";
+import {
+  Package,
+  LayoutGrid,
+  Tags,
+  ShoppingBag,
+  Users,
+  TicketPercent,
+  Image as ImageIcon,
+  Settings,
+  Home,
+} from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +31,7 @@ import { useSession } from "@/hooks/useSession";
 
 const items = [
   { title: "Dashboard", url: "/admin/dashboard", icon: LayoutGrid },
+  { title: "Home", url: "/admin/home", icon: Home },
   { title: "Produtos", url: "/admin/produtos", icon: Package },
   { title: "Categorias", url: "/admin/categorias", icon: Tags },
   { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag },

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
+import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
@@ -44,8 +45,9 @@ export default function StoreCatalog() {
   return (
     <div className="min-h-screen bg-background">
       <StoreTopbar cartCount={cart.totalItems} />
+      <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
         <section className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute inset-0 opacity-20 fortlev-gradient" />

@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
+import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
+import { useStoreContact } from "@/hooks/useStoreContact";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { cloud } from "@/lib/cloud";
@@ -13,7 +15,6 @@ import { calcShipping } from "@/utils/shipping";
 import { formatCurrency } from "@/utils/formatters";
 import { fetchCepData, formatAddress } from "@/utils/cepService";
 
-const WHATSAPP_PHONE = "31973484203";
 const GATEWAY_LIMIT = 1000;
 
 function buildWhatsAppText(lines: Array<{ name: string; qty: number; unit: string; total: number }>, total: number, cep?: string, address?: string) {
@@ -36,6 +37,7 @@ function buildWhatsAppText(lines: Array<{ name: string; qty: number; unit: strin
 export default function CheckoutPage() {
   const cart = useCart();
   const { activeProducts } = useStoreProducts();
+  const contact = useStoreContact();
 
   const [cep, setCep] = useState("");
   const [address, setAddress] = useState<string>("");
@@ -173,8 +175,10 @@ export default function CheckoutPage() {
         .filter(Boolean)
         .join("\n"),
     );
+    const phoneDigits = contact.phoneDigits;
+    if (!phoneDigits) throw new Error("WhatsApp da loja não configurado.");
 
-    const url = `https://api.whatsapp.com/send?phone=55${WHATSAPP_PHONE}&text=${text}`;
+    const url = `https://api.whatsapp.com/send?phone=55${phoneDigits}&text=${text}`;
     window.open(url, "_blank");
     cart.clear();
   };
@@ -182,8 +186,9 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-background">
       <StoreTopbar cartCount={cart.totalItems} />
+      <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Checkout</h1>
@@ -271,11 +276,11 @@ export default function CheckoutPage() {
                   <span className="text-xl font-bold">{formatCurrency(total)}</span>
                 </div>
 
-                {mode === "whatsapp" ? (
-                  <Button className="w-full" onClick={handleWhatsApp} disabled={placing}>
-                    {placing ? "Gerando pedido..." : "Finalizar no WhatsApp"}
-                  </Button>
-                ) : (
+                 {mode === "whatsapp" ? (
+                   <Button className="w-full" onClick={handleWhatsApp} disabled={placing || !contact.phoneDigits}>
+                     {placing ? "Gerando pedido..." : "Finalizar no WhatsApp"}
+                   </Button>
+                 ) : (
                   <Button className="w-full" disabled title="Integração Allow Pay será adicionada na próxima etapa">Pagar via PIX (em breve)</Button>
                 )}
 

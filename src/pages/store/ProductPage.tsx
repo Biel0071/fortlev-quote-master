@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
+import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { formatCurrency } from "@/utils/formatters";
@@ -17,8 +18,9 @@ export default function ProductPage() {
   return (
     <div className="min-h-screen bg-background">
       <StoreTopbar cartCount={cart.totalItems} />
+      <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10">
         <Button asChild variant="ghost" className="mb-4"><Link to="/loja">← Voltar</Link></Button>
 
         {loading ? (

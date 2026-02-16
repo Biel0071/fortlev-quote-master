@@ -9,6 +9,9 @@ import ProductPage from "./pages/store/ProductPage";
 import CartPage from "./pages/store/CartPage";
 import CheckoutPage from "./pages/store/CheckoutPage";
 import StorePage from "./pages/store/StorePage";
+import AccountPage from "./pages/account/AccountPage";
+import OrdersPage from "./pages/account/OrdersPage";
+import TrackingPage from "./pages/account/TrackingPage";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -50,12 +53,17 @@ const App = () => (
           {/* Página seletora (mantida) */}
           <Route path="/selecionar" element={<HomeSelector />} />
 
-          {/* E-commerce (rotas existentes) */}
+          {/* E-commerce */}
           <Route path="/loja" element={<StoreCatalog />} />
-          <Route path="/produto/:id" element={<ProductPage />} />
+          <Route path="/produto/:slug" element={<ProductPage />} />
           <Route path="/carrinho" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/p/:slug" element={<StorePage />} />
+
+          {/* Área do cliente */}
+          <Route path="/conta" element={<AccountPage />} />
+          <Route path="/pedidos" element={<OrdersPage />} />
+          <Route path="/rastreio/:id" element={<TrackingPage />} />
 
           {/* Admin (protegido) */}
           <Route path="/admin" element={<AdminLayout />}>

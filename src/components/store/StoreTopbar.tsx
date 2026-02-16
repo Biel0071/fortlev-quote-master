@@ -1,11 +1,35 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Shield, Info, Store as StoreIcon, User, Search, MessageCircle } from "lucide-react";
+import {
+  ShoppingCart,
+  User,
+  Search,
+  Package,
+  Bot,
+  MoreVertical,
+  Tag,
+  Flame,
+  BadgePercent,
+  Phone,
+  Truck,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { useStoreContact } from "@/hooks/useStoreContact";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useHomeContent } from "@/hooks/useHomeContent";
+import { useStoreContact } from "@/hooks/useStoreContact";
 import storeLogo from "@/assets/store-logo-materiais.png";
 
 export function StoreTopbar({
@@ -15,8 +39,8 @@ export function StoreTopbar({
   cartCount: number;
   onCartClick?: () => void;
 }) {
-  const { isAdmin } = useIsAdmin();
   const nav = useNavigate();
+  const { activeCategories } = useStoreCategories();
   const contact = useStoreContact();
   const { footer } = useHomeContent();
 
@@ -31,22 +55,23 @@ export function StoreTopbar({
   const brandLabel = footer?.store_name || "Materiais de Construção";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-3">
-        {/* Logo / Nome */}
+    <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+        {/* Esquerda: Logo + Nome */}
         <Link to="/materiais" className="flex items-center gap-2 min-w-0">
           <img
             src={storeLogo}
             alt={`${brandLabel} - logo`}
-            className="h-8 w-8 shrink-0 rounded-md"
+            className="h-9 w-9 shrink-0 rounded-lg"
             loading="eager"
           />
-          <span className="font-semibold tracking-tight whitespace-nowrap truncate max-w-[11rem] sm:max-w-[16rem]">
-            {brandLabel}
-          </span>
+          <div className="min-w-0 leading-tight hidden sm:block">
+            <div className="font-semibold tracking-tight truncate max-w-[14rem]">{brandLabel}</div>
+            <div className="text-xs text-muted-foreground truncate">Compre rápido • Entrega • Retire na loja</div>
+          </div>
         </Link>
 
-        {/* Busca central */}
+        {/* Centro: Busca grande */}
         <div className="flex-1 min-w-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -54,7 +79,7 @@ export function StoreTopbar({
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar produtos..."
-              className="pl-9"
+              className="pl-9 h-11"
               aria-label="Buscar produtos"
               onKeyDown={(e) => {
                 if (e.key === "Enter") submitSearch();
@@ -63,47 +88,45 @@ export function StoreTopbar({
           </div>
         </div>
 
-        {/* Ações */}
+        {/* Direita: ícones */}
         <nav className="flex items-center gap-1">
-          <Button asChild variant="ghost" size="icon" aria-label="Ir para lojas">
-            <Link to="/loja">
-              <StoreIcon className="h-4 w-4" />
+          <Button asChild variant="ghost" size="icon" aria-label="Conta">
+            <Link to="/conta">
+              <User className="h-5 w-5" />
             </Link>
           </Button>
 
-          <Button asChild variant="ghost" size="icon" aria-label="Minha conta">
-            <Link to="/auth/login">
-              <User className="h-4 w-4" />
+          <Button asChild variant="ghost" size="icon" aria-label="Pedidos">
+            <Link to="/pedidos">
+              <Package className="h-5 w-5" />
             </Link>
           </Button>
 
-          <Button asChild variant="ghost" size="icon" aria-label="Institucional">
-            <Link to="/p/politica-de-privacidade">
-              <Info className="h-4 w-4" />
-            </Link>
-          </Button>
-
-          <Button asChild variant="ghost" size="icon" aria-label="Chamar no WhatsApp" disabled={!waHref}>
-            <a href={waHref || "#"} target="_blank" rel="noreferrer">
-              <MessageCircle className="h-4 w-4" />
-            </a>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Chat"
+            onClick={() => window.dispatchEvent(new CustomEvent("store:chat-open"))}
+          >
+            <Bot className="h-5 w-5" />
           </Button>
 
           {onCartClick ? (
-            <Button variant="ghost" size="icon" onClick={onCartClick} aria-label="Abrir carrinho">
-              <ShoppingCart className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={onCartClick} aria-label="Carrinho">
+              <ShoppingCart className="h-5 w-5" />
               {cartCount > 0 && (
-                <span className="ml-1 rounded-full bg-accent text-accent-foreground px-2 py-0.5 text-xs font-semibold">
+                <span className="ml-1 rounded-full bg-promo text-promo-foreground px-2 py-0.5 text-xs font-semibold">
                   {cartCount}
                 </span>
               )}
             </Button>
           ) : (
-            <Button asChild variant="ghost" size="icon" aria-label="Ver carrinho">
+            <Button asChild variant="ghost" size="icon" aria-label="Carrinho">
               <Link to="/carrinho">
-                <ShoppingCart className="h-4 w-4" />
+                <ShoppingCart className="h-5 w-5" />
                 {cartCount > 0 && (
-                  <span className="ml-1 rounded-full bg-accent text-accent-foreground px-2 py-0.5 text-xs font-semibold">
+                  <span className="ml-1 rounded-full bg-promo text-promo-foreground px-2 py-0.5 text-xs font-semibold">
                     {cartCount}
                   </span>
                 )}
@@ -111,13 +134,68 @@ export function StoreTopbar({
             </Button>
           )}
 
-          {isAdmin && (
-            <Button asChild variant="outline" size="icon" aria-label="Admin">
-              <Link to="/admin">
-                <Shield className="h-4 w-4" />
-              </Link>
-            </Button>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Mais">
+                <MoreVertical className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Explorar</DropdownMenuLabel>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Tag className="mr-2 h-4 w-4" />
+                  Categorias
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="max-h-[60vh] overflow-auto">
+                  {activeCategories.slice(0, 40).map((c) => (
+                    <DropdownMenuItem key={c.id} asChild>
+                      <Link to={`/loja?categoria=${encodeURIComponent(c.slug)}`}>{c.name}</Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuItem asChild>
+                <Link to="/#ofertas">
+                  <BadgePercent className="mr-2 h-4 w-4" />
+                  Ofertas
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem asChild>
+                <Link to="/loja?q=">
+                  <Flame className="mr-2 h-4 w-4" />
+                  Mais vendidos
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Ajuda</DropdownMenuLabel>
+
+              <DropdownMenuItem asChild>
+                <Link to="/p/entrega">
+                  <Truck className="mr-2 h-4 w-4" />
+                  Entrega
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem asChild>
+                <Link to="/p/politica-de-privacidade">
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  Política
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem asChild disabled={!waHref}>
+                <a href={waHref || "#"} target="_blank" rel="noreferrer">
+                  <Phone className="mr-2 h-4 w-4" />
+                  Contato (WhatsApp)
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
       </div>
     </header>

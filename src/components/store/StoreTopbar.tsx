@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Shield } from "lucide-react";
+import { ShoppingCart, Shield, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 export function StoreTopbar({ cartCount }: { cartCount: number }) {
+  const { isAdmin } = useIsAdmin();
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
@@ -14,6 +17,14 @@ export function StoreTopbar({ cartCount }: { cartCount: number }) {
           <Button asChild variant="ghost" size="sm">
             <Link to="/loja">Loja</Link>
           </Button>
+
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/p/politica-de-privacidade" className="gap-2">
+              <Info className="h-4 w-4" />
+              <span className="hidden sm:inline">Institucional</span>
+            </Link>
+          </Button>
+
           <Button asChild variant="ghost" size="sm">
             <Link to="/carrinho" className="gap-2">
               <ShoppingCart className="h-4 w-4" />
@@ -26,12 +37,14 @@ export function StoreTopbar({ cartCount }: { cartCount: number }) {
             </Link>
           </Button>
 
-          <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link to="/admin">
-              <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Admin</span>
-            </Link>
-          </Button>
+          {isAdmin && (
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <Link to="/admin">
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">Admin</span>
+              </Link>
+            </Button>
+          )}
         </nav>
       </div>
     </header>

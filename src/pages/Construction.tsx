@@ -135,6 +135,9 @@ const ConstructionPage = () => {
       showClientData,
       createdAt: new Date(),
       status: 'pending',
+      branding: {
+        showBrand: false,
+      },
     };
   };
 

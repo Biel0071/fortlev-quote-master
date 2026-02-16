@@ -7,6 +7,11 @@ import { getProductFullDescription } from './taxCalculator';
 export const generatePDF = (quotation: Quotation): jsPDF => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+
+  const branding = quotation.branding ?? {
+    showBrand: true,
+    brandText: 'FORTLEV',
+  };
   
   // Colors
   const primaryBlue = [0, 82, 147] as const;
@@ -29,11 +34,13 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   doc.setFont('helvetica', 'bold');
   doc.text('ORÇAMENTO OFICIAL', 15, 22);
   
-  // FORTLEV text logo
-  doc.setFontSize(22);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...primaryBlue);
-  doc.text('FORTLEV', pageWidth - 15, 22, { align: 'right' });
+  // Brand text (optional)
+  if (branding.showBrand) {
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryBlue);
+    doc.text(branding.brandText || 'FORTLEV', pageWidth - 15, 22, { align: 'right' });
+  }
   
   // Company info section
   let yPos = 38;
@@ -375,7 +382,9 @@ const generateCanvasPNG = (quotation: Quotation) => {
   ctx.fillStyle = primaryBlue;
   ctx.font = 'bold 28px Arial, sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('FORTLEV', canvas.width - padding, 38);
+  if ((quotation.branding ?? { showBrand: true }).showBrand) {
+    ctx.fillText(quotation.branding?.brandText || 'FORTLEV', canvas.width - padding, 38);
+  }
   ctx.textAlign = 'left';
   
   // Company info

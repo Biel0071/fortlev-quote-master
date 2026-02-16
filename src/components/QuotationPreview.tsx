@@ -64,6 +64,11 @@ export const QuotationPreview = ({
     downPayment: '',
   };
 
+  const branding = quotation.branding ?? {
+    showBrand: true,
+    brandText: 'FORTLEV',
+  };
+
   const formatDate = (date: Date) => {
     return format(new Date(date), "dd/MM/yyyy", { locale: ptBR });
   };
@@ -85,9 +90,11 @@ export const QuotationPreview = ({
               <div>
                 <h1 className="text-2xl font-bold text-primary italic">ORÇAMENTO OFICIAL</h1>
               </div>
-              <div className="text-right">
-                <h2 className="text-2xl font-bold text-primary">FORTLEV</h2>
-              </div>
+              {branding.showBrand && (
+                <div className="text-right">
+                  <h2 className="text-2xl font-bold text-primary">{branding.brandText || 'FORTLEV'}</h2>
+                </div>
+              )}
             </div>
 
             {/* Company Info */}

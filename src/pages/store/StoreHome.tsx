@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
+import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
@@ -74,14 +75,14 @@ export default function StoreHome() {
 
   // Pull published pages for footer links (CMS already exists)
   const [pageLinks, setPageLinks] = useState<Array<{ title: string; slug: string }>>([]);
-  useState(() => {
+  useEffect(() => {
     cloud
       .from("store_pages")
       .select("title, slug, sort_order")
       .eq("published", true)
       .order("sort_order", { ascending: true })
       .then(({ data }) => setPageLinks(((data ?? []) as any).map((x: any) => ({ title: x.title, slug: x.slug }))));
-  });
+  }, []);
 
   const loading = productsLoading || categoriesLoading || home.loading;
 
@@ -89,8 +90,9 @@ export default function StoreHome() {
     <div className="min-h-screen bg-background">
       <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
+      <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-10">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10 pb-24 md:pb-10 space-y-10">
         {/* 1) HERO / BANNERS ROTATIVOS */}
         <HomeHeroCarousel banners={home.banners} loading={home.loading} />
 

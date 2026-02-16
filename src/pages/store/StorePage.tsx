@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
+import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStorePages } from "@/hooks/useStorePages";
 import { Button } from "@/components/ui/button";
@@ -39,8 +40,9 @@ export default function StorePage() {
   return (
     <div className="min-h-screen bg-background">
       <StoreTopbar cartCount={cart.totalItems} />
+      <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
         <Button asChild variant="ghost" className="w-fit">
           <Link to="/">← Voltar para a loja</Link>
         </Button>

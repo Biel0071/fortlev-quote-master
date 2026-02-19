@@ -29,6 +29,42 @@ export type Database = {
         }
         Relationships: []
       }
+      construction_catalog_products: {
+        Row: {
+          active: boolean
+          base_price: number
+          category: string
+          created_at: string
+          id: string
+          legacy_id: string | null
+          name: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          base_price?: number
+          category?: string
+          created_at?: string
+          id?: string
+          legacy_id?: string | null
+          name: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          base_price?: number
+          category?: string
+          created_at?: string
+          id?: string
+          legacy_id?: string | null
+          name?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_profiles: {
         Row: {
           address_line: string | null
@@ -62,6 +98,51 @@ export type Database = {
           updated_at?: string
           user_id?: string
           whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      fortlev_catalog_products: {
+        Row: {
+          active: boolean
+          base_price: number
+          capacity: number
+          created_at: string
+          diameter: string
+          height: string
+          id: string
+          legacy_id: string | null
+          name: string
+          type: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          base_price?: number
+          capacity?: number
+          created_at?: string
+          diameter?: string
+          height?: string
+          id?: string
+          legacy_id?: string | null
+          name: string
+          type?: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          base_price?: number
+          capacity?: number
+          created_at?: string
+          diameter?: string
+          height?: string
+          id?: string
+          legacy_id?: string | null
+          name?: string
+          type?: string
+          unit?: string
+          updated_at?: string
         }
         Relationships: []
       }

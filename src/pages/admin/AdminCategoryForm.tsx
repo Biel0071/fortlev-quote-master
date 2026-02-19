@@ -37,6 +37,7 @@ export default function AdminCategoryForm() {
   const nav = useNavigate();
 
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -136,6 +137,26 @@ export default function AdminCategoryForm() {
     }
   };
 
+  const handleGenerateAi = async () => {
+    if (!editingId) return;
+    try {
+      setGenerating(true);
+      const { data, error } = await cloud.functions.invoke("generate-category-image", {
+        body: { categoryId: editingId },
+      });
+
+      if (error) throw error;
+      if (!data?.image_path) throw new Error("Falha ao gerar imagem");
+
+      setImagePath(String(data.image_path));
+      toast({ title: "Imagem gerada", description: "Imagem da categoria atualizada" });
+    } catch (e: any) {
+      toast({ title: "Erro", description: e?.message ?? "Falha ao gerar imagem", variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div className="flex items-end justify-between gap-3 flex-wrap">
@@ -205,9 +226,26 @@ export default function AdminCategoryForm() {
               <CardTitle>Imagem</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Upload</Label>
-                <Input type="file" accept="image/*" onChange={(e) => handleUpload(e.target.files?.[0] ?? null)} />
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-2">
+                  <Label>Upload</Label>
+                  <Input type="file" accept="image/*" onChange={(e) => handleUpload(e.target.files?.[0] ?? null)} />
+                </div>
+
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={!editingId || generating}
+                    onClick={handleGenerateAi}
+                  >
+                    {generating ? "Gerando imagem..." : "Gerar imagem (IA)"}
+                  </Button>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Gera uma thumbnail quadrada para a categoria e salva automaticamente.
+                  </p>
+                </div>
               </div>
 
               {imageUrl ? (

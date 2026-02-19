@@ -1,1 +1,4 @@
 project_id = "flkionbmkuqgkudjjuqk"
+
+[functions.generate-category-image]
+verify_jwt = true

@@ -24,7 +24,7 @@ import { useHomeContent } from "@/hooks/useHomeContent";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { FloatingChat } from "@/components/store/mobile/FloatingChat";
-import storeLogo from "@/assets/store-logo-materiais.png";
+import storeLogo from "@/assets/store-logo-materiais-cropped.png";
 
 export function StoreTopbar({
   cartCount,

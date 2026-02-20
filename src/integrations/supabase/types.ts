@@ -425,6 +425,85 @@ export type Database = {
         }
         Relationships: []
       }
+      product_ai_previews: {
+        Row: {
+          approved: boolean
+          approved_at: string | null
+          created_at: string
+          generated_comments_json: Json
+          generated_description: string | null
+          generated_images_json: Json
+          id: string
+          product_id: string
+          version: number
+        }
+        Insert: {
+          approved?: boolean
+          approved_at?: string | null
+          created_at?: string
+          generated_comments_json?: Json
+          generated_description?: string | null
+          generated_images_json?: Json
+          id?: string
+          product_id: string
+          version?: number
+        }
+        Update: {
+          approved?: boolean
+          approved_at?: string | null
+          created_at?: string
+          generated_comments_json?: Json
+          generated_description?: string | null
+          generated_images_json?: Json
+          id?: string
+          product_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_ai_previews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_comments: {
+        Row: {
+          author_name: string
+          comment_text: string
+          created_at: string
+          id: string
+          product_id: string
+          rating: number
+        }
+        Insert: {
+          author_name: string
+          comment_text: string
+          created_at?: string
+          id?: string
+          product_id: string
+          rating: number
+        }
+        Update: {
+          author_name?: string
+          comment_text?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_comments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_banners: {
         Row: {
           active: boolean
@@ -911,6 +990,7 @@ export type Database = {
           sales: number
           sku: string | null
           source_id: string | null
+          status: string
           stock: number
           unit: string | null
           updated_at: string
@@ -933,6 +1013,7 @@ export type Database = {
           sales?: number
           sku?: string | null
           source_id?: string | null
+          status?: string
           stock?: number
           unit?: string | null
           updated_at?: string
@@ -955,6 +1036,7 @@ export type Database = {
           sales?: number
           sku?: string | null
           source_id?: string | null
+          status?: string
           stock?: number
           unit?: string | null
           updated_at?: string

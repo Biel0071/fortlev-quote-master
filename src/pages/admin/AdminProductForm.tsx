@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,23 @@ import type { StoreCategory } from "@/hooks/useStoreCategories";
 
 type ImageRow = { id: string; path: string; sort_order: number };
 
+type PreviewRow = {
+  id: string;
+  product_id: string;
+  version: number;
+  generated_description: string | null;
+  generated_comments_json: Array<{ author_name: string; rating: number; comment_text: string }>;
+  generated_images_json: Array<{ path: string; sort_order: number; public_url?: string }>;
+  approved: boolean;
+  created_at: string;
+};
+
+type ProductStatus = "draft" | "published";
+
 async function uploadToBucket(bucket: string, file: File) {
   const ext = file.name.split(".").pop() || "bin";
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-  const path = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const path = `${Date.now()}-${crypto.randomUUID()}-${safeName}.${ext}`;
   const { error } = await cloud.storage.from(bucket).upload(path, file, {
     cacheControl: "3600",
     upsert: false,
@@ -30,10 +43,17 @@ export default function AdminProductForm() {
   const { id } = useParams();
   const editingId = id ?? null;
   const nav = useNavigate();
+  const location = useLocation();
 
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [images, setImages] = useState<ImageRow[]>([]);
+  const [status, setStatus] = useState<ProductStatus>("draft");
+
+  const [previews, setPreviews] = useState<PreviewRow[]>([]);
+  const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -50,10 +70,13 @@ export default function AdminProductForm() {
 
   const title = useMemo(() => (editingId ? "Editar produto" : "Novo produto"), [editingId]);
 
+  const hasAutoGenerateFlag = Boolean((location.state as any)?.autoGenerate);
+  const autoGenConsumedRef = useRef(false);
+
   const load = async () => {
     setLoading(true);
 
-    const [catRes, prodRes, imgRes] = await Promise.all([
+    const [catRes, prodRes, imgRes, previewRes] = await Promise.all([
       cloud
         .from("store_categories")
         .select("id, name, slug, description, sort_order, featured, active")
@@ -63,7 +86,7 @@ export default function AdminProductForm() {
         ? cloud
             .from("store_products")
             .select(
-              "id, name, description, category_id, price, promo_price, unit, sku, stock, min_stock, featured, best_seller, active",
+              "id, name, description, category_id, price, promo_price, unit, sku, stock, min_stock, featured, best_seller, active, status",
             )
             .eq("id", editingId)
             .maybeSingle()
@@ -75,6 +98,15 @@ export default function AdminProductForm() {
             .eq("product_id", editingId)
             .order("sort_order", { ascending: true })
             .order("created_at", { ascending: true })
+        : Promise.resolve({ data: [] } as any),
+      editingId
+        ? cloud
+            .from("product_ai_previews")
+            .select(
+              "id, product_id, version, generated_description, generated_comments_json, generated_images_json, approved, created_at",
+            )
+            .eq("product_id", editingId)
+            .order("created_at", { ascending: false })
         : Promise.resolve({ data: [] } as any),
     ]);
 
@@ -94,9 +126,20 @@ export default function AdminProductForm() {
       setFeatured(Boolean(p.featured));
       setBestSeller(Boolean(p.best_seller));
       setActive(Boolean(p.active));
+      setStatus((p.status ?? "draft") as ProductStatus);
     }
 
     setImages(((imgRes as any).data ?? []) as any);
+
+    const pv = (((previewRes as any).data ?? []) as any[]).map((r) => ({
+      ...r,
+      generated_comments_json: Array.isArray(r.generated_comments_json) ? r.generated_comments_json : [],
+      generated_images_json: Array.isArray(r.generated_images_json) ? r.generated_images_json : [],
+    })) as PreviewRow[];
+
+    setPreviews(pv);
+    setSelectedPreviewId((prev) => prev ?? (pv[0]?.id ?? null));
+
     setLoading(false);
   };
 
@@ -134,8 +177,8 @@ export default function AdminProductForm() {
 
     const { data, error } = await cloud.from("store_products").insert(payload).select("id").single();
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    toast({ title: "Criado", description: "Produto criado" });
-    nav(`/admin/produtos/editar/${data.id}`, { replace: true });
+    toast({ title: "Criado", description: "Produto criado (rascunho)" });
+    nav(`/admin/produtos/editar/${data.id}`, { replace: true, state: { autoGenerate: true } });
   };
 
   const handleUploadImages = async (files: FileList | null) => {
@@ -191,15 +234,79 @@ export default function AdminProductForm() {
     return data.publicUrl;
   };
 
+  const selectedPreview = useMemo(
+    () => previews.find((p) => p.id === selectedPreviewId) ?? previews[0] ?? null,
+    [previews, selectedPreviewId],
+  );
+
+  const generatePreview = async () => {
+    if (!editingId) return;
+    setGenerating(true);
+    try {
+      const { data, error } = await cloud.functions.invoke("generate-product-preview", {
+        body: { productId: editingId },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error ?? "Falha ao gerar preview");
+
+      toast({ title: "Preview gerado", description: "Conteúdo gerado por IA pronto para revisão." });
+      await load();
+    } catch (e: any) {
+      const msg = e?.message ?? "Falha ao gerar preview";
+      const friendly = msg.includes("429") ? "IA ocupada no momento. Tente novamente em instantes." : msg;
+      toast({ title: "Erro", description: friendly, variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const publishSelectedPreview = async () => {
+    if (!editingId || !selectedPreview) return;
+    setPublishing(true);
+    try {
+      const { data, error } = await cloud.functions.invoke("publish-product-preview", {
+        body: { previewId: selectedPreview.id, overwriteImages: true },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error ?? "Falha ao publicar");
+
+      toast({ title: "Publicado", description: "Produto publicado no catálogo oficial." });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e?.message ?? "Falha ao publicar", variant: "destructive" });
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  // Auto-generate right after creating the product (one-shot)
+  useEffect(() => {
+    if (!editingId) return;
+    if (status !== "draft") return;
+    if (!hasAutoGenerateFlag) return;
+    if (autoGenConsumedRef.current) return;
+
+    // Only auto-generate if there is no preview yet
+    if (previews.length > 0) return;
+
+    autoGenConsumedRef.current = true;
+    generatePreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId, status, previews.length, hasAutoGenerateFlag]);
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-          <p className="text-sm text-muted-foreground">Cadastro completo do produto.</p>
+          <p className="text-sm text-muted-foreground">
+            Cadastro completo do produto{status === "draft" ? " (rascunho)" : ""}.
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => nav("/admin/produtos")}>Voltar</Button>
+          <Button variant="outline" onClick={() => nav("/admin/produtos")}>
+            Voltar
+          </Button>
           <Button onClick={saveProduct}>Salvar</Button>
         </div>
       </div>
@@ -231,11 +338,13 @@ export default function AdminProductForm() {
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent className="bg-popover">
-                      {categories.filter((c) => c.active).map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
+                      {categories
+                        .filter((c) => c.active)
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -256,7 +365,7 @@ export default function AdminProductForm() {
                   <div className="flex items-center justify-between rounded-xl border border-border p-4">
                     <div>
                       <div className="font-medium">Ativo</div>
-                      <div className="text-sm text-muted-foreground">Aparece na loja.</div>
+                      <div className="text-sm text-muted-foreground">Aparece na loja (quando publicado).</div>
                     </div>
                     <Switch checked={active} onCheckedChange={setActive} />
                   </div>
@@ -270,7 +379,12 @@ export default function AdminProductForm() {
                 </div>
                 <div className="space-y-2">
                   <Label>Preço promocional</Label>
-                  <Input type="number" step="0.01" value={promoPrice} onChange={(e) => setPromoPrice(Number(e.target.value) || 0)} />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={promoPrice}
+                    onChange={(e) => setPromoPrice(Number(e.target.value) || 0)}
+                  />
                 </div>
               </div>
 
@@ -302,6 +416,92 @@ export default function AdminProductForm() {
                   <Switch checked={bestSeller} onCheckedChange={setBestSeller} />
                 </div>
               </div>
+
+              {editingId && status === "draft" && (
+                <div className="rounded-2xl border border-border p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <div className="font-semibold">Preview IA (rascunho)</div>
+                      <div className="text-sm text-muted-foreground">
+                        Gere e revise antes de publicar. Previews são versionados.
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={generatePreview} disabled={generating}>
+                        {generating ? "Gerando..." : "Regenerar"}
+                      </Button>
+                      <Button onClick={publishSelectedPreview} disabled={publishing || !selectedPreview}>
+                        {publishing ? "Publicando..." : "Aprovar e Publicar"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {previews.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">
+                      Nenhum preview ainda{generating ? "." : ". Clique em Regenerar para gerar."}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Label className="text-xs">Versões</Label>
+                        <Select value={selectedPreviewId ?? ""} onValueChange={(v) => setSelectedPreviewId(v || null)}>
+                          <SelectTrigger className="w-[240px]">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover">
+                            {previews.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                v{p.version} · {new Date(p.created_at).toLocaleString()}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {selectedPreview && (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Descrição gerada</Label>
+                            <div className="text-sm whitespace-pre-wrap rounded-xl border border-border p-3 bg-card/60">
+                              {selectedPreview.generated_description || "(sem descrição)"}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Comentários gerados</Label>
+                            <div className="space-y-2">
+                              {(selectedPreview.generated_comments_json ?? []).slice(0, 10).map((c, idx) => (
+                                <div key={idx} className="rounded-xl border border-border p-3 bg-card/60">
+                                  <div className="text-sm font-medium">{c.author_name} · {c.rating}/5</div>
+                                  <div className="text-sm text-muted-foreground mt-1">{c.comment_text}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Imagens geradas</Label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                              {(selectedPreview.generated_images_json ?? [])
+                                .slice()
+                                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                                .map((im, idx) => (
+                                  <img
+                                    key={idx}
+                                    src={im.public_url || imageUrl(im.path)}
+                                    alt={`Imagem gerada v${selectedPreview.version} #${idx + 1}`}
+                                    className="w-full aspect-square object-cover rounded-xl border border-border"
+                                    loading="lazy"
+                                  />
+                                ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -337,9 +537,15 @@ export default function AdminProductForm() {
                             <div className="mt-2 flex items-center justify-between gap-2">
                               <div className="text-xs text-muted-foreground truncate">ordem: {img.sort_order}</div>
                               <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => moveImage(img, -1)}>↑</Button>
-                                <Button size="sm" variant="outline" onClick={() => moveImage(img, 1)}>↓</Button>
-                                <Button size="sm" variant="ghost" onClick={() => removeImage(img)}>Remover</Button>
+                                <Button size="sm" variant="outline" onClick={() => moveImage(img, -1)}>
+                                  ↑
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => moveImage(img, 1)}>
+                                  ↓
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => removeImage(img)}>
+                                  Remover
+                                </Button>
                               </div>
                             </div>
                           </div>

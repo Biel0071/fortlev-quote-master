@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, ShoppingCart, Truck, User } from "lucide-react";
+import { MoreVertical, PackageSearch, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useHomeContent } from "@/hooks/useHomeContent";
 import storeLogo from "@/assets/store-logo-materiais.png";
 
@@ -29,11 +37,15 @@ export function StoreTopbar({
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3">
         <div className="flex flex-col gap-3">
-          {/* Logo centralizada */}
+          {/* Logo centralizada (apenas logo) */}
           <div className="flex items-center justify-center">
-            <Link to="/materiais" className="flex flex-col items-center gap-1">
-              <img src={storeLogo} alt={`${brandLabel} - logo`} className="h-10 w-10 rounded-lg" loading="eager" />
-              <span className="text-xs text-muted-foreground truncate max-w-[70vw]">{brandLabel}</span>
+            <Link to="/materiais" className="flex items-center justify-center">
+              <img
+                src={storeLogo}
+                alt={`${brandLabel} - logo`}
+                className="h-10 w-10 rounded-lg"
+                loading="eager"
+              />
             </Link>
           </div>
 
@@ -64,31 +76,30 @@ export function StoreTopbar({
 
               <Button asChild variant="ghost" size="icon" aria-label="Rastreio">
                 <Link to="/pedidos">
-                  <Truck className="h-5 w-5" />
+                  <PackageSearch className="h-5 w-5" />
                 </Link>
               </Button>
 
-              {onCartClick ? (
-                <Button variant="ghost" size="icon" onClick={onCartClick} aria-label="Carrinho" className="relative">
-                  <ShoppingCart className="h-5 w-5" />
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 rounded-full bg-promo text-promo-foreground px-1.5 py-0.5 text-[10px] font-semibold leading-none">
-                      {cartCount}
-                    </span>
-                  )}
-                </Button>
-              ) : (
-                <Button asChild variant="ghost" size="icon" aria-label="Carrinho" className="relative">
-                  <Link to="/carrinho">
-                    <ShoppingCart className="h-5 w-5" />
-                    {cartCount > 0 && (
-                      <span className="absolute -top-1 -right-1 rounded-full bg-promo text-promo-foreground px-1.5 py-0.5 text-[10px] font-semibold leading-none">
-                        {cartCount}
-                      </span>
-                    )}
-                  </Link>
-                </Button>
-              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Mais opções">
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="z-50 w-56">
+                  <DropdownMenuLabel>Opções</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/conta">Minha conta</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/pedidos">Meus pedidos / Rastreio</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/carrinho">Carrinho{cartCount > 0 ? ` (${cartCount})` : ""}</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </nav>
           </div>
         </div>

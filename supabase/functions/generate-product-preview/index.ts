@@ -29,6 +29,80 @@ function buildImagePrompt(name: string, angle: string) {
   return IMAGE_PROMPT_BASE.replace("{product_name}", name) + ` Angle: ${angle}.`;
 }
 
+async function extractImageBytes(payload: any): Promise<Uint8Array> {
+  // 1) Newer multimodal formats
+  const msg = payload?.choices?.[0]?.message;
+
+  const url1 = msg?.images?.[0]?.image_url?.url ?? msg?.images?.[0]?.url;
+  if (typeof url1 === "string" && url1.length > 0) return await bytesFromUrlOrData(url1);
+
+  // Some providers put image parts in message.content as an array
+  const content = msg?.content;
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      const u = part?.image_url?.url ?? part?.image_url ?? part?.url;
+      if (typeof u === "string" && u.length > 0) return await bytesFromUrlOrData(u);
+
+      const b64 = part?.b64_json ?? part?.image_base64 ?? part?.data;
+      if (typeof b64 === "string" && b64.length > 0) return bytesFromBase64(b64);
+    }
+  }
+
+  // Sometimes it comes as a string (may contain a data URL)
+  if (typeof content === "string" && content.trim().length > 0) {
+    const raw = content.trim();
+    if (raw.startsWith("data:image")) return await bytesFromUrlOrData(raw);
+
+    // Heuristic: if it looks like base64, try decoding
+    if (/^[A-Za-z0-9+/=\n\r]+$/.test(raw) && raw.length > 1000) return bytesFromBase64(raw);
+  }
+
+  // 2) Legacy /images/generations formats (defensive)
+  const first = payload?.data?.[0];
+  const legacyUrl = first?.url;
+  const legacyB64 = first?.b64_json;
+  if (typeof legacyUrl === "string" && legacyUrl.length > 0) return await bytesFromUrlOrData(legacyUrl);
+  if (typeof legacyB64 === "string" && legacyB64.length > 0) return bytesFromBase64(legacyB64);
+
+  // Diagnostics: keep it small
+  const topKeys = Object.keys(payload ?? {}).join(",");
+  const choiceKeys = Object.keys(payload?.choices?.[0] ?? {}).join(",");
+  const msgKeys = Object.keys(msg ?? {}).join(",");
+  const contentType = Array.isArray(content) ? "array" : typeof content;
+
+  throw new Error(`image_url_missing:top=${topKeys};choice=${choiceKeys};msg=${msgKeys};contentType=${contentType}`);
+}
+
+function bytesFromBase64(b64: string): Uint8Array {
+  // Accept both pure base64 and data URLs
+  const clean = b64.includes(",") ? b64.split(",")[1] : b64;
+  if (!clean) throw new Error("image_b64_missing");
+
+  const binary = atob(clean);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function bytesFromUrlOrData(raw: string): Promise<Uint8Array> {
+  // data:image/png;base64,...
+  if (raw.startsWith("data:image")) {
+    return bytesFromBase64(raw);
+  }
+
+  // Some gateways can return a plain base64 without header
+  if (!raw.startsWith("http")) {
+    return bytesFromBase64(raw);
+  }
+
+  const imgResp = await fetch(raw);
+  if (!imgResp.ok) {
+    const t = await imgResp.text();
+    throw new Error(`image_download_failed:${imgResp.status}:${t}`);
+  }
+  return new Uint8Array(await imgResp.arrayBuffer());
+}
+
 async function aiGeneratePng({
   LOVABLE_API_KEY,
   prompt,
@@ -57,21 +131,7 @@ async function aiGeneratePng({
   }
 
   const payload = await genResp.json();
-  const rawUrl =
-    (payload?.choices?.[0]?.message?.images?.[0]?.image_url?.url as string | undefined) ??
-    (payload?.choices?.[0]?.message?.images?.[0]?.url as string | undefined) ??
-    undefined;
-
-  if (!rawUrl) throw new Error("image_url_missing");
-
-  // Expected: data:image/png;base64,AAAA...
-  const b64 = rawUrl.includes(",") ? rawUrl.split(",")[1] : rawUrl;
-  if (!b64) throw new Error("image_b64_missing");
-
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
+  return await extractImageBytes(payload);
 }
 
 function safeJsonParse<T>(raw: string): T | null {
@@ -213,13 +273,9 @@ serve(async (req) => {
       });
     }
 
-    // Only draft products should generate previews
-    if (String((p as any).status) !== "draft") {
-      return new Response(JSON.stringify({ error: "product_not_draft" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Allow preview generation for any product status (do NOT publish automatically, do NOT change status)
+    // Previously restricted to draft only.
+
 
     // Determine next version
     const { data: maxRow } = await admin

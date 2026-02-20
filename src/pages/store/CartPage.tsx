@@ -7,10 +7,12 @@ import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
+import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { formatCurrency } from "@/utils/formatters";
 
 export default function CartPage() {
   const cart = useCart();
+  const tracker = useVisitorTracker();
   const nav = useNavigate();
   const { activeProducts } = useStoreProducts();
 
@@ -85,7 +87,15 @@ export default function CartPage() {
                       onChange={(e) => cart.setQty(l.productId, Math.max(0, Number(e.target.value) || 0))}
                     />
                     <div className="font-semibold w-28 text-right">{formatCurrency(l.lineTotal)}</div>
-                    <Button variant="ghost" onClick={() => cart.remove(l.productId)}>Remover</Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        cart.remove(l.productId);
+                        tracker.track({ type: "remove_cart", productId: l.productId, categoryId: l.product.category_id ?? null });
+                      }}
+                    >
+                      Remover
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

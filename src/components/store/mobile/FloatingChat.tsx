@@ -3,7 +3,8 @@ import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { getVisitorSessionId, trackVisitorEvent } from "@/utils/visitorEvents";
+import { useVisitorTracker } from "@/hooks/useVisitorTracker";
+import { createChatSession } from "@/utils/trackingClient";
 
 const FloatingChatDialog = lazy(() => import("@/components/store/mobile/FloatingChatDialog"));
 
@@ -15,11 +16,14 @@ export function FloatingChat({
   className?: string;
 }) {
   const isMobile = useIsMobile();
+  const tracker = useVisitorTracker();
+
   const [open, setOpen] = useState(false);
   const [attention, setAttention] = useState(false);
   const [helpBadge, setHelpBadge] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [scoreSnapshot, setScoreSnapshot] = useState<number>(0);
 
-  const sessionId = useMemo(() => getVisitorSessionId(), []);
   const wasOpenRef = useRef(false);
 
   const bottomClass = isMobile ? "bottom-[5.25rem]" : "bottom-4";
@@ -41,27 +45,37 @@ export function FloatingChat({
     if (open) {
       wasOpenRef.current = true;
       setAttention(false);
-      trackVisitorEvent({ sessionId, eventName: "chat_open" });
+
+      tracker.track({ type: "chat_open", path: window.location.pathname });
+
+      createChatSession({ sessionToken: tracker.sessionToken, consentGiven: tracker.consentOk })
+        .then((r) => {
+          setChatSessionId(String((r as any)?.chat_session_id ?? ""));
+          setScoreSnapshot(Number((r as any)?.score_snapshot ?? 0));
+        })
+        .catch(() => {
+          setChatSessionId(null);
+          setScoreSnapshot(0);
+        });
+
       return;
     }
 
     if (wasOpenRef.current) {
-      trackVisitorEvent({ sessionId, eventName: "chat_close" });
+      tracker.track({ type: "chat_close", path: window.location.pathname });
+      setChatSessionId(null);
+      setScoreSnapshot(0);
     }
-  }, [open, sessionId]);
+  }, [open]);
 
   useEffect(() => {
-    // after 20s, animate button a bit (if user hasn't opened chat)
     const t = window.setTimeout(() => {
       if (!open) setAttention(true);
     }, 20000);
     return () => window.clearTimeout(t);
   }, [open]);
 
-  const badgeLabel = useMemo(() => {
-    if (!helpBadge) return "";
-    return "Precisa de ajuda?";
-  }, [helpBadge]);
+  const badgeLabel = useMemo(() => (helpBadge ? "Precisa de ajuda?" : ""), [helpBadge]);
 
   return (
     <>
@@ -94,10 +108,10 @@ export function FloatingChat({
             open={open}
             onOpenChange={setOpen}
             phoneDigits={phoneDigits}
-            sessionId={sessionId}
-            onMessageSent={() => trackVisitorEvent({ sessionId, eventName: "chat_message_sent" })}
-            onWhatsAppClick={() => trackVisitorEvent({ sessionId, eventName: "whatsapp_click" })}
-            onRedirectWhatsApp={() => trackVisitorEvent({ sessionId, eventName: "chat_redirect_whatsapp" })}
+            chatSessionId={chatSessionId}
+            scoreSnapshot={scoreSnapshot}
+            trackerSessionToken={tracker.sessionToken}
+            consentOk={tracker.consentOk}
           />
         </Suspense>
       ) : null}

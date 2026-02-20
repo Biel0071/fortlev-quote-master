@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import {
+  analyzeChatConversation,
+  closeChatSession,
+  logChatMessage,
+  trackVisitorEvent,
+} from "@/utils/trackingClient";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -38,8 +44,7 @@ async function askAI(history: Msg[], userText: string) {
 
 function buildWhatsAppUrl(phoneDigits: string) {
   const base = `https://api.whatsapp.com/send?phone=55${phoneDigits}`;
-  const text =
-    "Olá vim do site e estou interessado nos produtos, gostaria de um orçamento!";
+  const text = "Olá vim do site e estou interessado nos produtos, gostaria de um orçamento!";
   return `${base}&text=${encodeURIComponent(text)}`;
 }
 
@@ -47,30 +52,34 @@ export default function FloatingChatDialog({
   open,
   onOpenChange,
   phoneDigits,
-  sessionId,
-  onMessageSent,
-  onWhatsAppClick,
-  onRedirectWhatsApp,
+  chatSessionId,
+  scoreSnapshot,
+  trackerSessionToken,
+  consentOk,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   phoneDigits?: string;
-  sessionId: string;
-  onMessageSent?: () => void;
-  onWhatsAppClick?: () => void;
-  onRedirectWhatsApp?: () => void;
+  chatSessionId: string | null;
+  scoreSnapshot: number;
+  trackerSessionToken: string;
+  consentOk: boolean;
 }) {
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      content: "Olá 👋 Sou o assistente da loja. Posso ajudar com orçamento, produtos ou entrega.",
+      content:
+        scoreSnapshot > 90
+          ? "Vi que você já está bem perto de fechar. Quer que eu monte um orçamento rápido com os itens certos?"
+          : scoreSnapshot > 60
+            ? "Vi que você está analisando alguns produtos. Posso te ajudar a calcular o melhor custo-benefício?"
+            : "Olá 👋 Sou o assistente da loja. Posso ajudar com orçamento, produtos ou entrega.",
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string>("");
 
-  const scrollRef = useRef<HTMLDivElement | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -88,12 +97,23 @@ export default function FloatingChatDialog({
 
     const history = messages.slice();
     setMessages((prev) => [...prev, { role: "user", content: text }]);
-    onMessageSent?.();
+
+    if (consentOk) {
+      trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "chat_message_sent" } }).catch(
+        () => {},
+      );
+    }
+    if (chatSessionId) {
+      logChatMessage({ chatSessionId, role: "user", content: text }).catch(() => {});
+    }
 
     setLoading(true);
     try {
       const answer = await askAI(history, text);
       setMessages((prev) => [...prev, { role: "assistant", content: answer || "" }]);
+      if (chatSessionId && answer) {
+        logChatMessage({ chatSessionId, role: "assistant", content: answer }).catch(() => {});
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Erro inesperado.");
     } finally {
@@ -103,16 +123,14 @@ export default function FloatingChatDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("p-0 sm:max-w-xl", "bg-background/80 supports-[backdrop-filter]:bg-background/70 backdrop-blur-xl")}> 
+      <DialogContent className={cn("p-0 sm:max-w-xl", "bg-background/80 supports-[backdrop-filter]:bg-background/70 backdrop-blur-xl")}>
         <div className="border-b border-border p-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Bot className="h-5 w-5" />
               <div className="font-semibold leading-none">Assistente da loja</div>
             </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Respostas rápidas para te ajudar a comprar.
-            </div>
+            <div className="text-xs text-muted-foreground mt-1">Respostas rápidas para te ajudar a comprar.</div>
 
             <div className="mt-3">
               <Button
@@ -121,11 +139,19 @@ export default function FloatingChatDialog({
                 className="rounded-xl"
                 disabled={!canWhatsApp}
                 onClick={() => {
-                  onWhatsAppClick?.();
+                  if (consentOk) {
+                    trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "whatsapp_click" } }).catch(
+                      () => {},
+                    );
+                  }
                   if (!canWhatsApp) return;
                   const url = buildWhatsAppUrl(phoneDigits!);
                   window.open(url, "_blank", "noreferrer");
-                  onRedirectWhatsApp?.();
+                  if (consentOk) {
+                    trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "request_quote" } }).catch(
+                      () => {},
+                    );
+                  }
                 }}
               >
                 <ExternalLink className="h-4 w-4" />
@@ -138,14 +164,20 @@ export default function FloatingChatDialog({
             variant="ghost"
             size="icon"
             className="h-10 w-10 rounded-xl"
-            onClick={() => onOpenChange(false)}
+            onClick={async () => {
+              onOpenChange(false);
+              if (chatSessionId) {
+                closeChatSession({ chatSessionId }).catch(() => {});
+                analyzeChatConversation({ chatSessionId }).catch(() => {});
+              }
+            }}
             aria-label="Fechar chat"
           >
             <X className="h-5 w-5" />
           </Button>
         </div>
 
-        <div ref={scrollRef} className="max-h-[60vh] overflow-auto p-4 space-y-3">
+        <div className="max-h-[60vh] overflow-auto p-4 space-y-3">
           {messages.map((m, idx) => (
             <div
               key={idx}
@@ -157,9 +189,7 @@ export default function FloatingChatDialog({
               {m.content}
             </div>
           ))}
-          {loading ? (
-            <div className="text-sm text-muted-foreground">Digitando…</div>
-          ) : null}
+          {loading ? <div className="text-sm text-muted-foreground">Digitando…</div> : null}
           {err ? <div className="text-sm text-destructive">{err}</div> : null}
           <div ref={endRef} />
         </div>
@@ -180,8 +210,7 @@ export default function FloatingChatDialog({
           </Button>
         </div>
 
-        {/* keep for future server-side correlation */}
-        <div className="hidden" data-session-id={sessionId} />
+        <div className="hidden" data-session-token={trackerSessionToken} data-chat-session-id={chatSessionId ?? ""} />
       </DialogContent>
     </Dialog>
   );

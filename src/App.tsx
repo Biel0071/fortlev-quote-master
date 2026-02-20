@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
+import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import StoreHome from "./pages/store/StoreHome";
 import StoreCatalog from "./pages/store/StoreCatalog";
 import ProductPage from "./pages/store/ProductPage";
@@ -50,6 +51,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <CookieConsentBanner />
           <Routes>
             {/* Loja Materiais (HOME/vitrine) */}
             <Route path="/" element={<StoreHome />} />

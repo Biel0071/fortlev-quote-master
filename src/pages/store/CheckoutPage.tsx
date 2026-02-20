@@ -12,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
+import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { cloud } from "@/lib/cloud";
 import { calcShipping } from "@/utils/shipping";
 import { cleanPhone, formatCurrency } from "@/utils/formatters";
@@ -44,6 +45,7 @@ type OrderRpcResult = {
 export default function CheckoutPage() {
   const nav = useNavigate();
   const cart = useCart();
+  const tracker = useVisitorTracker();
   const { activeProducts } = useStoreProducts();
   const contact = useStoreContact();
 
@@ -262,23 +264,26 @@ export default function CheckoutPage() {
       const totals = await placeOrder();
       const url = buildWhatsAppUrl(totals.orderId, totals);
 
-      try {
-        openWhatsAppOrThrow(url);
-      } catch (e) {
-        // Allow retry without recreating order
-        setPendingWhatsAppUrl(url);
-        setPendingOrderId(totals.orderId);
-        toast({
-          title: "Não foi possível abrir o WhatsApp",
-          description: "Seu navegador bloqueou o popup. Toque em 'Finalizar no WhatsApp' novamente para tentar abrir.",
-          variant: "destructive",
-        });
-        return;
-      }
+       try {
+         openWhatsAppOrThrow(url);
+       } catch (e) {
+         // Allow retry without recreating order
+         setPendingWhatsAppUrl(url);
+         setPendingOrderId(totals.orderId);
+         toast({
+           title: "Não foi possível abrir o WhatsApp",
+           description: "Seu navegador bloqueou o popup. Toque em 'Finalizar no WhatsApp' novamente para tentar abrir.",
+           variant: "destructive",
+         });
+         return;
+       }
 
-      cart.clear();
-      toast({ title: "Ok", description: "WhatsApp aberto. Pedido finalizado." });
-      // keep placing=true (no re-enable on success)
+       tracker.track({ type: "whatsapp_click", metadata: { orderId: totals.orderId } });
+       tracker.track({ type: "request_quote", metadata: { orderId: totals.orderId } });
+
+       cart.clear();
+       toast({ title: "Ok", description: "WhatsApp aberto. Pedido finalizado." });
+       // keep placing=true (no re-enable on success)
     } catch (e: any) {
       toast({ title: "Erro ao finalizar", description: e?.message ?? "Tente novamente.", variant: "destructive" });
       // do not clear cart on error

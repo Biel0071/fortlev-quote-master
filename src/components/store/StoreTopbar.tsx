@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MoreVertical, PackageSearch, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useHomeContent } from "@/hooks/useHomeContent";
+import { useStoreCategories } from "@/hooks/useStoreCategories";
 import storeLogo from "@/assets/store-logo-materiais.png";
 
 export function StoreTopbar({
@@ -23,6 +24,7 @@ export function StoreTopbar({
 }) {
   const nav = useNavigate();
   const { footer } = useHomeContent();
+  const { activeCategories } = useStoreCategories();
 
   const [q, setQ] = useState("");
 
@@ -32,6 +34,8 @@ export function StoreTopbar({
   };
 
   const brandLabel = footer?.store_name || "Materiais de Construção";
+
+  const menuCategories = useMemo(() => (activeCategories ?? []).slice(0, 10), [activeCategories]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
@@ -86,9 +90,36 @@ export function StoreTopbar({
                     <MoreVertical className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="z-50 w-56">
-                  <DropdownMenuLabel>Opções</DropdownMenuLabel>
+
+                <DropdownMenuContent align="end" className="z-50 w-72 bg-popover">
+                  <DropdownMenuLabel>Acesso rápido</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+
+                  <DropdownMenuItem asChild>
+                    <Link to="/materiais#ofertas">Ofertas</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/materiais#mais-vendidos">Mais vendidos</Link>
+                  </DropdownMenuItem>
+
+                  {menuCategories.length > 0 ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>Categorias</DropdownMenuLabel>
+                      <div className="max-h-64 overflow-auto">
+                        {menuCategories.map((c) => (
+                          <DropdownMenuItem key={c.id} asChild>
+                            <Link to={`/loja?categoria=${encodeURIComponent(c.slug)}`}>{c.name}</Link>
+                          </DropdownMenuItem>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Conta</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+
                   <DropdownMenuItem asChild>
                     <Link to="/conta">Minha conta</Link>
                   </DropdownMenuItem>

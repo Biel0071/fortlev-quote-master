@@ -1,5 +1,5 @@
 // Lovable Cloud function: generate-all-products-ai
-// Generates AI previews (5 images + description + 10 comments) for eligible products in batches of 3.
+// Generates AI previews (5 images + description + 10 comments) for ALL products in batches.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -12,6 +12,7 @@ const corsHeaders = {
 
 const BATCH_SIZE = 3;
 const DELAY_MS = 1500;
+const RETRY_429_DELAY_MS = 5000;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -22,6 +23,61 @@ type Body = {
   offset?: number; // start offset
   maxBatches?: number; // safety guard
 };
+
+async function callGenerateProductPreview({
+  url,
+  authHeader,
+  productId,
+}: {
+  url: string;
+  authHeader: string;
+  productId: string;
+}): Promise<{ ok: true } | { ok: false; status?: number; error: string }> {
+  const doCall = async () => {
+    const resp = await fetch(`${url}/functions/v1/generate-product-preview`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
+      body: JSON.stringify({ productId }),
+    });
+
+    const text = await resp.text();
+    if (resp.ok) {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed?.ok) return { ok: true } as const;
+        return { ok: false as const, status: resp.status, error: String(parsed?.error ?? "preview_failed") };
+      } catch {
+        return { ok: false as const, status: resp.status, error: "preview_invalid_json" };
+      }
+    }
+
+    // Non-2xx
+    let parsedErr: any = null;
+    try {
+      parsedErr = JSON.parse(text);
+    } catch {
+      parsedErr = null;
+    }
+    const errMsg = String(parsedErr?.error ?? text ?? "preview_http_error");
+    return { ok: false as const, status: resp.status, error: `preview_http_${resp.status}:${errMsg}` };
+  };
+
+  const first = await doCall();
+  if (first.ok) return first;
+
+  // Rate limit retry once
+  if (first.status === 429 || first.error.includes(":429") || first.error.includes("_429")) {
+    await sleep(RETRY_429_DELAY_MS);
+    const second = await doCall();
+    if (second.ok) return second;
+    return { ok: false, status: second.status, error: second.error };
+  }
+
+  return first;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -64,13 +120,17 @@ serve(async (req) => {
     let offset = Math.max(0, Number(body.offset ?? 0) || 0);
     const maxBatches = Math.max(1, Math.min(200, Number(body.maxBatches ?? 200) || 200));
 
-    // Admin client for reading eligible products + writing logs
+    // Admin client for reading products + writing logs
     const admin = createClient(url, service);
 
-    const { data: totalFound, error: countErr } = await admin.rpc("count_products_for_ai_generation");
+    // Count ALL products
+    const { count: totalCount, error: countErr } = await admin
+      .from("store_products")
+      .select("id", { count: "exact", head: true });
+
     if (countErr) throw new Error(`count_failed:${countErr.message}`);
 
-    const total_found = Number(totalFound ?? 0);
+    const total_found = Number(totalCount ?? 0);
 
     let total_processed = 0;
     let total_success = 0;
@@ -78,10 +138,14 @@ serve(async (req) => {
 
     // Process in batches
     for (let b = 0; b < maxBatches; b++) {
-      const { data: rows, error: fetchErr } = await admin.rpc("get_products_for_ai_generation", {
-        p_offset: offset,
-        p_limit: BATCH_SIZE,
-      });
+      const from = offset;
+      const to = offset + BATCH_SIZE - 1;
+
+      const { data: rows, error: fetchErr } = await admin
+        .from("store_products")
+        .select("id")
+        .order("created_at", { ascending: true })
+        .range(from, to);
 
       if (fetchErr) throw new Error(`fetch_failed:${fetchErr.message}`);
 
@@ -93,30 +157,8 @@ serve(async (req) => {
         let message = "";
 
         try {
-          // Call generate-product-preview, forwarding the original admin Authorization header
-          const resp = await fetch(`${url}/functions/v1/generate-product-preview`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(authHeader ? { Authorization: authHeader } : {}),
-            },
-            body: JSON.stringify({ productId }),
-          });
-
-          const text = await resp.text();
-          if (!resp.ok) throw new Error(`preview_http_${resp.status}:${text}`);
-
-          const parsed = (() => {
-            try {
-              return JSON.parse(text);
-            } catch {
-              return null;
-            }
-          })();
-
-          if (!parsed?.ok) {
-            throw new Error(parsed?.error ?? "preview_failed");
-          }
+          const res = await callGenerateProductPreview({ url, authHeader, productId });
+          if (!res.ok) throw new Error(res.error);
 
           total_success++;
           message = "preview_created";

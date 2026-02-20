@@ -13,10 +13,10 @@ const buttonVariants = cva(
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md",
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        ghost: "hover:bg-muted/60 hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         fortlev: "bg-gradient-to-r from-fortlev-navy to-fortlev-navy-light text-primary-foreground shadow-lg hover:shadow-xl active:scale-[0.98]",
-        accent: "bg-gradient-to-r from-fortlev-yellow to-fortlev-yellow-light text-accent-foreground shadow-lg hover:shadow-xl active:scale-[0.98] font-semibold",
+        accent: "bg-promo text-promo-foreground hover:bg-promo/90 shadow-lg hover:shadow-xl active:scale-[0.98] font-semibold",
         whatsapp: "bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90 shadow-md hover:shadow-lg active:scale-[0.98]",
       },
       size: {

@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import StoreHome from "./pages/store/StoreHome";
 import StoreCatalog from "./pages/store/StoreCatalog";
 import ProductPage from "./pages/store/ProductPage";
@@ -27,6 +28,8 @@ import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminCoupons from "./pages/admin/AdminCoupons";
 import AdminBanners from "./pages/admin/AdminBanners";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminTheme from "./pages/admin/AdminTheme";
+import AdminAiAnalysis from "./pages/admin/AdminAiAnalysis";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 
@@ -43,77 +46,81 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* Loja Materiais (HOME/vitrine) */}
-          <Route path="/" element={<StoreHome />} />
-          <Route path="/materiais" element={<StoreHome />} />
+      <ThemeBoot>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Loja Materiais (HOME/vitrine) */}
+            <Route path="/" element={<StoreHome />} />
+            <Route path="/materiais" element={<StoreHome />} />
 
-          {/* Página seletora (mantida) */}
-          <Route path="/selecionar" element={<HomeSelector />} />
+            {/* Página seletora (mantida) */}
+            <Route path="/selecionar" element={<HomeSelector />} />
 
-          {/* E-commerce */}
-          <Route path="/loja" element={<StoreCatalog />} />
-          <Route path="/produto/:id" element={<ProductPage />} />
-          <Route path="/carrinho" element={<CartPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/checkout/pagamento" element={<PaymentPendingPage />} />
-          <Route path="/p/:slug" element={<StorePage />} />
-          <Route path="/institucional/:slug" element={<StorePage />} />
+            {/* E-commerce */}
+            <Route path="/loja" element={<StoreCatalog />} />
+            <Route path="/produto/:id" element={<ProductPage />} />
+            <Route path="/carrinho" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout/pagamento" element={<PaymentPendingPage />} />
+            <Route path="/p/:slug" element={<StorePage />} />
+            <Route path="/institucional/:slug" element={<StorePage />} />
 
-          {/* Área do cliente */}
-          <Route path="/conta" element={<AccountPage />} />
-          <Route path="/pedidos" element={<OrdersPage />} />
-          <Route path="/rastreio/:id" element={<TrackingPage />} />
+            {/* Área do cliente */}
+            <Route path="/conta" element={<AccountPage />} />
+            <Route path="/pedidos" element={<OrdersPage />} />
+            <Route path="/rastreio/:id" element={<TrackingPage />} />
 
-          {/* Admin (protegido) */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="home" element={<AdminHome />} />
+            {/* Admin (protegido) */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="home" element={<AdminHome />} />
 
-            <Route path="produtos" element={<AdminProductsList />} />
-            <Route path="produtos/novo" element={<AdminProductForm />} />
-            <Route path="produtos/editar/:id" element={<AdminProductForm />} />
+              <Route path="produtos" element={<AdminProductsList />} />
+              <Route path="produtos/novo" element={<AdminProductForm />} />
+              <Route path="produtos/editar/:id" element={<AdminProductForm />} />
 
-            <Route path="categorias" element={<AdminCategoriesList />} />
-            <Route path="categorias/nova" element={<AdminCategoryForm />} />
-            <Route path="categorias/editar/:id" element={<AdminCategoryForm />} />
+              <Route path="categorias" element={<AdminCategoriesList />} />
+              <Route path="categorias/nova" element={<AdminCategoryForm />} />
+              <Route path="categorias/editar/:id" element={<AdminCategoryForm />} />
 
-            <Route path="pedidos" element={<AdminOrders />} />
-            <Route path="paginas" element={<AdminPages />} />
-            <Route path="clientes" element={<AdminCustomers />} />
-            <Route path="cupons" element={<AdminCoupons />} />
-            <Route path="banners" element={<AdminBanners />} />
-            <Route path="configuracoes" element={<AdminSettings />} />
+              <Route path="pedidos" element={<AdminOrders />} />
+              <Route path="paginas" element={<AdminPages />} />
+              <Route path="clientes" element={<AdminCustomers />} />
+              <Route path="cupons" element={<AdminCoupons />} />
+              <Route path="banners" element={<AdminBanners />} />
+              <Route path="tema" element={<AdminTheme />} />
+              <Route path="analise-ia" element={<AdminAiAnalysis />} />
+              <Route path="configuracoes" element={<AdminSettings />} />
 
-            {/* rotas reservadas */}
-            <Route path="ofertas" element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>} />
-          </Route>
+              {/* rotas reservadas */}
+              <Route path="ofertas" element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>} />
+            </Route>
 
-          <Route path="/auth/login" element={<LoginPage />} />
-          <Route path="/auth/signup" element={<SignupPage />} />
+            <Route path="/auth/login" element={<LoginPage />} />
+            <Route path="/auth/signup" element={<SignupPage />} />
 
-          {/* Sistemas de Orçamento */}
-          <Route path="/construcao" element={<Construction />} />
-          <Route path="/orcamentos" element={<Index />} />
+            {/* Sistemas de Orçamento */}
+            <Route path="/construcao" element={<Construction />} />
+            <Route path="/orcamentos" element={<Index />} />
 
-          <Route path="/dashboard" element={<StoresDashboardLayout />}>
-            <Route index element={<Navigate to="fortlev" replace />} />
+            <Route path="/dashboard" element={<StoresDashboardLayout />}>
+              <Route index element={<Navigate to="fortlev" replace />} />
 
-            <Route path="fortlev" element={<FortlevOverview />} />
-            <Route path="fortlev/orcamentos" element={<Index />} />
+              <Route path="fortlev" element={<FortlevOverview />} />
+              <Route path="fortlev/orcamentos" element={<Index />} />
 
-            <Route path="construcao" element={<ConstructionOverview />} />
-            <Route path="construcao/orcamentos" element={<Construction />} />
-          </Route>
+              <Route path="construcao" element={<ConstructionOverview />} />
+              <Route path="construcao/orcamentos" element={<Construction />} />
+            </Route>
 
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </ThemeBoot>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -61,6 +61,33 @@ export type Database = {
           },
         ]
       }
+      ai_project_reports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          mode: string
+          report_json: Json
+          selected_scope: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mode?: string
+          report_json?: Json
+          selected_scope?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mode?: string
+          report_json?: Json
+          selected_scope?: string
+        }
+        Relationships: []
+      }
       construction_catalog_products: {
         Row: {
           active: boolean
@@ -1083,6 +1110,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_theme_settings: {
+        Row: {
+          accent_color: string
+          accent_hover: string
+          background_color: string
+          border_color: string
+          created_at: string
+          id: string
+          primary_color: string
+          primary_hover: string
+          surface_color: string
+          text_primary: string
+          text_secondary: string
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string
+          accent_hover?: string
+          background_color?: string
+          border_color?: string
+          created_at?: string
+          id?: string
+          primary_color?: string
+          primary_hover?: string
+          surface_color?: string
+          text_primary?: string
+          text_secondary?: string
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string
+          accent_hover?: string
+          background_color?: string
+          border_color?: string
+          created_at?: string
+          id?: string
+          primary_color?: string
+          primary_hover?: string
+          surface_color?: string
+          text_primary?: string
+          text_secondary?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

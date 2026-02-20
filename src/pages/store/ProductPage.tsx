@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,13 +15,25 @@ export default function ProductPage() {
 
   const product = useMemo(() => activeProducts.find((p) => p.id === id), [activeProducts, id]);
 
+  useEffect(() => {
+    // track product visits for "Precisa de ajuda?" badge
+    if (!id) return;
+    const key = "store_product_views_v1";
+    const prev = Number(sessionStorage.getItem(key) || "0");
+    const next = prev + 1;
+    sessionStorage.setItem(key, String(next));
+    window.dispatchEvent(new CustomEvent("store:product-visit", { detail: { productId: id, count: next } }));
+  }, [id]);
+
   return (
     <div className="min-h-screen bg-background">
       <StoreTopbar cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10">
-        <Button asChild variant="ghost" className="mb-4"><Link to="/loja">← Voltar</Link></Button>
+        <Button asChild variant="ghost" className="mb-4">
+          <Link to="/loja">← Voltar</Link>
+        </Button>
 
         {loading ? (
           <div className="text-muted-foreground">Carregando...</div>
@@ -42,7 +54,9 @@ export default function ProductPage() {
 
               <div className="flex gap-2">
                 <Button onClick={() => cart.add(product.id, 1)}>Adicionar ao carrinho</Button>
-                <Button asChild variant="outline"><Link to="/carrinho">Ir ao carrinho</Link></Button>
+                <Button asChild variant="outline">
+                  <Link to="/carrinho">Ir ao carrinho</Link>
+                </Button>
               </div>
             </CardContent>
           </Card>

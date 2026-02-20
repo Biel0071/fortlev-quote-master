@@ -2,3 +2,9 @@ project_id = "flkionbmkuqgkudjjuqk"
 
 [functions.generate-category-image]
 verify_jwt = true
+
+[functions.generate-product-preview]
+verify_jwt = false
+
+[functions.publish-product-preview]
+verify_jwt = false

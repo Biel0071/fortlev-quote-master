@@ -2,7 +2,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { StoreMobileBottomNav } from "@/components/store/mobile/StoreMobileBottomNav";
 import { WhatsAppFab } from "@/components/store/mobile/WhatsAppFab";
-import { StoreSupportChat } from "@/components/store/mobile/StoreSupportChat";
 
 export function StoreMobileChrome({
   cartCount,
@@ -23,7 +22,6 @@ export function StoreMobileChrome({
     <>
       <StoreMobileBottomNav cartCount={cartCount} onCartClick={onCartClick} />
       <WhatsAppFab href={contact.waLink} className={waBottomClass} />
-      <StoreSupportChat waHref={contact.waLink} />
     </>
   );
 }

@@ -9,10 +9,12 @@ import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
+import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { formatCurrency } from "@/utils/formatters";
 
 export default function StoreCatalog() {
   const cart = useCart();
+  const tracker = useVisitorTracker();
   const { activeProducts, loading, error } = useStoreProducts();
   const { activeCategories } = useStoreCategories();
 
@@ -110,6 +112,14 @@ export default function StoreCatalog() {
                   if (c.slug === "all") next.delete("categoria");
                   else next.set("categoria", c.slug);
                   setSearchParams(next, { replace: true });
+
+                  const catId = c.slug === "all" ? null : (activeCategories.find((x) => x.slug === c.slug)?.id ?? null);
+                  tracker.track({
+                    type: "category_click",
+                    categoryId: catId,
+                    metadata: { slug: c.slug },
+                    path: window.location.pathname + window.location.search,
+                  });
                 }}
               >
                 {c.name}
@@ -159,7 +169,13 @@ export default function StoreCatalog() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button className="flex-1" onClick={() => cart.add(p.id, 1)}>
+                      <Button
+                        className="flex-1"
+                        onClick={() => {
+                          cart.add(p.id, 1);
+                          tracker.track({ type: "add_cart", productId: p.id, categoryId: p.category_id ?? null });
+                        }}
+                      >
                         Adicionar
                       </Button>
                       <Button asChild variant="outline">

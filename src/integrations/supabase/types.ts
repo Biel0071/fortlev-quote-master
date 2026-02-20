@@ -1353,6 +1353,7 @@ export type Database = {
       visitor_sessions: {
         Row: {
           consent_given: boolean
+          counters: Json
           country: string | null
           created_at: string
           ended_at: string | null
@@ -1360,6 +1361,7 @@ export type Database = {
           ip: string | null
           referrer: string | null
           score: number
+          score_flags: Json
           session_token: string
           started_at: string
           total_time: number
@@ -1370,6 +1372,7 @@ export type Database = {
         }
         Insert: {
           consent_given?: boolean
+          counters?: Json
           country?: string | null
           created_at?: string
           ended_at?: string | null
@@ -1377,6 +1380,7 @@ export type Database = {
           ip?: string | null
           referrer?: string | null
           score?: number
+          score_flags?: Json
           session_token: string
           started_at?: string
           total_time?: number
@@ -1387,6 +1391,7 @@ export type Database = {
         }
         Update: {
           consent_given?: boolean
+          counters?: Json
           country?: string | null
           created_at?: string
           ended_at?: string | null
@@ -1394,6 +1399,7 @@ export type Database = {
           ip?: string | null
           referrer?: string | null
           score?: number
+          score_flags?: Json
           session_token?: string
           started_at?: string
           total_time?: number

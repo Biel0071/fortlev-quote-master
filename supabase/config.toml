@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.publish-product-preview]
 verify_jwt = false
+
+[functions.generate-all-products-ai]
+verify_jwt = false

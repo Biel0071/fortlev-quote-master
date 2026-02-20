@@ -29,6 +29,38 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_generation_logs: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          product_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          product_id?: string | null
+          status: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          product_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_generation_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       construction_catalog_products: {
         Row: {
           active: boolean
@@ -1078,6 +1110,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      count_products_for_ai_generation: { Args: never; Returns: number }
       create_store_order: {
         Args: {
           _address: string
@@ -1096,6 +1129,12 @@ export type Database = {
           shipping: number
           subtotal: number
           total: number
+        }[]
+      }
+      get_products_for_ai_generation: {
+        Args: { p_limit: number; p_offset: number }
+        Returns: {
+          id: string
         }[]
       }
       has_role: {

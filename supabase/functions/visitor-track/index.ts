@@ -67,53 +67,50 @@ serve(async (req) => {
 
       const consent_given = Boolean(body?.consent_given);
 
-      // upsert by session_token
-      const { data: existing } = await supa
+      // Try to insert (ignore duplicates) to avoid race conditions on session start
+      const payload: any = {
+        session_token,
+        consent_given,
+        referrer: req.headers.get("referer") ?? null,
+      };
+
+      if (consent_given) {
+        payload.ip = getIp(req);
+        payload.user_agent = req.headers.get("user-agent") ?? null;
+      }
+
+      // NOTE: ignoreDuplicates prevents unique-constraint failures when multiple tabs start at once.
+      const { error: insErr } = await supa
+        .from("visitor_sessions")
+        .insert(payload, { onConflict: "session_token", ignoreDuplicates: true } as any);
+      if (insErr) throw insErr;
+
+      // Fetch the session row
+      const { data: existing, error: selErr } = await supa
         .from("visitor_sessions")
         .select("id, consent_given")
         .eq("session_token", session_token)
         .maybeSingle();
-
-      if (!existing) {
-        const payload: any = {
-          session_token,
-          consent_given,
-          referrer: req.headers.get("referer") ?? null,
-        };
-
-        if (consent_given) {
-          payload.ip = getIp(req);
-          payload.user_agent = req.headers.get("user-agent") ?? null;
-        }
-
-        const { data, error } = await supa
-          .from("visitor_sessions")
-          .insert(payload)
-          .select("id, consent_given")
-          .single();
-        if (error) throw error;
-        return new Response(JSON.stringify({ ok: true, visitor_session_id: data.id, consent_given: data.consent_given }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (selErr) throw selErr;
+      if (!existing) throw new Error("Session not found");
 
       // Update consent (once accepted, keep accepted)
-      const nextConsent = existing.consent_given || consent_given;
+      const nextConsent = Boolean(existing.consent_given) || consent_given;
       const update: any = { consent_given: nextConsent };
       if (!existing.consent_given && nextConsent) {
         update.ip = getIp(req);
         update.user_agent = req.headers.get("user-agent") ?? null;
       }
 
-      const { error: upErr } = await supa
-        .from("visitor_sessions")
-        .update(update)
-        .eq("id", existing.id);
+      const { error: upErr } = await supa.from("visitor_sessions").update(update).eq("id", existing.id);
       if (upErr) throw upErr;
 
-      return new Response(JSON.stringify({ ok: true, visitor_session_id: existing.id, consent_given: nextConsent }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ ok: true, visitor_session_id: existing.id, consent_given: nextConsent }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     if (action === "track_event") {

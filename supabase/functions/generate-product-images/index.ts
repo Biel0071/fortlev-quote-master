@@ -55,18 +55,17 @@ async function aiGeneratePng({
   LOVABLE_API_KEY: string;
   prompt: string;
 }) {
-  const genResp = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
+  const genResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3-pro-image-preview",
-      prompt,
-      n: 1,
-      size: "1024x1024",
-      response_format: "url",
+      model: "google/gemini-2.5-flash-image",
+      messages: [{ role: "user", content: prompt }],
+      modalities: ["image", "text"],
+      temperature: 0.7,
     }),
   });
 
@@ -75,29 +74,21 @@ async function aiGeneratePng({
     throw new Error(`image_generation_failed:${genResp.status}:${t}`);
   }
 
-  const genPayload = await genResp.json();
-  const first = (genPayload?.data?.[0] ?? {}) as Record<string, unknown>;
+  const payload = await genResp.json();
+  const rawUrl =
+    (payload?.choices?.[0]?.message?.images?.[0]?.image_url?.url as string | undefined) ??
+    (payload?.choices?.[0]?.message?.images?.[0]?.url as string | undefined) ??
+    undefined;
 
-  const imageUrl = (first.url as string | undefined) ?? undefined;
-  const b64 = (first.b64_json as string | undefined) ?? undefined;
+  if (!rawUrl) throw new Error("image_url_missing");
 
-  if (imageUrl) {
-    const imgResp = await fetch(imageUrl);
-    if (!imgResp.ok) {
-      const t = await imgResp.text();
-      throw new Error(`image_download_failed:${imgResp.status}:${t}`);
-    }
-    return new Uint8Array(await imgResp.arrayBuffer());
-  }
+  const b64 = rawUrl.includes(",") ? rawUrl.split(",")[1] : rawUrl;
+  if (!b64) throw new Error("image_b64_missing");
 
-  if (b64) {
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return bytes;
-  }
-
-  throw new Error(`image_url_missing:keys=${Object.keys(first).join(",")}`);
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
 }
 
 serve(async (req) => {

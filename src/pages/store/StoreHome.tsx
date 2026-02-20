@@ -61,16 +61,22 @@ export default function StoreHome() {
         <HomeHeroCarousel banners={home.banners} loading={home.loading} />
 
         {/* 2) CATEGORIAS (carrossel) */}
-        <HomeCategoriesCarousel categories={activeCategories as any} />
+        <div id="categorias" className="scroll-mt-28">
+          <HomeCategoriesCarousel categories={activeCategories as any} />
+        </div>
 
         {/* 3) BENEFÍCIOS */}
         <HomeBenefitsBar benefits={home.benefits} />
 
         {/* 4) PRODUTOS EM DESTAQUE (híbrido: métricas + flags) */}
-        <HomeFeaturedProducts loading={loading} products={activeProducts as any} onAdd={onAdd} />
+        <div id="mais-vendidos" className="scroll-mt-28">
+          <HomeFeaturedProducts loading={loading} products={activeProducts as any} onAdd={onAdd} />
+        </div>
 
         {/* 5) OFERTAS DA SEMANA (maior % off, com fallback) */}
-        <HomeWeeklyOffers loading={loading} offers={home.offers as any} products={activeProducts as any} onAdd={onAdd} />
+        <div id="ofertas" className="scroll-mt-28">
+          <HomeWeeklyOffers loading={loading} offers={home.offers as any} products={activeProducts as any} onAdd={onAdd} />
+        </div>
 
         {/* 6) CATEGORIAS EM DESTAQUE (grid) */}
         <HomeFeaturedCategoriesGrid categories={featuredCategories as any} />

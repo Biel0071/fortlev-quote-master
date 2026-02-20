@@ -18,15 +18,17 @@ function iconFor(key?: string | null) {
   }
 }
 
-export function HomePolicies({ policies }: { policies: HomePolicy[] }) {
+export function HomePolicies({ policies, hideHeader }: { policies: HomePolicy[]; hideHeader?: boolean }) {
   if (!policies || policies.length === 0) return null;
 
   return (
     <section className="space-y-4">
-      <header>
-        <h2 className="text-xl font-semibold">Políticas da loja</h2>
-        <p className="text-sm text-muted-foreground">Informações importantes antes de finalizar o pedido.</p>
-      </header>
+      {!hideHeader ? (
+        <header>
+          <h2 className="text-xl font-semibold">Políticas da loja</h2>
+          <p className="text-sm text-muted-foreground">Informações importantes antes de finalizar o pedido.</p>
+        </header>
+      ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {policies.slice(0, 4).map((p) => {
@@ -34,10 +36,10 @@ export function HomePolicies({ policies }: { policies: HomePolicy[] }) {
           const href = p.link_url || "/p/politica-de-privacidade";
           return (
             <Link key={p.id} to={href} className="group">
-              <Card className="rounded-2xl glass-card card-hover">
+              <Card className="rounded-2xl border-border bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md">
                 <CardContent className="p-5 space-y-2">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-xl border border-border bg-background/60 p-2">
+                    <div className="rounded-xl border border-border bg-secondary/30 p-2">
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="font-semibold">{p.title}</div>

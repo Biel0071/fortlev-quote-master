@@ -36,27 +36,31 @@ export function HomeFeaturedProducts({
   loading,
   products,
   onAdd,
+  hideHeader,
 }: {
   loading: boolean;
   products: (StoreProduct & { images?: Array<{ path: string | null }> } & { views?: number; clicks?: number; sales?: number })[];
   onAdd: (productId: string, qty: number) => void;
+  hideHeader?: boolean;
 }) {
   const featured = useMemo(() => pickFeatured(products as any[], 8), [products]);
 
   return (
     <section className="space-y-4" aria-label="Produtos em destaque">
-      <header className="flex items-end justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-xl font-semibold">Produtos em destaque</h2>
-          <p className="text-sm text-muted-foreground">Os itens mais procurados e com melhor giro.</p>
-        </div>
-        <Link to="/loja" className="text-sm font-medium underline underline-offset-4">
-          Ver tudo
-        </Link>
-      </header>
+      {!hideHeader ? (
+        <header className="flex items-end justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-xl font-semibold">Produtos em destaque</h2>
+            <p className="text-sm text-muted-foreground">Os itens mais procurados e com melhor giro.</p>
+          </div>
+          <Link to="/loja" className="text-sm font-medium underline underline-offset-4">
+            Ver tudo
+          </Link>
+        </header>
+      ) : null}
 
       {loading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-[360px] w-full rounded-2xl" />
           ))}
@@ -66,7 +70,7 @@ export function HomeFeaturedProducts({
           <CardContent className="py-6 text-sm text-muted-foreground">Sem produtos ativos para exibir.</CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
           {featured.map((p: any) => (
             <StoreProductCard key={p.id} product={p} onAdd={onAdd} />
           ))}

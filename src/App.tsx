@@ -8,6 +8,7 @@ import StoreCatalog from "./pages/store/StoreCatalog";
 import ProductPage from "./pages/store/ProductPage";
 import CartPage from "./pages/store/CartPage";
 import CheckoutPage from "./pages/store/CheckoutPage";
+import PaymentPendingPage from "./pages/store/PaymentPendingPage";
 import StorePage from "./pages/store/StorePage";
 import AccountPage from "./pages/account/AccountPage";
 import OrdersPage from "./pages/account/OrdersPage";
@@ -58,6 +59,7 @@ const App = () => (
           <Route path="/produto/:id" element={<ProductPage />} />
           <Route path="/carrinho" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/checkout/pagamento" element={<PaymentPendingPage />} />
           <Route path="/p/:slug" element={<StorePage />} />
           <Route path="/institucional/:slug" element={<StorePage />} />
 

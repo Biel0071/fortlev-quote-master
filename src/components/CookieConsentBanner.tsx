@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -7,6 +7,18 @@ import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 export function CookieConsentBanner() {
   const tracker = useVisitorTracker();
   const [configOpen, setConfigOpen] = useState(false);
+
+  // Auto-aceitar após 3s (se o usuário não interagir/recusar)
+  useEffect(() => {
+    if (tracker.consent !== "unknown") return;
+    if (configOpen) return;
+
+    const t = window.setTimeout(() => {
+      tracker.accept();
+    }, 3000);
+
+    return () => window.clearTimeout(t);
+  }, [tracker, tracker.consent, configOpen]);
 
   if (tracker.consent !== "unknown") return null;
 

@@ -10,6 +10,8 @@ import {
   Settings,
   Home,
   FileText,
+  Palette,
+  Sparkles,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
@@ -47,6 +49,8 @@ function AdminSidebar() {
     { title: "Clientes", url: "/admin/clientes", icon: Users },
     { title: "Cupons", url: "/admin/cupons", icon: TicketPercent },
     { title: "Banners", url: "/admin/banners", icon: ImageIcon },
+    { title: "Tema", url: "/admin/tema", icon: Palette },
+    { title: "Análise IA", url: "/admin/analise-ia", icon: Sparkles },
     { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
   ] as Array<{ title: string; url: string; icon: any; external?: boolean }>;
 

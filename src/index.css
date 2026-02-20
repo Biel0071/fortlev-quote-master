@@ -10,42 +10,43 @@
 
 @layer base {
   :root {
-    /* Fortlev Brand Colors */
-    --background: 210 20% 98%;
-    --foreground: 210 50% 10%;
+    /* Global theme (Grey / Blue / Orange) */
+    --background: 210 20% 97%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 50% 10%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 50% 10%;
+    --popover-foreground: 222 47% 11%;
 
-    /* Primary (botões azul escuro) */
-    --primary: 214 85% 18%;
+    /* Primary (blue) */
+    --primary: 225 71% 33%;
     --primary-foreground: 0 0% 100%;
 
-    /* Accent (amarelo - apoio) */
-    --accent: 45 100% 48%;
-    --accent-foreground: 214 85% 12%;
+    /* Accent (orange) */
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Promo badge (laranja) */
-    --promo: 24 95% 52%;
+    /* Action/destaque */
+    --promo: 24 95% 53%;
     --promo-foreground: 0 0% 100%;
 
     --secondary: 210 20% 94%;
-    --secondary-foreground: 210 50% 20%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 15% 92%;
-    --muted-foreground: 210 20% 45%;
+    --muted: 210 20% 92%;
+    --muted-foreground: 215 16% 47%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 20% 88%;
-    --input: 210 20% 88%;
-    --ring: 214 85% 38%;
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --ring: 225 71% 45%;
 
-    --radius: 0.625rem;
+    /* Premium baseline */
+    --radius: 0.75rem;
 
     /* Custom tokens */
     --fortlev-navy: 210 80% 15%;

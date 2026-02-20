@@ -118,12 +118,16 @@ export function HomeWeeklyOffers({
   products,
   onAdd,
   hideHeader,
+  productIds,
+  badgesByProductId,
 }: {
   loading: boolean;
   offers: HomeOffer[];
   products: (StoreProduct & { images?: Array<{ path: string | null }> })[];
   onAdd: (productId: string, qty: number) => void;
   hideHeader?: boolean;
+  productIds?: string[];
+  badgesByProductId?: Record<string, string>;
 }) {
   const curated = useMemo(() => (offers ?? []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)), [offers]);
 
@@ -143,12 +147,27 @@ export function HomeWeeklyOffers({
       .filter(Boolean) as Array<any>;
   }, [curated, byId]);
 
+  const merchResolved = useMemo(() => {
+    if (!productIds || productIds.length === 0) return [] as Array<any>;
+    return productIds
+      .map((id) => {
+        const p = byId.get(id);
+        if (!p) return null;
+        const badge = badgesByProductId?.[id] ?? null;
+        return {
+          offer: badge ? ({ id: `badge_${id}`, product_id: id, badge_text: badge, promo_price: null } as any) : null,
+          product: p,
+        };
+      })
+      .filter(Boolean) as Array<any>;
+  }, [productIds, byId, badgesByProductId]);
+
   const fallback = useMemo(() => {
     if (curatedResolved.length > 0) return [];
     return pickOffersFallback(products as any[], 8).map((p: any) => ({ product: p, offer: null }));
   }, [curatedResolved.length, products]);
 
-  const visible = curatedResolved.length > 0 ? curatedResolved : fallback;
+  const visible = merchResolved.length > 0 ? merchResolved : curatedResolved.length > 0 ? curatedResolved : fallback;
 
   return (
     <section className="space-y-4">

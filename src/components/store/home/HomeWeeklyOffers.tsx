@@ -50,21 +50,21 @@ function OfferCard({
   const [qty, setQty] = useState<number>(1);
   const basePrice = Number(product?.price ?? 0);
   const promo = Number(promoOverride ?? product?.promo_price ?? 0);
-  const effective = promo > 0 ? promo : basePrice;
-  const off = promo > 0 ? percentOff(basePrice, promo) : 0;
+  const hasPromo = promo > 0 && basePrice > 0 && promo < basePrice;
+  const effective = hasPromo ? promo : basePrice;
+  const off = hasPromo ? percentOff(basePrice, promo) : 0;
 
   const imgPath = product?.images?.[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);
 
-  // Simple installments hint (no business rules): 3x
+  // Installments hint: up to 10x
   const installments = useMemo(() => {
     if (!effective || effective <= 0) return null;
-    const x = effective / 3;
-    return `3x de ${formatCurrency(x)}`;
+    return `em até 10x de ${formatCurrency(effective / 10)}`;
   }, [effective]);
 
   return (
-    <Card className="overflow-hidden rounded-2xl bg-card shadow-sm hover:shadow-md transition-shadow">
+    <Card className="h-full overflow-hidden rounded-2xl bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md">
       <div className="relative aspect-[4/3] bg-muted/20 border-b border-border overflow-hidden">
         {imgUrl ? (
           <img src={imgUrl} alt={product?.name ?? "Produto"} className="h-full w-full object-cover" loading="lazy" />
@@ -72,9 +72,9 @@ function OfferCard({
           <div className="h-full w-full bg-muted" />
         )}
 
-        {promo > 0 ? (
+        {hasPromo ? (
           <div className="absolute left-3 top-3">
-            <div className="inline-flex items-center gap-1 rounded-full bg-promo text-promo-foreground px-2.5 py-1 text-xs font-bold shadow-sm">
+            <div className="inline-flex items-center gap-1 rounded-xl bg-promo text-promo-foreground px-2.5 py-1 text-xs font-bold shadow-sm">
               <BadgePercent className="h-3.5 w-3.5" />
               {off > 0 ? `${off}% OFF` : badgeText || "OFERTA"}
             </div>
@@ -82,29 +82,27 @@ function OfferCard({
         ) : null}
       </div>
 
-      <CardContent className="p-4 space-y-3">
+      <CardContent className="p-4 flex flex-col gap-3">
         <div className="min-w-0">
-          <div className="font-semibold leading-tight line-clamp-2">{product?.name}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{product?.unit ?? "un"}</div>
+          <div className="text-sm text-muted-foreground">{product?.unit ?? "un"}</div>
+          <div className="mt-1 font-semibold leading-tight line-clamp-2">{product?.name}</div>
         </div>
 
-        <div className="flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            {promo > 0 ? <div className="text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div> : null}
-            <div className="text-lg font-extrabold tracking-tight text-foreground">{formatCurrency(effective)}</div>
-            {installments ? <div className="text-xs text-muted-foreground">{installments}</div> : null}
-          </div>
+        <div className="mt-auto">
+          {hasPromo ? <div className="text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div> : null}
+          <div className="text-lg font-extrabold tracking-tight">{formatCurrency(effective)}</div>
+          {installments ? <div className="text-xs text-muted-foreground">{installments}</div> : null}
 
-          <div className="flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2">
             <Input
-              className="w-20"
+              className="w-20 h-11 rounded-xl"
               type="number"
               min={1}
               value={qty}
               onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
               aria-label={`Quantidade de ${product?.name ?? "produto"}`}
             />
-            <Button onClick={() => onAdd(product.id, qty)} className="px-4">
+            <Button onClick={() => onAdd(product.id, qty)} className="h-11 rounded-xl flex-1">
               Adicionar
             </Button>
           </div>
@@ -119,11 +117,13 @@ export function HomeWeeklyOffers({
   offers,
   products,
   onAdd,
+  hideHeader,
 }: {
   loading: boolean;
   offers: HomeOffer[];
   products: (StoreProduct & { images?: Array<{ path: string | null }> })[];
   onAdd: (productId: string, qty: number) => void;
+  hideHeader?: boolean;
 }) {
   const curated = useMemo(() => (offers ?? []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)), [offers]);
 
@@ -151,25 +151,27 @@ export function HomeWeeklyOffers({
   const visible = curatedResolved.length > 0 ? curatedResolved : fallback;
 
   return (
-    <section id="ofertas" className="space-y-4">
-      <header className="flex items-end justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Zap className="h-5 w-5" />
-            Ofertas da semana
-          </h2>
-          <p className="text-sm text-muted-foreground">Preços especiais para comprar agora — adicione sem sair da Home.</p>
-        </div>
-      </header>
+    <section className="space-y-4">
+      {!hideHeader ? (
+        <header className="flex items-end justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              Ofertas da semana
+            </h2>
+            <p className="text-sm text-muted-foreground">Preços especiais para comprar agora — adicione sem sair da Home.</p>
+          </div>
+        </header>
+      ) : null}
 
       {loading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-[340px] w-full rounded-2xl" />
           ))}
         </div>
       ) : visible.length === 0 ? null : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
           {visible.slice(0, 8).map((x: any) => (
             <OfferCard
               key={(x.offer?.id ?? x.product.id) as string}

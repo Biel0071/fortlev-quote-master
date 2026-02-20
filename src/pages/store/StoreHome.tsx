@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
@@ -6,29 +7,33 @@ import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useHomeContent } from "@/hooks/useHomeContent";
 import { HomeHeroCarousel } from "@/components/store/home/HomeHeroCarousel";
-import { HomeCategoriesCarousel } from "@/components/store/home/HomeCategoriesCarousel";
 import { HomeBenefitsBar } from "@/components/store/home/HomeBenefitsBar";
 import { HomeFeaturedProducts } from "@/components/store/home/HomeFeaturedProducts";
 import { HomeWeeklyOffers } from "@/components/store/home/HomeWeeklyOffers";
-import { HomeFeaturedCategoriesGrid } from "@/components/store/home/HomeFeaturedCategoriesGrid";
 import { HomePolicies } from "@/components/store/home/HomePolicies";
 import { CartDrawer } from "@/components/store/CartDrawer";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { cloud } from "@/lib/cloud";
 import { pickHomeSeo, useDynamicSeo } from "@/hooks/useDynamicSeo";
 import { publicImageUrl } from "@/utils/storage";
-
+import { HomeSection } from "@/components/store/home/HomeSection";
+import { HomeMainCategoriesGrid } from "@/components/store/home/HomeMainCategoriesGrid";
+import { HomeSecondaryPromoBanner } from "@/components/store/home/HomeSecondaryPromoBanner";
+import { HomeTrustBlock } from "@/components/store/home/HomeTrustBlock";
 
 export default function StoreHome() {
   const cart = useCart();
   const { activeProducts, loading: productsLoading } = useStoreProducts();
-  const { activeCategories, featuredCategories, loading: categoriesLoading } = useStoreCategories();
+  const { activeCategories, loading: categoriesLoading } = useStoreCategories();
   const home = useHomeContent();
 
   const [cartOpen, setCartOpen] = useState(false);
 
   const seo = useMemo(() => pickHomeSeo(home.seo), [home.seo]);
-  const ogImageUrl = useMemo(() => publicImageUrl("banner-images", home.seo?.og_image_path ?? null), [home.seo?.og_image_path]);
+  const ogImageUrl = useMemo(
+    () => publicImageUrl("banner-images", home.seo?.og_image_path ?? null),
+    [home.seo?.og_image_path],
+  );
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
   const loading = productsLoading || categoriesLoading || home.loading;
@@ -49,6 +54,10 @@ export default function StoreHome() {
       .then(({ data }) => setPageLinks(((data ?? []) as any).map((x: any) => ({ title: x.title, slug: x.slug }))));
   }, []);
 
+  const secondaryBanner = useMemo(() => {
+    const list = (home.banners ?? []).slice().sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    return list.length > 1 ? list[1] : null;
+  }, [home.banners]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -56,37 +65,80 @@ export default function StoreHome() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-24 md:pb-10 space-y-10">
-        {/* 1) HERO */}
-        <HomeHeroCarousel banners={home.banners} loading={home.loading} />
-
-        {/* 2) CATEGORIAS (carrossel) */}
-        <div id="categorias" className="scroll-mt-28">
-          <HomeCategoriesCarousel categories={activeCategories as any} />
+      {/* 1) Banner principal grande (full width) */}
+      <div className="px-4 sm:px-6 pt-6 sm:pt-8">
+        <div className="max-w-6xl mx-auto">
+          <HomeHeroCarousel banners={home.banners} loading={home.loading} />
         </div>
+      </div>
 
-        {/* 3) BENEFÍCIOS */}
+      {/* 2) Benefícios */}
+      <HomeSection
+        title="Compre com confiança"
+        subtitle="Entrega rápida, desconto no Pix, retirada na loja e pagamento seguro."
+        tone="plain"
+      >
         <HomeBenefitsBar benefits={home.benefits} />
+      </HomeSection>
 
-        {/* 4) PRODUTOS EM DESTAQUE (híbrido: métricas + flags) */}
-        <div id="mais-vendidos" className="scroll-mt-28">
-          <HomeFeaturedProducts loading={loading} products={activeProducts as any} onAdd={onAdd} />
-        </div>
+      {/* 3) Categorias principais (2x3) */}
+      <HomeSection
+        id="categorias"
+        title="Categorias principais"
+        subtitle="Encontre rápido: escolha um departamento e veja os produtos."
+        tone="alt"
+        action={
+          <Link to="/loja" className="text-sm font-semibold underline underline-offset-4">
+            Ver catálogo
+          </Link>
+        }
+      >
+        <HomeMainCategoriesGrid categories={activeCategories as any} />
+      </HomeSection>
 
-        {/* 5) OFERTAS DA SEMANA (maior % off, com fallback) */}
-        <div id="ofertas" className="scroll-mt-28">
-          <HomeWeeklyOffers loading={loading} offers={home.offers as any} products={activeProducts as any} onAdd={onAdd} />
-        </div>
+      {/* 4) Ofertas da semana */}
+      <HomeSection
+        id="ofertas"
+        title="Ofertas da semana"
+        subtitle="Preços especiais por tempo limitado — aproveite agora."
+        tone="plain"
+      >
+        <HomeWeeklyOffers loading={loading} offers={home.offers as any} products={activeProducts as any} onAdd={onAdd} hideHeader />
+      </HomeSection>
 
-        {/* 6) CATEGORIAS EM DESTAQUE (grid) */}
-        <HomeFeaturedCategoriesGrid categories={featuredCategories as any} />
+      {/* 5) Mais vendidos */}
+      <HomeSection
+        id="mais-vendidos"
+        title="Mais vendidos"
+        subtitle="Os itens com melhor giro e maior procura na loja."
+        tone="alt"
+        action={
+          <Link to="/loja?sort=popular" className="text-sm font-semibold underline underline-offset-4">
+            Ver ranking
+          </Link>
+        }
+      >
+        <HomeFeaturedProducts loading={loading} products={activeProducts as any} onAdd={onAdd} hideHeader />
+      </HomeSection>
 
-        {/* 7) POLÍTICAS */}
-        <HomePolicies policies={home.policies} />
-      </main>
+      {/* 6) Banner secundário promocional */}
+      <HomeSection title="Promoção em destaque" subtitle="Condições especiais selecionadas." tone="plain">
+        <HomeSecondaryPromoBanner banner={secondaryBanner as any} />
+      </HomeSection>
 
-      {/* 8) RODAPÉ */}
+      {/* 7) Institucional / confiança */}
+      <HomeSection title="Loja organizada para você comprar rápido" subtitle="Informações claras, navegação simples e suporte quando precisar." tone="alt">
+        <HomeTrustBlock />
+      </HomeSection>
+
+      {/* 8) Políticas */}
+      <HomeSection title="Políticas" subtitle="Entrega, troca e atendimento — tudo bem explicado." tone="plain">
+        <HomePolicies policies={home.policies} hideHeader />
+      </HomeSection>
+
+      {/* 9) Rodapé */}
       <StoreFooter footer={home.footer} pageLinks={pageLinks} />
     </div>
   );
 }
+

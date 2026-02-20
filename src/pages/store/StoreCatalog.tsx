@@ -2,15 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
-import { formatCurrency } from "@/utils/formatters";
+import { StoreProductCard } from "@/components/store/home/StoreProductCard";
 
 export default function StoreCatalog() {
   const cart = useCart();
@@ -37,9 +37,7 @@ export default function StoreCatalog() {
     const search = q.trim().toLowerCase();
 
     const selectedCategoryId =
-      selectedSlug === "all"
-        ? null
-        : (activeCategories.find((c) => c.slug === selectedSlug)?.id ?? null);
+      selectedSlug === "all" ? null : (activeCategories.find((c) => c.slug === selectedSlug)?.id ?? null);
 
     return activeProducts
       .filter((p: any) => {
@@ -90,10 +88,10 @@ export default function StoreCatalog() {
 
           <header className="relative p-6 sm:p-8 flex items-end justify-between gap-3 flex-wrap">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Catálogo</h1>
+              <h1 className="text-[28px] font-bold tracking-tight">Catálogo</h1>
               <p className="text-sm text-muted-foreground">Navegue por categorias e encontre seus produtos.</p>
             </div>
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="h-12 rounded-2xl">
               <Link to="/carrinho">Ir ao carrinho</Link>
             </Button>
           </header>
@@ -107,6 +105,7 @@ export default function StoreCatalog() {
                 key={c.slug}
                 size="sm"
                 variant={active ? "default" : "outline"}
+                className="h-11 rounded-2xl"
                 onClick={() => {
                   const next = new URLSearchParams(searchParams);
                   if (c.slug === "all") next.delete("categoria");
@@ -129,66 +128,45 @@ export default function StoreCatalog() {
         </section>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar produto..." className="md:col-span-2" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar produto..."
+            className="md:col-span-2 h-12 rounded-2xl"
+          />
           <div className="text-xs text-muted-foreground md:text-right self-center">
             {selectedSlug === "all" ? "Mostrando todas as categorias" : `Categoria: ${selectedSlug}`}
           </div>
         </div>
 
         {loading ? (
-          <div className="text-muted-foreground">Carregando...</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-[360px] w-full rounded-2xl" />
+            ))}
+          </div>
         ) : error ? (
           <div className="text-destructive">{error}</div>
+        ) : filtered.length === 0 ? (
+          <Card className="rounded-2xl">
+            <CardContent className="p-6 text-sm text-muted-foreground">Nenhum produto encontrado.</CardContent>
+          </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((p: any) => {
-              const effectivePrice = Number(p.promo_price ?? 0) > 0 ? Number(p.promo_price) : Number(p.price);
-              const catName = p.category_id
-                ? activeCategories.find((c) => c.id === p.category_id)?.name
-                : null;
-
-              return (
-                <Card key={p.id} className="rounded-2xl overflow-hidden">
-                  <CardContent className="p-5 space-y-3">
-                    <div className="space-y-2">
-                      <div className="font-semibold leading-tight line-clamp-2">{p.name}</div>
-                      {catName && (
-                        <Badge variant="secondary" className="w-fit">
-                          {catName}
-                        </Badge>
-                      )}
-                    </div>
-                    {p.description && <p className="text-sm text-muted-foreground line-clamp-2">{p.description}</p>}
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-muted-foreground">{p.unit ?? "un"}</div>
-                      <div className="text-right">
-                        {Number(p.promo_price ?? 0) > 0 ? (
-                          <div className="text-xs text-muted-foreground line-through">{formatCurrency(Number(p.price))}</div>
-                        ) : null}
-                        <div className="font-semibold">{formatCurrency(effectivePrice)}</div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        className="flex-1"
-                        onClick={() => {
-                          cart.add(p.id, 1);
-                          tracker.track({ type: "add_cart", productId: p.id, categoryId: p.category_id ?? null });
-                        }}
-                      >
-                        Adicionar
-                      </Button>
-                      <Button asChild variant="outline">
-                        <Link to={`/produto/${p.id}`}>Ver</Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+            {filtered.map((p: any) => (
+              <StoreProductCard
+                key={p.id}
+                product={p}
+                onAdd={(productId, qty) => {
+                  cart.add(productId, qty);
+                  tracker.track({ type: "add_cart", productId, categoryId: p.category_id ?? null });
+                }}
+              />
+            ))}
           </div>
         )}
       </main>
     </div>
   );
 }
+

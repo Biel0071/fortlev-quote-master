@@ -24,7 +24,7 @@ import { useHomeContent } from "@/hooks/useHomeContent";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { FloatingChat } from "@/components/store/mobile/FloatingChat";
-import storeLogo from "@/assets/store-logo-materiais-cropped.png";
+import storeLogo from "@/assets/store-logo-materiais.png";
 
 export function StoreTopbar({
   cartCount,
@@ -51,15 +51,6 @@ export function StoreTopbar({
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-border bg-background">
-        {/* Top info bar */}
-        <div className="border-b border-border bg-secondary/40">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2">
-            <div className="text-xs sm:text-sm text-muted-foreground text-center font-medium">
-              Frete rápido • Retire na loja • Parcelamos em até 10x
-            </div>
-          </div>
-        </div>
-
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 pb-4">
           <div className="flex flex-col gap-4">
             {/* Logo centralizada */}

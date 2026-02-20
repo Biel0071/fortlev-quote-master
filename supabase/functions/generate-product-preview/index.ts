@@ -47,6 +47,8 @@ async function aiGeneratePng({
       prompt,
       n: 1,
       size: "1024x1024",
+      // Prefer URLs when supported, but we also handle base64 below.
+      response_format: "url",
     }),
   });
 
@@ -56,16 +58,28 @@ async function aiGeneratePng({
   }
 
   const genPayload = await genResp.json();
-  const imageUrl = genPayload?.data?.[0]?.url as string | undefined;
-  if (!imageUrl) throw new Error("image_url_missing");
+  const first = (genPayload?.data?.[0] ?? {}) as Record<string, unknown>;
 
-  const imgResp = await fetch(imageUrl);
-  if (!imgResp.ok) {
-    const t = await imgResp.text();
-    throw new Error(`image_download_failed:${imgResp.status}:${t}`);
+  const imageUrl = (first.url as string | undefined) ?? undefined;
+  const b64 = (first.b64_json as string | undefined) ?? undefined;
+
+  if (imageUrl) {
+    const imgResp = await fetch(imageUrl);
+    if (!imgResp.ok) {
+      const t = await imgResp.text();
+      throw new Error(`image_download_failed:${imgResp.status}:${t}`);
+    }
+    return new Uint8Array(await imgResp.arrayBuffer());
   }
 
-  return new Uint8Array(await imgResp.arrayBuffer());
+  if (b64) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  throw new Error(`image_url_missing:keys=${Object.keys(first).join(",")}`);
 }
 
 function safeJsonParse<T>(raw: string): T | null {

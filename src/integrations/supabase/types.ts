@@ -88,6 +88,140 @@ export type Database = {
         }
         Relationships: []
       }
+      best_conversations: {
+        Row: {
+          chat_session_id: string
+          created_at: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          chat_session_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          chat_session_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "best_conversations_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: true
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_insights: {
+        Row: {
+          chat_session_id: string
+          created_at: string
+          id: string
+          insight_json: Json
+        }
+        Insert: {
+          chat_session_id: string
+          created_at?: string
+          id?: string
+          insight_json?: Json
+        }
+        Update: {
+          chat_session_id?: string
+          created_at?: string
+          id?: string
+          insight_json?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_insights_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          chat_session_id: string
+          content: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          chat_session_id: string
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+        }
+        Update: {
+          chat_session_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          last_path: string | null
+          score_snapshot: number
+          session_token: string
+          started_at: string
+          updated_at: string
+          visitor_session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          last_path?: string | null
+          score_snapshot?: number
+          session_token: string
+          started_at?: string
+          updated_at?: string
+          visitor_session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          last_path?: string | null
+          score_snapshot?: number
+          session_token?: string
+          started_at?: string
+          updated_at?: string
+          visitor_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_visitor_session_id_fkey"
+            columns: ["visitor_session_id"]
+            isOneToOne: false
+            referencedRelation: "visitor_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       construction_catalog_products: {
         Row: {
           active: boolean
@@ -1179,28 +1313,94 @@ export type Database = {
       }
       visitor_events: {
         Row: {
+          category_id: string | null
           created_at: string
+          duration: number | null
           event_name: string
           id: string
           metadata: Json
           path: string | null
+          product_id: string | null
           session_id: string
+          type: string | null
         }
         Insert: {
+          category_id?: string | null
           created_at?: string
+          duration?: number | null
           event_name: string
           id?: string
           metadata?: Json
           path?: string | null
+          product_id?: string | null
           session_id: string
+          type?: string | null
         }
         Update: {
+          category_id?: string | null
           created_at?: string
+          duration?: number | null
           event_name?: string
           id?: string
           metadata?: Json
           path?: string | null
+          product_id?: string | null
           session_id?: string
+          type?: string | null
+        }
+        Relationships: []
+      }
+      visitor_sessions: {
+        Row: {
+          consent_given: boolean
+          country: string | null
+          created_at: string
+          ended_at: string | null
+          id: string
+          ip: string | null
+          referrer: string | null
+          score: number
+          session_token: string
+          started_at: string
+          total_time: number
+          updated_at: string
+          user_agent: string | null
+          utm_campaign: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          consent_given?: boolean
+          country?: string | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          ip?: string | null
+          referrer?: string | null
+          score?: number
+          session_token: string
+          started_at?: string
+          total_time?: number
+          updated_at?: string
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          consent_given?: boolean
+          country?: string | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          ip?: string | null
+          referrer?: string | null
+          score?: number
+          session_token?: string
+          started_at?: string
+          total_time?: number
+          updated_at?: string
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_source?: string | null
         }
         Relationships: []
       }

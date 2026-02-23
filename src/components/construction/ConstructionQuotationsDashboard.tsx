@@ -3,15 +3,21 @@ import { ConstructionQuotation } from "@/types/construction";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/hooks/use-toast";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 
 interface ConstructionQuotationsDashboardProps {
   quotations: ConstructionQuotation[];
   onEdit: (quotation: ConstructionQuotation) => void;
   onDelete: (id: string) => void;
+  onSave?: (quotation: ConstructionQuotation) => void;
 }
 
 function statusLabel(status: ConstructionQuotation["status"]) {
@@ -29,9 +35,13 @@ function statusLabel(status: ConstructionQuotation["status"]) {
   }
 }
 
-export function ConstructionQuotationsDashboard({ quotations, onEdit, onDelete }: ConstructionQuotationsDashboardProps) {
+export function ConstructionQuotationsDashboard({ quotations, onEdit, onDelete, onSave }: ConstructionQuotationsDashboardProps) {
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
+
   const [viewOpen, setViewOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [selected, setSelected] = useState<ConstructionQuotation | null>(null);
+  const [draft, setDraft] = useState<ConstructionQuotation | null>(null);
 
   const recent = useMemo(() => {
     return [...quotations].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -40,6 +50,75 @@ export function ConstructionQuotationsDashboard({ quotations, onEdit, onDelete }
   const openView = (q: ConstructionQuotation) => {
     setSelected(q);
     setViewOpen(true);
+  };
+
+  const openEdit = (q: ConstructionQuotation) => {
+    if (adminLoading) return;
+
+    if (!isAdmin) {
+      toast({
+        title: "Permissão necessária",
+        description: "Apenas administradores podem editar orçamentos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const clone: ConstructionQuotation = {
+      ...q,
+      createdAt: new Date(q.createdAt),
+      customer: { ...q.customer },
+      companyInfo: { ...q.companyInfo },
+      items: q.items.map((it) => ({
+        ...it,
+        product: { ...it.product },
+      })),
+    };
+
+    setDraft(clone);
+    setEditOpen(true);
+  };
+
+  const saveDraft = () => {
+    if (!draft) return;
+
+    const normalizedItems = draft.items.map((it) => {
+      const quantity = Number(it.quantity) || 0;
+      const unitPrice = Number(it.unitPrice) || 0;
+      return {
+        ...it,
+        quantity,
+        unitPrice,
+        subtotal: quantity * unitPrice,
+      };
+    });
+
+    const subtotal = normalizedItems.reduce((acc, it) => acc + it.subtotal, 0);
+    const total = subtotal - (draft.discount || 0) + (draft.freight || 0);
+
+    const next: ConstructionQuotation = {
+      ...draft,
+      items: normalizedItems,
+      subtotal,
+      total,
+    };
+
+    if (onSave) {
+      onSave(next);
+      toast({
+        title: "Alterações salvas!",
+        description: `Orçamento ${next.number} atualizado com sucesso.`,
+      });
+      setEditOpen(false);
+      setDraft(null);
+      setSelected((prev) => (prev?.id === next.id ? next : prev));
+      return;
+    }
+
+    // fallback: editar no formulário principal
+    onEdit(next);
+    setEditOpen(false);
+    setDraft(null);
   };
 
   return (
@@ -81,7 +160,13 @@ export function ConstructionQuotationsDashboard({ quotations, onEdit, onDelete }
                             <Button variant="outline" size="icon" onClick={() => openView(q)} title="Rever">
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="icon" onClick={() => onEdit(q)} title="Editar">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => openEdit(q)}
+                              title={isAdmin ? "Editar orçamento" : "Somente admin pode editar"}
+                              disabled={adminLoading}
+                            >
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Button
@@ -167,6 +252,142 @@ export function ConstructionQuotationsDashboard({ quotations, onEdit, onDelete }
                   </div>
                 </div>
               </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => selected && openEdit(selected)}
+                  disabled={adminLoading}
+                  title={isAdmin ? "Editar orçamento" : "Somente admin pode editar"}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Editar orçamento
+                </Button>
+                <DialogClose asChild>
+                  <Button>Fechar</Button>
+                </DialogClose>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar orçamento {draft?.number}</DialogTitle>
+          </DialogHeader>
+
+          {draft && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Cliente</Label>
+                  <Input value={draft.customer?.name || ""} onChange={(e) => setDraft((p) => (p ? { ...p, customer: { ...p.customer, name: e.target.value } } : p))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>CPF/CNPJ</Label>
+                  <Input value={draft.customer?.cpfCnpj || ""} onChange={(e) => setDraft((p) => (p ? { ...p, customer: { ...p.customer, cpfCnpj: e.target.value } } : p))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefone</Label>
+                  <Input value={draft.customer?.phone || ""} onChange={(e) => setDraft((p) => (p ? { ...p, customer: { ...p.customer, phone: e.target.value } } : p))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Endereço</Label>
+                  <Input value={draft.customer?.address || ""} onChange={(e) => setDraft((p) => (p ? { ...p, customer: { ...p.customer, address: e.target.value } } : p))} />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="font-semibold">Itens</div>
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="divide-y divide-border">
+                    {draft.items.map((it) => (
+                      <div key={it.id} className="p-3 grid grid-cols-1 sm:grid-cols-5 gap-3 items-center">
+                        <div className="sm:col-span-2">
+                          <div className="font-medium">{it.product.name}</div>
+                          <div className="text-xs text-muted-foreground">{it.product.unit}</div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Qtd</Label>
+                          <Input
+                            type="number"
+                            value={it.quantity}
+                            onChange={(e) => {
+                              const q = Number(e.target.value) || 0;
+                              setDraft((prev) => {
+                                if (!prev) return prev;
+                                const items = prev.items.map((x) => (x.id === it.id ? { ...x, quantity: q, subtotal: q * (x.unitPrice || 0) } : x));
+                                return { ...prev, items };
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Unit. (R$)</Label>
+                          <Input
+                            type="number"
+                            value={it.unitPrice}
+                            onChange={(e) => {
+                              const p = Number(e.target.value) || 0;
+                              setDraft((prev) => {
+                                if (!prev) return prev;
+                                const items = prev.items.map((x) => (x.id === it.id ? { ...x, unitPrice: p, subtotal: p * (x.quantity || 0) } : x));
+                                return { ...prev, items };
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="text-right font-semibold">{formatCurrency(it.subtotal || it.unitPrice * it.quantity)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Frete (R$)</Label>
+                  <Input type="number" value={draft.freight || 0} onChange={(e) => setDraft((p) => (p ? { ...p, freight: Number(e.target.value) || 0 } : p))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Desconto (R$)</Label>
+                  <Input type="number" value={draft.discount || 0} onChange={(e) => setDraft((p) => (p ? { ...p, discount: Number(e.target.value) || 0 } : p))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Validade</Label>
+                  <Input value={draft.validity || ""} onChange={(e) => setDraft((p) => (p ? { ...p, validity: e.target.value } : p))} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Observações</Label>
+                <Textarea rows={4} value={draft.observations || ""} onChange={(e) => setDraft((p) => (p ? { ...p, observations: e.target.value } : p))} />
+              </div>
+
+              <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm space-y-2">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(draft.items.reduce((acc, it) => acc + (it.subtotal || it.unitPrice * it.quantity), 0))}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total</span>
+                  <span className="font-bold">
+                    {formatCurrency(
+                      draft.items.reduce((acc, it) => acc + (it.subtotal || it.unitPrice * it.quantity), 0) - (draft.discount || 0) + (draft.freight || 0),
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button onClick={saveDraft}>Salvar alterações</Button>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>

@@ -35,15 +35,18 @@ import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 interface DashboardProps {
   quotations: Quotation[];
   onDelete: (id: string) => void;
   onEdit?: (quotation: Quotation) => void;
+  onSave?: (quotation: Quotation) => void;
 }
 
 const statusConfig = {
@@ -55,10 +58,15 @@ const statusConfig = {
 
 const COLORS = ['hsl(45, 100%, 48%)', 'hsl(210, 80%, 15%)', 'hsl(205, 90%, 45%)', 'hsl(0, 84%, 60%)'];
 
-export const Dashboard = ({ quotations, onDelete, onEdit }: DashboardProps) => {
+export const Dashboard = ({ quotations, onDelete, onEdit, onSave }: DashboardProps) => {
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
+
   const [nfeDialogOpen, setNfeDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+  const [draftQuotation, setDraftQuotation] = useState<Quotation | null>(null);
   const [nfeNumber, setNfeNumber] = useState('');
   
   // Filters
@@ -223,6 +231,90 @@ export const Dashboard = ({ quotations, onDelete, onEdit }: DashboardProps) => {
   const handleViewQuotation = (quotation: Quotation) => {
     setSelectedQuotation(quotation);
     setViewDialogOpen(true);
+  };
+
+  const openEditQuotation = (quotation: Quotation) => {
+    if (adminLoading) return;
+
+    if (!isAdmin) {
+      toast({
+        title: 'Permissão necessária',
+        description: 'Apenas administradores podem editar orçamentos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const clone: Quotation = {
+      ...quotation,
+      createdAt: new Date(quotation.createdAt),
+      customer: { ...quotation.customer },
+      companyInfo: { ...quotation.companyInfo },
+      paymentConditions: { ...quotation.paymentConditions },
+      items: quotation.items.map((it) => ({
+        ...it,
+        product: { ...it.product },
+      })),
+    };
+
+    setDraftQuotation(clone);
+    setEditDialogOpen(true);
+  };
+
+  const computeTotals = (q: Quotation) => {
+    const subtotal = q.items.reduce((acc, it) => acc + (it.subtotal ?? it.unitPrice * it.quantity), 0);
+    const freight = q.freight || 0;
+    const discount = q.discount || 0;
+    const total = subtotal - discount + freight;
+    return { subtotal, total };
+  };
+
+  const saveDraft = () => {
+    if (!draftQuotation) return;
+
+    const normalizedItems = draftQuotation.items.map((it) => {
+      const quantity = Number(it.quantity) || 0;
+      const unitPrice = Number(it.unitPrice) || 0;
+      return {
+        ...it,
+        quantity,
+        unitPrice,
+        subtotal: unitPrice * quantity,
+      };
+    });
+
+    const next: Quotation = {
+      ...draftQuotation,
+      items: normalizedItems,
+      ...computeTotals({ ...draftQuotation, items: normalizedItems }),
+    };
+
+    if (onSave) {
+      onSave(next);
+      toast({
+        title: 'Alterações salvas!',
+        description: `Orçamento ${next.number} atualizado com sucesso.`,
+      });
+      setEditDialogOpen(false);
+      setDraftQuotation(null);
+      // keep view dialog in sync
+      setSelectedQuotation((prev) => (prev?.id === next.id ? next : prev));
+      return;
+    }
+
+    // fallback: open in main form if parent didn't provide onSave
+    if (onEdit) {
+      onEdit(next);
+      setEditDialogOpen(false);
+      setDraftQuotation(null);
+      return;
+    }
+
+    toast({
+      title: 'Não foi possível salvar',
+      description: 'Esta tela não recebeu a função de salvamento.',
+      variant: 'destructive',
+    });
   };
 
   const confirmGenerateNFe = async () => {
@@ -556,16 +648,15 @@ export const Dashboard = ({ quotations, onDelete, onEdit }: DashboardProps) => {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            {onEdit && (
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => onEdit(quotation)}
-                                title="Editar orçamento"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            )}
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => openEditQuotation(quotation)}
+                              title={isAdmin ? "Editar orçamento" : "Somente admin pode editar"}
+                              disabled={adminLoading}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="outline"
                               size="icon"
@@ -760,9 +851,290 @@ export const Dashboard = ({ quotations, onDelete, onEdit }: DashboardProps) => {
               <Image className="h-4 w-4 mr-2" />
               Baixar PNG
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => selectedQuotation && openEditQuotation(selectedQuotation)}
+              disabled={adminLoading}
+              title={isAdmin ? "Editar orçamento" : "Somente admin pode editar"}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar orçamento
+            </Button>
             <DialogClose asChild>
               <Button>Fechar</Button>
             </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Quotation Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-fortlev-yellow" />
+              Editar Orçamento
+            </DialogTitle>
+            <DialogDescription>
+              {draftQuotation ? `Orçamento ${draftQuotation.number}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[60vh] pr-4">
+            {draftQuotation && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nome do cliente</Label>
+                    <Input
+                      value={draftQuotation.customer.name}
+                      onChange={(e) =>
+                        setDraftQuotation((prev) =>
+                          prev
+                            ? { ...prev, customer: { ...prev.customer, name: e.target.value } }
+                            : prev,
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Telefone</Label>
+                    <Input
+                      value={draftQuotation.customer.phone}
+                      onChange={(e) =>
+                        setDraftQuotation((prev) =>
+                          prev
+                            ? { ...prev, customer: { ...prev.customer, phone: e.target.value } }
+                            : prev,
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>CNPJ/CPF</Label>
+                    <Input
+                      value={draftQuotation.customer.cnpj}
+                      onChange={(e) =>
+                        setDraftQuotation((prev) =>
+                          prev
+                            ? { ...prev, customer: { ...prev.customer, cnpj: e.target.value } }
+                            : prev,
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Endereço</Label>
+                    <Input
+                      value={draftQuotation.customer.address}
+                      onChange={(e) =>
+                        setDraftQuotation((prev) =>
+                          prev
+                            ? { ...prev, customer: { ...prev.customer, address: e.target.value } }
+                            : prev,
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select
+                      value={draftQuotation.status}
+                      onValueChange={(v) =>
+                        setDraftQuotation((prev) => (prev ? { ...prev, status: v as any } : prev))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="sent">Enviado</SelectItem>
+                        <SelectItem value="approved">Aprovado</SelectItem>
+                        <SelectItem value="rejected">Rejeitado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Frete (R$)</Label>
+                    <Input
+                      type="number"
+                      value={draftQuotation.freight || 0}
+                      onChange={(e) =>
+                        setDraftQuotation((prev) =>
+                          prev ? { ...prev, freight: Number(e.target.value) || 0 } : prev,
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Desconto (R$)</Label>
+                    <Input
+                      type="number"
+                      value={draftQuotation.discount || 0}
+                      onChange={(e) =>
+                        setDraftQuotation((prev) =>
+                          prev ? { ...prev, discount: Number(e.target.value) || 0 } : prev,
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Validade</Label>
+                    <Input
+                      value={draftQuotation.validity}
+                      onChange={(e) =>
+                        setDraftQuotation((prev) => (prev ? { ...prev, validity: e.target.value } : prev))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Prazo de entrega</Label>
+                    <Input
+                      value={draftQuotation.deliveryTime}
+                      onChange={(e) =>
+                        setDraftQuotation((prev) =>
+                          prev ? { ...prev, deliveryTime: e.target.value } : prev,
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Condições de pagamento (à vista)</Label>
+                  <Input
+                    value={draftQuotation.paymentConditions.cashDiscount}
+                    onChange={(e) =>
+                      setDraftQuotation((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              paymentConditions: { ...prev.paymentConditions, cashDiscount: e.target.value },
+                            }
+                          : prev,
+                      )
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Condições de pagamento (parcelado)</Label>
+                  <Input
+                    value={draftQuotation.paymentConditions.installments}
+                    onChange={(e) =>
+                      setDraftQuotation((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              paymentConditions: { ...prev.paymentConditions, installments: e.target.value },
+                            }
+                          : prev,
+                      )
+                    }
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Itens</h4>
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <div className="divide-y divide-border">
+                      {draftQuotation.items.map((it, idx) => (
+                        <div key={it.id} className="p-3 grid grid-cols-1 sm:grid-cols-5 gap-3 items-center">
+                          <div className="sm:col-span-2">
+                            <div className="font-medium">Caixa d'água {it.product.capacity}{it.product.unit}</div>
+                            <div className="text-xs text-muted-foreground">Item #{idx + 1}</div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Qtd</Label>
+                            <Input
+                              type="number"
+                              value={it.quantity}
+                              onChange={(e) => {
+                                const q = Number(e.target.value) || 0;
+                                setDraftQuotation((prev) => {
+                                  if (!prev) return prev;
+                                  const items = prev.items.map((x) =>
+                                    x.id === it.id ? { ...x, quantity: q, subtotal: q * (x.unitPrice || 0) } : x,
+                                  );
+                                  return { ...prev, items };
+                                });
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Unit. (R$)</Label>
+                            <Input
+                              type="number"
+                              value={it.unitPrice}
+                              onChange={(e) => {
+                                const p = Number(e.target.value) || 0;
+                                setDraftQuotation((prev) => {
+                                  if (!prev) return prev;
+                                  const items = prev.items.map((x) =>
+                                    x.id === it.id ? { ...x, unitPrice: p, subtotal: p * (x.quantity || 0) } : x,
+                                  );
+                                  return { ...prev, items };
+                                });
+                              }}
+                            />
+                          </div>
+                          <div className="text-right font-semibold">
+                            {formatCurrency(it.subtotal || it.unitPrice * it.quantity)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Observações</Label>
+                  <Textarea
+                    rows={4}
+                    value={draftQuotation.observations}
+                    onChange={(e) =>
+                      setDraftQuotation((prev) => (prev ? { ...prev, observations: e.target.value } : prev))
+                    }
+                  />
+                </div>
+
+                <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(computeTotals(draftQuotation).subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Desconto</span>
+                    <span>- {formatCurrency(draftQuotation.discount || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Frete</span>
+                    <span>{formatCurrency(draftQuotation.freight || 0)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-bold text-base">
+                    <span>Total</span>
+                    <span>{formatCurrency(computeTotals(draftQuotation).total)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </ScrollArea>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button onClick={saveDraft} disabled={!draftQuotation}>
+              Salvar alterações
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -394,10 +394,11 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="dashboard" className="animate-fade-in">
-            <Dashboard 
-              quotations={quotations} 
+            <Dashboard
+              quotations={quotations}
               onDelete={handleDeleteQuotation}
               onEdit={handleEditQuotation}
+              onSave={(q) => updateQuotation(q.id, q)}
             />
           </TabsContent>
         </Tabs>

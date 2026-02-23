@@ -137,6 +137,7 @@ export function ConstructionQuotationsDashboard({ quotations, onEdit, onDelete, 
                   <TableRow className="bg-muted/50">
                     <TableHead>Nº</TableHead>
                     <TableHead>Cliente</TableHead>
+                    <TableHead>Itens</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Total</TableHead>
@@ -144,18 +145,32 @@ export function ConstructionQuotationsDashboard({ quotations, onEdit, onDelete, 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recent.map((q) => {
-                    const s = statusLabel(q.status);
-                    return (
-                      <TableRow key={q.id} className="hover:bg-muted/30">
-                        <TableCell className="font-medium">{q.number}</TableCell>
-                        <TableCell className="max-w-[260px] truncate">{q.customer?.name || "—"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(q.createdAt))}</TableCell>
-                        <TableCell>
-                          <Badge variant={s.variant}>{s.label}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(q.total || 0)}</TableCell>
-                        <TableCell className="text-right">
+                      {recent.map((q) => {
+                        const s = statusLabel(q.status);
+                        const itemsSummary = (() => {
+                          const items = q.items ?? [];
+                          if (items.length === 0) return "—";
+                          const head = items
+                            .slice(0, 2)
+                            .map((it) => it.product?.name || "—")
+                            .join(", ");
+                          const rest = items.length > 2 ? ` +${items.length - 2}` : "";
+                          return `${head}${rest}`;
+                        })();
+
+                        return (
+                          <TableRow key={q.id} className="hover:bg-muted/30">
+                            <TableCell className="font-medium">{q.number}</TableCell>
+                            <TableCell className="max-w-[240px] truncate">{q.customer?.name || "—"}</TableCell>
+                            <TableCell className="max-w-[340px] truncate text-sm text-muted-foreground" title={itemsSummary}>
+                              {itemsSummary}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(q.createdAt))}</TableCell>
+                            <TableCell>
+                              <Badge variant={s.variant}>{s.label}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">{formatCurrency(q.total || 0)}</TableCell>
+                            <TableCell className="text-right">
                           <div className="inline-flex items-center gap-2">
                             <Button variant="outline" size="icon" onClick={() => openView(q)} title="Rever">
                               <Eye className="h-4 w-4" />

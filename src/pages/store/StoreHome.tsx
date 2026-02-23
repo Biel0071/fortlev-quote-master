@@ -79,7 +79,7 @@ export default function StoreHome() {
 
       {/* 2) Carrossel de categorias */}
       <HomeSection title="Categorias" subtitle="Navegue por departamentos e encontre rápido." tone="plain">
-        <HomeCategoriesCarousel categories={activeCategories as any} />
+        <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
       </HomeSection>
 
       {/* 3) Início dos itens da loja */}

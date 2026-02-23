@@ -512,7 +512,12 @@ const ConstructionPage = () => {
           </TabsContent>
 
           <TabsContent value="saved" className="animate-fade-in">
-            <ConstructionQuotationsDashboard quotations={quotations} onEdit={handleEditQuotation} onDelete={handleDeleteQuotation} />
+            <ConstructionQuotationsDashboard
+              quotations={quotations}
+              onEdit={handleEditQuotation}
+              onDelete={handleDeleteQuotation}
+              onSave={(q) => updateQuotation(q.id, q)}
+            />
           </TabsContent>
         </Tabs>
       </main>

@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConstructionProductSelector } from '@/components/ConstructionProductSelector';
 import { ConstructionItemsList } from '@/components/ConstructionItemsList';
 import { CustomerForm } from '@/components/CustomerForm';
-import { QuotationActions } from '@/components/QuotationActions';
 import { QuotationPreview } from '@/components/QuotationPreview';
-import { ConstructionQuotationItem, ConstructionQuotation } from '@/types/construction';
-import { Customer, CompanyInfo, PaymentConditions, Quotation, QuotationItem } from '@/types/quotation';
+import type { ConstructionQuotationItem, ConstructionQuotation } from '@/types/construction';
+import type { Customer, CompanyInfo, PaymentConditions, Quotation, QuotationItem } from '@/types/quotation';
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
@@ -18,9 +17,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency } from '@/utils/formatters';
 import { useConstructionQuotations } from '@/hooks/useConstructionQuotations';
+import { ConstructionQuotationsDashboard } from '@/components/construction/ConstructionQuotationsDashboard';
 
 const ConstructionPage = () => {
-  const { saveQuotation, generateQuotationNumber } = useConstructionQuotations();
+  const { quotations, saveQuotation, updateQuotation, deleteQuotation, generateQuotationNumber } = useConstructionQuotations();
+
+  const [activeTab, setActiveTab] = useState<'new' | 'saved'>('new');
+  const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
 
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: 'Material de Construção',
@@ -43,7 +46,9 @@ const ConstructionPage = () => {
   const [showClientData, setShowClientData] = useState(true);
   const [items, setItems] = useState<ConstructionQuotationItem[]>([]);
   const [validity, setValidity] = useState('5 dias');
-  const [observations, setObservations] = useState('VALIDADE P/ TROCA 5 DIAS * PRAZO MÁXIMO P/ RETIRADA 30 DIAS * APÓS O PRAZO O VALOR DO PEDIDO É CONVERTIDO EM CRÉDITO NA LOJA * DESCARGA DE MERCADORIA É FEITA NO PASSEIO * NÃO SUBIMOS E NEM DESCEMOS ESCADA PARA ENTREGA DE MERCADORIA');
+  const [observations, setObservations] = useState(
+    'VALIDADE P/ TROCA 5 DIAS * PRAZO MÁXIMO P/ RETIRADA 30 DIAS * APÓS O PRAZO O VALOR DO PEDIDO É CONVERTIDO EM CRÉDITO NA LOJA * DESCARGA DE MERCADORIA É FEITA NO PASSEIO * NÃO SUBIMOS E NEM DESCEMOS ESCADA PARA ENTREGA DE MERCADORIA'
+  );
   const [discount, setDiscount] = useState(0);
   const [freight, setFreight] = useState(0);
   const [deliveryTime, setDeliveryTime] = useState('');
@@ -53,14 +58,15 @@ const ConstructionPage = () => {
     installments: '',
     downPayment: '',
   });
+
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
 
-  const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
+  const subtotal = useMemo(() => items.reduce((acc, item) => acc + item.subtotal, 0), [items]);
   const total = subtotal - discount + freight;
 
   const handleAddItem = (item: ConstructionQuotationItem) => {
-    setItems([...items, item]);
+    setItems((prev) => [...prev, item]);
     toast({
       title: 'Item adicionado',
       description: `${item.product.name} adicionado ao orçamento`,
@@ -68,7 +74,7 @@ const ConstructionPage = () => {
   };
 
   const handleRemoveItem = (id: string) => {
-    setItems(items.filter((item) => item.id !== id));
+    setItems((prev) => prev.filter((item) => item.id !== id));
     toast({
       title: 'Item removido',
       variant: 'destructive',
@@ -76,23 +82,27 @@ const ConstructionPage = () => {
   };
 
   const handleUpdateQuantity = (id: string, quantity: number) => {
-    setItems(items.map((item) => {
-      if (item.id === id) {
-        return {
-          ...item,
-          quantity,
-          subtotal: item.unitPrice * quantity,
-        };
-      }
-      return item;
-    }));
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          return {
+            ...item,
+            quantity,
+            subtotal: item.unitPrice * quantity,
+          };
+        }
+        return item;
+      })
+    );
   };
+
   // Convert construction items to quotation items for PDF
-  const convertToQuotationItems = (): QuotationItem[] => {
-    return items.map(item => ({
+  const convertToQuotationItems = (sourceItems: ConstructionQuotationItem[]): QuotationItem[] => {
+    return sourceItems.map((item) => ({
       id: item.id,
       product: {
         id: item.product.id,
+        // IMPORTANTE: o PDF/PNG de construção deve usar o nome do produto.
         name: item.product.name,
         capacity: 0,
         unit: item.product.unit,
@@ -107,13 +117,15 @@ const ConstructionPage = () => {
     }));
   };
 
-  const createQuotation = (): Quotation => {
+  type QuotationMeta = { id: string; number: string };
+
+  const createQuotation = (meta: QuotationMeta, sourceItems: ConstructionQuotationItem[]): Quotation => {
     return {
-      id: crypto.randomUUID(),
-      number: generateQuotationNumber(),
+      id: meta.id,
+      number: meta.number,
       customer,
       companyInfo,
-      items: convertToQuotationItems(),
+      items: convertToQuotationItems(sourceItems),
       subtotal,
       discount,
       freight,
@@ -134,10 +146,10 @@ const ConstructionPage = () => {
     };
   };
 
-  const createConstructionQuotation = (): ConstructionQuotation => {
+  const createConstructionQuotation = (meta: QuotationMeta, sourceItems: ConstructionQuotationItem[]): ConstructionQuotation => {
     return {
-      id: crypto.randomUUID(),
-      number: generateQuotationNumber(),
+      id: meta.id,
+      number: meta.number,
       customer: {
         name: customer.name,
         cpfCnpj: customer.cnpj,
@@ -153,7 +165,7 @@ const ConstructionPage = () => {
         email: companyInfo.email,
         sellerName: companyInfo.sellerName,
       },
-      items,
+      items: sourceItems,
       subtotal,
       discount,
       freight,
@@ -182,40 +194,120 @@ const ConstructionPage = () => {
 
   const handleGeneratePDF = () => {
     if (!validateForm()) return;
-    const quotation = createQuotation();
-    saveQuotation(createConstructionQuotation());
-    downloadPDF(quotation);
-    toast({
-      title: 'PDF gerado com sucesso!',
-      description: `Orçamento ${quotation.number} gerado`,
-    });
+
+    const meta: QuotationMeta = {
+      id: editingQuotationId || crypto.randomUUID(),
+      number: editingQuotationId ? (quotations.find((q) => q.id === editingQuotationId)?.number || generateQuotationNumber()) : generateQuotationNumber(),
+    };
+
+    const qDoc = createQuotation(meta, items);
+    const qSaved = createConstructionQuotation(meta, items);
+
+    if (editingQuotationId) {
+      updateQuotation(editingQuotationId, qSaved);
+    } else {
+      saveQuotation(qSaved);
+    }
+
+    downloadPDF(qDoc);
+    toast({ title: 'PDF gerado com sucesso!', description: `Orçamento ${meta.number} gerado` });
+    resetForm();
   };
 
   const handleGeneratePNG = async () => {
     if (!validateForm()) return;
-    const quotation = createQuotation();
-    saveQuotation(createConstructionQuotation());
-    await downloadPNG(quotation);
-    toast({
-      title: 'PNG gerado com sucesso!',
-    });
+
+    const meta: QuotationMeta = {
+      id: editingQuotationId || crypto.randomUUID(),
+      number: editingQuotationId ? (quotations.find((q) => q.id === editingQuotationId)?.number || generateQuotationNumber()) : generateQuotationNumber(),
+    };
+
+    const qDoc = createQuotation(meta, items);
+    const qSaved = createConstructionQuotation(meta, items);
+
+    if (editingQuotationId) {
+      updateQuotation(editingQuotationId, qSaved);
+    } else {
+      saveQuotation(qSaved);
+    }
+
+    await downloadPNG(qDoc);
+    toast({ title: 'PNG gerado com sucesso!' });
+    resetForm();
   };
 
   const handleSendWhatsApp = () => {
     if (!validateForm()) return;
-    const quotation = createQuotation();
-    saveQuotation(createConstructionQuotation());
-    openWhatsApp(quotation);
-    toast({
-      title: 'WhatsApp aberto!',
-    });
+
+    const meta: QuotationMeta = {
+      id: editingQuotationId || crypto.randomUUID(),
+      number: editingQuotationId ? (quotations.find((q) => q.id === editingQuotationId)?.number || generateQuotationNumber()) : generateQuotationNumber(),
+    };
+
+    const qDoc = createQuotation(meta, items);
+    const qSaved = createConstructionQuotation(meta, items);
+
+    if (editingQuotationId) {
+      updateQuotation(editingQuotationId, { ...qSaved, status: 'sent' });
+    } else {
+      saveQuotation({ ...qSaved, status: 'sent' });
+    }
+
+    openWhatsApp(qDoc);
+    toast({ title: 'WhatsApp aberto!' });
+    resetForm();
   };
 
   const handlePreview = () => {
     if (!validateForm()) return;
-    const quotation = createQuotation();
-    setPreviewQuotation(quotation);
+
+    const meta: QuotationMeta = {
+      id: editingQuotationId || crypto.randomUUID(),
+      number: editingQuotationId ? (quotations.find((q) => q.id === editingQuotationId)?.number || generateQuotationNumber()) : generateQuotationNumber(),
+    };
+
+    const qDoc = createQuotation(meta, items);
+    setPreviewQuotation(qDoc);
     setPreviewOpen(true);
+  };
+
+  const handleEditQuotation = (q: ConstructionQuotation) => {
+    setEditingQuotationId(q.id);
+    setCustomer({
+      name: q.customer?.name || '',
+      cnpj: q.customer?.cpfCnpj || '',
+      phone: q.customer?.phone || '',
+      address: q.customer?.address || '',
+    });
+    setCompanyInfo((prev) => ({
+      ...prev,
+      name: q.companyInfo?.name || prev.name,
+      cnpj: q.companyInfo?.cnpj || prev.cnpj,
+      address: q.companyInfo?.address || prev.address,
+      phone: q.companyInfo?.phone || prev.phone,
+      email: q.companyInfo?.email || prev.email,
+      sellerName: q.companyInfo?.sellerName || prev.sellerName,
+    }));
+    setItems(q.items || []);
+    setValidity(q.validity || '5 dias');
+    setObservations(q.observations || '');
+    setDiscount(q.discount || 0);
+    setFreight(q.freight || 0);
+    setDeliveryTime(q.deliveryDate || '');
+    setPaymentMethod(q.paymentMethod || 'PIX');
+    setShowClientData(Boolean(q.showClientData));
+
+    setActiveTab('new');
+
+    toast({
+      title: 'Modo de edição',
+      description: `Editando orçamento ${q.number}`,
+    });
+  };
+
+  const handleDeleteQuotation = (id: string) => {
+    deleteQuotation(id);
+    toast({ title: 'Orçamento excluído', variant: 'destructive' });
   };
 
   const resetForm = () => {
@@ -223,6 +315,7 @@ const ConstructionPage = () => {
     setItems([]);
     setDiscount(0);
     setFreight(0);
+    setEditingQuotationId(null);
   };
 
   return (
@@ -250,198 +343,178 @@ const ConstructionPage = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        {/* Company Info */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-orange-500" />
-            Dados da Empresa
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Nome da Empresa</Label>
-              <Input 
-                value={companyInfo.name} 
-                onChange={(e) => setCompanyInfo({ ...companyInfo, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>CNPJ</Label>
-              <Input 
-                value={companyInfo.cnpj} 
-                onChange={(e) => setCompanyInfo({ ...companyInfo, cnpj: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Telefone</Label>
-              <Input 
-                value={companyInfo.phone} 
-                onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })}
-              />
-            </div>
-            <div className="md:col-span-2 space-y-2">
-              <Label>Endereço</Label>
-              <Input 
-                value={companyInfo.address} 
-                onChange={(e) => setCompanyInfo({ ...companyInfo, address: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Vendedor</Label>
-              <Input 
-                value={companyInfo.sellerName} 
-                onChange={(e) => setCompanyInfo({ ...companyInfo, sellerName: e.target.value })}
-                placeholder="Nome do vendedor"
-              />
-            </div>
-          </div>
-        </div>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2 h-12">
+            <TabsTrigger value="new" className="flex items-center gap-2 text-sm font-medium">
+              {editingQuotationId ? (
+                <>
+                  <Pencil className="h-4 w-4" />
+                  Editando Orçamento
+                </>
+              ) : (
+                <>
+                  <FilePlus className="h-4 w-4" />
+                  Novo Orçamento
+                </>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="flex items-center gap-2 text-sm font-medium">
+              <LayoutDashboard className="h-4 w-4" />
+              Orçamentos
+              {quotations.length > 0 && (
+                <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-white/20 text-white font-semibold">
+                  {quotations.length}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Customer Form */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
-          <CustomerForm 
-            customer={customer} 
-            onChange={setCustomer}
-            showClientData={showClientData}
-            onShowClientDataChange={setShowClientData}
-          />
-        </div>
-
-        {/* Product Selector */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
-          <ConstructionProductSelector onAddItem={handleAddItem} />
-        </div>
-
-        {/* Items List */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
-          <ConstructionItemsList 
-            items={items} 
-            onRemoveItem={handleRemoveItem} 
-            onUpdateQuantity={handleUpdateQuantity}
-            total={total} 
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
-          {/* Payment and Delivery */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Forma de Pagamento</Label>
-              <Input 
-                value={paymentMethod} 
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                placeholder="Ex: PIX, Cartão, Boleto"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Data/Prazo de Entrega</Label>
-              <Input 
-                value={deliveryTime} 
-                onChange={(e) => setDeliveryTime(e.target.value)}
-                placeholder="Ex: 07/01/2025 - 14h"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Validade do Orçamento</Label>
-              <Input 
-                value={validity} 
-                onChange={(e) => setValidity(e.target.value)}
-                placeholder="Ex: 5 dias"
-              />
-            </div>
-          </div>
-
-          {/* Freight and Discount */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Frete (R$)</Label>
-              <Input 
-                type="number"
-                value={freight}
-                onChange={(e) => setFreight(parseFloat(e.target.value) || 0)}
-                placeholder="0,00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Desconto (R$)</Label>
-              <Input 
-                type="number"
-                value={discount}
-                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                placeholder="0,00"
-              />
-            </div>
-          </div>
-
-          {/* Observations */}
-          <div className="space-y-2">
-            <Label>Observações</Label>
-            <Textarea 
-              value={observations}
-              onChange={(e) => setObservations(e.target.value)}
-              rows={3}
-              placeholder="Observações do orçamento..."
-            />
-          </div>
-
-          {/* Summary */}
-          <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-xl p-4">
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(subtotal)}</span>
+          <TabsContent value="new" className="space-y-6 animate-fade-in">
+            {editingQuotationId && (
+              <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Pencil className="h-5 w-5 text-orange-600" />
+                  <span className="font-medium text-orange-700">Editando orçamento</span>
+                </div>
+                <button onClick={resetForm} className="text-sm text-orange-600 hover:text-orange-800 underline">
+                  Cancelar edição
+                </button>
               </div>
-              {freight > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span>Frete:</span>
-                  <span>+ {formatCurrency(freight)}</span>
+            )}
+
+            {/* Company Info */}
+            <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-4">
+              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-orange-500" />
+                Dados da Empresa
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Nome da Empresa</Label>
+                  <Input value={companyInfo.name} onChange={(e) => setCompanyInfo({ ...companyInfo, name: e.target.value })} />
                 </div>
-              )}
-              {discount > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>Desconto:</span>
-                  <span>- {formatCurrency(discount)}</span>
+                <div className="space-y-2">
+                  <Label>CNPJ</Label>
+                  <Input value={companyInfo.cnpj} onChange={(e) => setCompanyInfo({ ...companyInfo, cnpj: e.target.value })} />
                 </div>
-              )}
-              <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                <span>Total:</span>
-                <span className="text-orange-600">{formatCurrency(total)}</span>
+                <div className="space-y-2">
+                  <Label>Telefone</Label>
+                  <Input value={companyInfo.phone} onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })} />
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <Label>Endereço</Label>
+                  <Input value={companyInfo.address} onChange={(e) => setCompanyInfo({ ...companyInfo, address: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Vendedor</Label>
+                  <Input
+                    value={companyInfo.sellerName}
+                    onChange={(e) => setCompanyInfo({ ...companyInfo, sellerName: e.target.value })}
+                    placeholder="Nome do vendedor"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3 justify-end">
-            <Button 
-              variant="outline" 
-              onClick={handlePreview}
-              disabled={items.length === 0}
-            >
-              Pré-visualizar
-            </Button>
-            <Button 
-              onClick={handleGeneratePDF}
-              disabled={items.length === 0}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              Gerar PDF
-            </Button>
-            <Button 
-              onClick={handleGeneratePNG}
-              disabled={items.length === 0}
-              variant="secondary"
-            >
-              Gerar PNG
-            </Button>
-            <Button 
-              onClick={handleSendWhatsApp}
-              disabled={items.length === 0}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              Enviar WhatsApp
-            </Button>
-          </div>
-        </div>
+            {/* Customer Form */}
+            <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
+              <CustomerForm customer={customer} onChange={setCustomer} showClientData={showClientData} onShowClientDataChange={setShowClientData} />
+            </div>
+
+            {/* Product Selector */}
+            <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
+              <ConstructionProductSelector onAddItem={handleAddItem} />
+            </div>
+
+            {/* Items List */}
+            <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
+              <ConstructionItemsList items={items} onRemoveItem={handleRemoveItem} onUpdateQuantity={handleUpdateQuantity} total={total} />
+            </div>
+
+            {/* Actions */}
+            <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
+              {/* Payment and Delivery */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Forma de Pagamento</Label>
+                  <Input value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} placeholder="Ex: PIX, Cartão, Boleto" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Data/Prazo de Entrega</Label>
+                  <Input value={deliveryTime} onChange={(e) => setDeliveryTime(e.target.value)} placeholder="Ex: 07/01/2025 - 14h" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Validade do Orçamento</Label>
+                  <Input value={validity} onChange={(e) => setValidity(e.target.value)} placeholder="Ex: 5 dias" />
+                </div>
+              </div>
+
+              {/* Freight and Discount */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Frete (R$)</Label>
+                  <Input type="number" value={freight} onChange={(e) => setFreight(parseFloat(e.target.value) || 0)} placeholder="0,00" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Desconto (R$)</Label>
+                  <Input type="number" value={discount} onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)} placeholder="0,00" />
+                </div>
+              </div>
+
+              {/* Observations */}
+              <div className="space-y-2">
+                <Label>Observações</Label>
+                <Textarea value={observations} onChange={(e) => setObservations(e.target.value)} rows={3} placeholder="Observações do orçamento..." />
+              </div>
+
+              {/* Summary */}
+              <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-xl p-4">
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>{formatCurrency(subtotal)}</span>
+                  </div>
+                  {freight > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Frete:</span>
+                      <span>+ {formatCurrency(freight)}</span>
+                    </div>
+                  )}
+                  {discount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Desconto:</span>
+                      <span>- {formatCurrency(discount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>Total:</span>
+                    <span className="text-orange-600">{formatCurrency(total)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3 justify-end">
+                <Button variant="outline" onClick={handlePreview} disabled={items.length === 0}>
+                  Pré-visualizar
+                </Button>
+                <Button onClick={handleGeneratePDF} disabled={items.length === 0} className="bg-orange-600 hover:bg-orange-700">
+                  Gerar PDF
+                </Button>
+                <Button onClick={handleGeneratePNG} disabled={items.length === 0} variant="secondary">
+                  Gerar PNG
+                </Button>
+                <Button onClick={handleSendWhatsApp} disabled={items.length === 0} className="bg-green-600 hover:bg-green-700">
+                  Enviar WhatsApp
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="saved" className="animate-fade-in">
+            <ConstructionQuotationsDashboard quotations={quotations} onEdit={handleEditQuotation} onDelete={handleDeleteQuotation} />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <QuotationPreview

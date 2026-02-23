@@ -130,14 +130,22 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
     yPos += 4;
   }
   
-  // Items table - discriminando tipo do produto (Caixa ou Tanque)
-  const tableData = quotation.items.map(item => [
-    getProductFullDescription(item.product.type, item.product.capacity, item.product.unit),
-    'Un.',
-    item.quantity.toString(),
-    formatCurrency(item.unitPrice).replace('R$', '').trim(),
-    formatCurrency(item.subtotal).replace('R$', '').trim(),
-  ]);
+  // Items table
+  // - Fortlev: usa descrição completa (tipo + capacidade + unidade)
+  // - Construção: usa o nome do produto (capacidade costuma ser 0)
+  const tableData = quotation.items.map((item) => {
+    const label = item.product.capacity > 0
+      ? getProductFullDescription(item.product.type, item.product.capacity, item.product.unit)
+      : item.product.name;
+
+    return [
+      label,
+      "Un.",
+      item.quantity.toString(),
+      formatCurrency(item.unitPrice).replace("R$", "").trim(),
+      formatCurrency(item.subtotal).replace("R$", "").trim(),
+    ];
+  });
   
   autoTable(doc, {
     startY: yPos,

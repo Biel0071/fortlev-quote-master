@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { getProductFullDescription } from '@/utils/taxCalculator';
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { downloadNFePDF } from '@/utils/nfeGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
@@ -159,15 +160,21 @@ export const Dashboard = ({ quotations, onDelete, onEdit, onSave }: DashboardPro
   // Produtos mais vendidos
   const topProducts = useMemo(() => {
     const productCount: Record<string, { name: string; count: number; value: number }> = {};
-    
-    quotations.forEach(q => {
-      q.items.forEach(item => {
-        const key = `${item.product.capacity}${item.product.unit}`;
-        if (!productCount[key]) {
-          productCount[key] = { name: key, count: 0, value: 0 };
+
+    const getItemLabel = (item: QuotationItem) => {
+      return item.product.capacity > 0
+        ? getProductFullDescription(item.product.type, item.product.capacity, item.product.unit)
+        : item.product.name;
+    };
+
+    quotations.forEach((q) => {
+      q.items.forEach((item) => {
+        const label = getItemLabel(item);
+        if (!productCount[label]) {
+          productCount[label] = { name: label, count: 0, value: 0 };
         }
-        productCount[key].count += item.quantity;
-        productCount[key].value += item.subtotal;
+        productCount[label].count += item.quantity;
+        productCount[label].value += item.subtotal;
       });
     });
 
@@ -754,7 +761,9 @@ export const Dashboard = ({ quotations, onDelete, onEdit, onSave }: DashboardPro
                           <div key={item.id} className="p-4 flex items-center justify-between gap-4">
                             <div className="flex-1">
                               <p className="font-medium">
-                                Caixa d'água Fortlev {item.product.capacity}{item.product.unit}
+                                {item.product.capacity > 0
+                                  ? getProductFullDescription(item.product.type, item.product.capacity, item.product.unit)
+                                  : item.product.name}
                               </p>
                               <p className="text-sm text-muted-foreground">
                                 Qtd: {item.quantity} × {formatCurrency(item.unitPrice)}

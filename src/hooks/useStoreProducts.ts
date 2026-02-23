@@ -30,13 +30,28 @@ export function useStoreProducts() {
       return;
     }
 
-    const mapped: ProductWithImages[] = (data ?? []).map((p: any) => ({
-      ...p,
-      images: (p.store_product_images ?? []).sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
-    }));
+     const mapped: ProductWithImages[] = (data ?? [])
+       .map((p: any) => ({
+         ...p,
+         // normalize core fields (defensive for runtime stability)
+         id: String(p?.id ?? "").trim(),
+         name: String(p?.name ?? "").trim(),
+         price: Number(p?.price ?? 0),
+         promo_price: Number(p?.promo_price ?? 0),
+         stock: Number(p?.stock ?? 0),
+         images: (p.store_product_images ?? [])
+           .filter((im: any) => !!im?.path)
+           .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+       }))
+       // drop invalid products so UI doesn't break (and keep console signal)
+       .filter((p: any) => {
+         const ok = !!p.id && !!p.name;
+         if (!ok) console.warn("[useStoreProducts] produto inválido ignorado", p);
+         return ok;
+       });
 
-    setProducts(mapped);
-    setLoading(false);
+     setProducts(mapped);
+     setLoading(false);
   };
 
   useEffect(() => {

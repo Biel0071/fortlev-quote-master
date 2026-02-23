@@ -79,11 +79,11 @@ serve(async (req) => {
         payload.user_agent = req.headers.get("user-agent") ?? null;
       }
 
-      // NOTE: ignoreDuplicates prevents unique-constraint failures when multiple tabs start at once.
-      const { error: insErr } = await supa
-        .from("visitor_sessions")
-        .insert(payload, { onConflict: "session_token", ignoreDuplicates: true } as any);
-      if (insErr) throw insErr;
+       // NOTE: use upsert+ignoreDuplicates to prevent unique-constraint failures when multiple tabs start at once.
+       const { error: insErr } = await supa
+         .from("visitor_sessions")
+         .upsert(payload, { onConflict: "session_token", ignoreDuplicates: true } as any);
+       if (insErr) throw insErr;
 
       // Fetch the session row
       const { data: existing, error: selErr } = await supa

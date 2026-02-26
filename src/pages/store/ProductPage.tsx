@@ -20,7 +20,6 @@ import { ProductBadges } from "@/components/store/pdp/ProductBadges";
 import { QuantitySelector } from "@/components/store/pdp/QuantitySelector";
 import { ShippingCalculator } from "@/components/store/pdp/ShippingCalculator";
 import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
-import { SecuritySealsReal } from "@/components/store/pdp/SecuritySealsReal";
 
 
 function ProductDescription({ markdown }: { markdown: string }) {
@@ -136,14 +135,14 @@ export default function ProductPage() {
 
   const installments = useMemo(() => {
     if (!effectivePrice || effectivePrice <= 0) return null;
-    return `ou até 10x de ${formatCurrency(effectivePrice / 10)}`;
+    return `ou 10x de ${formatCurrency(effectivePrice / 10)} sem juros`;
   }, [effectivePrice]);
 
   const pixPrice = useMemo(() => {
-    if (!hasPromo) return null;
-    const v = effectivePrice * 0.95;
+    if (!effectivePrice || effectivePrice <= 0) return null;
+    const v = effectivePrice * 0.93;
     return v > 0 ? v : null;
-  }, [effectivePrice, hasPromo]);
+  }, [effectivePrice]);
 
 
   const descriptionMd = useMemo(() => {
@@ -265,11 +264,11 @@ export default function ProductPage() {
                 {installments ? <div className="text-sm text-muted-foreground">{installments}</div> : null}
               </div>
 
-              {/* 7️⃣ Desconto PIX (só quando tem promo) */}
+              {/* 7️⃣ Desconto PIX (global 7%) */}
               {pixPrice ? (
                 <Card className="rounded-3xl border-border bg-card shadow-sm">
                   <CardContent className="p-5">
-                    <div className="text-sm font-semibold text-foreground">5% de desconto no PIX</div>
+                    <div className="text-sm font-semibold text-foreground">7% de desconto no PIX</div>
                     <div className="mt-1 text-sm text-muted-foreground">
                       No PIX: <span className="font-semibold text-foreground">{formatCurrency(pixPrice)}</span>
                     </div>
@@ -351,10 +350,6 @@ export default function ProductPage() {
                   </div>
                 </div>
               </div>
-
-              {/* 7️⃣ Selos de Segurança */}
-              <SecuritySealsReal />
-
               {/* 8️⃣ Descrição Geral */}
               {descriptionParts.general ? (
                 <Card className="rounded-3xl border-border bg-card shadow-sm">

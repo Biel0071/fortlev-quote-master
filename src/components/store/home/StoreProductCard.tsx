@@ -26,7 +26,7 @@ export function StoreProductCard({
   const installments = useMemo(() => {
     if (!effectivePrice || effectivePrice <= 0) return null;
     const x = effectivePrice / 10;
-    return `em até 10x de ${formatCurrency(x)}`;
+    return `ou 10x de ${formatCurrency(x)} sem juros`;
   }, [effectivePrice]);
 
   const imgPath = product?.images?.[0]?.path ?? null;

@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, MessageCircle } from "lucide-react";
+import { Facebook, Instagram, MessageCircle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { publicImageUrl } from "@/utils/storage";
 import type { HomeFooter } from "@/hooks/useHomeContent";
+
+import paymentLogosReal from "@/assets/pdp/payment-logos-real.png";
+import securitySealsReal from "@/assets/pdp/security-seals-real.png";
 
 export function StoreFooter({
   footer,
@@ -18,9 +21,13 @@ export function StoreFooter({
   const facebookUrl = (footer as any)?.facebook_url ? String((footer as any).facebook_url) : "";
   const hasSocial = Boolean(instagramUrl || facebookUrl);
 
+  const gridSpanAll = hasSocial ? "md:col-span-12" : "md:col-span-10";
+
   return (
     <footer className="border-t border-border bg-background">
-      <div className={`max-w-6xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 ${hasSocial ? "md:grid-cols-12" : "md:grid-cols-10"} gap-10`}>
+      <div
+        className={`max-w-6xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 ${hasSocial ? "md:grid-cols-12" : "md:grid-cols-10"} gap-10`}
+      >
         {/* Marca */}
         <div className="md:col-span-4 space-y-4">
           <div className="flex items-center gap-3">
@@ -73,7 +80,11 @@ export function StoreFooter({
 
               return links.length > 0 ? (
                 links.map((p) => (
-                  <Link key={p.slug} to={`/p/${p.slug}`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                  <Link
+                    key={p.slug}
+                    to={`/p/${p.slug}`}
+                    className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+                  >
                     {p.title}
                   </Link>
                 ))
@@ -104,7 +115,11 @@ export function StoreFooter({
 
               return links.length > 0 ? (
                 links.map((p) => (
-                  <Link key={p.slug} to={`/p/${p.slug}`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                  <Link
+                    key={p.slug}
+                    to={`/p/${p.slug}`}
+                    className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+                  >
                     {p.title}
                   </Link>
                 ))
@@ -113,6 +128,7 @@ export function StoreFooter({
               );
             })()}
           </div>
+        </div>
 
         {/* Social (dinâmico) */}
         {hasSocial ? (
@@ -144,8 +160,33 @@ export function StoreFooter({
             </div>
           </div>
         ) : null}
-      </div>
 
+        {/* Formas de pagamento (global) */}
+        <div className={`${gridSpanAll} space-y-3`} aria-label="Formas de pagamento">
+          <div className="font-semibold">Formas de pagamento</div>
+          <img
+            src={paymentLogosReal}
+            alt="Formas de pagamento: Visa, Mastercard, Elo, American Express, Diners, Pix e Boleto"
+            className="h-7 w-auto max-w-full object-contain"
+            loading="lazy"
+          />
+        </div>
+
+        {/* Selos de Segurança (somente no rodapé) */}
+        <div className={`${gridSpanAll} space-y-3`} aria-label="Selos de Segurança">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <div className="font-semibold">Selos de Segurança</div>
+          </div>
+          <div className="rounded-2xl border border-border bg-background p-5 flex items-center justify-center">
+            <img
+              src={securitySealsReal}
+              alt="Selos de Segurança: Google Safe Browsing e Loja Protegida"
+              className="max-h-10 w-auto max-w-full object-contain"
+              loading="lazy"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="border-t border-border py-6">
@@ -161,4 +202,3 @@ export function StoreFooter({
     </footer>
   );
 }
-

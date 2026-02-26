@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CreditCard, Facebook, Instagram, Lock, MapPin, MessageCircle, Phone, ShieldCheck } from "lucide-react";
+import { Facebook, Instagram, MapPin, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { publicImageUrl } from "@/utils/storage";
 import type { HomeFooter } from "@/hooks/useHomeContent";
@@ -68,12 +68,28 @@ export function StoreFooter({
         <div className="md:col-span-3 space-y-3">
           <div className="font-semibold">Institucional</div>
           <div className="grid gap-2">
-            {pageLinks.slice(0, 7).map((p) => (
-              <Link key={p.slug} to={`/p/${p.slug}`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-                {p.title}
-              </Link>
-            ))}
-            {pageLinks.length === 0 ? <div className="text-sm text-muted-foreground">Em breve</div> : null}
+            {(() => {
+              const bySlug = new Map(pageLinks.map((p) => [p.slug, p] as const));
+              const privacy = bySlug.get("politica-de-privacidade");
+              const returns = bySlug.get("politica-de-trocas-e-devolucoes");
+              const terms = bySlug.get("termos-de-uso") ?? bySlug.get("politica-de-vendas");
+
+              const links = [
+                privacy ? { title: "Política de Privacidade", slug: privacy.slug } : null,
+                returns ? { title: "Trocas e Devoluções", slug: returns.slug } : null,
+                terms ? { title: "Termos de Uso", slug: terms.slug } : null,
+              ].filter(Boolean) as Array<{ title: string; slug: string }>;
+
+              return links.length > 0 ? (
+                links.map((p) => (
+                  <Link key={p.slug} to={`/p/${p.slug}`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                    {p.title}
+                  </Link>
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground">Em breve</div>
+              );
+            })()}
           </div>
         </div>
 
@@ -85,30 +101,14 @@ export function StoreFooter({
               Entrega e retirada
             </Link>
             <Link to="/checkout" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-              Pagamento e parcelamento
+              Formas de pagamento
             </Link>
-            <Link to="/pedidos" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-              Acompanhar pedido
+            <Link to="/p/politica-de-vendas" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+              Garantia
             </Link>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <div className="rounded-2xl border border-border bg-secondary/30 p-3 flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" />
-              <div className="text-xs font-semibold">Compra segura</div>
-            </div>
-            <div className="rounded-2xl border border-border bg-secondary/30 p-3 flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              <div className="text-xs font-semibold">Dados protegidos</div>
-            </div>
-            <div className="rounded-2xl border border-border bg-secondary/30 p-3 flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <div className="text-xs font-semibold">Pix / Cartão</div>
-            </div>
-            <div className="rounded-2xl border border-border bg-secondary/30 p-3 flex items-center gap-2">
-              <Phone className="h-4 w-4" />
-              <div className="text-xs font-semibold">Atendimento</div>
-            </div>
+            <Link to="/p/contato" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+              Fale conosco
+            </Link>
           </div>
         </div>
 
@@ -141,9 +141,7 @@ export function StoreFooter({
             {storeName} • {new Date().getFullYear()}
           </div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1">
-              <ShieldCheck className="h-4 w-4" /> Ambiente seguro
-            </span>
+            <span>Ambiente seguro</span>
           </div>
         </div>
       </div>

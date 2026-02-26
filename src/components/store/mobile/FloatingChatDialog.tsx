@@ -3,7 +3,7 @@ import { Bot } from "lucide-react";
 import { cloud } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
   analyzeChatConversation,
@@ -192,6 +192,10 @@ export default function FloatingChatDialog({
           "shadow-xl",
         )}
       >
+        {/* A11y: Radix exige Title/Description dentro do DialogContent */}
+        <DialogTitle className="sr-only">Atendimento — Vanessa</DialogTitle>
+        <DialogDescription className="sr-only">Chat de atendimento com a consultora técnica.</DialogDescription>
+
         <div className="border-b border-border p-4 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <div

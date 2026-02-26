@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import type { StoreCategory } from "@/hooks/useStoreCategories";
+import { generateProductDescriptionMarkdown } from "@/utils/productDescription";
 
 type ImageRow = { id: string; path: string; sort_order: number };
 
@@ -72,6 +73,36 @@ export default function AdminProductForm() {
 
   const hasAutoGenerateFlag = Boolean((location.state as any)?.autoGenerate);
   const autoGenConsumedRef = useRef(false);
+
+  const categoryName = useMemo(() => {
+    if (!categoryId) return "";
+    return categories.find((c) => c.id === categoryId)?.name ?? "";
+  }, [categories, categoryId]);
+
+  const buildStandardDescription = (opts?: { id?: string | null }) => {
+    return generateProductDescriptionMarkdown({
+      id: opts?.id ?? editingId,
+      name: name.trim(),
+      categoryName,
+      sku: sku.trim() || null,
+      unit: unit.trim() || null,
+    });
+  };
+
+  const regenerateStandardDescription = async () => {
+    const md = buildStandardDescription();
+    setDescription(md);
+
+    if (!editingId) {
+      toast({ title: "Gerado", description: "Descrição padrão aplicada (salve para persistir)." });
+      return;
+    }
+
+    const { error } = await cloud.from("store_products").update({ description: md }).eq("id", editingId);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    toast({ title: "Atualizado", description: "Descrição padrão regenerada." });
+    await load();
+  };
 
   const load = async () => {
     setLoading(true);
@@ -149,9 +180,14 @@ export default function AdminProductForm() {
   }, [editingId]);
 
   const saveProduct = async () => {
+    const shouldAutoFillDescription = !description.trim();
+
+    const finalDescription = shouldAutoFillDescription ? buildStandardDescription() : description.trim();
+    if (shouldAutoFillDescription) setDescription(finalDescription);
+
     const payload = {
       name: name.trim(),
-      description: description.trim() || null,
+      description: finalDescription.trim() || null,
       category_id: categoryId,
       category: null, // legacy text not used anymore
       price: Number(price) || 0,
@@ -326,7 +362,12 @@ export default function AdminProductForm() {
               </div>
 
               <div className="space-y-2">
-                <Label>Descrição</Label>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <Label>Descrição</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={regenerateStandardDescription}>
+                    Regerar descrição padrão
+                  </Button>
+                </div>
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-32" />
               </div>
 

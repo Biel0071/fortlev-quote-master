@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, ExternalLink, X } from "lucide-react";
+import { Bot, ExternalLink } from "lucide-react";
 import { cloud } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,8 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 function defaultSystemPrompt() {
   return [
-    "Você é o assistente virtual de uma loja de materiais de construção.",
-    "Responda de forma curta, objetiva e orientada a conversão.",
+    "Você é a Vanessa, consultora técnica de um depósito de materiais de construção.",
+    "Responda de forma curta, natural, profissional e orientada a conversão.",
     "Se a pergunta for sobre: prazo, frete, pagamento, retirada, devolução, garantia — responda de forma prática.",
     "Quando faltar informação (cidade/CEP/produto), peça 1 pergunta de cada vez.",
   ].join(" ");
@@ -48,6 +48,24 @@ function buildWhatsAppUrl(phoneDigits: string) {
   return `${base}&text=${encodeURIComponent(text)}`;
 }
 
+function WhatsAppIcon({ className }: { className?: string }) {
+  // Ícone oficial simplificado (SVG) sem depender de libs externas.
+  return (
+    <svg viewBox="0 0 32 32" className={className} aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M19.11 17.47c-.27-.14-1.56-.77-1.8-.86-.24-.09-.41-.14-.59.14-.18.27-.68.86-.84 1.04-.15.18-.31.2-.58.07-.27-.14-1.12-.41-2.14-1.31-.79-.7-1.32-1.56-1.47-1.83-.15-.27-.02-.41.11-.54.12-.12.27-.31.41-.46.14-.15.18-.27.27-.45.09-.18.05-.34-.02-.48-.07-.14-.59-1.42-.81-1.94-.21-.52-.43-.45-.59-.45l-.5-.01c-.18 0-.48.07-.73.34-.25.27-.95.93-.95 2.27 0 1.34.98 2.63 1.12 2.82.14.18 1.93 2.95 4.67 4.14.65.28 1.16.45 1.56.57.65.21 1.25.18 1.72.11.52-.08 1.56-.64 1.78-1.26.22-.61.22-1.14.16-1.26-.07-.12-.25-.2-.52-.34z"
+      />
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        d="M16 3.2C8.93 3.2 3.2 8.93 3.2 16c0 2.25.59 4.36 1.62 6.2L3.2 28.8l6.77-1.56A12.73 12.73 0 0 0 16 28.8c7.07 0 12.8-5.73 12.8-12.8S23.07 3.2 16 3.2zm0 22.27c-2.04 0-3.94-.6-5.54-1.63l-.4-.25-3.95.9.94-3.86-.27-.4a9.9 9.9 0 0 1-1.6-5.42c0-5.46 4.43-9.9 9.88-9.9 5.46 0 9.9 4.44 9.9 9.9 0 5.45-4.44 9.88-9.9 9.88z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
 export default function FloatingChatDialog({
   open,
   onOpenChange,
@@ -65,28 +83,44 @@ export default function FloatingChatDialog({
   trackerSessionToken: string;
   consentOk: boolean;
 }) {
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      role: "assistant",
-      content:
-        scoreSnapshot > 90
-          ? "Vi que você já está bem perto de fechar. Quer que eu monte um orçamento rápido com os itens certos?"
-          : scoreSnapshot > 60
-            ? "Vi que você está analisando alguns produtos. Posso te ajudar a calcular o melhor custo-benefício?"
-            : "Olá 👋 Sou o assistente da loja. Posso ajudar com orçamento, produtos ou entrega.",
-    },
-  ]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [introTyping, setIntroTyping] = useState(false);
   const [err, setErr] = useState<string>("");
 
   const endRef = useRef<HTMLDivElement | null>(null);
+  const introTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, loading, err]);
+  }, [messages.length, loading, err, introTyping]);
 
   const canWhatsApp = useMemo(() => Boolean(phoneDigits && phoneDigits.length >= 8), [phoneDigits]);
+
+  // Mensagem inicial com delay (simula digitação)
+  useEffect(() => {
+    if (!open) return;
+    if (messages.length > 0) return;
+
+    setIntroTyping(true);
+    introTimeoutRef.current = window.setTimeout(() => {
+      setMessages([
+        {
+          role: "assistant",
+          content:
+            "Olá 👋 Sou a Vanessa, consultora técnica do depósito. Posso te ajudar com orçamento, entrega ou escolha de materiais.",
+        },
+      ]);
+      setIntroTyping(false);
+      introTimeoutRef.current = null;
+    }, 800);
+
+    return () => {
+      if (introTimeoutRef.current) window.clearTimeout(introTimeoutRef.current);
+      introTimeoutRef.current = null;
+    };
+  }, [open, messages.length, scoreSnapshot]);
 
   const send = async () => {
     const text = input.trim();
@@ -122,73 +156,96 @@ export default function FloatingChatDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("p-0 sm:max-w-xl", "bg-background/80 supports-[backdrop-filter]:bg-background/70 backdrop-blur-xl")}>
-        <div className="border-b border-border p-4 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5" />
-              <div className="font-semibold leading-none">Assistente da loja</div>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        onOpenChange(v);
+        if (!v && chatSessionId) {
+          closeChatSession({ chatSessionId }).catch(() => {});
+          analyzeChatConversation({ chatSessionId }).catch(() => {});
+        }
+      }}
+    >
+      <DialogContent
+        className={cn(
+          "p-0 sm:max-w-xl",
+          "bg-background/80 supports-[backdrop-filter]:bg-background/70 backdrop-blur-xl",
+          "shadow-xl",
+        )}
+      >
+        <div className="border-b border-border p-4 flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className={cn(
+                "h-11 w-11 rounded-full",
+                "bg-gradient-to-br from-primary/15 to-accent/10",
+                "border border-border",
+                "grid place-items-center",
+                "shadow-sm",
+                "shrink-0",
+              )}
+              aria-hidden="true"
+            >
+              <span className="font-semibold text-primary">V</span>
             </div>
-            <div className="text-xs text-muted-foreground mt-1">Respostas rápidas para te ajudar a comprar.</div>
 
-            <div className="mt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl"
-                disabled={!canWhatsApp}
-                onClick={() => {
-                  if (consentOk) {
-                    trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "whatsapp_click" } }).catch(
-                      () => {},
-                    );
-                  }
-                  if (!canWhatsApp) return;
-                  const url = buildWhatsAppUrl(phoneDigits!);
-                  window.open(url, "_blank", "noreferrer");
-                  if (consentOk) {
-                    trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "request_quote" } }).catch(
-                      () => {},
-                    );
-                  }
-                }}
-              >
-                <ExternalLink className="h-4 w-4" />
-                Falar direto no WhatsApp
-              </Button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-muted-foreground" />
+                <div className="font-semibold leading-none truncate">Vanessa</div>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1 truncate">Consultora Técnica • Online agora</div>
             </div>
           </div>
+        </div>
 
+        <div className="p-4 pt-3">
           <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 rounded-xl"
-            onClick={async () => {
-              onOpenChange(false);
-              if (chatSessionId) {
-                closeChatSession({ chatSessionId }).catch(() => {});
-                analyzeChatConversation({ chatSessionId }).catch(() => {});
+            variant="whatsapp"
+            className={cn(
+              "w-full h-12 rounded-xl",
+              "shadow-md hover:shadow-lg",
+              "transition-all duration-200 ease-out",
+              "hover:scale-[1.01]",
+            )}
+            disabled={!canWhatsApp}
+            onClick={() => {
+              if (consentOk) {
+                trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "whatsapp_click" } }).catch(
+                  () => {},
+                );
+              }
+              if (!canWhatsApp) return;
+              const url = buildWhatsAppUrl(phoneDigits!);
+              window.open(url, "_blank", "noreferrer");
+              if (consentOk) {
+                trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "request_quote" } }).catch(
+                  () => {},
+                );
               }
             }}
-            aria-label="Fechar chat"
           >
-            <X className="h-5 w-5" />
+            <WhatsAppIcon className="h-5 w-5" />
+            Falar com a Vanessa no WhatsApp
+            <ExternalLink className="h-4 w-4 opacity-90" />
           </Button>
         </div>
 
-        <div className="max-h-[60vh] overflow-auto p-4 space-y-3">
+        <div className="max-h-[56vh] overflow-auto px-4 pb-4 space-y-3">
+          {introTyping ? <div className="text-sm text-muted-foreground">Vanessa está digitando…</div> : null}
+
           {messages.map((m, idx) => (
             <div
               key={idx}
               className={cn(
                 "rounded-2xl border border-border/70 p-3 text-sm leading-relaxed",
-                m.role === "user" ? "bg-muted/30 ml-8" : "bg-card/60 mr-8",
+                m.role === "user" ? "bg-muted/30 ml-10" : "bg-card/60 mr-10",
               )}
             >
               {m.content}
             </div>
           ))}
+
           {loading ? <div className="text-sm text-muted-foreground">Digitando…</div> : null}
           {err ? <div className="text-sm text-destructive">{err}</div> : null}
           <div ref={endRef} />
@@ -205,7 +262,7 @@ export default function FloatingChatDialog({
             disabled={loading}
             className="h-12 rounded-xl"
           />
-          <Button onClick={send} disabled={loading || !input.trim()} className="h-12 rounded-xl px-5">
+          <Button variant="secondary" onClick={send} disabled={loading || !input.trim()} className="h-12 rounded-xl px-4">
             Enviar
           </Button>
         </div>
@@ -215,3 +272,4 @@ export default function FloatingChatDialog({
     </Dialog>
   );
 }
+

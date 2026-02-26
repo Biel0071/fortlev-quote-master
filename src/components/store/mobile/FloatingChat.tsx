@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
+import { useLocation } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -7,6 +8,8 @@ import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { createChatSession } from "@/utils/trackingClient";
 
 const FloatingChatDialog = lazy(() => import("@/components/store/mobile/FloatingChatDialog"));
+
+const DISMISS_KEY = "store_assistant_dismissed_v1";
 
 export function FloatingChat({
   phoneDigits,
@@ -17,6 +20,7 @@ export function FloatingChat({
 }) {
   const isMobile = useIsMobile();
   const tracker = useVisitorTracker();
+  const location = useLocation();
 
   const [open, setOpen] = useState(false);
   const [attention, setAttention] = useState(false);
@@ -41,6 +45,22 @@ export function FloatingChat({
     return () => window.removeEventListener("store:product-visit", onProductVisit as any);
   }, []);
 
+  // Abre automaticamente na Home após 8s (uma única vez), e não reabre após fechamento manual.
+  useEffect(() => {
+    if (location.pathname !== "/") return;
+    if (open) return;
+
+    const dismissed = typeof window !== "undefined" ? localStorage.getItem(DISMISS_KEY) === "1" : true;
+    if (dismissed) return;
+
+    const t = window.setTimeout(() => {
+      const dismissedNow = localStorage.getItem(DISMISS_KEY) === "1";
+      if (!dismissedNow) setOpen(true);
+    }, 8000);
+
+    return () => window.clearTimeout(t);
+  }, [location.pathname, open]);
+
   useEffect(() => {
     if (open) {
       wasOpenRef.current = true;
@@ -62,6 +82,13 @@ export function FloatingChat({
     }
 
     if (wasOpenRef.current) {
+      // considera fechamento como ação manual (persistir para não reabrir)
+      try {
+        localStorage.setItem(DISMISS_KEY, "1");
+      } catch {
+        // ignore
+      }
+
       tracker.track({ type: "chat_close", path: window.location.pathname });
       setChatSessionId(null);
       setScoreSnapshot(0);

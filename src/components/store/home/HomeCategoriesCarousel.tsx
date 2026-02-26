@@ -114,21 +114,18 @@ export function HomeCategoriesCarousel({
     if (!el) return;
 
     // step proporcional ao viewport (mantém sensação premium em todos tamanhos)
-    const step = Math.max(240, Math.round(el.clientWidth * 0.72));
+    const step = Math.max(220, Math.round(el.clientWidth * 0.62));
     pause();
     el.scrollBy({ left: direction * step, behavior: "smooth" });
-    resumeAfter(900);
+    resumeAfter(2000);
   };
 
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
 
-    // Começa no “meio” quando loop ativo para permitir reset nos dois sentidos.
-    if (loop) {
-      const half = Math.floor(el.scrollWidth / 2);
-      if (half > 0) el.scrollLeft = Math.max(0, half - 1);
-    }
+    // Começa no início; o “loop” é garantido por duplicação + reset silencioso.
+    if (loop) el.scrollLeft = 0;
 
     const tick = (ts: number) => {
       rafRef.current = window.requestAnimationFrame(tick);
@@ -146,8 +143,8 @@ export function HomeCategoriesCarousel({
       lastTsRef.current = ts;
       if (last == null) return;
 
-      // 0.3px–0.6px por frame ~ (0.018–0.036 px/ms @ 60fps)
-      const speedPxPerMs = 0.028; // suave e constante
+      // 20–30px/s (suave e contínuo)
+      const speedPxPerMs = 0.024;
       const delta = Math.min(32, ts - last);
 
       node.scrollLeft += delta * speedPxPerMs;
@@ -157,10 +154,9 @@ export function HomeCategoriesCarousel({
       const half = node.scrollWidth / 2;
       if (half <= 0) return;
 
-      // Reset imperceptível ao passar do fim da primeira metade
-      if (node.scrollLeft >= half) {
-        node.scrollLeft -= half;
-      }
+      // Reset imperceptível ao passar do fim/início da primeira metade
+      if (node.scrollLeft >= half) node.scrollLeft -= half;
+      if (node.scrollLeft <= 0) node.scrollLeft += half;
     };
 
     rafRef.current = window.requestAnimationFrame(tick);
@@ -249,22 +245,22 @@ export function HomeCategoriesCarousel({
           tabIndex={0}
           className={cn(
             "relative w-full",
-            "flex gap-3",
+            "flex gap-2",
             "overflow-x-auto overflow-y-hidden",
             "overscroll-x-contain",
             "snap-x snap-mandatory",
             "scroll-smooth",
-            "py-1",
+            "py-0.5",
             "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
             "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           )}
           onMouseEnter={pause}
-          onMouseLeave={resume}
-          onPointerDown={() => resumeAfter(1400)}
-          onPointerUp={() => resumeAfter(600)}
-          onTouchStart={() => resumeAfter(1400)}
-          onTouchEnd={() => resumeAfter(600)}
-          onScroll={() => resumeAfter(900)}
+          onMouseLeave={() => resumeAfter(2000)}
+          onPointerDown={pause}
+          onPointerUp={() => resumeAfter(2000)}
+          onTouchStart={pause}
+          onTouchEnd={() => resumeAfter(2000)}
+          onScroll={() => resumeAfter(2000)}
           onKeyDown={(e) => {
             if (e.key === "ArrowLeft") {
               e.preventDefault();
@@ -284,74 +280,74 @@ export function HomeCategoriesCarousel({
             const key = `${c.id}-${idx}`;
 
             return (
-              <div
-                key={key}
-                className={cn(
-                  "shrink-0",
-                  // Mobile: 2 (às vezes 3), Tablet: 4, Desktop: 6–7
-                  "basis-1/2",
-                  "sm:basis-1/3",
-                  "md:basis-1/4",
-                  "lg:basis-[calc(100%/6)]",
-                  "xl:basis-[calc(100%/7)]",
-                  // Snap central no mobile, start no resto
-                  "snap-center sm:snap-start",
-                  "pl-0",
-                )}
-              >
-                <Link
-                  to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
+                <div
+                  key={key}
                   className={cn(
-                    "group block h-full",
-                    "rounded-[18px] border border-border",
-                    "bg-gradient-to-br from-card to-secondary/15",
-                    "shadow-sm",
-                    "transition-all duration-200 ease-out",
-                    "hover:-translate-y-[6px] hover:scale-[1.03] hover:shadow-md",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "shrink-0",
+                    // Mobile ~2.2, Tablet 3, Desktop 4–5
+                    "basis-[45%]",
+                    "sm:basis-[38%]",
+                    "md:basis-1/3",
+                    "lg:basis-[22%]",
+                    "xl:basis-[20%]",
+                    // Snap central no mobile, start no resto
+                    "snap-center sm:snap-start",
+                    "pl-0",
                   )}
-                  aria-label={`Categoria: ${c.name}`}
-                  onFocus={pause}
-                  onBlur={resume}
                 >
-                  <div className="p-5 sm:p-6 flex flex-col items-center text-center">
-                    <div
-                      className={cn(
-                        "h-[84px] w-[84px] sm:h-[92px] sm:w-[92px]",
-                        "rounded-2xl",
-                        "border border-border/70",
-                        "bg-background/80",
-                        "grid place-items-center",
-                        "shadow-sm",
-                        "overflow-hidden",
-                      )}
-                    >
-                      {img ? (
-                        <img
-                          src={img}
-                          alt={`Categoria ${c.name}`}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          draggable={false}
-                        />
-                      ) : (
-                        <Icon
-                          size={52}
-                          className={cn(
-                            "text-primary",
-                            "transition-colors duration-200",
-                            "group-hover:text-accent",
-                          )}
-                        />
-                      )}
-                    </div>
+                  <Link
+                    to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
+                    className={cn(
+                      "group block h-full",
+                      "rounded-[18px] border border-border",
+                      "bg-gradient-to-br from-card to-secondary/10",
+                      "shadow-sm",
+                      "transition-all duration-200 ease-out",
+                      "hover:-translate-y-[6px] hover:scale-[1.03] hover:shadow-md",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    )}
+                    aria-label={`Categoria: ${c.name}`}
+                    onFocus={pause}
+                    onBlur={() => resumeAfter(2000)}
+                  >
+                    <div className="p-4 sm:p-5 flex flex-col items-center text-center">
+                      <div
+                        className={cn(
+                          "h-[72px] w-[72px] sm:h-[76px] sm:w-[76px]",
+                          "rounded-2xl",
+                          "border border-border/70",
+                          "bg-background/80",
+                          "grid place-items-center",
+                          "shadow-sm",
+                          "overflow-hidden",
+                        )}
+                      >
+                        {img ? (
+                          <img
+                            src={img}
+                            alt={`Categoria ${c.name}`}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            draggable={false}
+                          />
+                        ) : (
+                          <Icon
+                            size={46}
+                            className={cn(
+                              "text-primary",
+                              "transition-colors duration-200",
+                              "group-hover:text-accent",
+                            )}
+                          />
+                        )}
+                      </div>
 
-                    <div className="mt-4">
-                      <div className="text-[15px] font-semibold leading-snug tracking-tight">{c.name}</div>
+                      <div className="mt-3">
+                        <div className="text-[14px] font-semibold leading-snug tracking-tight">{c.name}</div>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              </div>
+                  </Link>
+                </div>
             );
           })}
         </div>

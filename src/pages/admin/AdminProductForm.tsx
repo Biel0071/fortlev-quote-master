@@ -10,7 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import type { StoreCategory } from "@/hooks/useStoreCategories";
-import { generateStandardProductDescription } from "@/utils/productDescription";
+import { generateStandardProductDescription } from "@/utils/generateStandardProductDescription";
+import { detectUnitByProductName, generateAutomaticSKU } from "@/utils/productIntelligence";
 
 type ImageRow = { id: string; path: string; sort_order: number };
 
@@ -238,7 +239,17 @@ export default function AdminProductForm() {
   const saveProduct = async () => {
     const shouldAutoFillDescription = !description.trim();
 
-    const finalDescription = shouldAutoFillDescription ? buildStandardDescription() : description.trim();
+    // Unit/SKU auto (do not overwrite existing)
+    const nextUnit = unit.trim() || detectUnitByProductName(name, categoryName) || null;
+    const nextSku = sku.trim() || generateAutomaticSKU({ id: editingId, name, categoryName }) || null;
+
+    if (!unit.trim() && nextUnit) setUnit(nextUnit);
+    if (!sku.trim() && nextSku) setSku(nextSku);
+
+    const finalDescription = shouldAutoFillDescription
+      ? buildStandardDescription({ sku: nextSku ?? "", unit: nextUnit ?? "" })
+      : description.trim();
+
     if (shouldAutoFillDescription) setDescription(finalDescription);
 
     const payload = {
@@ -248,8 +259,8 @@ export default function AdminProductForm() {
       category: null, // legacy text not used anymore
       price: Number(price) || 0,
       promo_price: Number(promoPrice) || 0,
-      unit: unit.trim() || null,
-      sku: sku.trim() || null,
+      unit: nextUnit,
+      sku: nextSku,
       stock: Number(stock) || 0,
       min_stock: Number(minStock) || 0,
       featured,

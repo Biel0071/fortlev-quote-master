@@ -6,10 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
+import { useVisitorTracker } from "@/hooks/useVisitorTracker";
+import { trackClickEvent } from "@/utils/clickTracking";
 import { formatCurrency } from "@/utils/formatters";
 
 export function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const cart = useCart();
+  const tracker = useVisitorTracker();
   const nav = useNavigate();
   const { activeProducts } = useStoreProducts();
 
@@ -96,6 +99,7 @@ export function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange
 
             <Button
               onClick={() => {
+                trackClickEvent({ sessionToken: tracker.sessionToken, type: "start_checkout" });
                 onOpenChange(false);
                 nav("/checkout");
               }}

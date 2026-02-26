@@ -24,7 +24,6 @@ export function FloatingChat({
 
   const [open, setOpen] = useState(false);
   const [attention, setAttention] = useState(false);
-  const [helpBadge, setHelpBadge] = useState(false);
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const [scoreSnapshot, setScoreSnapshot] = useState<number>(0);
 
@@ -32,18 +31,7 @@ export function FloatingChat({
 
   const bottomClass = isMobile ? "bottom-[5.25rem]" : "bottom-4";
 
-  useEffect(() => {
-    const count = Number(sessionStorage.getItem("store_product_views_v1") || "0");
-    if (count >= 3) setHelpBadge(true);
-
-    const onProductVisit = () => {
-      const next = Number(sessionStorage.getItem("store_product_views_v1") || "0");
-      if (next >= 3) setHelpBadge(true);
-    };
-
-    window.addEventListener("store:product-visit", onProductVisit as any);
-    return () => window.removeEventListener("store:product-visit", onProductVisit as any);
-  }, []);
+  // (badge removido)
 
   // Abre automaticamente na Home após 8s (uma única vez), e não reabre após fechamento manual.
   useEffect(() => {
@@ -102,19 +90,9 @@ export function FloatingChat({
     return () => window.clearTimeout(t);
   }, [open]);
 
-  const badgeLabel = useMemo(() => (helpBadge ? "Precisa de ajuda?" : ""), [helpBadge]);
-
   return (
     <>
       <div className={cn("fixed right-4 z-50", bottomClass, className)}>
-        {badgeLabel ? (
-          <div className="mb-2 flex justify-end">
-            <div className="rounded-full border border-border bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur px-3 py-1 text-xs font-medium shadow-sm">
-              {badgeLabel}
-            </div>
-          </div>
-        ) : null}
-
         <Button
           variant="default"
           size="icon"

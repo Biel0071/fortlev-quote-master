@@ -180,17 +180,17 @@ export function StoreFooter({
             <div className="font-semibold">Selos de Segurança</div>
           </div>
           <div className="rounded-2xl border border-border bg-background p-5 flex items-center justify-center">
-            <div className="flex flex-wrap items-center justify-center gap-6">
+            <div className="flex flex-col items-center justify-center gap-4">
               <img
                 src={seloSafeBrowsing}
                 alt="Selo de Segurança: Google Safe Browsing"
-                className="max-h-10 w-auto max-w-full object-contain"
+                className="max-h-14 sm:max-h-16 w-auto max-w-full object-contain"
                 loading="lazy"
               />
               <img
                 src={seloLojaProtegida}
                 alt="Selo de Segurança: Loja Protegida"
-                className="max-h-10 w-auto max-w-full object-contain"
+                className="max-h-14 sm:max-h-16 w-auto max-w-full object-contain"
                 loading="lazy"
               />
             </div>

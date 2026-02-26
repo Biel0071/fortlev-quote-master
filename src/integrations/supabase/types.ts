@@ -425,8 +425,10 @@ export type Database = {
           address: string | null
           created_at: string
           extra_note: string | null
+          facebook_url: string | null
           hours: string | null
           id: string
+          instagram_url: string | null
           key: string
           logo_path: string | null
           store_name: string | null
@@ -438,8 +440,10 @@ export type Database = {
           address?: string | null
           created_at?: string
           extra_note?: string | null
+          facebook_url?: string | null
           hours?: string | null
           id?: string
+          instagram_url?: string | null
           key?: string
           logo_path?: string | null
           store_name?: string | null
@@ -451,8 +455,10 @@ export type Database = {
           address?: string | null
           created_at?: string
           extra_note?: string | null
+          facebook_url?: string | null
           hours?: string | null
           id?: string
+          instagram_url?: string | null
           key?: string
           logo_path?: string | null
           store_name?: string | null

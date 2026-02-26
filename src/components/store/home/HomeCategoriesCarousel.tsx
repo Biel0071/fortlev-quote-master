@@ -14,13 +14,10 @@ import {
   Utensils,
   Waves,
   Wrench,
-  ArrowLeft,
-  ArrowRight,
 } from "lucide-react";
 import type { StoreCategory } from "@/hooks/useStoreCategories";
 import { publicImageUrl } from "@/utils/storage";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 function pickIcon(name: string) {
   const key = (name ?? "").trim().toLowerCase();
@@ -70,8 +67,8 @@ export function HomeCategoriesCarousel({
   hideHeader?: boolean;
   loop?: boolean;
 }) {
-  const items = useMemo(() => categories ?? [], [categories]);
-  const loopItems = useMemo(() => (loop ? items.concat(items) : items), [items, loop]);
+  // Loop infinito real (duplicação do array)
+  const items = useMemo(() => (loop ? categories.concat(categories) : categories), [categories, loop]);
 
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -117,12 +114,12 @@ export function HomeCategoriesCarousel({
   };
 
   useEffect(() => {
+    if (items.length === 0) return;
+
     const el = scrollerRef.current;
     if (!el) return;
 
     if (loop) el.scrollLeft = 0;
-
-    const logTsRef = { current: 0 };
 
     const tick = (ts: number) => {
       rafRef.current = window.requestAnimationFrame(tick);
@@ -159,12 +156,9 @@ export function HomeCategoriesCarousel({
         }
       }
 
-      // log temporário (throttle)
-      if (ts - logTsRef.current > 1000) {
-        // eslint-disable-next-line no-console
-        console.log("scrollLeft:", node.scrollLeft);
-        logTsRef.current = ts;
-      }
+      // console log temporário para validar loop
+      // eslint-disable-next-line no-console
+      console.log("scrollLeft:", node.scrollLeft);
     };
 
     rafRef.current = window.requestAnimationFrame(tick);
@@ -173,7 +167,7 @@ export function HomeCategoriesCarousel({
       if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
       if (resumeTimeoutRef.current) window.clearTimeout(resumeTimeoutRef.current);
     };
-  }, [loop, reducedMotion]);
+  }, [loop, reducedMotion, items.length]);
 
   if (items.length === 0) return null;
 
@@ -208,43 +202,6 @@ export function HomeCategoriesCarousel({
           )}
         />
 
-        {/* Setas apenas no desktop */}
-        <div className="hidden lg:block">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Categorias: anterior"
-            className={cn(
-              "absolute -left-3 top-1/2 -translate-y-1/2 z-20",
-              "h-9 w-9 rounded-full",
-              "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-              "border-border shadow-sm",
-            )}
-            onClick={() => scrollByStep(-1)}
-            onMouseEnter={pause}
-            onMouseLeave={() => resumeAfter(2000)}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Categorias: próxima"
-            className={cn(
-              "absolute -right-3 top-1/2 -translate-y-1/2 z-20",
-              "h-9 w-9 rounded-full",
-              "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-              "border-border shadow-sm",
-            )}
-            onClick={() => scrollByStep(1)}
-            onMouseEnter={pause}
-            onMouseLeave={() => resumeAfter(2000)}
-          >
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
 
         <div
           ref={scrollerRef}
@@ -257,6 +214,7 @@ export function HomeCategoriesCarousel({
             "whitespace-nowrap",
             "overflow-x-auto overflow-y-hidden",
             "overscroll-x-contain",
+            "snap-none",
             "scroll-smooth",
             "py-0.5",
             "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
@@ -280,7 +238,7 @@ export function HomeCategoriesCarousel({
             }
           }}
         >
-          {loopItems.map((c, idx) => {
+          {items.map((c, idx) => {
             const Icon = pickIcon(c.name);
             const img = publicImageUrl("category-images", c.image_path ?? null);
 
@@ -288,72 +246,72 @@ export function HomeCategoriesCarousel({
             const key = `${c.id}-${idx}`;
 
             return (
-                <div
-                  key={key}
+              <div
+                key={key}
+                className={cn(
+                  "shrink-0",
+                  // Mobile ~2.2, Tablet 3, Desktop 4–5
+                  "basis-[45%]",
+                  "sm:basis-[38%]",
+                  "md:basis-1/3",
+                  "lg:basis-[22%]",
+                  "xl:basis-[20%]",
+                  "pl-0",
+                )}
+              >
+                <Link
+                  to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
                   className={cn(
-                    "shrink-0",
-                    // Mobile ~2.2, Tablet 3, Desktop 4–5
-                    "basis-[45%]",
-                    "sm:basis-[38%]",
-                    "md:basis-1/3",
-                    "lg:basis-[22%]",
-                    "xl:basis-[20%]",
-                    "pl-0",
+                    "group block h-full",
+                    "rounded-[18px] border border-border",
+                    "bg-gradient-to-br from-card to-secondary/10",
+                    "shadow-sm",
+                    "transition-all duration-200 ease-out",
+                    "hover:-translate-y-[6px] hover:scale-[1.03] hover:shadow-md",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   )}
+                  aria-label={`Categoria: ${c.name}`}
+                  onFocus={pause}
+                  onBlur={() => resumeAfter(2000)}
                 >
-                  <Link
-                    to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
-                    className={cn(
-                      "group block h-full",
-                      "rounded-[18px] border border-border",
-                      "bg-gradient-to-br from-card to-secondary/10",
-                      "shadow-sm",
-                      "transition-all duration-200 ease-out",
-                      "hover:-translate-y-[6px] hover:scale-[1.03] hover:shadow-md",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    )}
-                    aria-label={`Categoria: ${c.name}`}
-                    onFocus={pause}
-                    onBlur={() => resumeAfter(2000)}
-                  >
-                    <div className="p-4 sm:p-5 flex flex-col items-center text-center">
-                      <div
-                        className={cn(
-                          "h-[72px] w-[72px] sm:h-[76px] sm:w-[76px]",
-                          "rounded-2xl",
-                          "border border-border/70",
-                          "bg-background/80",
-                          "grid place-items-center",
-                          "shadow-sm",
-                          "overflow-hidden",
-                        )}
-                      >
-                        {img ? (
-                          <img
-                            src={img}
-                            alt={`Categoria ${c.name}`}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            draggable={false}
-                          />
-                        ) : (
-                          <Icon
-                            size={46}
-                            className={cn(
-                              "text-primary",
-                              "transition-colors duration-200",
-                              "group-hover:text-accent",
-                            )}
-                          />
-                        )}
-                      </div>
-
-                      <div className="mt-3">
-                        <div className="text-[14px] font-semibold leading-snug tracking-tight">{c.name}</div>
-                      </div>
+                  <div className="p-4 sm:p-5 flex flex-col items-center text-center">
+                    <div
+                      className={cn(
+                        "h-[72px] w-[72px] sm:h-[76px] sm:w-[76px]",
+                        "rounded-2xl",
+                        "border border-border/70",
+                        "bg-background/80",
+                        "grid place-items-center",
+                        "shadow-sm",
+                        "overflow-hidden",
+                      )}
+                    >
+                      {img ? (
+                        <img
+                          src={img}
+                          alt={`Categoria ${c.name}`}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          draggable={false}
+                        />
+                      ) : (
+                        <Icon
+                          size={46}
+                          className={cn(
+                            "text-primary",
+                            "transition-colors duration-200",
+                            "group-hover:text-accent",
+                          )}
+                        />
+                      )}
                     </div>
-                  </Link>
-                </div>
+
+                    <div className="mt-3">
+                      <div className="text-[14px] font-semibold leading-snug tracking-tight">{c.name}</div>
+                    </div>
+                  </div>
+                </Link>
+              </div>
             );
           })}
         </div>

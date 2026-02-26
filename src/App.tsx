@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import StoreHome from "./pages/store/StoreHome";
@@ -44,6 +44,11 @@ import HomeSelector from "./pages/HomeSelector";
 
 const queryClient = new QueryClient();
 
+function InstitutionalRedirect() {
+  const { slug = "" } = useParams();
+  return <Navigate to={`/p/${encodeURIComponent(slug)}`} replace />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -67,7 +72,7 @@ const App = () => (
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/checkout/pagamento" element={<PaymentPendingPage />} />
             <Route path="/p/:slug" element={<StorePage />} />
-            <Route path="/institucional/:slug" element={<StorePage />} />
+            <Route path="/institucional/:slug" element={<InstitutionalRedirect />} />
 
             {/* Área do cliente */}
             <Route path="/conta" element={<AccountPage />} />

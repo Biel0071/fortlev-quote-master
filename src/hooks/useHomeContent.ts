@@ -51,6 +51,8 @@ export type HomeFooter = {
   whatsapp: string | null;
   hours: string | null;
   extra_note: string | null;
+  instagram_url?: string | null;
+  facebook_url?: string | null;
   active: boolean;
 };
 
@@ -128,7 +130,7 @@ export function useHomeContent() {
         .order("sort_order", { ascending: true }),
       cloud
         .from("home_footer")
-        .select("id, key, logo_path, store_name, address, whatsapp, hours, extra_note, active")
+        .select("id, key, logo_path, store_name, address, whatsapp, hours, extra_note, instagram_url, facebook_url, active")
         .eq("active", true)
         .eq("key", "main")
         .maybeSingle(),

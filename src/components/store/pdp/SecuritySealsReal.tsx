@@ -1,4 +1,4 @@
-import seloSafeBrowsing from "@/assets/trust/selo-google-safe-browsing-upload.png";
+import seloSafeBrowsing from "@/assets/trust/selo-google-safe-browsing-vert.png";
 import seloLojaProtegida from "@/assets/trust/selo-loja-protegida-upload.png";
 
 export function SecuritySealsReal() {
@@ -7,17 +7,17 @@ export function SecuritySealsReal() {
       <div className="p-5">
         <div className="font-semibold">Selos de Segurança</div>
         <div className="mt-4 rounded-2xl border border-border bg-background p-5 flex items-center justify-center">
-          <div className="flex flex-col items-center justify-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-6">
             <img
               src={seloSafeBrowsing}
               alt="Selo de Segurança: Google Safe Browsing"
-              className="max-h-14 sm:max-h-16 w-auto max-w-full object-contain"
+              className="max-h-[4.375rem] w-auto max-w-full object-contain"
               loading="lazy"
             />
             <img
               src={seloLojaProtegida}
               alt="Selo de Segurança: Loja Protegida"
-              className="max-h-14 sm:max-h-16 w-auto max-w-full object-contain"
+              className="max-h-[4.375rem] w-auto max-w-full object-contain"
               loading="lazy"
             />
           </div>

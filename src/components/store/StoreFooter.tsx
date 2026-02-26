@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, MapPin, MessageCircle } from "lucide-react";
+import { Facebook, Instagram, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { publicImageUrl } from "@/utils/storage";
 import type { HomeFooter } from "@/hooks/useHomeContent";
@@ -28,21 +28,12 @@ export function StoreFooter({
             )}
             <div>
               <div className="font-semibold">{storeName}</div>
-              {footer?.extra_note ? <div className="text-xs text-muted-foreground">{footer.extra_note}</div> : null}
             </div>
           </div>
-
-          {footer?.address ? (
-            <div className="flex items-start gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4 mt-0.5" />
-              <span>{footer.address}</span>
-            </div>
-          ) : null}
 
           {whatsapp ? (
             <div className="flex items-center gap-2 text-sm">
               <MessageCircle className="h-4 w-4" />
-              <span className="text-muted-foreground">WhatsApp:</span>
               <a
                 className="font-medium hover:underline"
                 href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`}
@@ -57,9 +48,6 @@ export function StoreFooter({
           <div className="flex gap-2 flex-wrap">
             <Button asChild className="h-11 rounded-2xl">
               <Link to="/loja">Ver catálogo</Link>
-            </Button>
-            <Button asChild className="h-11 rounded-2xl" variant="outline">
-              <Link to="/carrinho">Carrinho</Link>
             </Button>
           </div>
         </div>
@@ -97,18 +85,30 @@ export function StoreFooter({
         <div className="md:col-span-3 space-y-3">
           <div className="font-semibold">Ajuda</div>
           <div className="grid gap-2">
-            <Link to="/checkout" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-              Entrega e retirada
-            </Link>
-            <Link to="/checkout" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-              Formas de pagamento
-            </Link>
-            <Link to="/p/politica-de-vendas" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-              Garantia
-            </Link>
-            <Link to="/p/contato" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-              Fale conosco
-            </Link>
+            {(() => {
+              const bySlug = new Map(pageLinks.map((p) => [p.slug, p] as const));
+              const delivery = bySlug.get("entrega-e-retirada") ?? bySlug.get("entrega");
+              const payments = bySlug.get("formas-de-pagamento") ?? bySlug.get("pagamento");
+              const warranty = bySlug.get("garantia") ?? bySlug.get("politica-de-vendas");
+              const contact = bySlug.get("fale-conosco") ?? bySlug.get("contato");
+
+              const links = [
+                delivery ? { title: "Entrega e retirada", slug: delivery.slug } : null,
+                payments ? { title: "Formas de pagamento", slug: payments.slug } : null,
+                warranty ? { title: "Garantia", slug: warranty.slug } : null,
+                contact ? { title: "Fale conosco", slug: contact.slug } : null,
+              ].filter(Boolean) as Array<{ title: string; slug: string }>;
+
+              return links.length > 0 ? (
+                links.map((p) => (
+                  <Link key={p.slug} to={`/p/${p.slug}`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                    {p.title}
+                  </Link>
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground">Em breve</div>
+              );
+            })()}
           </div>
         </div>
 
@@ -131,7 +131,7 @@ export function StoreFooter({
               <Facebook className="h-5 w-5" />
             </a>
           </div>
-          <div className="text-xs text-muted-foreground">Atualize os links das redes quando desejar.</div>
+          
         </div>
       </div>
 

@@ -56,7 +56,8 @@ export function CookieConsentBanner() {
             <div className="min-w-0">
               <div className="font-semibold">Utilizamos cookies para melhorar sua experiência.</div>
               <div className="text-sm text-muted-foreground">
-                Você pode aceitar para ativar melhorias e medições, ou configurar suas preferências.
+                Usamos cookies para funcionamento, segurança, personalização de conteúdo e análise de tráfego. Você pode aceitar para
+                ativar melhorias e medições, ou configurar suas preferências.
               </div>
             </div>
             <div className="flex gap-2 sm:justify-end sm:ml-auto">

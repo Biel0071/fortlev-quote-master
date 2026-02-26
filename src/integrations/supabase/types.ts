@@ -1326,6 +1326,48 @@ export type Database = {
         }
         Relationships: []
       }
+      talent_applications: {
+        Row: {
+          area_of_interest: string
+          created_at: string
+          email: string
+          experience: string | null
+          full_name: string
+          id: string
+          metadata: Json
+          notes: string | null
+          phone: string
+          resume_path: string | null
+          status: string
+        }
+        Insert: {
+          area_of_interest: string
+          created_at?: string
+          email: string
+          experience?: string | null
+          full_name: string
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          phone: string
+          resume_path?: string | null
+          status?: string
+        }
+        Update: {
+          area_of_interest?: string
+          created_at?: string
+          email?: string
+          experience?: string | null
+          full_name?: string
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          phone?: string
+          resume_path?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

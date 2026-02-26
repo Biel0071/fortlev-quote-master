@@ -8,6 +8,9 @@ import { useStorePages } from "@/hooks/useStorePages";
 import { Button } from "@/components/ui/button";
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { useDynamicSeo } from "@/hooks/useDynamicSeo";
+import { getInstitutionalModel } from "@/content/institutionalCopy";
+import { InstitutionalPremiumContent } from "@/components/institutional/InstitutionalPremiumContent";
+import { JobApplicationForm } from "@/components/institutional/JobApplicationForm";
 
 type MdBlock =
   | { type: "h2"; text: string }
@@ -123,7 +126,10 @@ export default function StorePage() {
   const copy = useMemo(() => copyForSlug(slug), [slug]);
 
   const storeName = (contact.storeName || "Materiais de Construção").trim();
-  const pageTitle = (page?.title || "Página").trim();
+  const model = useMemo(() => getInstitutionalModel(slug, storeName), [slug, storeName]);
+  const isJob = (slug ?? "").toLowerCase() === "trabalhe-conosco";
+
+  const pageTitle = (model?.title || (isJob ? "Trabalhe conosco" : null) || page?.title || "Página").trim();
   const metaTitle = `${pageTitle} | ${storeName}`;
 
   useDynamicSeo({
@@ -134,12 +140,17 @@ export default function StorePage() {
 
   const sections = useMemo(() => (page ? splitIntoSections(parseMd(page.content_md)) : []), [page]);
 
+  const headerSubtitle =
+    model?.subtitle ??
+    (isJob ? "Envie sua candidatura para nosso banco de talentos interno." : null) ??
+    copy.subtitle;
+
   return (
     <div className="min-h-screen bg-background">
       <StoreTopbar cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="mx-auto w-full max-w-[720px] px-4 sm:px-6 py-12 pb-24 md:pb-14 space-y-10">
+      <main className="mx-auto w-full max-w-[880px] px-4 sm:px-6 py-12 pb-24 md:pb-14 space-y-10">
         <Button asChild variant="ghost" className="w-fit">
           <Link to="/">← Voltar para a loja</Link>
         </Button>
@@ -148,53 +159,59 @@ export default function StorePage() {
           <div className="text-muted-foreground">Carregando...</div>
         ) : error ? (
           <div className="text-destructive">{error}</div>
-        ) : !page ? (
+        ) : !page && !model && !isJob ? (
           <Card>
             <CardHeader>
               <CardTitle>Página não encontrada</CardTitle>
             </CardHeader>
-            <CardContent className="text-muted-foreground">
-              Esta página institucional não existe ou não está publicada.
-            </CardContent>
+            <CardContent className="text-muted-foreground">Esta página institucional não existe ou não está publicada.</CardContent>
           </Card>
         ) : (
           <article className="space-y-10">
             <header className="space-y-3">
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{page.title}</h1>
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{copy.subtitle}</p>
+              <h1 className="text-3xl sm:text-5xl font-bold tracking-tight leading-[1.05]">{pageTitle}</h1>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-prose">{headerSubtitle}</p>
             </header>
 
-            <Card className="rounded-2xl">
-              <CardContent className="py-8 space-y-10">
-                {sections.map((s, idx) => (
-                  <section key={idx} className="space-y-4">
-                    {s.title ? <h2 className="text-lg sm:text-xl font-semibold tracking-tight">{s.title}</h2> : null}
+            {slug.toLowerCase() === "trabalhe-conosco" ? (
+              <JobApplicationForm />
+            ) : model ? (
+              <InstitutionalPremiumContent model={model} />
+            ) : (
+              <Card className="rounded-2xl">
+                <CardContent className="py-8 space-y-10">
+                  {sections.map((s, idx) => (
+                    <section key={idx} className="space-y-4">
+                      {s.title ? <h2 className="text-lg sm:text-xl font-semibold tracking-tight">{s.title}</h2> : null}
 
-                    <div className="space-y-3">
-                      {s.paragraphs.map((p, i) => (
-                        <p key={i} className="text-sm sm:text-base leading-relaxed text-foreground/90">
-                          {p}
-                        </p>
-                      ))}
-                    </div>
-
-                    {s.items.length > 0 ? (
-                      <ul className="list-disc pl-6 space-y-2 text-sm sm:text-base text-foreground/90">
-                        {s.items.map((it, i) => (
-                          <li key={i}>{it}</li>
+                      <div className="space-y-3">
+                        {s.paragraphs.map((p, i) => (
+                          <p key={i} className="text-sm sm:text-base leading-relaxed text-foreground/90">
+                            {p}
+                          </p>
                         ))}
-                      </ul>
-                    ) : null}
-                  </section>
-                ))}
-              </CardContent>
-            </Card>
+                      </div>
+
+                      {s.items.length > 0 ? (
+                        <ul className="list-disc pl-6 space-y-2 text-sm sm:text-base text-foreground/90">
+                          {s.items.map((it, i) => (
+                            <li key={i}>{it}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </section>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="rounded-2xl">
               <CardContent className="py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="space-y-1">
                   <div className="font-semibold">Precisa de ajuda?</div>
-                  <div className="text-sm text-muted-foreground">Fale com nossa consultora pelo WhatsApp e te ajudamos a escolher o material certo.</div>
+                  <div className="text-sm text-muted-foreground">
+                    Fale com nossa consultora pelo WhatsApp e te ajudamos a escolher o material certo.
+                  </div>
                 </div>
 
                 {contact.waLink ? (

@@ -70,12 +70,8 @@ export function HomeCategoriesCarousel({
   hideHeader?: boolean;
   loop?: boolean;
 }) {
-  const items = useMemo(() => (categories ?? []).slice(0, 60), [categories]);
-  const loopItems = useMemo(() => {
-    if (!loop) return items;
-    // Duplica para loop infinito real (reset imperceptível no meio)
-    return [...items, ...items];
-  }, [items, loop]);
+  const items = useMemo(() => categories ?? [], [categories]);
+  const loopItems = useMemo(() => (loop ? items.concat(items) : items), [items, loop]);
 
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -124,8 +120,9 @@ export function HomeCategoriesCarousel({
     const el = scrollerRef.current;
     if (!el) return;
 
-    // Começa no início; o “loop” é garantido por duplicação + reset silencioso.
     if (loop) el.scrollLeft = 0;
+
+    const logTsRef = { current: 0 };
 
     const tick = (ts: number) => {
       rafRef.current = window.requestAnimationFrame(tick);
@@ -139,24 +136,35 @@ export function HomeCategoriesCarousel({
       const node = scrollerRef.current;
       if (!node) return;
 
+      // Se não há overflow horizontal, não anima.
+      if (node.scrollWidth <= node.clientWidth + 2) {
+        lastTsRef.current = ts;
+        return;
+      }
+
       const last = lastTsRef.current;
       lastTsRef.current = ts;
       if (last == null) return;
 
-      // 20–30px/s (suave e contínuo)
-      const speedPxPerMs = 0.024;
+      // 0.025 px/ms = 25px/s
+      const speedPxPerMs = 0.025;
       const delta = Math.min(32, ts - last);
 
       node.scrollLeft += delta * speedPxPerMs;
 
-      if (!loop) return;
+      if (loop) {
+        const half = node.scrollWidth / 2;
+        if (half > 0 && node.scrollLeft >= half) {
+          node.scrollLeft -= half;
+        }
+      }
 
-      const half = node.scrollWidth / 2;
-      if (half <= 0) return;
-
-      // Reset imperceptível ao passar do fim/início da primeira metade
-      if (node.scrollLeft >= half) node.scrollLeft -= half;
-      if (node.scrollLeft <= 0) node.scrollLeft += half;
+      // log temporário (throttle)
+      if (ts - logTsRef.current > 1000) {
+        // eslint-disable-next-line no-console
+        console.log("scrollLeft:", node.scrollLeft);
+        logTsRef.current = ts;
+      }
     };
 
     rafRef.current = window.requestAnimationFrame(tick);
@@ -215,7 +223,7 @@ export function HomeCategoriesCarousel({
             )}
             onClick={() => scrollByStep(-1)}
             onMouseEnter={pause}
-            onMouseLeave={resume}
+            onMouseLeave={() => resumeAfter(2000)}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -232,7 +240,7 @@ export function HomeCategoriesCarousel({
             )}
             onClick={() => scrollByStep(1)}
             onMouseEnter={pause}
-            onMouseLeave={resume}
+            onMouseLeave={() => resumeAfter(2000)}
           >
             <ArrowRight className="h-4 w-4" />
           </Button>
@@ -245,10 +253,10 @@ export function HomeCategoriesCarousel({
           tabIndex={0}
           className={cn(
             "relative w-full",
-            "flex gap-2",
+            "inline-flex gap-2",
+            "whitespace-nowrap",
             "overflow-x-auto overflow-y-hidden",
             "overscroll-x-contain",
-            "snap-x snap-mandatory",
             "scroll-smooth",
             "py-0.5",
             "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
@@ -290,8 +298,6 @@ export function HomeCategoriesCarousel({
                     "md:basis-1/3",
                     "lg:basis-[22%]",
                     "xl:basis-[20%]",
-                    // Snap central no mobile, start no resto
-                    "snap-center sm:snap-start",
                     "pl-0",
                   )}
                 >

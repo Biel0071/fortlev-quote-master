@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { publicImageUrl } from "@/utils/storage";
 import type { HomeFooter } from "@/hooks/useHomeContent";
 
-import paymentLogosReal from "@/assets/pdp/payment-logos-real.png";
-import seloSafeBrowsing from "@/assets/trust/selo-google-safe-browsing.png";
-import seloLojaProtegida from "@/assets/trust/selo-loja-protegida.png";
+import paymentLogosReal from "@/assets/pdp/payment-logos-upload.png";
+import seloSafeBrowsing from "@/assets/trust/selo-google-safe-browsing-upload.png";
+import seloLojaProtegida from "@/assets/trust/selo-loja-protegida-upload.png";
 
 export function StoreFooter({
   footer,

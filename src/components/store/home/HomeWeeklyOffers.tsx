@@ -57,10 +57,10 @@ function OfferCard({
   const imgPath = product?.images?.[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);
 
-  // Installments hint: up to 10x
+  // Installments hint: fixed 10x (sem juros)
   const installments = useMemo(() => {
     if (!effective || effective <= 0) return null;
-    return `em até 10x de ${formatCurrency(effective / 10)}`;
+    return `ou 10x de ${formatCurrency(effective / 10)} sem juros`;
   }, [effective]);
 
   return (

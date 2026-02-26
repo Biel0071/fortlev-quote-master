@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useVisitorTracker } from "@/hooks/useVisitorTracker";
+import { trackClickEvent } from "@/utils/clickTracking";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
 
@@ -13,6 +15,7 @@ export function StoreProductCard({
   onAdd: (productId: string, qty: number) => void;
 }) {
   const nav = useNavigate();
+  const tracker = useVisitorTracker();
 
   const basePrice = Number(product?.price ?? 0);
   const promo = Number(product?.promo_price ?? 0);
@@ -33,10 +36,14 @@ export function StoreProductCard({
     <Card
       role="link"
       tabIndex={0}
-      onClick={() => nav(`/produto/${product?.id}`)}
+      onClick={() => {
+        trackClickEvent({ sessionToken: tracker.sessionToken, type: "open_product", productId: product?.id });
+        nav(`/produto/${product?.id}`);
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
+          trackClickEvent({ sessionToken: tracker.sessionToken, type: "open_product", productId: product?.id });
           nav(`/produto/${product?.id}`);
         }
       }}
@@ -75,6 +82,7 @@ export function StoreProductCard({
               className="h-11 rounded-xl px-4 w-full"
               onClick={(e) => {
                 e.stopPropagation();
+                trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: product.id });
                 onAdd(product.id, 1);
               }}
             >

@@ -258,6 +258,36 @@ export type Database = {
         }
         Relationships: []
       }
+      cookie_consent: {
+        Row: {
+          accepted_at: string
+          consent: string
+          created_at: string
+          id: string
+          ip_hash: string | null
+          session_token: string
+          user_agent_hash: string | null
+        }
+        Insert: {
+          accepted_at?: string
+          consent: string
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          session_token: string
+          user_agent_hash?: string | null
+        }
+        Update: {
+          accepted_at?: string
+          consent?: string
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          session_token?: string
+          user_agent_hash?: string | null
+        }
+        Relationships: []
+      }
       customer_profiles: {
         Row: {
           address_line: string | null
@@ -1413,6 +1443,36 @@ export type Database = {
           user_agent?: string | null
           utm_campaign?: string | null
           utm_source?: string | null
+        }
+        Relationships: []
+      }
+      visitor_tracking: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          path: string | null
+          product_id: string | null
+          session_token: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          path?: string | null
+          product_id?: string | null
+          session_token: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          path?: string | null
+          product_id?: string | null
+          session_token?: string
         }
         Relationships: []
       }

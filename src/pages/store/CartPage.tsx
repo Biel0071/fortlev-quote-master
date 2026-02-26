@@ -8,6 +8,7 @@ import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
+import { trackClickEvent } from "@/utils/clickTracking";
 import { formatCurrency } from "@/utils/formatters";
 
 export default function CartPage() {
@@ -110,7 +111,14 @@ export default function CartPage() {
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={cart.clear}>Limpar</Button>
-              <Button onClick={() => nav("/checkout")}>Finalizar</Button>
+              <Button
+                onClick={() => {
+                  trackClickEvent({ sessionToken: tracker.sessionToken, type: "start_checkout" });
+                  nav("/checkout");
+                }}
+              >
+                Finalizar
+              </Button>
             </div>
           </div>
         )}

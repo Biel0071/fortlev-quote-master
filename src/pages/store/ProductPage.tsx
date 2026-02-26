@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CreditCard, PackageCheck, ShieldCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
@@ -9,18 +8,64 @@ import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
+import { generateProductDescriptionMarkdown } from "@/utils/productDescription";
 
-function InfoTile({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
+function ProductDescription({ markdown }: { markdown: string }) {
+  const lines = useMemo(() => markdown.split(/\r?\n/), [markdown]);
+
+  const blocks = useMemo(() => {
+    const out: Array<
+      | { kind: "h2"; text: string }
+      | { kind: "p"; text: string }
+      | { kind: "kv"; key: string; value: string }
+    > = [];
+
+    for (const raw of lines) {
+      const line = raw.trimEnd();
+      if (!line.trim()) continue;
+
+      if (line.startsWith("## ")) {
+        out.push({ kind: "h2", text: line.replace(/^##\s+/, "").trim() });
+        continue;
+      }
+
+      const kv = line.match(/^([^:]+):\s*(.*)$/);
+      if (kv) {
+        out.push({ kind: "kv", key: kv[1].trim(), value: (kv[2] ?? "-").trim() || "-" });
+        continue;
+      }
+
+      out.push({ kind: "p", text: line.trim() });
+    }
+
+    return out;
+  }, [lines]);
+
   return (
-    <Card className="rounded-2xl border-border bg-card shadow-sm">
-      <CardContent className="p-5">
-        <div className="h-11 w-11 rounded-xl border border-border bg-secondary/40 flex items-center justify-center">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="mt-3 font-semibold">{title}</div>
-        <div className="mt-1 text-sm text-muted-foreground">{desc}</div>
-      </CardContent>
-    </Card>
+    <div className="space-y-3">
+      {blocks.map((b, idx) => {
+        if (b.kind === "h2") {
+          return (
+            <h2 key={idx} className="text-base font-semibold tracking-tight">
+              {b.text}
+            </h2>
+          );
+        }
+        if (b.kind === "kv") {
+          return (
+            <div key={idx} className="text-sm">
+              <span className="text-muted-foreground">{b.key}: </span>
+              <span className="font-medium text-foreground">{b.value || "-"}</span>
+            </div>
+          );
+        }
+        return (
+          <p key={idx} className="text-sm text-muted-foreground leading-relaxed">
+            {b.text}
+          </p>
+        );
+      })}
+    </div>
   );
 }
 
@@ -47,6 +92,19 @@ export default function ProductPage() {
     if (!effectivePrice || effectivePrice <= 0) return null;
     return `em até 10x de ${formatCurrency(effectivePrice / 10)}`;
   }, [effectivePrice]);
+
+  const descriptionMd = useMemo(() => {
+    const existing = String((product as any)?.description ?? "").trim();
+    if (existing) return existing;
+    if (!product) return "";
+    return generateProductDescriptionMarkdown({
+      id: (product as any).id,
+      name: (product as any).name,
+      categoryName: (product as any).category ?? "",
+      sku: (product as any).sku ?? null,
+      unit: (product as any).unit ?? null,
+    });
+  }, [product]);
 
   useEffect(() => {
     // track product visits for "Precisa de ajuda?" badge
@@ -105,7 +163,12 @@ export default function ProductPage() {
                             }`}
                             aria-label={`Ver imagem ${idx + 1} de ${product.name}`}
                           >
-                            <img src={url} alt={`${product.name} - imagem ${idx + 1}`} className="h-full w-full object-cover" loading="lazy" />
+                            <img
+                              src={url}
+                              alt={`${product.name} - imagem ${idx + 1}`}
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
                           </button>
                         );
                       })}
@@ -119,27 +182,21 @@ export default function ProductPage() {
             <div className="lg:col-span-5 space-y-4">
               <div>
                 <h1 className="text-[28px] font-bold tracking-tight leading-tight">{product.name}</h1>
-                {(product as any).description ? (
-                  <p className="mt-2 text-sm text-muted-foreground">{(product as any).description}</p>
-                ) : null}
+                <div className="mt-3">
+                  {hasPromo ? (
+                    <div className="text-sm text-muted-foreground line-through">{formatCurrency(basePrice)}</div>
+                  ) : null}
+                  <div className="text-3xl font-extrabold tracking-tight">{formatCurrency(effectivePrice)}</div>
+                  {installments ? <div className="text-sm text-muted-foreground">{installments}</div> : null}
+                  <div className="mt-2 text-sm text-muted-foreground">Unidade: {(product as any).unit ?? "un"}</div>
+                </div>
               </div>
 
               <Card className="rounded-3xl border-border bg-card shadow-sm">
                 <CardContent className="p-5 space-y-4">
-                  <div>
-                    {hasPromo ? <div className="text-sm text-muted-foreground line-through">{formatCurrency(basePrice)}</div> : null}
-                    <div className="text-3xl font-extrabold tracking-tight">{formatCurrency(effectivePrice)}</div>
-                    {installments ? <div className="text-sm text-muted-foreground">{installments}</div> : null}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Button className="h-12 rounded-2xl" onClick={() => cart.add((product as any).id, 1)}>
-                      Adicionar ao carrinho
-                    </Button>
-                    <Button asChild variant="outline" className="h-12 rounded-2xl">
-                      <Link to="/carrinho">Ver carrinho</Link>
-                    </Button>
-                  </div>
+                  <Button className="h-14 rounded-2xl w-full" onClick={() => cart.add((product as any).id, 1)}>
+                    Adicionar ao carrinho
+                  </Button>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="rounded-2xl border border-border bg-secondary/30 p-4">
@@ -148,32 +205,30 @@ export default function ProductPage() {
                     </div>
                     <div className="rounded-2xl border border-border bg-secondary/30 p-4">
                       <div className="text-xs text-muted-foreground">Entrega</div>
-                      <div className="font-semibold">A combinar</div>
+                      <div className="font-semibold">3 a 7 dias úteis</div>
                     </div>
                     <div className="rounded-2xl border border-border bg-secondary/30 p-4">
                       <div className="text-xs text-muted-foreground">Pagamento</div>
                       <div className="font-semibold">Pix / Cartão</div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <InfoTile icon={Truck} title="Entrega" desc="Retire na loja ou receba com agilidade." />
-                <InfoTile icon={CreditCard} title="Parcelamento" desc="Condições claras para você decidir." />
-                <InfoTile icon={ShieldCheck} title="Segurança" desc="Compra segura e dados protegidos." />
-                <InfoTile icon={PackageCheck} title="Garantia" desc="Suporte pós-venda para sua obra." />
-              </div>
-
-              {/* Prova social / selo */}
-              <Card className="rounded-3xl border-border bg-card shadow-sm">
-                <CardContent className="p-5">
-                  <div className="font-semibold">Confiança</div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    Avaliações e selos podem ser exibidos aqui (em breve).
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="rounded-2xl border border-border bg-card p-4 font-semibold">🚚 Entrega</div>
+                    <div className="rounded-2xl border border-border bg-card p-4 font-semibold">💳 Parcelamento</div>
+                    <div className="rounded-2xl border border-border bg-card p-4 font-semibold">🔒 Segurança</div>
+                    <div className="rounded-2xl border border-border bg-card p-4 font-semibold">🛡 Garantia</div>
                   </div>
                 </CardContent>
               </Card>
+
+              {descriptionMd ? (
+                <Card className="rounded-3xl border-border bg-card shadow-sm">
+                  <CardContent className="p-5">
+                    <ProductDescription markdown={descriptionMd} />
+                  </CardContent>
+                </Card>
+              ) : null}
             </div>
           </div>
         )}

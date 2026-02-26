@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { publicImageUrl } from "@/utils/storage";
 import type { HomeFooter } from "@/hooks/useHomeContent";
 
-import paymentLogosReal from "@/assets/pdp/payment-logos-upload.png";
+import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
 import seloSafeBrowsing from "@/assets/trust/selo-google-safe-browsing-vert.png";
 import seloLojaProtegida from "@/assets/trust/selo-loja-protegida-upload.png";
 
@@ -165,12 +165,9 @@ export function StoreFooter({
         {/* Formas de pagamento (global) */}
         <div className={`${gridSpanAll} space-y-3`} aria-label="Formas de pagamento">
           <div className="font-semibold">Formas de pagamento</div>
-          <img
-            src={paymentLogosReal}
-            alt="Formas de pagamento: Visa, Mastercard, Elo, American Express, Diners, Pix e Boleto"
-            className="h-7 w-auto max-w-full object-contain"
-            loading="lazy"
-          />
+          <div className="-mt-1">
+            <PaymentLogosReal />
+          </div>
         </div>
 
         {/* Selos de Segurança (somente no rodapé) */}

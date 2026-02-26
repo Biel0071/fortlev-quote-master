@@ -71,6 +71,9 @@ serve(async (req) => {
     }
 
     const payload = await gatewayResp.json();
+    // log temporário para validar retorno da IA (somente backend)
+    console.log("AI RESPONSE:", payload);
+
     const answer = payload?.choices?.[0]?.message?.content ?? "";
 
     return new Response(JSON.stringify({ answer }), {

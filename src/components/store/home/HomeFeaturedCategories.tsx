@@ -20,22 +20,24 @@ export function HomeFeaturedCategories({ categories }: { categories: StoreCatego
             <Link
               key={c.id}
               to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
-              className="group rounded-2xl border border-border bg-card p-3 hover:bg-muted/30 transition overflow-hidden"
+              className="group rounded-2xl border border-border bg-card p-3 hover:bg-muted/30 transition"
             >
-              <div className="aspect-[4/3] rounded-xl overflow-hidden border border-border bg-muted/20">
-                {img ? (
-                  <img src={img} alt={`Categoria ${c.name}`} className="h-full w-full object-cover" loading="lazy" />
-                ) : (
-                  <div className="h-full w-full fortlev-gradient opacity-60" />
-                )}
-              </div>
+              <div className="flex flex-col items-center text-center gap-3">
+                <div className="h-16 w-16 rounded-full overflow-hidden border border-border bg-muted/20">
+                  {img ? (
+                    <img src={img} alt={`Categoria ${c.name}`} className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="h-full w-full fortlev-gradient opacity-60" />
+                  )}
+                </div>
 
-              <div className="mt-3">
-                <div className="font-medium line-clamp-2">{c.name}</div>
-                <div className="mt-2">
-                  <Button size="sm" variant="outline" className="w-full">
-                    Ver produtos
-                  </Button>
+                <div className="w-full">
+                  <div className="font-medium line-clamp-2">{c.name}</div>
+                  <div className="mt-2">
+                    <Button size="sm" variant="outline" className="w-full">
+                      Ver produtos
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Link>

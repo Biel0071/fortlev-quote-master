@@ -156,47 +156,46 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
                     <Link
                       to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
                       className={cn(
-                        "group block h-full",
-                        "rounded-[18px] border border-border",
-                        "bg-gradient-to-br from-card to-secondary/10",
-                        "shadow-sm",
-                        "transition-all duration-200 ease-out",
-                        "hover:-translate-y-[6px] hover:scale-[1.03] hover:shadow-md",
+                        "group flex h-full flex-col items-center text-center",
+                        "rounded-2xl",
+                        "px-2 py-3 sm:px-3 sm:py-4",
+                        "transition-transform duration-200 ease-out",
+                        "hover:-translate-y-1",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       )}
                       aria-label={`Categoria: ${c.name}`}
                     >
-                      <div className="p-4 sm:p-5 flex flex-col items-center text-center">
-                        <div
-                          className={cn(
-                            "h-[72px] w-[72px] sm:h-[76px] sm:w-[76px]",
-                            "rounded-2xl",
-                            "border border-border/70",
-                            "bg-background/80",
-                            "grid place-items-center",
-                            "shadow-sm",
-                            "overflow-hidden",
-                          )}
-                        >
-                          {img ? (
-                            <img
-                              src={img}
-                              alt={`Categoria ${c.name}`}
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                              draggable={false}
-                            />
-                          ) : (
-                            <Icon
-                              size={46}
-                              className={cn("text-primary", "transition-colors duration-200", "group-hover:text-accent")}
-                            />
-                          )}
-                        </div>
+                      <div
+                        className={cn(
+                          "h-[72px] w-[72px] sm:h-[76px] sm:w-[76px]",
+                          "rounded-full",
+                          "border border-border/70",
+                          "bg-background/80",
+                          "grid place-items-center",
+                          "shadow-sm",
+                          "overflow-hidden",
+                          "transition-shadow duration-200",
+                          "group-hover:shadow-md",
+                        )}
+                      >
+                        {img ? (
+                          <img
+                            src={img}
+                            alt={`Categoria ${c.name}`}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            draggable={false}
+                          />
+                        ) : (
+                          <Icon
+                            size={46}
+                            className={cn("text-primary", "transition-colors duration-200", "group-hover:text-accent")}
+                          />
+                        )}
+                      </div>
 
-                        <div className="mt-3">
-                          <div className="text-[14px] font-semibold leading-snug tracking-tight">{c.name}</div>
-                        </div>
+                      <div className="mt-3">
+                        <div className="text-[14px] font-semibold leading-snug tracking-tight text-foreground">{c.name}</div>
                       </div>
                     </Link>
                   </div>

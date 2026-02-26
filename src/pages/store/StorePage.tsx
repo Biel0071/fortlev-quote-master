@@ -6,43 +6,140 @@ import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStorePages } from "@/hooks/useStorePages";
 import { Button } from "@/components/ui/button";
+import { useStoreContact } from "@/hooks/useStoreContact";
+import { useDynamicSeo } from "@/hooks/useDynamicSeo";
 
-function renderParagraphs(md: string) {
-  // Minimal markdown-ish rendering (paragraphs + bullets). Avoid adding deps.
-  const lines = md.split("\n");
-  const blocks: Array<{ type: "p" | "li"; text: string }> = [];
+type MdBlock =
+  | { type: "h2"; text: string }
+  | { type: "p"; text: string }
+  | { type: "li"; text: string };
+
+function parseMd(md: string): MdBlock[] {
+  const lines = (md ?? "").split("\n");
+  const out: MdBlock[] = [];
 
   for (const raw of lines) {
     const t = raw.trim();
     if (!t) continue;
-    if (t.startsWith("- ") || t.startsWith("• ")) {
-      blocks.push({ type: "li", text: t.replace(/^(-|•)\s+/, "") });
-    } else if (t.startsWith("# ")) {
-      blocks.push({ type: "p", text: t.replace(/^#\s+/, "") });
-    } else {
-      blocks.push({ type: "p", text: t });
+
+    if (t.startsWith("## ")) {
+      out.push({ type: "h2", text: t.replace(/^##\s+/, "") });
+      continue;
     }
+
+    if (t.startsWith("- ") || t.startsWith("• ")) {
+      out.push({ type: "li", text: t.replace(/^(-|•)\s+/, "") });
+      continue;
+    }
+
+    // Ignore H1 in markdown (page.title is the H1)
+    if (t.startsWith("# ")) continue;
+
+    out.push({ type: "p", text: t });
   }
 
-  const items = blocks.filter((b) => b.type === "li");
-  const paras = blocks.filter((b) => b.type === "p");
+  return out;
+}
 
-  return { items, paras };
+function splitIntoSections(blocks: MdBlock[]) {
+  const sections: Array<{ title: string | null; paragraphs: string[]; items: string[] }> = [];
+  let current = { title: null as string | null, paragraphs: [] as string[], items: [] as string[] };
+
+  const push = () => {
+    if (current.title || current.paragraphs.length > 0 || current.items.length > 0) sections.push(current);
+    current = { title: null, paragraphs: [], items: [] };
+  };
+
+  for (const b of blocks) {
+    if (b.type === "h2") {
+      push();
+      current.title = b.text;
+      continue;
+    }
+    if (b.type === "p") current.paragraphs.push(b.text);
+    if (b.type === "li") current.items.push(b.text);
+  }
+
+  push();
+  return sections;
+}
+
+function copyForSlug(slug: string) {
+  switch ((slug ?? "").toLowerCase()) {
+    case "entrega-e-retirada":
+    case "entrega":
+      return {
+        subtitle: "Prazos, regras de retirada e como funciona a entrega no seu endereço.",
+        metaDescription: "Veja prazos de entrega, opções de retirada e regras importantes para receber seus materiais com segurança.",
+      };
+    case "formas-de-pagamento":
+    case "pagamento":
+      return {
+        subtitle: "Cartão, PIX, parcelamento e detalhes de confirmação do pedido.",
+        metaDescription: "Entenda as formas de pagamento disponíveis, parcelamento e como confirmamos seu pedido.",
+      };
+    case "garantia":
+      return {
+        subtitle: "Cobertura, prazos e como solicitar suporte quando necessário.",
+        metaDescription: "Saiba como funciona a garantia, prazos de cobertura e como acionar suporte de forma rápida.",
+      };
+    case "politica-de-privacidade":
+      return {
+        subtitle: "Como coletamos, usamos e protegemos seus dados durante a compra.",
+        metaDescription: "Confira nossa política de privacidade e como protegemos seus dados ao navegar e comprar na loja.",
+      };
+    case "politica-de-trocas-e-devolucoes":
+      return {
+        subtitle: "Condições, prazos e passos para troca ou devolução de produtos.",
+        metaDescription: "Veja as regras de trocas e devoluções, prazos e orientações para solicitar sua troca.",
+      };
+    case "termos-de-uso":
+    case "politica-de-vendas":
+      return {
+        subtitle: "Regras de uso do site, condições de compra e responsabilidades.",
+        metaDescription: "Leia os termos de uso e as condições de compra para navegar e comprar com clareza.",
+      };
+    case "fale-conosco":
+    case "contato":
+      return {
+        subtitle: "Canais de atendimento para tirar dúvidas e pedir orientação na sua compra.",
+        metaDescription: "Fale com a loja para tirar dúvidas, pedir orientação e garantir o material certo para sua obra.",
+      };
+    default:
+      return {
+        subtitle: "Informações objetivas para você comprar com clareza e segurança.",
+        metaDescription: "Informações institucionais da loja: regras, prazos e orientações para uma compra segura.",
+      };
+  }
 }
 
 export default function StorePage() {
   const cart = useCart();
   const { slug = "" } = useParams();
   const { publishedPages, loading, error } = useStorePages();
+  const contact = useStoreContact();
 
   const page = useMemo(() => publishedPages.find((p) => p.slug === slug), [publishedPages, slug]);
+  const copy = useMemo(() => copyForSlug(slug), [slug]);
+
+  const storeName = (contact.storeName || "Materiais de Construção").trim();
+  const pageTitle = (page?.title || "Página").trim();
+  const metaTitle = `${pageTitle} | ${storeName}`;
+
+  useDynamicSeo({
+    title: metaTitle,
+    description: copy.metaDescription,
+    canonicalPath: `/p/${encodeURIComponent(slug)}`,
+  });
+
+  const sections = useMemo(() => (page ? splitIntoSections(parseMd(page.content_md)) : []), [page]);
 
   return (
     <div className="min-h-screen bg-background">
       <StoreTopbar cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
+      <main className="mx-auto w-full max-w-[720px] px-4 sm:px-6 py-12 pb-24 md:pb-14 space-y-10">
         <Button asChild variant="ghost" className="w-fit">
           <Link to="/">← Voltar para a loja</Link>
         </Button>
@@ -61,33 +158,54 @@ export default function StorePage() {
             </CardContent>
           </Card>
         ) : (
-          <article className="space-y-4">
-            <header className="space-y-2">
+          <article className="space-y-10">
+            <header className="space-y-3">
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{page.title}</h1>
-              <p className="text-sm text-muted-foreground">Informações institucionais da loja.</p>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{copy.subtitle}</p>
             </header>
 
-            <Card>
-              <CardContent className="py-6 space-y-4">
-                {(() => {
-                  const { items, paras } = renderParagraphs(page.content_md);
-                  return (
-                    <>
-                      {paras.map((p, i) => (
+            <Card className="rounded-2xl">
+              <CardContent className="py-8 space-y-10">
+                {sections.map((s, idx) => (
+                  <section key={idx} className="space-y-4">
+                    {s.title ? <h2 className="text-lg sm:text-xl font-semibold tracking-tight">{s.title}</h2> : null}
+
+                    <div className="space-y-3">
+                      {s.paragraphs.map((p, i) => (
                         <p key={i} className="text-sm sm:text-base leading-relaxed text-foreground/90">
-                          {p.text}
+                          {p}
                         </p>
                       ))}
-                      {items.length > 0 && (
-                        <ul className="list-disc pl-6 space-y-2 text-sm sm:text-base text-foreground/90">
-                          {items.map((it, i) => (
-                            <li key={i}>{it.text}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </>
-                  );
-                })()}
+                    </div>
+
+                    {s.items.length > 0 ? (
+                      <ul className="list-disc pl-6 space-y-2 text-sm sm:text-base text-foreground/90">
+                        {s.items.map((it, i) => (
+                          <li key={i}>{it}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </section>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl">
+              <CardContent className="py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="font-semibold">Precisa de ajuda?</div>
+                  <div className="text-sm text-muted-foreground">Fale com nossa consultora pelo WhatsApp e te ajudamos a escolher o material certo.</div>
+                </div>
+
+                {contact.waLink ? (
+                  <Button asChild className="h-11 rounded-2xl">
+                    <a href={contact.waLink} target="_blank" rel="noreferrer">
+                      Chamar no WhatsApp
+                    </a>
+                  </Button>
+                ) : (
+                  <div className="text-sm text-muted-foreground">WhatsApp indisponível no momento.</div>
+                )}
               </CardContent>
             </Card>
           </article>
@@ -96,3 +214,4 @@ export default function StorePage() {
     </div>
   );
 }
+

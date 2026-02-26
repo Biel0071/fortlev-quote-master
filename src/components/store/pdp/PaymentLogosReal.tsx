@@ -23,7 +23,7 @@ export function PaymentLogosReal() {
             key={l.alt}
             src={l.src}
             alt={`Forma de pagamento: ${l.alt}`}
-            className="h-10 w-auto max-w-full object-contain"
+            className="h-8 w-auto max-w-full object-contain"
             loading="lazy"
           />
         ))}

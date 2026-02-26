@@ -16,8 +16,12 @@ import { publicImageUrl } from "@/utils/storage";
 import { generateStandardProductDescription } from "@/utils/productDescription";
 import { trackClickEvent } from "@/utils/clickTracking";
 
-import paymentLogos from "@/assets/pdp/payment-logos.png";
-import securitySeals from "@/assets/pdp/security-seals.png";
+import { ProductBadges } from "@/components/store/pdp/ProductBadges";
+import { QuantitySelector } from "@/components/store/pdp/QuantitySelector";
+import { ShippingCalculator } from "@/components/store/pdp/ShippingCalculator";
+import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
+import { SecuritySealsReal } from "@/components/store/pdp/SecuritySealsReal";
+
 
 function ProductDescription({ markdown }: { markdown: string }) {
   const lines = useMemo(() => markdown.split(/\r?\n/), [markdown]);
@@ -121,16 +125,26 @@ export default function ProductPage() {
   }, [product]);
 
   const [activeImg, setActiveImg] = useState<string | null>(null);
+  const [qty, setQty] = useState(1);
 
   const basePrice = useMemo(() => Number((product as any)?.price ?? 0), [product]);
   const promoPrice = useMemo(() => Number((product as any)?.promo_price ?? 0), [product]);
   const hasPromo = promoPrice > 0 && basePrice > 0 && promoPrice < basePrice;
   const effectivePrice = hasPromo ? promoPrice : basePrice;
 
+  const totalDynamic = useMemo(() => Math.max(0, effectivePrice * Math.max(1, qty)), [effectivePrice, qty]);
+
   const installments = useMemo(() => {
     if (!effectivePrice || effectivePrice <= 0) return null;
-    return `em até 10x de ${formatCurrency(effectivePrice / 10)}`;
+    return `ou até 10x de ${formatCurrency(effectivePrice / 10)}`;
   }, [effectivePrice]);
+
+  const pixPrice = useMemo(() => {
+    if (!hasPromo) return null;
+    const v = effectivePrice * 0.95;
+    return v > 0 ? v : null;
+  }, [effectivePrice, hasPromo]);
+
 
   const descriptionMd = useMemo(() => {
     const existing = String((product as any)?.description ?? "").trim();
@@ -221,31 +235,73 @@ export default function ProductPage() {
 
             {/* Conteúdo */}
             <div className="lg:col-span-5 space-y-4">
-              {/* 2️⃣ Nome + 3️⃣ Preço */}
+              {/* 2️⃣ Badge promo/destaque */}
+              <ProductBadges featured={Boolean((product as any).featured)} basePrice={basePrice} promoPrice={promoPrice} />
+
+              {/* 3️⃣ Nome */}
               <div>
                 <h1 className="text-[28px] font-bold tracking-tight leading-tight">{product.name}</h1>
-                <div className="mt-3">
-                  {hasPromo ? (
-                    <div className="text-sm text-muted-foreground line-through">{formatCurrency(basePrice)}</div>
-                  ) : null}
-                  <div className="text-3xl font-extrabold tracking-tight">{formatCurrency(effectivePrice)}</div>
-                  {installments ? <div className="text-sm text-muted-foreground">{installments}</div> : null}
+
+                {/* 4️⃣ Disponibilidade */}
+                <div className="mt-2 text-sm">
+                  {Number((product as any).stock ?? 0) <= Number((product as any).min_stock ?? 0) ? (
+                    <span className="text-muted-foreground">
+                      <span className="font-semibold">Últimas unidades disponíveis</span>
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      <span className="font-semibold">Disponível</span> para envio imediato
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* 4️⃣ Botão Adicionar */}
+              {/* 6️⃣ Preço premium */}
+              <div className="space-y-2">
+                {hasPromo ? (
+                  <div className="text-sm text-muted-foreground line-through">De {formatCurrency(basePrice)}</div>
+                ) : null}
+                <div className="text-4xl font-extrabold tracking-tight">{formatCurrency(effectivePrice)}</div>
+                {installments ? <div className="text-sm text-muted-foreground">{installments}</div> : null}
+              </div>
+
+              {/* 7️⃣ Desconto PIX (só quando tem promo) */}
+              {pixPrice ? (
+                <Card className="rounded-3xl border-border bg-card shadow-sm">
+                  <CardContent className="p-5">
+                    <div className="text-sm font-semibold text-foreground">5% de desconto no PIX</div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      No PIX: <span className="font-semibold text-foreground">{formatCurrency(pixPrice)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {/* 9️⃣ Total dinâmico */}
+              <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 px-4 py-3">
+                <span className="text-sm text-muted-foreground">Total</span>
+                <span className="text-lg font-bold">{formatCurrency(totalDynamic)}</span>
+              </div>
+
+              {/* 🔟 Seletor quantidade */}
+              <QuantitySelector value={qty} onChange={setQty} />
+
+              {/* 1️⃣1️⃣ Botão principal */}
               <Button
-                className="h-14 rounded-2xl w-full"
+                className="h-14 rounded-2xl w-full shadow-sm transition-transform active:scale-[0.99]"
                 onClick={() => {
                   trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: (product as any).id });
                   tracker.track({ type: "add_cart", productId: (product as any).id, categoryId: (product as any).category_id ?? null });
-                  cart.add((product as any).id, 1);
+                  cart.add((product as any).id, Math.max(1, qty));
                 }}
               >
                 Adicionar ao carrinho
               </Button>
 
-              {/* 5️⃣ Cards (Unidade / Prazo / Pagamento) */}
+              {/* 1️⃣2️⃣ Bloco cálculo frete (regra atual por valor) */}
+              <ShippingCalculator subtotal={totalDynamic} />
+
+              {/* 1️⃣3️⃣ Cards informativos (Unidade / Prazo / Pagamento) */}
               <Card className="rounded-3xl border-border bg-card shadow-sm">
                 <CardContent className="p-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -262,15 +318,7 @@ export default function ProductPage() {
                     <div className="rounded-2xl border border-border bg-secondary/30 p-4 sm:col-span-2">
                       <div className="text-xs text-muted-foreground">Pagamento</div>
                       <div className="font-semibold">Cartão • Boleto • Pix</div>
-                      <div className="mt-3">
-                        {/* Observação: assim que você enviar os logos individuais (transparentes), eu substituo este strip por ícones separados. */}
-                        <img
-                          src={paymentLogos}
-                          alt="Formas de pagamento: Visa, Mastercard, Elo, American Express, Diners, Pix e Boleto"
-                          className="h-7 w-auto max-w-full object-contain"
-                          loading="lazy"
-                        />
-                      </div>
+                      <PaymentLogosReal />
                     </div>
                   </div>
                 </CardContent>
@@ -305,19 +353,7 @@ export default function ProductPage() {
               </div>
 
               {/* 7️⃣ Selos de Segurança */}
-              <Card className="rounded-3xl border-border bg-card shadow-sm">
-                <CardContent className="p-5">
-                  <div className="font-semibold">Selos de Segurança</div>
-                  <div className="mt-4 rounded-2xl border border-border bg-background p-4 flex items-center justify-center">
-                    <img
-                      src={securitySeals}
-                      alt="Selos de Segurança: Google Safe Browsing e Loja Protegida"
-                      className="max-h-10 w-auto max-w-full object-contain"
-                      loading="lazy"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+              <SecuritySealsReal />
 
               {/* 8️⃣ Descrição Geral */}
               {descriptionParts.general ? (

@@ -20,8 +20,8 @@ export function HomeSection({
     <section
       id={id}
       className={cn(
-        "scroll-mt-28 py-8 sm:py-12",
-        tone === "alt" ? "bg-secondary/40" : "bg-background",
+        "scroll-mt-28 py-10 sm:py-14",
+        tone === "alt" ? "bg-secondary/20" : "bg-background",
       )}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6">

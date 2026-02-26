@@ -7,9 +7,6 @@ import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useHomeContent } from "@/hooks/useHomeContent";
 import { HomeHeroCarousel } from "@/components/store/home/HomeHeroCarousel";
-import { HomeBenefitsBar } from "@/components/store/home/HomeBenefitsBar";
-import { HomeWeeklyOffers } from "@/components/store/home/HomeWeeklyOffers";
-import { HomePolicies } from "@/components/store/home/HomePolicies";
 import { CartDrawer } from "@/components/store/CartDrawer";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { cloud } from "@/lib/cloud";
@@ -17,10 +14,10 @@ import { pickHomeSeo, useDynamicSeo } from "@/hooks/useDynamicSeo";
 import { publicImageUrl } from "@/utils/storage";
 import { HomeSection } from "@/components/store/home/HomeSection";
 import { HomeSecondaryPromoBanner } from "@/components/store/home/HomeSecondaryPromoBanner";
-import { HomeTrustBlock } from "@/components/store/home/HomeTrustBlock";
 import { HomeCategoriesCarousel } from "@/components/store/home/HomeCategoriesCarousel";
 import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
 import { useHomeMerchandising } from "@/hooks/useHomeMerchandising";
+import { HomeGuaranteesMiniBar } from "@/components/store/home/HomeGuaranteesMiniBar";
 
 export default function StoreHome() {
   const cart = useCart();
@@ -61,9 +58,10 @@ export default function StoreHome() {
     return list.length > 1 ? list[1] : null;
   }, [home.banners]);
 
-  const showcaseIds = useMemo(() => {
-    // Start listing store items after categories carousel.
-    return (activeProducts ?? []).slice(0, 8).map((p: any) => p.id) as string[];
+  const featuredIds = useMemo(() => {
+    const list = (activeProducts ?? []) as any[];
+    const featured = list.filter((p) => p?.featured).slice(0, 8).map((p) => p.id) as string[];
+    return featured.length > 0 ? featured : list.slice(0, 8).map((p) => p.id);
   }, [activeProducts]);
 
   return (
@@ -72,62 +70,35 @@ export default function StoreHome() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      {/* 1) Banner principal (carrossel) - full width */}
+      {/* 1) Hero */}
       <div className="pt-4 sm:pt-6">
         <HomeHeroCarousel banners={home.banners} loading={home.loading} />
       </div>
 
-      {/* 2) Carrossel de categorias */}
-      <HomeSection title="Categorias" subtitle="Navegue por departamentos e encontre rápido." tone="plain">
+      {/* 2) Categorias principais */}
+      <HomeSection title="Categorias" subtitle="Encontre rápido o que você precisa." tone="plain">
         <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
       </HomeSection>
 
-      {/* 3) Início dos itens da loja */}
+      {/* 3) Produtos em destaque */}
       <HomeSection
-        id="itens"
-        title="Itens da loja"
-        subtitle="Sugestões para começar — veja o catálogo completo quando quiser."
-        tone="alt"
+        id="destaques"
+        title="Produtos em destaque"
+        subtitle="Seleção rápida para você começar — e ir direto ao que importa."
+        tone="plain"
         action={
           <Link to="/loja" className="text-sm font-semibold underline underline-offset-4">
             Ver catálogo
           </Link>
         }
       >
-        <HomeProductsByIds loading={loading} productIds={showcaseIds} products={activeProducts as any} onAdd={onAdd} limit={8} />
+        <HomeProductsByIds loading={loading} productIds={featuredIds} products={activeProducts as any} onAdd={onAdd} limit={8} />
       </HomeSection>
 
-      {/* Benefícios */}
-      <HomeSection
-        title="Compre com confiança"
-        subtitle="Entrega rápida, desconto no Pix, retirada na loja e pagamento seguro."
-        tone="plain"
-      >
-        <HomeBenefitsBar benefits={home.benefits} />
-      </HomeSection>
-
-      {/* Ofertas da semana (misto: mais vistos + gerou pedidos + mais vendidos) */}
-      <HomeSection
-        id="ofertas"
-        title="Ofertas da semana"
-        subtitle="Os produtos que mais chamaram atenção e mais giraram recentemente."
-        tone="alt"
-      >
-        <HomeWeeklyOffers
-          loading={loading}
-          offers={home.offers as any}
-          products={activeProducts as any}
-          onAdd={onAdd}
-          hideHeader
-          productIds={merch.weeklyPicks}
-          badgesByProductId={merch.weeklyBadges}
-        />
-      </HomeSection>
-
-      {/* 8 itens com maior volume de vendas no mês */}
+      {/* 4) Produtos mais vendidos */}
       <HomeSection
         id="mais-vendidos"
-        title="Top vendas do mês"
+        title="Mais vendidos"
         subtitle="Os 8 itens com maior volume de vendas nos últimos 30 dias."
         tone="plain"
         action={
@@ -146,22 +117,19 @@ export default function StoreHome() {
         />
       </HomeSection>
 
-      {/* Banner secundário promocional */}
-      <HomeSection title="Promoção em destaque" subtitle="Condições especiais selecionadas." tone="alt">
-        <HomeSecondaryPromoBanner banner={secondaryBanner as any} />
+      {/* 5) Banner promocional (opcional) */}
+      {secondaryBanner ? (
+        <HomeSection title="Promoção" subtitle="Condições especiais selecionadas." tone="alt">
+          <HomeSecondaryPromoBanner banner={secondaryBanner as any} />
+        </HomeSection>
+      ) : null}
+
+      {/* 6) Garantias resumidas */}
+      <HomeSection title="" tone="plain">
+        <HomeGuaranteesMiniBar />
       </HomeSection>
 
-      {/* Institucional / confiança */}
-      <HomeSection title="Loja organizada para você comprar rápido" subtitle="Informações claras, navegação simples e suporte quando precisar." tone="plain">
-        <HomeTrustBlock />
-      </HomeSection>
-
-      {/* Políticas */}
-      <HomeSection title="Políticas" subtitle="Entrega, troca e atendimento — tudo bem explicado." tone="alt">
-        <HomePolicies policies={home.policies} hideHeader />
-      </HomeSection>
-
-      {/* Rodapé */}
+      {/* 7) Footer */}
       <StoreFooter footer={home.footer} pageLinks={pageLinks} />
     </div>
   );

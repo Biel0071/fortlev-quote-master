@@ -1,5 +1,5 @@
-import seloSafeBrowsing from "@/assets/trust/selo-google-safe-browsing.png";
-import seloLojaProtegida from "@/assets/trust/selo-loja-protegida.png";
+import seloSafeBrowsing from "@/assets/trust/selo-google-safe-browsing-upload.png";
+import seloLojaProtegida from "@/assets/trust/selo-loja-protegida-upload.png";
 
 export function SecuritySealsReal() {
   return (

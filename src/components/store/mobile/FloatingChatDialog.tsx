@@ -1,15 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { cloud } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import {
-  analyzeChatConversation,
-  closeChatSession,
-  logChatMessage,
-  trackVisitorEvent,
-} from "@/utils/trackingClient";
+import { analyzeChatConversation, closeChatSession, logChatMessage, trackVisitorEvent } from "@/utils/trackingClient";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -70,15 +65,7 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-export default function FloatingChatDialog({
-  open,
-  onOpenChange,
-  phoneDigits,
-  chatSessionId,
-  scoreSnapshot,
-  trackerSessionToken,
-  consentOk,
-}: {
+type FloatingChatDialogProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   phoneDigits?: string;
@@ -86,210 +73,219 @@ export default function FloatingChatDialog({
   scoreSnapshot: number;
   trackerSessionToken: string;
   consentOk: boolean;
-}) {
-  const [messages, setMessages] = useState<Msg[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [introTyping, setIntroTyping] = useState(false);
+};
 
-  const endRef = useRef<HTMLDivElement | null>(null);
-  const introTimeoutRef = useRef<number | null>(null);
+const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogProps>(
+  ({ open, onOpenChange, phoneDigits, chatSessionId, scoreSnapshot, trackerSessionToken, consentOk }, ref) => {
+    const [messages, setMessages] = useState<Msg[]>([]);
+    const [input, setInput] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [introTyping, setIntroTyping] = useState(false);
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, loading, introTyping]);
+    const endRef = useRef<HTMLDivElement | null>(null);
+    const introTimeoutRef = useRef<number | null>(null);
 
-  const canWhatsApp = useMemo(() => Boolean(phoneDigits && phoneDigits.length >= 8), [phoneDigits]);
+    useEffect(() => {
+      endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, [messages.length, loading, introTyping]);
 
-  // Mensagem inicial com delay (simula digitação)
-  useEffect(() => {
-    if (!open) return;
-    if (messages.length > 0) return;
+    const canWhatsApp = useMemo(() => Boolean(phoneDigits && phoneDigits.length >= 8), [phoneDigits]);
 
-    setIntroTyping(true);
-    introTimeoutRef.current = window.setTimeout(() => {
-      setMessages([
-        {
-          role: "assistant",
-          content:
-            "Olá 👋 Sou a Vanessa, consultora técnica do depósito. Posso te ajudar com orçamento, entrega ou escolha de materiais.",
-        },
-      ]);
-      setIntroTyping(false);
-      introTimeoutRef.current = null;
-    }, 800);
+    // Mensagem inicial com delay (simula digitação)
+    useEffect(() => {
+      if (!open) return;
+      if (messages.length > 0) return;
 
-    return () => {
-      if (introTimeoutRef.current) window.clearTimeout(introTimeoutRef.current);
-      introTimeoutRef.current = null;
-    };
-  }, [open, messages.length, scoreSnapshot]);
-
-  const send = async () => {
-    const text = input.trim();
-    if (!text || loading) return;
-
-    setInput("");
-
-    const history = messages.slice();
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
-
-    if (consentOk) {
-      trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "chat_message_sent" } }).catch(
-        () => {},
-      );
-    }
-    if (chatSessionId) {
-      logChatMessage({ chatSessionId, role: "user", content: text }).catch(() => {});
-    }
-
-    setLoading(true);
-    try {
-      const answer = await askAI(history, text);
-      setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
-      if (chatSessionId && answer) {
-        logChatMessage({ chatSessionId, role: "assistant", content: answer }).catch(() => {});
-      }
-    } catch (e) {
-      const status = (e as any)?.context?.status as number | undefined;
-
-      // 402/429: nunca mostrar erro técnico/vermelho — responder com fallback amigável
-      if (status === 402 || status === 429) {
-        setMessages((prev) => [
-          ...prev,
+      setIntroTyping(true);
+      introTimeoutRef.current = window.setTimeout(() => {
+        setMessages([
           {
             role: "assistant",
             content:
-              "No momento estou finalizando alguns atendimentos. Você pode falar direto comigo no WhatsApp que te respondo rapidinho.",
+              "Olá 👋 Sou a Vanessa, consultora técnica do depósito. Posso te ajudar com orçamento, entrega ou escolha de materiais.",
           },
         ]);
-      } else {
-        // Demais erros: UX limpa, sem detalhes técnicos
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "Tive uma instabilidade aqui — tenta novamente em instantes." },
-        ]);
+        setIntroTyping(false);
+        introTimeoutRef.current = null;
+      }, 800);
+
+      return () => {
+        if (introTimeoutRef.current) window.clearTimeout(introTimeoutRef.current);
+        introTimeoutRef.current = null;
+      };
+    }, [open, messages.length, scoreSnapshot]);
+
+    const send = async () => {
+      const text = input.trim();
+      if (!text || loading) return;
+
+      setInput("");
+
+      const history = messages.slice();
+      setMessages((prev) => [...prev, { role: "user", content: text }]);
+
+      if (consentOk) {
+        trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "chat_message_sent" } }).catch(
+          () => {},
+        );
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (chatSessionId) {
+        logChatMessage({ chatSessionId, role: "user", content: text }).catch(() => {});
+      }
 
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        onOpenChange(v);
-        if (!v && chatSessionId) {
-          closeChatSession({ chatSessionId }).catch(() => {});
-          analyzeChatConversation({ chatSessionId }).catch(() => {});
+      setLoading(true);
+      try {
+        const answer = await askAI(history, text);
+        setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
+        if (chatSessionId && answer) {
+          logChatMessage({ chatSessionId, role: "assistant", content: answer }).catch(() => {});
         }
-      }}
-    >
-      <DialogContent
-        className={cn(
-          "p-0 sm:max-w-xl",
-          "bg-background/80 supports-[backdrop-filter]:bg-background/70 backdrop-blur-xl",
-          "shadow-xl",
-        )}
-      >
-        {/* A11y: Radix exige Title/Description dentro do DialogContent */}
-        <DialogTitle className="sr-only">Atendimento — Vanessa</DialogTitle>
-        <DialogDescription className="sr-only">Chat de atendimento com a consultora técnica.</DialogDescription>
+      } catch (e) {
+        const status = (e as any)?.context?.status as number | undefined;
 
-        <div className="border-b border-border p-4 flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div
-              className={cn(
-                "h-11 w-11 rounded-full",
-                "bg-gradient-to-br from-primary/15 to-accent/10",
-                "border border-border",
-                "grid place-items-center",
-                "shadow-sm",
-                "shrink-0",
-              )}
-              aria-hidden="true"
-            >
-              <span className="font-semibold text-primary">V</span>
-            </div>
+        // 402/429: nunca mostrar erro técnico/vermelho — responder com fallback amigável
+        if (status === 402 || status === 429) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content:
+                "No momento estou finalizando alguns atendimentos. Você pode falar direto comigo no WhatsApp que te respondo rapidinho.",
+            },
+          ]);
+        } else {
+          // Demais erros: UX limpa, sem detalhes técnicos
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: "Tive uma instabilidade aqui — tenta novamente em instantes." },
+          ]);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
 
-            <div className="min-w-0">
-              <div className="font-semibold leading-none truncate">Vanessa</div>
-              <div className="text-xs text-muted-foreground mt-1 truncate">Consultora Técnica • Online agora</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 pt-3">
-          <Button
-            variant="whatsapp"
+    return (
+      <div ref={ref}>
+        <Dialog
+          open={open}
+          onOpenChange={(v) => {
+            onOpenChange(v);
+            if (!v && chatSessionId) {
+              closeChatSession({ chatSessionId }).catch(() => {});
+              analyzeChatConversation({ chatSessionId }).catch(() => {});
+            }
+          }}
+        >
+          <DialogContent
             className={cn(
-              "w-full h-14 rounded-2xl font-semibold",
-              "gap-3",
-              "shadow-md hover:shadow-lg",
-              "transition-all duration-200 ease-out",
-              "hover:scale-[1.02]",
+              "p-0 sm:max-w-xl",
+              "bg-background/80 supports-[backdrop-filter]:bg-background/70 backdrop-blur-xl",
+              "shadow-xl",
             )}
-            disabled={!canWhatsApp}
-            onClick={() => {
-              if (consentOk) {
-                trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "whatsapp_click" } }).catch(
-                  () => {},
-                );
-              }
-              if (!canWhatsApp) return;
-              const url = buildWhatsAppUrl(phoneDigits!);
-              window.open(url, "_blank", "noreferrer");
-              if (consentOk) {
-                trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "request_quote" } }).catch(
-                  () => {},
-                );
-              }
-            }}
           >
-            <WhatsAppIcon className="h-6 w-6" />
-            Falar no WhatsApp
-          </Button>
-        </div>
+            {/* A11y: Radix exige Title/Description dentro do DialogContent */}
+            <DialogTitle className="sr-only">Atendimento — Vanessa</DialogTitle>
+            <DialogDescription className="sr-only">Chat de atendimento com a consultora técnica.</DialogDescription>
 
-        <div className="max-h-[56vh] overflow-auto px-4 pb-4 space-y-3">
-          {introTyping ? <div className="text-sm text-muted-foreground">Vanessa está digitando…</div> : null}
+            <div className="border-b border-border p-4 flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={cn(
+                    "h-11 w-11 rounded-full",
+                    "bg-gradient-to-br from-primary/15 to-accent/10",
+                    "border border-border",
+                    "grid place-items-center",
+                    "shadow-sm",
+                    "shrink-0",
+                  )}
+                  aria-hidden="true"
+                >
+                  <span className="font-semibold text-primary">V</span>
+                </div>
 
-          {messages.map((m, idx) => (
-            <div
-              key={idx}
-              className={cn(
-                "rounded-2xl border border-border/70 p-3 text-sm leading-relaxed",
-                m.role === "user" ? "bg-muted/30 ml-10" : "bg-card/60 mr-10",
-              )}
-            >
-              {m.content}
+                <div className="min-w-0">
+                  <div className="font-semibold leading-none truncate">Vanessa</div>
+                  <div className="text-xs text-muted-foreground mt-1 truncate">Consultora Técnica • Online agora</div>
+                </div>
+              </div>
             </div>
-          ))}
 
-          {loading ? <div className="text-sm text-muted-foreground">Digitando…</div> : null}
-          <div ref={endRef} />
-        </div>
+            <div className="p-4 pt-3">
+              <Button
+                variant="whatsapp"
+                className={cn(
+                  "w-full h-14 rounded-2xl font-semibold",
+                  "gap-3",
+                  "shadow-md hover:shadow-lg",
+                  "transition-all duration-200 ease-out",
+                  "hover:scale-[1.02]",
+                )}
+                disabled={!canWhatsApp}
+                onClick={() => {
+                  if (consentOk) {
+                    trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "whatsapp_click" } }).catch(
+                      () => {},
+                    );
+                  }
+                  if (!canWhatsApp) return;
+                  const url = buildWhatsAppUrl(phoneDigits!);
+                  window.open(url, "_blank", "noreferrer");
+                  if (consentOk) {
+                    trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "request_quote" } }).catch(
+                      () => {},
+                    );
+                  }
+                }}
+              >
+                <WhatsAppIcon className="h-6 w-6" />
+                Falar no WhatsApp
+              </Button>
+            </div>
 
-        <div className="border-t border-border p-3 flex items-center gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Digite sua dúvida..."
-            onKeyDown={(e) => {
-              if (e.key === "Enter") send();
-            }}
-            disabled={loading}
-            className="h-12 rounded-xl"
-          />
-          <Button variant="secondary" onClick={send} disabled={loading || !input.trim()} className="h-12 rounded-xl px-4">
-            Enviar
-          </Button>
-        </div>
+            <div className="max-h-[56vh] overflow-auto px-4 pb-4 space-y-3">
+              {introTyping ? <div className="text-sm text-muted-foreground">Vanessa está digitando…</div> : null}
 
-        <div className="hidden" data-session-token={trackerSessionToken} data-chat-session-id={chatSessionId ?? ""} />
-      </DialogContent>
-    </Dialog>
-  );
-}
+              {messages.map((m, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    "rounded-2xl border border-border/70 p-3 text-sm leading-relaxed",
+                    m.role === "user" ? "bg-muted/30 ml-10" : "bg-card/60 mr-10",
+                  )}
+                >
+                  {m.content}
+                </div>
+              ))}
+
+              {loading ? <div className="text-sm text-muted-foreground">Digitando…</div> : null}
+              <div ref={endRef} />
+            </div>
+
+            <div className="border-t border-border p-3 flex items-center gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Digite sua dúvida..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") send();
+                }}
+                disabled={loading}
+                className="h-12 rounded-xl"
+              />
+              <Button variant="secondary" onClick={send} disabled={loading || !input.trim()} className="h-12 rounded-xl px-4">
+                Enviar
+              </Button>
+            </div>
+
+            <div className="hidden" data-session-token={trackerSessionToken} data-chat-session-id={chatSessionId ?? ""} />
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  },
+);
+FloatingChatDialog.displayName = "FloatingChatDialog";
+
+export default FloatingChatDialog;
 

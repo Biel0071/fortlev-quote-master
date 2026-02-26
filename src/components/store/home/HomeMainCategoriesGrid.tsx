@@ -21,19 +21,17 @@ export function HomeMainCategoriesGrid({ categories }: { categories: StoreCatego
             )}
             aria-label={`Ver produtos de ${c.name}`}
           >
-            <div className="aspect-[16/10]">
-              {img ? (
-                <img src={img} alt={`Categoria ${c.name}`} className="h-full w-full object-cover" loading="lazy" />
-              ) : (
-                <div className="h-full w-full fortlev-gradient opacity-80" />
-              )}
-            </div>
+            <div className="p-5 flex flex-col items-center text-center gap-4">
+              <div className="h-20 w-20 rounded-full overflow-hidden border border-border bg-muted/20">
+                {img ? (
+                  <img src={img} alt={`Categoria ${c.name}`} className="h-full w-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="h-full w-full fortlev-gradient opacity-80" />
+                )}
+              </div>
 
-            <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
-
-            <div className="absolute inset-x-0 bottom-0 p-4">
-              <div className="text-base font-semibold leading-tight text-foreground text-center">{c.name}</div>
-              <div className="mt-2 flex justify-center">
+              <div className="space-y-2">
+                <div className="text-base font-semibold leading-tight text-foreground">{c.name}</div>
                 <span className="inline-flex h-11 items-center rounded-xl border border-border bg-background/70 px-4 text-sm font-semibold">
                   Ver produtos
                 </span>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, ExternalLink } from "lucide-react";
+import { Bot } from "lucide-react";
 import { cloud } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import {
 } from "@/utils/trackingClient";
 
 type Msg = { role: "user" | "assistant"; content: string };
+
+type AIError = Error & { status?: number };
 
 function defaultSystemPrompt() {
   return [
@@ -33,10 +35,15 @@ async function askAI(history: Msg[], userText: string) {
   });
 
   if (error) {
-    const status = (error as any)?.context?.status;
-    if (status === 429) throw new Error("Atendimento ocupado no momento. Tente novamente em instantes.");
-    if (status === 402) throw new Error("Atendimento indisponível por limite de uso. Tente novamente mais tarde.");
-    throw new Error(error.message || "Falha ao conectar ao atendimento.");
+    const status = (error as any)?.context?.status as number | undefined;
+    const msg =
+      status === 429 || status === 402
+        ? "No momento estou finalizando alguns atendimentos. Você pode falar direto comigo no WhatsApp que te respondo rapidinho."
+        : error.message || "Falha ao conectar ao atendimento.";
+
+    const e = new Error(msg) as AIError;
+    e.status = status;
+    throw e;
   }
 
   return String((data as any)?.answer ?? "");
@@ -87,14 +94,13 @@ export default function FloatingChatDialog({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [introTyping, setIntroTyping] = useState(false);
-  const [err, setErr] = useState<string>("");
 
   const endRef = useRef<HTMLDivElement | null>(null);
   const introTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, loading, err, introTyping]);
+  }, [messages.length, loading, introTyping]);
 
   const canWhatsApp = useMemo(() => Boolean(phoneDigits && phoneDigits.length >= 8), [phoneDigits]);
 
@@ -126,7 +132,6 @@ export default function FloatingChatDialog({
     const text = input.trim();
     if (!text || loading) return;
 
-    setErr("");
     setInput("");
 
     const history = messages.slice();
@@ -149,7 +154,21 @@ export default function FloatingChatDialog({
         logChatMessage({ chatSessionId, role: "assistant", content: answer }).catch(() => {});
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Erro inesperado.");
+      const err = e as AIError;
+      // 402/429: nunca mostrar erro técnico/vermelho — responder com fallback amigável
+      if (err?.status === 402 || err?.status === 429) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content:
+              "No momento estou finalizando alguns atendimentos. Você pode falar direto comigo no WhatsApp que te respondo rapidinho.",
+          },
+        ]);
+      } else {
+        // Demais erros: também evitar texto técnico; manter UX limpa
+        setMessages((prev) => [...prev, { role: "assistant", content: "Tive uma instabilidade aqui — tenta novamente em instantes." }]);
+      }
     } finally {
       setLoading(false);
     }
@@ -203,10 +222,10 @@ export default function FloatingChatDialog({
           <Button
             variant="whatsapp"
             className={cn(
-              "w-full h-12 rounded-xl",
+              "w-full h-14 rounded-[14px] font-semibold",
               "shadow-md hover:shadow-lg",
               "transition-all duration-200 ease-out",
-              "hover:scale-[1.01]",
+              "hover:scale-[1.02]",
             )}
             disabled={!canWhatsApp}
             onClick={() => {
@@ -225,9 +244,8 @@ export default function FloatingChatDialog({
               }
             }}
           >
-            <WhatsAppIcon className="h-5 w-5" />
-            Falar com a Vanessa no WhatsApp
-            <ExternalLink className="h-4 w-4 opacity-90" />
+            <WhatsAppIcon className="h-[22px] w-[22px]" />
+            Falar no WhatsApp
           </Button>
         </div>
 
@@ -247,7 +265,6 @@ export default function FloatingChatDialog({
           ))}
 
           {loading ? <div className="text-sm text-muted-foreground">Digitando…</div> : null}
-          {err ? <div className="text-sm text-destructive">{err}</div> : null}
           <div ref={endRef} />
         </div>
 

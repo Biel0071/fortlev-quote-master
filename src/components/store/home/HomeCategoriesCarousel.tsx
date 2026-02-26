@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 function pickIcon(name: string) {
   const key = (name ?? "").trim().toLowerCase();
 
-  // Mapeamento por palavras-chave (não altera nomes; só escolhe ícone coerente)
   if (/(cimento|tijolo|bloco|alvenaria|argamassa)/.test(key)) return Boxes;
   if (/(areia)/.test(key)) return Waves;
   if (/(brita|pedra|cascalho)/.test(key)) return Mountain;
@@ -39,25 +38,6 @@ function pickIcon(name: string) {
   return Package;
 }
 
-function usePrefersReducedMotion() {
-  const prefersReduced = useRef(false);
-
-  useEffect(() => {
-    const mql = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    if (!mql) return;
-
-    const update = () => {
-      prefersReduced.current = !!mql.matches;
-    };
-
-    update();
-    mql.addEventListener?.("change", update);
-    return () => mql.removeEventListener?.("change", update);
-  }, []);
-
-  return prefersReduced;
-}
-
 export function HomeCategoriesCarousel({
   categories,
   hideHeader = false,
@@ -67,109 +47,50 @@ export function HomeCategoriesCarousel({
   hideHeader?: boolean;
   loop?: boolean;
 }) {
-  // Loop infinito real (duplicação do array)
-  const items = useMemo(() => (loop ? categories.concat(categories) : categories), [categories, loop]);
+  const baseItems = useMemo(() => categories ?? [], [categories]);
+  const loopItems = useMemo(() => (loop ? [...baseItems, ...baseItems] : baseItems), [baseItems, loop]);
 
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
-  const pausedRef = useRef(false);
-  const lastTsRef = useRef<number | null>(null);
-  const resumeTimeoutRef = useRef<number | null>(null);
-  const reducedMotion = usePrefersReducedMotion();
-
-  const pause = () => {
-    pausedRef.current = true;
-    if (resumeTimeoutRef.current) {
-      window.clearTimeout(resumeTimeoutRef.current);
-      resumeTimeoutRef.current = null;
-    }
-  };
-
-  const resume = () => {
-    pausedRef.current = false;
-    if (resumeTimeoutRef.current) {
-      window.clearTimeout(resumeTimeoutRef.current);
-      resumeTimeoutRef.current = null;
-    }
-  };
-
-  const resumeAfter = (ms: number) => {
-    pausedRef.current = true;
-    if (resumeTimeoutRef.current) window.clearTimeout(resumeTimeoutRef.current);
-    resumeTimeoutRef.current = window.setTimeout(() => {
-      pausedRef.current = false;
-      resumeTimeoutRef.current = null;
-    }, ms);
-  };
-
-  const scrollByStep = (direction: -1 | 1) => {
-    const el = scrollerRef.current;
-    if (!el) return;
-
-    // step proporcional ao viewport (mantém sensação premium em todos tamanhos)
-    const step = Math.max(220, Math.round(el.clientWidth * 0.62));
-    pause();
-    el.scrollBy({ left: direction * step, behavior: "smooth" });
-    resumeAfter(2000);
-  };
 
   useEffect(() => {
-    if (items.length === 0) return;
-
+    if (!loop) return;
     const el = scrollerRef.current;
     if (!el) return;
+    if (baseItems.length === 0) return;
 
-    if (loop) el.scrollLeft = 0;
+    el.scrollLeft = 0;
 
-    const tick = (ts: number) => {
-      rafRef.current = window.requestAnimationFrame(tick);
+    let last = 0;
 
-      if (reducedMotion.current) return;
-      if (pausedRef.current) {
-        lastTsRef.current = ts;
-        return;
-      }
+    const animate = (ts: number) => {
+      if (!last) last = ts;
+      const delta = ts - last;
+      last = ts;
 
-      const node = scrollerRef.current;
-      if (!node) return;
+      // 0.03 px/ms = 30px/s
+      if (el.scrollWidth > el.clientWidth) {
+        el.scrollLeft += delta * 0.03;
 
-      // Se não há overflow horizontal, não anima.
-      if (node.scrollWidth <= node.clientWidth + 2) {
-        lastTsRef.current = ts;
-        return;
-      }
-
-      const last = lastTsRef.current;
-      lastTsRef.current = ts;
-      if (last == null) return;
-
-      // 0.025 px/ms = 25px/s
-      const speedPxPerMs = 0.025;
-      const delta = Math.min(32, ts - last);
-
-      node.scrollLeft += delta * speedPxPerMs;
-
-      if (loop) {
-        const half = node.scrollWidth / 2;
-        if (half > 0 && node.scrollLeft >= half) {
-          node.scrollLeft -= half;
+        if (el.scrollLeft >= el.scrollWidth / 2) {
+          el.scrollLeft -= el.scrollWidth / 2;
         }
+
+        // eslint-disable-next-line no-console
+        console.log("scrollLeft:", el.scrollLeft);
       }
 
-      // console log temporário para validar loop
-      // eslint-disable-next-line no-console
-      console.log("scrollLeft:", node.scrollLeft);
+      rafRef.current = window.requestAnimationFrame(animate);
     };
 
-    rafRef.current = window.requestAnimationFrame(tick);
+    rafRef.current = window.requestAnimationFrame(animate);
 
     return () => {
       if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
-      if (resumeTimeoutRef.current) window.clearTimeout(resumeTimeoutRef.current);
     };
-  }, [loop, reducedMotion, items.length]);
+  }, [baseItems.length, loop]);
 
-  if (items.length === 0) return null;
+  if (baseItems.length === 0) return null;
 
   return (
     <section className="space-y-4" aria-label="Categorias">
@@ -186,22 +107,8 @@ export function HomeCategoriesCarousel({
       ) : null}
 
       <div className="relative">
-        {/* Fade lateral para indicar continuidade */}
-        <div
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute inset-y-0 left-0 w-10 sm:w-12 z-10",
-            "bg-gradient-to-r from-background to-transparent",
-          )}
-        />
-        <div
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute inset-y-0 right-0 w-10 sm:w-12 z-10",
-            "bg-gradient-to-l from-background to-transparent",
-          )}
-        />
-
+        <div aria-hidden="true" className={cn("pointer-events-none absolute inset-y-0 left-0 w-10 sm:w-12 z-10", "bg-gradient-to-r from-background to-transparent")} />
+        <div aria-hidden="true" className={cn("pointer-events-none absolute inset-y-0 right-0 w-10 sm:w-12 z-10", "bg-gradient-to-l from-background to-transparent")} />
 
         <div
           ref={scrollerRef}
@@ -215,34 +122,14 @@ export function HomeCategoriesCarousel({
             "overflow-x-auto overflow-y-hidden",
             "overscroll-x-contain",
             "snap-none",
-            "scroll-smooth",
             "py-0.5",
             "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
             "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           )}
-          onMouseEnter={pause}
-          onMouseLeave={() => resumeAfter(2000)}
-          onPointerDown={pause}
-          onPointerUp={() => resumeAfter(2000)}
-          onTouchStart={pause}
-          onTouchEnd={() => resumeAfter(2000)}
-          onScroll={() => resumeAfter(2000)}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowLeft") {
-              e.preventDefault();
-              scrollByStep(-1);
-            }
-            if (e.key === "ArrowRight") {
-              e.preventDefault();
-              scrollByStep(1);
-            }
-          }}
         >
-          {items.map((c, idx) => {
+          {loopItems.map((c, idx) => {
             const Icon = pickIcon(c.name);
             const img = publicImageUrl("category-images", c.image_path ?? null);
-
-            // Key estável mesmo duplicando: id + índice
             const key = `${c.id}-${idx}`;
 
             return (
@@ -250,13 +137,11 @@ export function HomeCategoriesCarousel({
                 key={key}
                 className={cn(
                   "shrink-0",
-                  // Mobile ~2.2, Tablet 3, Desktop 4–5
                   "basis-[45%]",
                   "sm:basis-[38%]",
                   "md:basis-1/3",
                   "lg:basis-[22%]",
                   "xl:basis-[20%]",
-                  "pl-0",
                 )}
               >
                 <Link
@@ -271,8 +156,6 @@ export function HomeCategoriesCarousel({
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   )}
                   aria-label={`Categoria: ${c.name}`}
-                  onFocus={pause}
-                  onBlur={() => resumeAfter(2000)}
                 >
                   <div className="p-4 sm:p-5 flex flex-col items-center text-center">
                     <div
@@ -295,14 +178,7 @@ export function HomeCategoriesCarousel({
                           draggable={false}
                         />
                       ) : (
-                        <Icon
-                          size={46}
-                          className={cn(
-                            "text-primary",
-                            "transition-colors duration-200",
-                            "group-hover:text-accent",
-                          )}
-                        />
+                        <Icon size={46} className={cn("text-primary", "transition-colors duration-200", "group-hover:text-accent")} />
                       )}
                     </div>
 

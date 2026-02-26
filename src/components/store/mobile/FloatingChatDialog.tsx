@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot } from "lucide-react";
 import { cloud } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +13,10 @@ import {
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-type AIError = Error & { status?: number };
+type AIInvokeError = {
+  message?: string;
+  context?: { status?: number };
+};
 
 function defaultSystemPrompt() {
   return [
@@ -34,19 +36,14 @@ async function askAI(history: Msg[], userText: string) {
     },
   });
 
-  if (error) {
-    const status = (error as any)?.context?.status as number | undefined;
-    const msg =
-      status === 429 || status === 402
-        ? "No momento estou finalizando alguns atendimentos. Você pode falar direto comigo no WhatsApp que te respondo rapidinho."
-        : error.message || "Falha ao conectar ao atendimento.";
+  // IMPORTANT: não transformar qualquer erro em fallback aqui.
+  // A decisão de fallback (402/429) fica exclusivamente no catch do send.
+  if (error) throw error as unknown as AIInvokeError;
 
-    const e = new Error(msg) as AIError;
-    e.status = status;
-    throw e;
-  }
+  const answer = String((data as any)?.answer ?? "").trim();
+  if (!answer) throw { message: "empty_answer" } satisfies AIInvokeError;
 
-  return String((data as any)?.answer ?? "");
+  return answer;
 }
 
 function buildWhatsAppUrl(phoneDigits: string) {
@@ -149,14 +146,15 @@ export default function FloatingChatDialog({
     setLoading(true);
     try {
       const answer = await askAI(history, text);
-      setMessages((prev) => [...prev, { role: "assistant", content: answer || "" }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
       if (chatSessionId && answer) {
         logChatMessage({ chatSessionId, role: "assistant", content: answer }).catch(() => {});
       }
     } catch (e) {
-      const err = e as AIError;
+      const status = (e as any)?.context?.status as number | undefined;
+
       // 402/429: nunca mostrar erro técnico/vermelho — responder com fallback amigável
-      if (err?.status === 402 || err?.status === 429) {
+      if (status === 402 || status === 429) {
         setMessages((prev) => [
           ...prev,
           {
@@ -166,8 +164,11 @@ export default function FloatingChatDialog({
           },
         ]);
       } else {
-        // Demais erros: também evitar texto técnico; manter UX limpa
-        setMessages((prev) => [...prev, { role: "assistant", content: "Tive uma instabilidade aqui — tenta novamente em instantes." }]);
+        // Demais erros: UX limpa, sem detalhes técnicos
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "Tive uma instabilidade aqui — tenta novamente em instantes." },
+        ]);
       }
     } finally {
       setLoading(false);
@@ -213,10 +214,7 @@ export default function FloatingChatDialog({
             </div>
 
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <Bot className="h-4 w-4 text-muted-foreground" />
-                <div className="font-semibold leading-none truncate">Vanessa</div>
-              </div>
+              <div className="font-semibold leading-none truncate">Vanessa</div>
               <div className="text-xs text-muted-foreground mt-1 truncate">Consultora Técnica • Online agora</div>
             </div>
           </div>
@@ -226,7 +224,8 @@ export default function FloatingChatDialog({
           <Button
             variant="whatsapp"
             className={cn(
-              "w-full h-14 rounded-[14px] font-semibold",
+              "w-full h-14 rounded-2xl font-semibold",
+              "gap-3",
               "shadow-md hover:shadow-lg",
               "transition-all duration-200 ease-out",
               "hover:scale-[1.02]",
@@ -248,7 +247,7 @@ export default function FloatingChatDialog({
               }
             }}
           >
-            <WhatsAppIcon className="h-[22px] w-[22px]" />
+            <WhatsAppIcon className="h-6 w-6" />
             Falar no WhatsApp
           </Button>
         </div>

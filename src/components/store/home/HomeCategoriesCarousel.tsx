@@ -76,8 +76,6 @@ export function HomeCategoriesCarousel({
           el.scrollLeft -= el.scrollWidth / 2;
         }
 
-        // eslint-disable-next-line no-console
-        console.log("scrollLeft:", el.scrollLeft);
       }
 
       rafRef.current = window.requestAnimationFrame(animate);

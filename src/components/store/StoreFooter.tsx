@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { publicImageUrl } from "@/utils/storage";
 import type { HomeFooter } from "@/hooks/useHomeContent";
@@ -17,7 +17,7 @@ export function StoreFooter({
 
   return (
     <footer className="border-t border-border bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 md:grid-cols-12 gap-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 md:grid-cols-10 gap-10">
         {/* Marca */}
         <div className="md:col-span-4 space-y-4">
           <div className="flex items-center gap-3">
@@ -112,27 +112,6 @@ export function StoreFooter({
           </div>
         </div>
 
-        {/* Social */}
-        <div className="md:col-span-2 space-y-3">
-          <div className="font-semibold">Redes</div>
-          <div className="flex gap-2">
-            <a
-              className="h-11 w-11 rounded-2xl border border-border bg-card shadow-sm flex items-center justify-center hover:shadow-md transition-shadow"
-              href="#"
-              aria-label="Instagram"
-            >
-              <Instagram className="h-5 w-5" />
-            </a>
-            <a
-              className="h-11 w-11 rounded-2xl border border-border bg-card shadow-sm flex items-center justify-center hover:shadow-md transition-shadow"
-              href="#"
-              aria-label="Facebook"
-            >
-              <Facebook className="h-5 w-5" />
-            </a>
-          </div>
-          
-        </div>
       </div>
 
       <div className="border-t border-border py-6">

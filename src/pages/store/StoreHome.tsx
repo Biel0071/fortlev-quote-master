@@ -13,7 +13,6 @@ import { cloud } from "@/lib/cloud";
 import { pickHomeSeo, useDynamicSeo } from "@/hooks/useDynamicSeo";
 import { publicImageUrl } from "@/utils/storage";
 import { HomeSection } from "@/components/store/home/HomeSection";
-import { HomeSecondaryPromoBanner } from "@/components/store/home/HomeSecondaryPromoBanner";
 import { HomeCategoriesCarousel } from "@/components/store/home/HomeCategoriesCarousel";
 import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
 import { useHomeMerchandising } from "@/hooks/useHomeMerchandising";
@@ -53,10 +52,6 @@ export default function StoreHome() {
       .then(({ data }) => setPageLinks(((data ?? []) as any).map((x: any) => ({ title: x.title, slug: x.slug }))));
   }, []);
 
-  const secondaryBanner = useMemo(() => {
-    const list = (home.banners ?? []).slice().sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-    return list.length > 1 ? list[1] : null;
-  }, [home.banners]);
 
   const featuredIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
@@ -117,19 +112,13 @@ export default function StoreHome() {
         />
       </HomeSection>
 
-      {/* 5) Banner promocional (opcional) */}
-      {secondaryBanner ? (
-        <HomeSection title="Promoção" subtitle="Condições especiais selecionadas." tone="alt">
-          <HomeSecondaryPromoBanner banner={secondaryBanner as any} />
-        </HomeSection>
-      ) : null}
 
-      {/* 6) Garantias resumidas */}
+      {/* 5) Garantias resumidas */}
       <HomeSection title="" tone="plain">
         <HomeGuaranteesMiniBar />
       </HomeSection>
 
-      {/* 7) Footer */}
+      {/* 6) Footer */}
       <StoreFooter footer={home.footer} pageLinks={pageLinks} />
     </div>
   );

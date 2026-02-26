@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import type { StoreCategory } from "@/hooks/useStoreCategories";
-import { generateProductDescriptionMarkdown } from "@/utils/productDescription";
+import { generateStandardProductDescription } from "@/utils/productDescription";
 
 type ImageRow = { id: string; path: string; sort_order: number };
 
@@ -55,6 +55,7 @@ export default function AdminProductForm() {
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [bulkRegenerating, setBulkRegenerating] = useState(false);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -79,13 +80,13 @@ export default function AdminProductForm() {
     return categories.find((c) => c.id === categoryId)?.name ?? "";
   }, [categories, categoryId]);
 
-  const buildStandardDescription = (opts?: { id?: string | null }) => {
-    return generateProductDescriptionMarkdown({
+  const buildStandardDescription = (opts?: { id?: string | null; name?: string; categoryName?: string; sku?: string; unit?: string }) => {
+    return generateStandardProductDescription({
       id: opts?.id ?? editingId,
-      name: name.trim(),
-      categoryName,
-      sku: sku.trim() || null,
-      unit: unit.trim() || null,
+      name: (opts?.name ?? name).trim(),
+      categoryName: (opts?.categoryName ?? categoryName) || "",
+      sku: (opts?.sku ?? sku).trim() || null,
+      unit: (opts?.unit ?? unit).trim() || null,
     });
   };
 
@@ -102,6 +103,61 @@ export default function AdminProductForm() {
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     toast({ title: "Atualizado", description: "Descrição padrão regenerada." });
     await load();
+  };
+
+  const regenerateAllProductsStandardDescription = async () => {
+    if (bulkRegenerating) return;
+    const ok = window.confirm(
+      "Isso irá substituir a descrição (description) de TODOS os produtos pelo padrão. Deseja continuar?",
+    );
+    if (!ok) return;
+
+    setBulkRegenerating(true);
+    try {
+      const { data, error } = await cloud
+        .from("store_products")
+        .select("id, name, category_id, category, unit, sku")
+        .order("created_at", { ascending: true })
+        .limit(1000);
+      if (error) throw error;
+
+      const list = (data ?? []) as any[];
+      if (list.length === 0) {
+        toast({ title: "Nada a fazer", description: "Nenhum produto encontrado." });
+        return;
+      }
+
+      // map category_id -> name (prefers relational name if available)
+      const catById = new Map<string, string>();
+      for (const c of categories) catById.set(c.id, c.name);
+
+      // update with small concurrency
+      const chunkSize = 20;
+      for (let i = 0; i < list.length; i += chunkSize) {
+        const chunk = list.slice(i, i + chunkSize);
+        await Promise.all(
+          chunk.map(async (p) => {
+            const catName = (p.category_id && catById.get(p.category_id)) || p.category || "";
+            const md = buildStandardDescription({
+              id: p.id,
+              name: p.name,
+              categoryName: catName,
+              sku: p.sku ?? "",
+              unit: p.unit ?? "",
+            });
+            const { error: upErr } = await cloud.from("store_products").update({ description: md }).eq("id", p.id);
+            if (upErr) throw upErr;
+          }),
+        );
+      }
+
+      toast({ title: "Concluído", description: `Descrições regeneradas: ${list.length}` });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e?.message ?? "Falha ao regenerar descrições", variant: "destructive" });
+    } finally {
+      setBulkRegenerating(false);
+    }
   };
 
   const load = async () => {
@@ -340,8 +396,9 @@ export default function AdminProductForm() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => nav("/admin/produtos")}>
-            Voltar
+          <Button variant="outline" onClick={() => nav("/admin/produtos")}>Voltar</Button>
+          <Button type="button" variant="outline" onClick={regenerateAllProductsStandardDescription} disabled={bulkRegenerating}>
+            {bulkRegenerating ? "Regenerando..." : "Regerar descrições (todos)"}
           </Button>
           <Button onClick={saveProduct}>Salvar</Button>
         </div>

@@ -8,7 +8,7 @@ import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
-import { generateProductDescriptionMarkdown } from "@/utils/productDescription";
+import { generateStandardProductDescription } from "@/utils/productDescription";
 
 function ProductDescription({ markdown }: { markdown: string }) {
   const lines = useMemo(() => markdown.split(/\r?\n/), [markdown]);
@@ -97,7 +97,7 @@ export default function ProductPage() {
     const existing = String((product as any)?.description ?? "").trim();
     if (existing) return existing;
     if (!product) return "";
-    return generateProductDescriptionMarkdown({
+    return generateStandardProductDescription({
       id: (product as any).id,
       name: (product as any).name,
       categoryName: (product as any).category ?? "",
@@ -205,7 +205,7 @@ export default function ProductPage() {
                     </div>
                     <div className="rounded-2xl border border-border bg-secondary/30 p-4">
                       <div className="text-xs text-muted-foreground">Entrega</div>
-                      <div className="font-semibold">3 a 7 dias úteis</div>
+                      <div className="font-semibold">Prazo de entrega: 3 a 7 dias úteis</div>
                     </div>
                     <div className="rounded-2xl border border-border bg-secondary/30 p-4">
                       <div className="text-xs text-muted-foreground">Pagamento</div>

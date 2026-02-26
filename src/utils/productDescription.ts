@@ -78,18 +78,7 @@ function pickTypeText(category: string, name: string) {
   };
 }
 
-function parseCapacityFromName(name: string) {
-  const n = name.toLowerCase();
-  // e.g. 500L, 500 l, 1.000L
-  const m = n.match(/(\d{1,3}(?:[\.,]\d{3})*|\d+)(?:\s*)(l|litros)\b/i);
-  if (!m) return "-";
-  const raw = m[1].replace(/\./g, "").replace(/,/g, ".");
-  const v = Number(raw);
-  if (!Number.isFinite(v) || v <= 0) return "-";
-  return `${v.toLocaleString("pt-BR")} L`;
-}
-
-export function generateProductDescriptionMarkdown(seed: ProductDescSeed): string {
+export function generateStandardProductDescription(seed: ProductDescSeed): string {
   const name = norm(seed.name);
   const categoryName = norm(seed.categoryName);
   const sku = norm(seed.sku);
@@ -99,12 +88,12 @@ export function generateProductDescriptionMarkdown(seed: ProductDescSeed): strin
 
   const brand = "-";
   const model = name || "-";
-  const material = t.material || "-";
-  const capacity = parseCapacityFromName(name);
-  const application = t.applicationLabel || "-";
-  const warranty = "-";
-  const internalCode = sku || norm(seed.id) || "-";
   const category = categoryName || "-";
+  const unitOut = unit || "-";
+  const skuOut = sku || "-";
+  const application = t.applicationLabel || "-";
+  const material = t.material || "-";
+  const warranty = "-";
 
   return [
     "## Descrição Geral",
@@ -116,11 +105,15 @@ export function generateProductDescriptionMarkdown(seed: ProductDescSeed): strin
     "",
     `Marca: ${brand}`,
     `Modelo: ${model}`,
-    `Material: ${material}`,
-    `Capacidade: ${capacity}`,
-    `Aplicação: ${application}`,
-    `Garantia: ${warranty}`,
-    `Código interno: ${internalCode}`,
     `Categoria: ${category}`,
+    `Unidade: ${unitOut}`,
+    `SKU: ${skuOut}`,
+    `Aplicação: ${application}`,
+    `Material: ${material}`,
+    `Garantia: ${warranty}`,
   ].join("\n");
 }
+
+// compat: keep old name for existing imports
+export const generateProductDescriptionMarkdown = generateStandardProductDescription;
+

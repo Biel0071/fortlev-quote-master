@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
 
@@ -14,7 +13,6 @@ export function StoreProductCard({
   onAdd: (productId: string, qty: number) => void;
 }) {
   const nav = useNavigate();
-  const [qty, setQty] = useState<number>(1);
 
   const basePrice = Number(product?.price ?? 0);
   const promo = Number(product?.promo_price ?? 0);
@@ -37,7 +35,10 @@ export function StoreProductCard({
       tabIndex={0}
       onClick={() => nav(`/produto/${product?.id}`)}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") nav(`/produto/${product?.id}`);
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          nav(`/produto/${product?.id}`);
+        }
       }}
       className="group h-full overflow-hidden rounded-2xl bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
       aria-label={`Abrir produto ${product?.name ?? ""}`}
@@ -62,29 +63,19 @@ export function StoreProductCard({
 
         <div className="mt-auto space-y-3">
           <div className="min-w-0">
-            {hasPromo ? <div className="text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div> : null}
+            {hasPromo ? (
+              <div className="text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div>
+            ) : null}
             <div className="text-lg font-extrabold tracking-tight">{formatCurrency(effectivePrice)}</div>
             {installments ? <div className="text-xs text-muted-foreground">{installments}</div> : null}
           </div>
 
-          <div
-            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            <Input
-              className="w-full sm:w-20 h-11 rounded-xl"
-              type="number"
-              min={1}
-              value={qty}
-              onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
-              aria-label="Quantidade"
-            />
+          <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
             <Button
               className="h-11 rounded-xl px-4 w-full"
               onClick={(e) => {
                 e.stopPropagation();
-                onAdd(product.id, qty);
+                onAdd(product.id, 1);
               }}
             >
               Adicionar ao carrinho

@@ -1,11 +1,11 @@
-import paymentLogosReal from "@/assets/pdp/payment-logos-real.png";
+import pagamentoVisa from "@/assets/trust/pagamento-visa.png";
 
 export function PaymentLogosReal() {
   return (
     <div className="mt-3">
       <img
-        src={paymentLogosReal}
-        alt="Formas de pagamento: Visa, Mastercard, Elo, American Express, Diners, Pix e Boleto"
+        src={pagamentoVisa}
+        alt="Pagamento: Visa"
         className="h-7 w-auto max-w-full object-contain"
         loading="lazy"
       />

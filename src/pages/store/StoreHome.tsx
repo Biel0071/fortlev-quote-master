@@ -65,21 +65,17 @@ export default function StoreHome() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      {/* 1) Hero */}
       <div className="pt-4 sm:pt-6">
         <HomeHeroCarousel banners={home.banners} loading={home.loading} />
       </div>
 
-      {/* 2) Categorias principais */}
-      <HomeSection title="Categorias" subtitle="Encontre rápido o que você precisa." tone="plain">
+      <HomeSection title="Categorias" tone="plain">
         <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
       </HomeSection>
 
-      {/* 3) Produtos em destaque */}
       <HomeSection
         id="destaques"
         title="Produtos em destaque"
-        subtitle="Seleção rápida para você começar — e ir direto ao que importa."
         tone="plain"
         action={
           <Link to="/loja" className="text-sm font-semibold underline underline-offset-4">
@@ -90,35 +86,32 @@ export default function StoreHome() {
         <HomeProductsByIds loading={loading} productIds={featuredIds} products={activeProducts as any} onAdd={onAdd} limit={8} />
       </HomeSection>
 
-      {/* 4) Produtos mais vendidos */}
-      <HomeSection
-        id="mais-vendidos"
-        title="Mais vendidos"
-        subtitle="Os 8 itens com maior volume de vendas nos últimos 30 dias."
-        tone="plain"
-        action={
-          <Link to="/loja?sort=popular" className="text-sm font-semibold underline underline-offset-4">
-            Ver ranking
-          </Link>
-        }
-      >
-        <HomeProductsByIds
-          loading={loading}
-          productIds={merch.monthlyTopSales}
-          products={activeProducts as any}
-          onAdd={onAdd}
-          limit={8}
-          emptyText="Sem vendas registradas neste período."
-        />
-      </HomeSection>
+      {merch.loading || (merch.monthlyTopSales?.length ?? 0) > 0 ? (
+        <HomeSection
+          id="mais-vendidos"
+          title="Mais vendidos"
+          tone="plain"
+          action={
+            <Link to="/loja?sort=popular" className="text-sm font-semibold underline underline-offset-4">
+              Ver ranking
+            </Link>
+          }
+        >
+          <HomeProductsByIds
+            loading={loading}
+            productIds={merch.monthlyTopSales}
+            products={activeProducts as any}
+            onAdd={onAdd}
+            limit={8}
+            emptyText=""
+          />
+        </HomeSection>
+      ) : null}
 
-
-      {/* 5) Garantias resumidas */}
       <HomeSection title="" tone="plain">
         <HomeGuaranteesMiniBar />
       </HomeSection>
 
-      {/* 6) Footer */}
       <StoreFooter footer={home.footer} pageLinks={pageLinks} />
     </div>
   );

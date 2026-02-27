@@ -168,9 +168,7 @@ export function HomeHeroCarousel({
           })}
         </div>
 
-        <div className="px-6 pb-5">
-          <div className="text-xs text-muted-foreground">Arraste para ver mais banners</div>
-        </div>
+        <div className="px-6 pb-5" />
       </div>
     </section>
   );

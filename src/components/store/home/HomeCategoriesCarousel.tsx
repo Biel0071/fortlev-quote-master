@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import {
   Bolt,
@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import type { StoreCategory } from "@/hooks/useStoreCategories";
 import { cn } from "@/lib/utils";
 import { publicImageUrl } from "@/utils/storage";
@@ -56,7 +55,7 @@ function CategoryAvatar({
 }) {
   const [imgOk, setImgOk] = useState(Boolean(img));
 
-  useEffect(() => {
+  React.useEffect(() => {
     setImgOk(Boolean(img));
   }, [img]);
 
@@ -99,37 +98,47 @@ type Props = {
   hideHeader?: boolean;
 };
 
+const ITEM_WIDTH_MOBILE = 140;
+const ITEM_WIDTH_DESKTOP = 164;
+const ITEM_GAP = 12;
+
 export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
   ({ categories, hideHeader = false }, ref) => {
-    const [api, setApi] = useState<CarouselApi>();
-    const [canPrev, setCanPrev] = useState(false);
-    const [canNext, setCanNext] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
+    const [manualShift, setManualShift] = useState(0);
 
-    useEffect(() => {
-      if (!api) return;
+    const normalizedCategories = useMemo(
+      () => (categories ?? []).filter((c) => c?.id && c?.name && c?.slug),
+      [categories],
+    );
+    const hasLoop = normalizedCategories.length > 1;
+    const loopedCategories = useMemo(
+      () => (hasLoop ? [...normalizedCategories, ...normalizedCategories] : normalizedCategories),
+      [hasLoop, normalizedCategories],
+    );
 
-      const updateArrows = () => {
-        if (categories.length > 1) {
-          setCanPrev(true);
-          setCanNext(true);
-          return;
-        }
+    const durationSeconds = useMemo(() => {
+      const basedOnCount = normalizedCategories.length * 4;
+      return Math.min(35, Math.max(20, basedOnCount || 20));
+    }, [normalizedCategories.length]);
 
-        setCanPrev(api.canScrollPrev());
-        setCanNext(api.canScrollNext());
-      };
 
-      updateArrows();
-      api.on("select", updateArrows);
-      api.on("reInit", updateArrows);
+    const shiftBy = (direction: "prev" | "next") => {
+      if (!hasLoop) return;
 
-      return () => {
-        api.off("select", updateArrows);
-        api.off("reInit", updateArrows);
-      };
-    }, [api, categories.length]);
+      const base = typeof window !== "undefined" && window.innerWidth < 640 ? ITEM_WIDTH_MOBILE : ITEM_WIDTH_DESKTOP;
+      const cycleWidth = normalizedCategories.length * (base + ITEM_GAP);
+      const step = direction === "next" ? -(base + ITEM_GAP) : base + ITEM_GAP;
 
-    if (!categories || categories.length === 0) return null;
+      setManualShift((prev) => {
+        const next = prev + step;
+        if (next <= -cycleWidth) return next + cycleWidth;
+        if (next >= cycleWidth) return next - cycleWidth;
+        return next;
+      });
+    };
+
+    if (!normalizedCategories.length) return null;
 
     return (
       <div ref={ref}>
@@ -137,132 +146,77 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
           {!hideHeader ? (
             <header className="flex items-end justify-between gap-3 flex-wrap">
               <h2 className="text-xl font-semibold">Categorias</h2>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9"
-                  onClick={() => api?.scrollPrev()}
-                  disabled={!canPrev}
-                  aria-label="Categoria anterior"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9"
-                  onClick={() => api?.scrollNext()}
-                  disabled={!canNext}
-                  aria-label="Próxima categoria"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-
-                <Link to="/loja" className="ml-1 text-sm font-medium underline underline-offset-4">
-                  Ver catálogo
-                </Link>
-              </div>
+              <Link to="/loja" className="text-sm font-medium underline underline-offset-4">
+                Ver catálogo
+              </Link>
             </header>
-          ) : (
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => api?.scrollPrev()}
-                disabled={!canPrev}
-                aria-label="Categoria anterior"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => api?.scrollNext()}
-                disabled={!canNext}
-                aria-label="Próxima categoria"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+          ) : null}
 
-          <div className="relative">
-            <div
-              aria-hidden="true"
-              className={cn(
-                "pointer-events-none absolute inset-y-0 left-0 w-8 sm:w-10 z-10",
-                "bg-gradient-to-r from-background to-transparent",
-              )}
-            />
-            <div
-              aria-hidden="true"
-              className={cn(
-                "pointer-events-none absolute inset-y-0 right-0 w-8 sm:w-10 z-10",
-                "bg-gradient-to-l from-background to-transparent",
-              )}
-            />
-
-            <Carousel
-              setApi={setApi}
-              opts={{
-                align: "start",
-                dragFree: false,
-                containScroll: "trimSnaps",
-                loop: true,
-              }}
-              className="w-full"
+          <div
+            className="relative overflow-hidden"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            onTouchStart={() => setIsPaused(true)}
+            onTouchEnd={() => setIsPaused(false)}
+            onTouchCancel={() => setIsPaused(false)}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="absolute left-[10px] top-1/2 z-20 h-9 w-9 -translate-y-1/2 bg-card shadow-sm"
+              onClick={() => shiftBy("prev")}
+              disabled={!hasLoop}
+              aria-label="Categoria anterior"
             >
-              <CarouselContent className="-ml-2 sm:-ml-3">
-                {categories.map((c) => {
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="absolute right-[10px] top-1/2 z-20 h-9 w-9 -translate-y-1/2 bg-card shadow-sm"
+              onClick={() => shiftBy("next")}
+              disabled={!hasLoop}
+              aria-label="Próxima categoria"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+
+            <div
+              className={cn(
+                "w-max [will-change:transform]",
+                "motion-safe:animate-[scrollLoop_var(--carousel-duration)_linear_infinite]",
+                "motion-reduce:animate-none",
+                isPaused && "[animation-play-state:paused]",
+              )}
+              style={{ "--carousel-duration": `${durationSeconds}s` } as CSSProperties}
+            >
+              <div className="flex w-max gap-3 px-12" style={{ transform: `translateX(${manualShift}px)` }}>
+                {loopedCategories.map((c, index) => {
                   const Icon = pickIcon(c.name);
                   const img = publicImageUrl("category-images", c.image_path ?? null);
 
                   return (
-                    <CarouselItem
-                      key={c.id}
+                    <Link
+                      key={`${c.id}-${index}`}
+                      to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
                       className={cn(
-                        "pl-2 sm:pl-3",
-                        "basis-[48%]",
-                        "sm:basis-[34%]",
-                        "md:basis-[26%]",
-                        "lg:basis-[20%]",
-                        "xl:basis-[16.6%]",
+                        "group flex w-[140px] shrink-0 flex-col items-center text-center sm:w-[164px]",
+                        "rounded-2xl px-2 py-3 sm:px-3 sm:py-4",
+                        "transition-transform duration-200 ease-out hover:-translate-y-1",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       )}
+                      aria-label={`Categoria: ${c.name}`}
                     >
-                      <Link
-                        to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
-                        className={cn(
-                          "group flex h-full flex-col items-center text-center",
-                          "rounded-2xl",
-                          "px-2 py-3 sm:px-3 sm:py-4",
-                          "transition-transform duration-200 ease-out",
-                          "hover:-translate-y-1",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                        )}
-                        aria-label={`Categoria: ${c.name}`}
-                      >
-                        <CategoryAvatar name={c.name} img={img} Icon={Icon} />
-
-                        <div className="mt-3">
-                          <div className="text-[14px] font-semibold leading-snug tracking-tight text-foreground">
-                            {c.name}
-                          </div>
-                        </div>
-                      </Link>
-                    </CarouselItem>
+                      <CategoryAvatar name={c.name} img={img} Icon={Icon} />
+                      <div className="mt-3 text-[14px] font-semibold leading-snug tracking-tight text-foreground">{c.name}</div>
+                    </Link>
                   );
                 })}
-              </CarouselContent>
-            </Carousel>
+              </div>
+            </div>
           </div>
         </section>
       </div>

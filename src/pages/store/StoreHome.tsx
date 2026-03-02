@@ -72,7 +72,7 @@ export default function StoreHome() {
 
       {/* 2) Categorias principais */}
       <HomeSection title="Categorias" tone="plain">
-        <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
+        <HomeCategoriesCarousel categories={activeCategories as any} />
       </HomeSection>
 
       {/* 3) Produtos em destaque */}

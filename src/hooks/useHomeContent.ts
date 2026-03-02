@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { getSmartCache, runApiMicrotask, setSmartCache } from "@/utils/smartCache";
 
 export type HomeBanner = {
   id: string;
@@ -87,6 +88,20 @@ export type HomeSeo = {
   active: boolean;
 };
 
+type HomeContentCache = {
+  banners: HomeBanner[];
+  benefits: HomeBenefit[];
+  policies: HomePolicy[];
+  sections: HomeSection[];
+  footer: HomeFooter | null;
+  departments: HomeDepartment[];
+  offers: HomeOffer[];
+  seo: HomeSeo | null;
+};
+
+const HOME_CONTENT_CACHE_KEY = "home_content:v1";
+const HOME_CONTENT_CACHE_TTL_MS = 1000 * 60 * 3;
+
 export function useHomeContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,8 +116,8 @@ export function useHomeContent() {
   const [offers, setOffers] = useState<HomeOffer[]>([]);
   const [seo, setSeo] = useState<HomeSeo | null>(null);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     setError(null);
 
     const [b, ben, pol, sec, f, deps, off, s] = await Promise.all([
@@ -166,21 +181,47 @@ export function useHomeContent() {
       return;
     }
 
-    setBanners((b.data ?? []) as any);
-    setBenefits((ben.data ?? []) as any);
-    setPolicies((pol.data ?? []) as any);
-    setSections((sec.data ?? []) as any);
-    setFooter((f.data as any) ?? null);
-    setDepartments((deps.data ?? []) as any);
-    setOffers((off.data ?? []) as any);
-    setSeo((s.data as any) ?? null);
+    const payload: HomeContentCache = {
+      banners: (b.data ?? []) as any,
+      benefits: (ben.data ?? []) as any,
+      policies: (pol.data ?? []) as any,
+      sections: (sec.data ?? []) as any,
+      footer: (f.data as any) ?? null,
+      departments: (deps.data ?? []) as any,
+      offers: (off.data ?? []) as any,
+      seo: (s.data as any) ?? null,
+    };
+
+    setBanners(payload.banners);
+    setBenefits(payload.benefits);
+    setPolicies(payload.policies);
+    setSections(payload.sections);
+    setFooter(payload.footer);
+    setDepartments(payload.departments);
+    setOffers(payload.offers);
+    setSeo(payload.seo);
+    setSmartCache(HOME_CONTENT_CACHE_KEY, payload);
 
     setLoading(false);
-    return;
   };
 
   useEffect(() => {
-    load();
+    const cached = getSmartCache<HomeContentCache>(HOME_CONTENT_CACHE_KEY, HOME_CONTENT_CACHE_TTL_MS);
+    if (cached) {
+      setBanners(cached.banners ?? []);
+      setBenefits(cached.benefits ?? []);
+      setPolicies(cached.policies ?? []);
+      setSections(cached.sections ?? []);
+      setFooter(cached.footer ?? null);
+      setDepartments(cached.departments ?? []);
+      setOffers(cached.offers ?? []);
+      setSeo(cached.seo ?? null);
+      setLoading(false);
+      runApiMicrotask(() => load({ silent: true }));
+      return;
+    }
+
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

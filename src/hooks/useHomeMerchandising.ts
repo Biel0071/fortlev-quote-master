@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { getSmartCache, runApiMicrotask, setSmartCache } from "@/utils/smartCache";
 
 function isoDaysAgo(days: number) {
   const d = new Date();
@@ -46,6 +47,15 @@ function interleaveUnique(lists: string[][], limit: number) {
   return out;
 }
 
+const MERCH_CACHE_KEY = "home_merchandising:v1";
+const MERCH_CACHE_TTL_MS = 1000 * 60 * 3;
+
+type MerchCache = {
+  weeklyPicks: string[];
+  weeklyBadges: Record<string, string>;
+  monthlyTopSales: string[];
+};
+
 export function useHomeMerchandising() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,8 +67,8 @@ export function useHomeMerchandising() {
   useEffect(() => {
     let alive = true;
 
-    const load = async () => {
-      setLoading(true);
+    const load = async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
       setError(null);
 
       const sinceWeek = isoDaysAgo(7);
@@ -102,14 +112,12 @@ export function useHomeMerchandising() {
       const topOrdered = topIdsFromCounts(weeklyOrderCounts, 8);
       const topSoldMonthly = topIdsFromCounts(monthlySalesCounts, 8);
 
-      // Weekly picks: interleave to keep variety in the first 8 slots.
       const weekly = interleaveUnique([topViewed, topOrdered, topSoldMonthly], 8);
 
       const badges: Record<string, string> = {};
       for (const id of weekly) {
         if (topViewed.includes(id)) badges[id] = "Mais visto";
         if (topOrdered.includes(id)) badges[id] = "Gerou pedidos";
-        // monthly is a good proxy for best sellers when weekly is noisy
         if (topSoldMonthly.includes(id)) badges[id] = badges[id] ? badges[id] : "Mais vendido";
       }
 
@@ -117,10 +125,25 @@ export function useHomeMerchandising() {
       setWeeklyPicks(weekly);
       setWeeklyBadges(badges);
       setMonthlyTopSales(topSoldMonthly.slice(0, 8));
+      setSmartCache<MerchCache>(MERCH_CACHE_KEY, {
+        weeklyPicks: weekly,
+        weeklyBadges: badges,
+        monthlyTopSales: topSoldMonthly.slice(0, 8),
+      });
       setLoading(false);
     };
 
-    load();
+    const cached = getSmartCache<MerchCache>(MERCH_CACHE_KEY, MERCH_CACHE_TTL_MS);
+    if (cached) {
+      setWeeklyPicks(cached.weeklyPicks ?? []);
+      setWeeklyBadges(cached.weeklyBadges ?? {});
+      setMonthlyTopSales(cached.monthlyTopSales ?? []);
+      setLoading(false);
+      runApiMicrotask(() => load({ silent: true }));
+    } else {
+      void load();
+    }
+
     return () => {
       alive = false;
     };

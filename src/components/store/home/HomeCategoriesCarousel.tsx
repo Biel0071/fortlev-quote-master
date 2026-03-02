@@ -109,6 +109,12 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
       if (!api) return;
 
       const updateArrows = () => {
+        if (categories.length > 1) {
+          setCanPrev(true);
+          setCanNext(true);
+          return;
+        }
+
         setCanPrev(api.canScrollPrev());
         setCanNext(api.canScrollNext());
       };
@@ -120,29 +126,6 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
       return () => {
         api.off("select", updateArrows);
         api.off("reInit", updateArrows);
-      };
-    }, [api]);
-
-    useEffect(() => {
-      if (!api || categories.length < 2) return;
-
-      let timer = window.setInterval(() => {
-        api.scrollNext();
-      }, 3600);
-
-      const stop = () => window.clearInterval(timer);
-      const restart = () => {
-        window.clearInterval(timer);
-        timer = window.setInterval(() => api.scrollNext(), 3600);
-      };
-
-      api.on("pointerDown", stop);
-      api.on("settle", restart);
-
-      return () => {
-        window.clearInterval(timer);
-        api.off("pointerDown", stop);
-        api.off("settle", restart);
       };
     }, [api, categories.length]);
 

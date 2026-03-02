@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Bolt,
@@ -36,6 +36,55 @@ function pickIcon(name: string) {
   if (/(chave|aperto|manuten)/.test(key)) return Wrench;
 
   return Package;
+}
+
+type IconLike = React.ComponentType<{ size?: string | number; className?: string }>;
+
+function CategoryAvatar({
+  name,
+  img,
+  Icon,
+}: {
+  name: string;
+  img: string;
+  Icon: IconLike;
+}) {
+  const [imgOk, setImgOk] = useState(Boolean(img));
+
+  // If the URL changes, re-enable image.
+  useEffect(() => {
+    setImgOk(Boolean(img));
+  }, [img]);
+
+  return (
+    <div
+      className={cn(
+        "h-[72px] w-[72px] sm:h-[76px] sm:w-[76px]",
+        "rounded-full",
+        "border border-border/70",
+        "bg-background/80",
+        "grid place-items-center",
+        "shadow-sm",
+        "overflow-hidden",
+        "transition-shadow duration-200",
+        "group-hover:shadow-md",
+      )}
+      aria-hidden="true"
+    >
+      {imgOk ? (
+        <img
+          src={img}
+          alt={`Categoria ${name}`}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          draggable={false}
+          onError={() => setImgOk(false)}
+        />
+      ) : (
+        <Icon size={46} className={cn("text-primary", "transition-colors duration-200", "group-hover:text-accent")} />
+      )}
+    </div>
+  );
 }
 
 type Props = {
@@ -165,34 +214,7 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
                       )}
                       aria-label={`Categoria: ${c.name}`}
                     >
-                      <div
-                        className={cn(
-                          "h-[72px] w-[72px] sm:h-[76px] sm:w-[76px]",
-                          "rounded-full",
-                          "border border-border/70",
-                          "bg-background/80",
-                          "grid place-items-center",
-                          "shadow-sm",
-                          "overflow-hidden",
-                          "transition-shadow duration-200",
-                          "group-hover:shadow-md",
-                        )}
-                      >
-                        {img ? (
-                          <img
-                            src={img}
-                            alt={`Categoria ${c.name}`}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            draggable={false}
-                          />
-                        ) : (
-                          <Icon
-                            size={46}
-                            className={cn("text-primary", "transition-colors duration-200", "group-hover:text-accent")}
-                          />
-                        )}
-                      </div>
+                      <CategoryAvatar name={c.name} img={img} Icon={Icon} />
 
                       <div className="mt-3">
                         <div className="text-[14px] font-semibold leading-snug tracking-tight text-foreground">{c.name}</div>

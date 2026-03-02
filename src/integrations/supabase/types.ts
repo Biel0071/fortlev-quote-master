@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      abandoned_checkouts: {
+        Row: {
+          cart_items: Json
+          checkout_session_id: string | null
+          created_at: string
+          customer_id: string | null
+          id: string
+          last_step: string
+          recovered_at: string | null
+          recovery_status: string
+          route_type: string
+          session_id: string
+          subtotal: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          cart_items?: Json
+          checkout_session_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          last_step?: string
+          recovered_at?: string | null
+          recovery_status?: string
+          route_type: string
+          session_id: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          cart_items?: Json
+          checkout_session_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          last_step?: string
+          recovered_at?: string | null
+          recovery_status?: string
+          route_type?: string
+          session_id?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abandoned_checkouts_checkout_session_id_fkey"
+            columns: ["checkout_session_id"]
+            isOneToOne: false
+            referencedRelation: "checkout_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abandoned_checkouts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_allowlist: {
         Row: {
           created_at: string
@@ -222,6 +285,83 @@ export type Database = {
           },
         ]
       }
+      checkout_sessions: {
+        Row: {
+          cart_items: Json
+          cep: string | null
+          complemento: string | null
+          consent_given: boolean
+          created_at: string
+          customer_id: string | null
+          email: string | null
+          endereco: string | null
+          id: string
+          ip: string | null
+          nome: string
+          numero: string | null
+          observacoes: string | null
+          route_type: string
+          session_id: string
+          subtotal: number
+          telefone: string
+          total: number
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          cart_items?: Json
+          cep?: string | null
+          complemento?: string | null
+          consent_given?: boolean
+          created_at?: string
+          customer_id?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          ip?: string | null
+          nome: string
+          numero?: string | null
+          observacoes?: string | null
+          route_type: string
+          session_id: string
+          subtotal?: number
+          telefone: string
+          total?: number
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          cart_items?: Json
+          cep?: string | null
+          complemento?: string | null
+          consent_given?: boolean
+          created_at?: string
+          customer_id?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          ip?: string | null
+          nome?: string
+          numero?: string | null
+          observacoes?: string | null
+          route_type?: string
+          session_id?: string
+          subtotal?: number
+          telefone?: string
+          total?: number
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkout_sessions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       construction_catalog_products: {
         Row: {
           active: boolean
@@ -321,6 +461,89 @@ export type Database = {
           updated_at?: string
           user_id?: string
           whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      customer_sessions: {
+        Row: {
+          consent_given: boolean
+          created_at: string
+          customer_id: string | null
+          id: string
+          is_persistent: boolean
+          last_seen_at: string
+          route_type: string
+          session_id: string
+          started_at: string
+          updated_at: string
+        }
+        Insert: {
+          consent_given?: boolean
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          is_persistent?: boolean
+          last_seen_at?: string
+          route_type?: string
+          session_id: string
+          started_at?: string
+          updated_at?: string
+        }
+        Update: {
+          consent_given?: boolean
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          is_persistent?: boolean
+          last_seen_at?: string
+          route_type?: string
+          session_id?: string
+          started_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_sessions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          created_at: string
+          email: string | null
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          name: string | null
+          phone: string
+          phone_normalized: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          name?: string | null
+          phone: string
+          phone_normalized: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          name?: string | null
+          phone?: string
+          phone_normalized?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1556,6 +1779,33 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      upsert_checkout_session: {
+        Args: {
+          _cart_items: Json
+          _cep: string
+          _complemento: string
+          _consent_given: boolean
+          _email: string
+          _endereco: string
+          _ip: string
+          _is_persistent: boolean
+          _last_step?: string
+          _nome: string
+          _numero: string
+          _observacoes: string
+          _route_type: string
+          _session_id: string
+          _subtotal: number
+          _telefone: string
+          _total: number
+          _user_agent: string
+        }
+        Returns: {
+          checkout_session_id: string
+          customer_id: string
+          session_id: string
+        }[]
       }
       validate_coupon: {
         Args: {

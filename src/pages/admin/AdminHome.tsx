@@ -170,7 +170,14 @@ export default function AdminHome() {
     const firstError = b.error || ben.error || pol.error || f.error || cats.error || sec.error || deps.error || off.error || seo.error;
     if (firstError) toast({ title: "Erro", description: firstError.message, variant: "destructive" });
 
-    setBanners((b.data ?? []) as any);
+    setBanners(
+      ((b.data ?? []) as Banner[]).map((row) => ({
+        ...row,
+        image_path: normalizeBannerImagePath(row.image_path) || null,
+        image_desktop_path: normalizeBannerImagePath(row.image_desktop_path) || null,
+        image_mobile_path: normalizeBannerImagePath(row.image_mobile_path) || null,
+      })),
+    );
     setBenefits((ben.data ?? []) as any);
     setPolicies((pol.data ?? []) as any);
     setFooter((f.data as any) ?? null);

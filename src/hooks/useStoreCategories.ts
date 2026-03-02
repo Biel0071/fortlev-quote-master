@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { getSmartCache, runApiMicrotask, setSmartCache } from "@/utils/smartCache";
 
 export type StoreCategory = {
   id: string;
@@ -12,13 +13,16 @@ export type StoreCategory = {
   active: boolean;
 };
 
+const CATEGORIES_CACHE_KEY = "store_categories:list";
+const CATEGORIES_CACHE_TTL_MS = 1000 * 60 * 5;
+
 export function useStoreCategories() {
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     setError(null);
 
     const { data, error } = await cloud
@@ -34,12 +38,22 @@ export function useStoreCategories() {
       return;
     }
 
-    setCategories((data ?? []) as any);
+    const list = (data ?? []) as any;
+    setCategories(list);
+    setSmartCache(CATEGORIES_CACHE_KEY, list);
     setLoading(false);
   };
 
   useEffect(() => {
-    load();
+    const cached = getSmartCache<StoreCategory[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TTL_MS);
+    if (cached) {
+      setCategories(cached);
+      setLoading(false);
+      runApiMicrotask(() => load({ silent: true }));
+      return;
+    }
+
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

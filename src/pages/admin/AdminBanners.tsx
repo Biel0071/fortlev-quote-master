@@ -238,11 +238,13 @@ export default function AdminBanners() {
   };
 
   const create = async () => {
-    const t = createForm.title.trim();
-    if (!t) return toast({ title: "Atenção", description: "Informe o título." });
+    const hasAnyImage = Boolean(createForm.image_desktop_path || createForm.image_mobile_path || createForm.image_path);
+    if (!hasAnyImage) {
+      return toast({ title: "Atenção", description: "Faça upload de ao menos uma imagem do banner." });
+    }
 
     const { error } = await cloud.from("store_banners").insert({
-      title: t,
+      title: createForm.title.trim(),
       subtitle: createForm.subtitle.trim() || null,
       image_path: createForm.image_path || null,
       image_desktop_path: createForm.image_desktop_path || null,
@@ -255,7 +257,7 @@ export default function AdminBanners() {
 
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
 
-    toast({ title: "Criado", description: "Banner adicionado" });
+    toast({ title: "Banner salvo", description: "Salvo com sucesso e disponível nesta tela e na Home do sistema." });
     clearLocalPreview(setCreateLocalPreview, createLocalPreview);
     setCreateForm(emptyForm());
     await load();
@@ -280,13 +282,16 @@ export default function AdminBanners() {
 
   const saveEdit = async () => {
     if (!editingId) return;
-    const t = editForm.title.trim();
-    if (!t) return toast({ title: "Atenção", description: "Informe o título." });
+
+    const hasAnyImage = Boolean(editForm.image_desktop_path || editForm.image_mobile_path || editForm.image_path);
+    if (!hasAnyImage) {
+      return toast({ title: "Atenção", description: "Faça upload de ao menos uma imagem do banner." });
+    }
 
     const { error } = await cloud
       .from("store_banners")
       .update({
-        title: t,
+        title: editForm.title.trim(),
         subtitle: editForm.subtitle.trim() || null,
         image_path: editForm.image_path || null,
         image_desktop_path: editForm.image_desktop_path || null,
@@ -300,7 +305,7 @@ export default function AdminBanners() {
 
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
 
-    toast({ title: "Atualizado", description: "Banner editado com sucesso" });
+    toast({ title: "Banner salvo", description: "Alterações salvas e refletidas nesta tela e na Home do sistema." });
     clearLocalPreview(setEditLocalPreview, editLocalPreview);
     setEditingId(null);
     await load();
@@ -493,7 +498,7 @@ export default function AdminBanners() {
               <div key={b.id} className="rounded-xl border border-border bg-card/60 p-3 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium truncate">{b.title}</div>
+                    <div className="font-medium truncate">{b.title?.trim() || "(Sem título)"}</div>
                     <div className="text-xs text-muted-foreground">Ordem: {b.sort_order}</div>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap justify-end">

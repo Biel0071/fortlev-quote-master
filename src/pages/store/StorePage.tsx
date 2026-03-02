@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
@@ -7,9 +7,12 @@ import { useCart } from "@/hooks/useCart";
 import { useStorePages } from "@/hooks/useStorePages";
 import { Button } from "@/components/ui/button";
 import { useStoreContact } from "@/hooks/useStoreContact";
+import { useHomeContent } from "@/hooks/useHomeContent";
+import { cloud } from "@/lib/cloud";
 import { useDynamicSeo } from "@/hooks/useDynamicSeo";
 import { getInstitutionalModel } from "@/content/institutionalCopy";
 import { InstitutionalPremiumContent } from "@/components/institutional/InstitutionalPremiumContent";
+import { StoreFooter } from "@/components/store/StoreFooter";
 import { JobApplicationForm } from "@/components/institutional/JobApplicationForm";
 
 type MdBlock =
@@ -121,6 +124,8 @@ export default function StorePage() {
   const { slug = "" } = useParams();
   const { publishedPages, loading, error } = useStorePages();
   const contact = useStoreContact();
+  const home = useHomeContent();
+  const [pageLinks, setPageLinks] = useState<Array<{ title: string; slug: string }>>([]);
 
   const page = useMemo(() => publishedPages.find((p) => p.slug === slug), [publishedPages, slug]);
   const copy = useMemo(() => copyForSlug(slug), [slug]);
@@ -139,6 +144,23 @@ export default function StorePage() {
   });
 
   const sections = useMemo(() => (page ? splitIntoSections(parseMd(page.content_md)) : []), [page]);
+
+  useEffect(() => {
+    let alive = true;
+    cloud
+      .from("store_pages")
+      .select("title, slug, sort_order")
+      .eq("published", true)
+      .order("sort_order", { ascending: true })
+      .then(({ data }) => {
+        if (!alive) return;
+        setPageLinks(((data ?? []) as any[]).map((x: any) => ({ title: x.title, slug: x.slug })));
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const headerSubtitle =
     model?.subtitle ??
@@ -228,6 +250,8 @@ export default function StorePage() {
           </article>
         )}
       </main>
+
+      <StoreFooter footer={home.footer} pageLinks={pageLinks} />
     </div>
   );
 }

@@ -12,6 +12,8 @@ type Banner = {
   title: string;
   subtitle: string | null;
   image_path: string | null;
+  image_desktop_path: string | null;
+  image_mobile_path: string | null;
   link_url: string | null;
   button_label: string | null;
   sort_order: number;
@@ -40,13 +42,19 @@ export default function AdminBanners() {
   const [buttonLabel, setButtonLabel] = useState("");
   const [sortOrder, setSortOrder] = useState<number>(0);
   const [active, setActive] = useState(true);
+
+  // Legacy image_path kept for backward-compatibility; prefer desktop/mobile.
   const [imagePath, setImagePath] = useState<string>("");
+  const [imageDesktopPath, setImageDesktopPath] = useState<string>("");
+  const [imageMobilePath, setImageMobilePath] = useState<string>("");
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await cloud
       .from("store_banners")
-      .select("id, title, subtitle, image_path, link_url, button_label, sort_order, active")
+      .select(
+        "id, title, subtitle, image_path, image_desktop_path, image_mobile_path, link_url, button_label, sort_order, active",
+      )
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
 
@@ -68,7 +76,10 @@ export default function AdminBanners() {
     const { error } = await cloud.from("store_banners").insert({
       title: t,
       subtitle: subtitle.trim() || null,
+      // Prefer desktop/mobile; keep legacy image_path as fallback.
       image_path: imagePath || null,
+      image_desktop_path: imageDesktopPath || null,
+      image_mobile_path: imageMobilePath || null,
       link_url: linkUrl.trim() || null,
       button_label: buttonLabel.trim() || null,
       sort_order: Number(sortOrder) || 0,
@@ -85,6 +96,8 @@ export default function AdminBanners() {
     setSortOrder(0);
     setActive(true);
     setImagePath("");
+    setImageDesktopPath("");
+    setImageMobilePath("");
     await load();
   };
 
@@ -100,11 +113,13 @@ export default function AdminBanners() {
     await load();
   };
 
-  const handleUpload = async (file: File | null) => {
+  const handleUpload = async (file: File | null, target: "legacy" | "desktop" | "mobile") => {
     if (!file) return;
     try {
       const path = await uploadToBucket("banner-images", file);
-      setImagePath(path);
+      if (target === "desktop") setImageDesktopPath(path);
+      else if (target === "mobile") setImageMobilePath(path);
+      else setImagePath(path);
       toast({ title: "Upload concluído", description: "Imagem pronta" });
     } catch (e: any) {
       toast({ title: "Erro", description: e?.message ?? "Falha no upload", variant: "destructive" });
@@ -160,10 +175,41 @@ export default function AdminBanners() {
           </div>
 
           <div className="space-y-2">
-            <Label>Imagem</Label>
-            <Input type="file" accept="image/*" onChange={(e) => handleUpload(e.target.files?.[0] ?? null)} />
+            <Label>Imagem (Desktop)</Label>
+            <Input type="file" accept="image/*" onChange={(e) => handleUpload(e.target.files?.[0] ?? null, "desktop")} />
+            {imageDesktopPath ? (
+              <img
+                src={imageUrl(imageDesktopPath)}
+                alt="Prévia do banner (desktop)"
+                className="w-full h-48 object-cover rounded-xl"
+                loading="lazy"
+              />
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Imagem (Mobile)</Label>
+            <Input type="file" accept="image/*" onChange={(e) => handleUpload(e.target.files?.[0] ?? null, "mobile")} />
+            {imageMobilePath ? (
+              <img
+                src={imageUrl(imageMobilePath)}
+                alt="Prévia do banner (mobile)"
+                className="w-full h-48 object-cover rounded-xl"
+                loading="lazy"
+              />
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Imagem (Legado - opcional)</Label>
+            <Input type="file" accept="image/*" onChange={(e) => handleUpload(e.target.files?.[0] ?? null, "legacy")} />
             {imagePath ? (
-              <img src={imageUrl(imagePath)} alt="Prévia do banner" className="w-full h-48 object-cover rounded-xl" loading="lazy" />
+              <img
+                src={imageUrl(imagePath)}
+                alt="Prévia do banner (legado)"
+                className="w-full h-48 object-cover rounded-xl"
+                loading="lazy"
+              />
             ) : null}
           </div>
 
@@ -195,8 +241,13 @@ export default function AdminBanners() {
                     <Button size="sm" variant="ghost" onClick={() => remove(b.id)}>Remover</Button>
                   </div>
                 </div>
-                {b.image_path ? (
-                  <img src={imageUrl(b.image_path)} alt="Banner" className="mt-3 w-full h-40 object-cover rounded-xl" loading="lazy" />
+                {b.image_desktop_path || b.image_mobile_path || b.image_path ? (
+                  <img
+                    src={imageUrl(b.image_desktop_path || b.image_mobile_path || b.image_path)}
+                    alt="Banner"
+                    className="mt-3 w-full h-40 object-cover rounded-xl"
+                    loading="lazy"
+                  />
                 ) : null}
               </div>
             ))

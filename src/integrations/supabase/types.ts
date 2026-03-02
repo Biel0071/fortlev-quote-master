@@ -956,6 +956,57 @@ export type Database = {
           },
         ]
       }
+      search_cache: {
+        Row: {
+          created_at: string
+          id: string
+          images_json: Json
+          query: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          images_json?: Json
+          query: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          images_json?: Json
+          query?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      search_image_usage: {
+        Row: {
+          created_at: string
+          id: string
+          searches_count: number
+          updated_at: string
+          usage_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          searches_count?: number
+          updated_at?: string
+          usage_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          searches_count?: number
+          updated_at?: string
+          usage_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       store_banners: {
         Row: {
           active: boolean

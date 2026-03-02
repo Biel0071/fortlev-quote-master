@@ -35,6 +35,8 @@ type BannerForm = {
   preview_size_key: string;
 };
 
+type BannerImageField = "image_desktop_path" | "image_mobile_path" | "image_path";
+
 const DEFAULT_SIZE_KEY = "desktop-standard";
 
 function emptyForm(): BannerForm {
@@ -70,6 +72,10 @@ export default function AdminBanners() {
   const [createForm, setCreateForm] = useState<BannerForm>(emptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<BannerForm>(emptyForm());
+  const [createImagePrompt, setCreateImagePrompt] = useState("");
+  const [editImagePrompt, setEditImagePrompt] = useState("");
+  const [editingCreateField, setEditingCreateField] = useState<BannerImageField | null>(null);
+  const [editingEditField, setEditingEditField] = useState<BannerImageField | null>(null);
 
   const imageUrl = (path?: string | null) => {
     if (!path) return "";
@@ -114,6 +120,77 @@ export default function AdminBanners() {
       toast({ title: "Erro", description: message, variant: "destructive" });
     }
   }
+
+  async function requestBannerEdit(sourcePath: string, prompt: string) {
+    const { data, error } = await cloud.functions.invoke("edit-store-image", {
+      body: {
+        bucket: "banner-images",
+        sourcePath,
+        prompt,
+        targetFolder: "ai/banners",
+      },
+    });
+
+    if (error) throw error;
+    if (!data?.image_path) throw new Error("Falha ao editar imagem");
+    return String(data.image_path);
+  }
+
+  const editCreateImage = async (field: BannerImageField) => {
+    const sourcePath = createForm[field];
+    const prompt = createImagePrompt.trim();
+
+    if (!sourcePath) return toast({ title: "Atenção", description: "Faça upload da imagem antes de editar." });
+    if (!prompt) return toast({ title: "Atenção", description: "Descreva a edição desejada." });
+
+    try {
+      setEditingCreateField(field);
+      const newPath = await requestBannerEdit(sourcePath, prompt);
+      setCreateForm((p) => ({ ...p, [field]: newPath }));
+      toast({ title: "Imagem editada", description: "Nova versão salva no armazenamento em nuvem." });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Falha ao editar imagem";
+      const description = msg.includes("rate_limited")
+        ? "Muitas requisições no momento, tente novamente em instantes."
+        : msg.includes("payment_required")
+          ? "Créditos de IA insuficientes no workspace."
+          : msg;
+      toast({ title: "Erro", description, variant: "destructive" });
+    } finally {
+      setEditingCreateField(null);
+    }
+  };
+
+  const editSavedBannerImage = async (field: BannerImageField) => {
+    if (!editingId) return;
+    const sourcePath = editForm[field];
+    const prompt = editImagePrompt.trim();
+
+    if (!sourcePath) return toast({ title: "Atenção", description: "Faça upload da imagem antes de editar." });
+    if (!prompt) return toast({ title: "Atenção", description: "Descreva a edição desejada." });
+
+    try {
+      setEditingEditField(field);
+      const newPath = await requestBannerEdit(sourcePath, prompt);
+
+      setEditForm((p) => ({ ...p, [field]: newPath }));
+      const { error } = await cloud.from("store_banners").update({ [field]: newPath }).eq("id", editingId);
+      if (error) throw error;
+
+      await load();
+      toast({ title: "Imagem editada", description: "Banner atualizado e salvo no armazenamento em nuvem." });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Falha ao editar imagem";
+      const description = msg.includes("rate_limited")
+        ? "Muitas requisições no momento, tente novamente em instantes."
+        : msg.includes("payment_required")
+          ? "Créditos de IA insuficientes no workspace."
+          : msg;
+      toast({ title: "Erro", description, variant: "destructive" });
+    } finally {
+      setEditingEditField(null);
+    }
+  };
 
   const create = async () => {
     const t = createForm.title.trim();
@@ -295,6 +372,27 @@ export default function AdminBanners() {
                   onChange={(e) => handleUpload(e.target.files?.[0] ?? null, (path) => setCreateForm((p) => ({ ...p, image_path: path })))}
                 />
               </div>
+
+              <div className="space-y-2 rounded-xl border border-border p-3">
+                <Label>Edição por IA das imagens</Label>
+                <Textarea
+                  rows={3}
+                  value={createImagePrompt}
+                  onChange={(e) => setCreateImagePrompt(e.target.value)}
+                  placeholder="Ex.: aumentar contraste, remover ruído e destacar produto"
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Button type="button" variant="outline" disabled={!createForm.image_desktop_path || editingCreateField === "image_desktop_path"} onClick={() => editCreateImage("image_desktop_path")}>
+                    {editingCreateField === "image_desktop_path" ? "Editando..." : "Editar Desktop"}
+                  </Button>
+                  <Button type="button" variant="outline" disabled={!createForm.image_mobile_path || editingCreateField === "image_mobile_path"} onClick={() => editCreateImage("image_mobile_path")}>
+                    {editingCreateField === "image_mobile_path" ? "Editando..." : "Editar Mobile"}
+                  </Button>
+                  <Button type="button" variant="outline" disabled={!createForm.image_path || editingCreateField === "image_path"} onClick={() => editCreateImage("image_path")}>
+                    {editingCreateField === "image_path" ? "Editando..." : "Editar Legado"}
+                  </Button>
+                </div>
+              </div>
             </div>
 
             <BannerLivePreview
@@ -443,6 +541,27 @@ export default function AdminBanners() {
                             accept="image/*"
                             onChange={(e) => handleUpload(e.target.files?.[0] ?? null, (path) => setEditForm((p) => ({ ...p, image_path: path })))}
                           />
+                        </div>
+
+                        <div className="space-y-2 rounded-xl border border-border p-3">
+                          <Label>Edição por IA das imagens</Label>
+                          <Textarea
+                            rows={3}
+                            value={editImagePrompt}
+                            onChange={(e) => setEditImagePrompt(e.target.value)}
+                            placeholder="Ex.: limpar fundo, aumentar nitidez e equilibrar cores"
+                          />
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <Button type="button" variant="outline" disabled={!editForm.image_desktop_path || editingEditField === "image_desktop_path"} onClick={() => editSavedBannerImage("image_desktop_path")}>
+                              {editingEditField === "image_desktop_path" ? "Editando..." : "Editar Desktop"}
+                            </Button>
+                            <Button type="button" variant="outline" disabled={!editForm.image_mobile_path || editingEditField === "image_mobile_path"} onClick={() => editSavedBannerImage("image_mobile_path")}>
+                              {editingEditField === "image_mobile_path" ? "Editando..." : "Editar Mobile"}
+                            </Button>
+                            <Button type="button" variant="outline" disabled={!editForm.image_path || editingEditField === "image_path"} onClick={() => editSavedBannerImage("image_path")}>
+                              {editingEditField === "image_path" ? "Editando..." : "Editar Legado"}
+                            </Button>
+                          </div>
                         </div>
                       </div>
 

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { publicImageUrl } from "@/utils/storage";
+import { publicImageUrl, normalizeStorageObjectPath } from "@/utils/storage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { invalidateSmartCache } from "@/utils/smartCache";
 
@@ -25,22 +25,9 @@ async function uploadToBucket(bucket: string, file: File) {
 }
 
 function normalizeBannerImagePath(value?: string | null) {
-  if (!value) return "";
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  if (trimmed.startsWith("blob:")) return "";
-
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    const marker = "/storage/v1/object/public/banner-images/";
-    const markerIndex = trimmed.indexOf(marker);
-    if (markerIndex >= 0) {
-      return decodeURIComponent(trimmed.slice(markerIndex + marker.length));
-    }
-    return "";
-  }
-
-  return trimmed.replace(/^\/+/, "");
+  return normalizeStorageObjectPath("banner-images", value);
 }
+
 
 const HOME_CONTENT_CACHE_KEY = "home_content:v1";
 

@@ -117,7 +117,7 @@ export default function CartPage() {
                   nav("/checkout");
                 }}
               >
-                Finalizar
+                Finalizar sua compra
               </Button>
             </div>
           </div>

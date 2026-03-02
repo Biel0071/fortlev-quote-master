@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  ChevronDown,
   Flame,
   LayoutGrid,
   MoreVertical,
   PackageSearch,
   Search,
+  ShoppingCart,
   Tag,
   User,
 } from "lucide-react";
@@ -20,10 +22,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useHomeContent } from "@/hooks/useHomeContent";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { FloatingChat } from "@/components/store/mobile/FloatingChat";
+import { cn } from "@/lib/utils";
 import storeLogo from "@/assets/store-logo-materiais.png";
 
 export function StoreTopbar({
@@ -39,6 +43,7 @@ export function StoreTopbar({
   const contact = useStoreContact();
 
   const [q, setQ] = useState("");
+  const [categoriesOpen, setCategoriesOpen] = useState(true);
 
   const submitSearch = () => {
     const term = q.trim();
@@ -50,31 +55,29 @@ export function StoreTopbar({
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-border bg-background">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 pb-4">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md">
+        <div className="mx-auto max-w-6xl px-4 pb-4 pt-4 sm:px-6">
           <div className="flex flex-col gap-4">
-            {/* Logo centralizada */}
             <div className="flex items-center justify-center">
               <Link to="/materiais" className="flex items-center justify-center" aria-label={brandLabel}>
                 <img
                   src={storeLogo}
                   alt={`${brandLabel} - logo`}
-                  className="h-[84px] w-[84px] sm:h-[92px] sm:w-[92px] rounded-2xl shadow-md"
+                  className="h-[84px] w-[84px] rounded-2xl shadow-md sm:h-[92px] sm:w-[92px]"
                   loading="eager"
                 />
               </Link>
             </div>
 
-            {/* Busca + Ações */}
             <div className="flex items-center gap-2">
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     placeholder="Buscar produtos..."
-                    className="pl-11 h-12 w-full rounded-2xl"
+                    className="h-12 w-full rounded-2xl pl-11"
                     aria-label="Buscar produtos"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") submitSearch();
@@ -83,90 +86,128 @@ export function StoreTopbar({
                 </div>
               </div>
 
-              <nav className="flex items-center gap-1 shrink-0">
-                <Button asChild variant="ghost" size="icon" className="h-11 w-11 rounded-2xl" aria-label="Perfil">
+              <nav className="shrink-0 flex items-center gap-1" aria-label="Ações rápidas">
+                <Button asChild variant="ghost" size="icon" className="h-11 w-11 rounded-xl" aria-label="Perfil">
                   <Link to="/conta">
                     <User className="h-5 w-5" />
                   </Link>
                 </Button>
 
-                <Button asChild variant="ghost" size="icon" className="h-11 w-11 rounded-2xl" aria-label="Rastreio">
+                <Button asChild variant="ghost" size="icon" className="h-11 w-11 rounded-xl" aria-label="Pedidos e rastreio">
                   <Link to="/pedidos">
                     <PackageSearch className="h-5 w-5" />
                   </Link>
                 </Button>
 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative h-11 w-11 rounded-xl"
+                  aria-label={`Carrinho${cartCount > 0 ? ` com ${cartCount} itens` : ""}`}
+                  onClick={() => {
+                    if (onCartClick) {
+                      onCartClick();
+                      return;
+                    }
+                    nav("/carrinho");
+                  }}
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  {cartCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                      {cartCount}
+                    </span>
+                  ) : null}
+                </Button>
+
                 <Sheet>
                   <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-11 w-11 rounded-2xl" aria-label="Mais opções">
+                    <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl" aria-label="Mais opções">
                       <MoreVertical className="h-5 w-5" />
                     </Button>
                   </SheetTrigger>
 
-                  <SheetContent side="right" className="w-[22rem] sm:w-[24rem] bg-background">
-                    <SheetHeader>
-                      <SheetTitle className="tracking-tight">Acesso rápido</SheetTitle>
-                      <SheetDescription>Navegue pelas seções da loja e sua conta.</SheetDescription>
+                  <SheetContent side="right" className="w-[22rem] bg-background/95 px-5 backdrop-blur-xl sm:w-[24rem]">
+                    <SheetHeader className="space-y-2">
+                      <SheetTitle className="text-lg tracking-tight">Acesso rápido</SheetTitle>
+                      <SheetDescription>Navegue pela loja com mais agilidade.</SheetDescription>
                     </SheetHeader>
 
-                    <div className="mt-5 space-y-5">
-                      <section className="space-y-2">
-                        <div className="text-xs font-semibold text-muted-foreground">Loja</div>
+                    <div className="mt-6 space-y-4">
+                      <section className="rounded-2xl border border-border/70 bg-muted/25 p-4 space-y-3">
+                        <div className="text-sm font-semibold text-foreground">Atalhos da loja</div>
                         <div className="grid gap-2">
-                          <Button asChild variant="outline" className="justify-start rounded-2xl h-12">
-                            <Link to="/materiais#ofertas" className="flex items-center gap-2">
+                          <Button asChild variant="outline" className="h-11 justify-start rounded-xl transition-all hover:translate-x-0.5">
+                            <Link to="/materiais#ofertas" className="flex items-center gap-3">
                               <Tag className="h-5 w-5" />
-                              Ofertas
+                              <span>🏷️ Ofertas</span>
                             </Link>
                           </Button>
-                          <Button asChild variant="outline" className="justify-start rounded-2xl h-12">
-                            <Link to="/materiais#mais-vendidos" className="flex items-center gap-2">
+                          <Button asChild variant="outline" className="h-11 justify-start rounded-xl transition-all hover:translate-x-0.5">
+                            <Link to="/materiais#mais-vendidos" className="flex items-center gap-3">
                               <Flame className="h-5 w-5" />
-                              Mais vendidos
+                              <span>🔥 Mais vendidos</span>
                             </Link>
                           </Button>
                         </div>
                       </section>
 
-                      <Separator />
+                      <Separator className="bg-border/60" />
 
-                      <section className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="text-xs font-semibold text-muted-foreground">Categorias</div>
-                          <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                        </div>
+                      <section className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                        <Collapsible open={categoriesOpen} onOpenChange={setCategoriesOpen}>
+                          <CollapsibleTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between rounded-xl px-1 py-1 text-left transition-colors hover:bg-accent/60"
+                            >
+                              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                <LayoutGrid className="h-5 w-5" />
+                                📂 Categorias
+                              </span>
+                              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", categoriesOpen && "rotate-180")} />
+                            </button>
+                          </CollapsibleTrigger>
 
-                        {menuCategories.length > 0 ? (
-                          <div className="max-h-72 overflow-auto pr-1 grid gap-1">
-                            {menuCategories.map((c) => (
-                              <Button key={c.id} asChild variant="ghost" className="justify-start rounded-xl h-10">
-                                <Link to={`/loja?categoria=${encodeURIComponent(c.slug)}`}>{c.name}</Link>
-                              </Button>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground">Carregando categorias...</div>
-                        )}
+                          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                            {menuCategories.length > 0 ? (
+                              <div className="mt-3 grid max-h-64 gap-1 overflow-auto pr-1">
+                                {menuCategories.map((c) => (
+                                  <Button key={c.id} asChild variant="ghost" className="h-10 justify-start rounded-xl">
+                                    <Link to={`/loja?categoria=${encodeURIComponent(c.slug)}`}>{c.name}</Link>
+                                  </Button>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="mt-3 text-sm text-muted-foreground">Carregando categorias...</div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
                       </section>
 
-                      <Separator />
+                      <Separator className="bg-border/60" />
 
-                      <section className="space-y-2">
-                        <div className="text-xs font-semibold text-muted-foreground">Conta</div>
+                      <section className="rounded-2xl border border-border/70 bg-muted/25 p-4 space-y-3">
+                        <div className="text-sm font-semibold text-foreground">Conta</div>
                         <div className="grid gap-2">
-                          <Button asChild variant="secondary" className="justify-start rounded-2xl h-12">
-                            <Link to="/conta">Minha conta</Link>
+                          <Button asChild variant="secondary" className="h-11 justify-start rounded-xl">
+                            <Link to="/conta">👤 Minha conta</Link>
                           </Button>
-                          <Button asChild variant="secondary" className="justify-start rounded-2xl h-12">
-                            <Link to="/pedidos">Meus pedidos / Rastreio</Link>
+                          <Button asChild variant="secondary" className="h-11 justify-start rounded-xl">
+                            <Link to="/pedidos">📦 Meus pedidos / Rastreio</Link>
                           </Button>
                           <Button
-                            asChild
                             variant="secondary"
-                            className="justify-start rounded-2xl h-12"
-                            onClick={() => onCartClick?.()}
+                            className="h-11 justify-start rounded-xl"
+                            onClick={() => {
+                              if (onCartClick) {
+                                onCartClick();
+                                return;
+                              }
+                              nav("/carrinho");
+                            }}
                           >
-                            <Link to="/carrinho">Carrinho{cartCount > 0 ? ` (${cartCount})` : ""}</Link>
+                            🛒 Carrinho{cartCount > 0 ? ` (${cartCount})` : ""}
                           </Button>
                         </div>
                       </section>
@@ -179,7 +220,6 @@ export function StoreTopbar({
         </div>
       </header>
 
-      {/* Botão flutuante único (IA + WhatsApp) */}
       <FloatingChat phoneDigits={contact.phoneDigits} />
     </>
   );

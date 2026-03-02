@@ -40,6 +40,19 @@ type BannerForm = {
 type BannerImageField = "image_desktop_path" | "image_mobile_path" | "image_path";
 type BannerLocalPreview = Record<BannerImageField, string>;
 
+type BannerMutationPayload = {
+  title: string;
+  subtitle: string | null;
+  image_path: string | null;
+  image_desktop_path: string | null;
+  image_mobile_path: string | null;
+  link_url: string | null;
+  button_label: string | null;
+  sort_order: number;
+  active: boolean;
+  updated_at?: string;
+};
+
 const DEFAULT_SIZE_KEY = "desktop-standard";
 const HOME_CONTENT_CACHE_KEY = "home_content:v1";
 
@@ -126,6 +139,63 @@ export default function AdminBanners() {
     [],
   );
 
+  const normalizeBannerRow = useCallback((row: Banner): Banner => {
+    return {
+      ...row,
+      image_path: normalizeBannerImagePath(row.image_path) || null,
+      image_desktop_path: normalizeBannerImagePath(row.image_desktop_path) || null,
+      image_mobile_path: normalizeBannerImagePath(row.image_mobile_path) || null,
+    };
+  }, []);
+
+  const buildBannerPayload = useCallback((form: BannerForm, includeUpdatedAt = false): BannerMutationPayload => {
+    return {
+      title: form.title.trim(),
+      subtitle: form.subtitle.trim() || null,
+      image_path: normalizeBannerImagePath(form.image_path) || null,
+      image_desktop_path: normalizeBannerImagePath(form.image_desktop_path) || null,
+      image_mobile_path: normalizeBannerImagePath(form.image_mobile_path) || null,
+      link_url: form.link_url.trim() || null,
+      button_label: form.button_label.trim() || null,
+      sort_order: Number(form.sort_order) || 0,
+      active: form.active,
+      ...(includeUpdatedAt ? { updated_at: new Date().toISOString() } : {}),
+    };
+  }, []);
+
+  const verifySavedBanner = useCallback(async (id: string, payload: BannerMutationPayload) => {
+    const { data, error } = await cloud
+      .from("store_banners")
+      .select("id, image_path, image_desktop_path, image_mobile_path, title, subtitle, button_label, link_url, sort_order, active")
+      .eq("id", id)
+      .single();
+
+    if (error) throw new Error(`verify_failed:${error.message}`);
+
+    const saved = normalizeBannerRow(data as Banner);
+    const payloadNormalized = {
+      ...payload,
+      image_path: normalizeBannerImagePath(payload.image_path) || null,
+      image_desktop_path: normalizeBannerImagePath(payload.image_desktop_path) || null,
+      image_mobile_path: normalizeBannerImagePath(payload.image_mobile_path) || null,
+    };
+
+    const mismatch =
+      saved.image_path !== payloadNormalized.image_path ||
+      saved.image_desktop_path !== payloadNormalized.image_desktop_path ||
+      saved.image_mobile_path !== payloadNormalized.image_mobile_path ||
+      saved.title !== payloadNormalized.title ||
+      (saved.subtitle ?? null) !== (payloadNormalized.subtitle ?? null) ||
+      (saved.button_label ?? null) !== (payloadNormalized.button_label ?? null) ||
+      (saved.link_url ?? null) !== (payloadNormalized.link_url ?? null) ||
+      saved.sort_order !== payloadNormalized.sort_order ||
+      saved.active !== payloadNormalized.active;
+
+    if (mismatch) {
+      throw new Error("verify_mismatch: dados salvos diferem do payload enviado");
+    }
+  }, [normalizeBannerRow]);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -136,9 +206,10 @@ export default function AdminBanners() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setRows((data ?? []) as Banner[]);
+      setRows(((data ?? []) as Banner[]).map(normalizeBannerRow));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Falha ao carregar banners";
+      console.error("[AdminBanners.load]", { error });
       setRows([]);
       toast({ title: "Erro", description: message, variant: "destructive" });
     } finally {
@@ -266,29 +337,20 @@ export default function AdminBanners() {
       return toast({ title: "Aguarde", description: "Conclua o upload da imagem antes de salvar." });
     }
 
-    const normalizedDesktop = normalizeBannerImagePath(createForm.image_desktop_path);
-    const normalizedMobile = normalizeBannerImagePath(createForm.image_mobile_path);
-    const normalizedLegacy = normalizeBannerImagePath(createForm.image_path);
-    const hasAnyImage = Boolean(normalizedDesktop || normalizedMobile || normalizedLegacy);
+    const payload = buildBannerPayload(createForm);
+    const hasAnyImage = Boolean(payload.image_desktop_path || payload.image_mobile_path || payload.image_path);
     if (!hasAnyImage) {
       return toast({ title: "Atenção", description: "Faça upload de ao menos uma imagem do banner." });
     }
 
     try {
       setSavingCreate(true);
-      const { error } = await cloud.from("store_banners").insert({
-        title: createForm.title.trim(),
-        subtitle: createForm.subtitle.trim() || null,
-        image_path: normalizedLegacy || null,
-        image_desktop_path: normalizedDesktop || null,
-        image_mobile_path: normalizedMobile || null,
-        link_url: createForm.link_url.trim() || null,
-        button_label: createForm.button_label.trim() || null,
-        sort_order: Number(createForm.sort_order) || 0,
-        active: createForm.active,
-      } as any);
-
+      const { data, error } = await cloud.from("store_banners").insert(payload as any).select("id").single();
       if (error) throw error;
+
+      const createdId = String(data?.id ?? "").trim();
+      if (!createdId) throw new Error("create_missing_id");
+      await verifySavedBanner(createdId, payload);
 
       invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
       toast({ title: "Banner salvo", description: "Salvo com sucesso e disponível nesta tela e na Home do sistema." });
@@ -297,6 +359,7 @@ export default function AdminBanners() {
       await load();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro inesperado ao salvar banner";
+      console.error("[AdminBanners.create]", { payload, error });
       toast({ title: "Erro", description: message, variant: "destructive" });
     } finally {
       setSavingCreate(false);
@@ -304,55 +367,44 @@ export default function AdminBanners() {
   };
 
   const startEdit = (b: Banner) => {
+    const normalized = normalizeBannerRow(b);
     clearLocalPreview(setEditLocalPreview, editLocalPreview);
-    setEditingId(b.id);
+    setEditingId(normalized.id);
     setEditForm({
-      title: b.title,
-      subtitle: b.subtitle ?? "",
-      image_path: normalizeBannerImagePath(b.image_path),
-      image_desktop_path: normalizeBannerImagePath(b.image_desktop_path),
-      image_mobile_path: normalizeBannerImagePath(b.image_mobile_path),
-      link_url: b.link_url ?? "",
-      button_label: b.button_label ?? "",
-      sort_order: b.sort_order,
-      active: b.active,
+      title: normalized.title,
+      subtitle: normalized.subtitle ?? "",
+      image_path: normalized.image_path ?? "",
+      image_desktop_path: normalized.image_desktop_path ?? "",
+      image_mobile_path: normalized.image_mobile_path ?? "",
+      link_url: normalized.link_url ?? "",
+      button_label: normalized.button_label ?? "",
+      sort_order: normalized.sort_order,
+      active: normalized.active,
       preview_size_key: DEFAULT_SIZE_KEY,
     });
   };
 
   const saveEdit = async () => {
-    if (!editingId) return;
+    if (!editingId) {
+      console.error("[AdminBanners.saveEdit] bannerId ausente", { editForm });
+      return toast({ title: "Erro", description: "Banner inválido para atualização.", variant: "destructive" });
+    }
     if (isUploading) {
       return toast({ title: "Aguarde", description: "Conclua o upload da imagem antes de salvar." });
     }
 
-    const normalizedDesktop = normalizeBannerImagePath(editForm.image_desktop_path);
-    const normalizedMobile = normalizeBannerImagePath(editForm.image_mobile_path);
-    const normalizedLegacy = normalizeBannerImagePath(editForm.image_path);
-    const hasAnyImage = Boolean(normalizedDesktop || normalizedMobile || normalizedLegacy);
+    const payload = buildBannerPayload(editForm, true);
+    const hasAnyImage = Boolean(payload.image_desktop_path || payload.image_mobile_path || payload.image_path);
     if (!hasAnyImage) {
       return toast({ title: "Atenção", description: "Faça upload de ao menos uma imagem do banner." });
     }
 
     try {
       setSavingEdit(true);
-      const { error } = await cloud
-        .from("store_banners")
-        .update({
-          title: editForm.title.trim(),
-          subtitle: editForm.subtitle.trim() || null,
-          image_path: normalizedLegacy || null,
-          image_desktop_path: normalizedDesktop || null,
-          image_mobile_path: normalizedMobile || null,
-          link_url: editForm.link_url.trim() || null,
-          button_label: editForm.button_label.trim() || null,
-          sort_order: Number(editForm.sort_order) || 0,
-          active: editForm.active,
-        })
-        .eq("id", editingId);
-
+      const { error } = await cloud.from("store_banners").update(payload as any).eq("id", editingId);
       if (error) throw error;
 
+      await verifySavedBanner(editingId, payload);
       invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
       toast({ title: "Banner salvo", description: "Alterações salvas e refletidas nesta tela e na Home do sistema." });
       clearLocalPreview(setEditLocalPreview, editLocalPreview);
@@ -360,6 +412,7 @@ export default function AdminBanners() {
       await load();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro inesperado ao salvar alterações";
+      console.error("[AdminBanners.saveEdit]", { bannerId: editingId, payload, error });
       toast({ title: "Erro", description: message, variant: "destructive" });
     } finally {
       setSavingEdit(false);
@@ -380,12 +433,16 @@ export default function AdminBanners() {
 
   const toggleActive = async (b: Banner) => {
     try {
-      const { error } = await cloud.from("store_banners").update({ active: !b.active }).eq("id", b.id);
+      const { error } = await cloud
+        .from("store_banners")
+        .update({ active: !b.active, updated_at: new Date().toISOString() })
+        .eq("id", b.id);
       if (error) throw error;
       invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
       await load();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro ao atualizar status do banner";
+      console.error("[AdminBanners.toggleActive]", { bannerId: b.id, nextActive: !b.active, error });
       toast({ title: "Erro", description: message, variant: "destructive" });
     }
   };

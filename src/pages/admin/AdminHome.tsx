@@ -245,17 +245,22 @@ export default function AdminHome() {
   };
 
   const updateBanner = async (id: string, patch: Partial<Banner>) => {
-    const normalizedPatch: Partial<Banner> = {
+    const normalizedPatch: Partial<Banner> & { updated_at?: string } = {
       ...patch,
       image_desktop_path:
         patch.image_desktop_path === undefined ? undefined : normalizeBannerImagePath(patch.image_desktop_path) || null,
       image_mobile_path:
         patch.image_mobile_path === undefined ? undefined : normalizeBannerImagePath(patch.image_mobile_path) || null,
       image_path: patch.image_path === undefined ? undefined : normalizeBannerImagePath(patch.image_path) || null,
+      updated_at: new Date().toISOString(),
     };
 
     const { error } = await cloud.from("store_banners").update(normalizedPatch as any).eq("id", id);
-    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    if (error) {
+      console.error("[AdminHome.updateBanner]", { id, patch: normalizedPatch, error });
+      return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+
     invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
     await loadAll();
   };

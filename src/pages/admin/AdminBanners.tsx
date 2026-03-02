@@ -109,7 +109,11 @@ export default function AdminBanners() {
   const [editingEditField, setEditingEditField] = useState<BannerImageField | null>(null);
   const [createLocalPreview, setCreateLocalPreview] = useState<BannerLocalPreview>(emptyLocalPreview());
   const [editLocalPreview, setEditLocalPreview] = useState<BannerLocalPreview>(emptyLocalPreview());
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const [savingCreate, setSavingCreate] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
+  const isUploading = uploadingCount > 0;
   const imageUrl = (path?: string | null) => publicImageUrl("banner-images", path);
 
   const updateLocalPreview = useCallback(
@@ -138,19 +142,26 @@ export default function AdminBanners() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await cloud
-      .from("store_banners")
-      .select("id, title, subtitle, image_path, image_desktop_path, image_mobile_path, link_url, button_label, sort_order, active")
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await cloud
+        .from("store_banners")
+        .select("id, title, subtitle, image_path, image_desktop_path, image_mobile_path, link_url, button_label, sort_order, active")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false });
 
-    if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-    setRows((data ?? []) as Banner[]);
-    setLoading(false);
+      if (error) throw error;
+      setRows((data ?? []) as Banner[]);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Falha ao carregar banners";
+      setRows([]);
+      toast({ title: "Erro", description: message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
   const createSize = useMemo(
@@ -171,6 +182,7 @@ export default function AdminBanners() {
     if (!file) return;
 
     try {
+      setUploadingCount((n) => n + 1);
       if (setLocalPreview) {
         const localUrl = URL.createObjectURL(file);
         setLocalPreview(localUrl);
@@ -178,10 +190,12 @@ export default function AdminBanners() {
 
       const path = await uploadToBucket("banner-images", file);
       setPath(path);
-      toast({ title: "Upload concluído", description: "Imagem pronta" });
+      toast({ title: "Upload concluído", description: "Imagem pronta para salvar." });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Falha no upload";
       toast({ title: "Erro", description: message, variant: "destructive" });
+    } finally {
+      setUploadingCount((n) => Math.max(0, n - 1));
     }
   }
 
@@ -262,6 +276,10 @@ export default function AdminBanners() {
   };
 
   const create = async () => {
+    if (isUploading) {
+      return toast({ title: "Aguarde", description: "Conclua o upload da imagem antes de salvar." });
+    }
+
     const normalizedDesktop = normalizeBannerImagePath(createForm.image_desktop_path);
     const normalizedMobile = normalizeBannerImagePath(createForm.image_mobile_path);
     const normalizedLegacy = normalizeBannerImagePath(createForm.image_path);
@@ -270,25 +288,33 @@ export default function AdminBanners() {
       return toast({ title: "Atenção", description: "Faça upload de ao menos uma imagem do banner." });
     }
 
-    const { error } = await cloud.from("store_banners").insert({
-      title: createForm.title.trim(),
-      subtitle: createForm.subtitle.trim() || null,
-      image_path: normalizedLegacy || null,
-      image_desktop_path: normalizedDesktop || null,
-      image_mobile_path: normalizedMobile || null,
-      link_url: createForm.link_url.trim() || null,
-      button_label: createForm.button_label.trim() || null,
-      sort_order: Number(createForm.sort_order) || 0,
-      active: createForm.active,
-    } as any);
+    try {
+      setSavingCreate(true);
+      const { error } = await cloud.from("store_banners").insert({
+        title: createForm.title.trim(),
+        subtitle: createForm.subtitle.trim() || null,
+        image_path: normalizedLegacy || null,
+        image_desktop_path: normalizedDesktop || null,
+        image_mobile_path: normalizedMobile || null,
+        link_url: createForm.link_url.trim() || null,
+        button_label: createForm.button_label.trim() || null,
+        sort_order: Number(createForm.sort_order) || 0,
+        active: createForm.active,
+      } as any);
 
-    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      if (error) throw error;
 
-    invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
-    toast({ title: "Banner salvo", description: "Salvo com sucesso e disponível nesta tela e na Home do sistema." });
-    clearLocalPreview(setCreateLocalPreview, createLocalPreview);
-    setCreateForm(emptyForm());
-    await load();
+      invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
+      toast({ title: "Banner salvo", description: "Salvo com sucesso e disponível nesta tela e na Home do sistema." });
+      clearLocalPreview(setCreateLocalPreview, createLocalPreview);
+      setCreateForm(emptyForm());
+      await load();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro inesperado ao salvar banner";
+      toast({ title: "Erro", description: message, variant: "destructive" });
+    } finally {
+      setSavingCreate(false);
+    }
   };
 
   const startEdit = (b: Banner) => {
@@ -310,6 +336,9 @@ export default function AdminBanners() {
 
   const saveEdit = async () => {
     if (!editingId) return;
+    if (isUploading) {
+      return toast({ title: "Aguarde", description: "Conclua o upload da imagem antes de salvar." });
+    }
 
     const normalizedDesktop = normalizeBannerImagePath(editForm.image_desktop_path);
     const normalizedMobile = normalizeBannerImagePath(editForm.image_mobile_path);
@@ -319,42 +348,60 @@ export default function AdminBanners() {
       return toast({ title: "Atenção", description: "Faça upload de ao menos uma imagem do banner." });
     }
 
-    const { error } = await cloud
-      .from("store_banners")
-      .update({
-        title: editForm.title.trim(),
-        subtitle: editForm.subtitle.trim() || null,
-        image_path: normalizedLegacy || null,
-        image_desktop_path: normalizedDesktop || null,
-        image_mobile_path: normalizedMobile || null,
-        link_url: editForm.link_url.trim() || null,
-        button_label: editForm.button_label.trim() || null,
-        sort_order: Number(editForm.sort_order) || 0,
-        active: editForm.active,
-      })
-      .eq("id", editingId);
+    try {
+      setSavingEdit(true);
+      const { error } = await cloud
+        .from("store_banners")
+        .update({
+          title: editForm.title.trim(),
+          subtitle: editForm.subtitle.trim() || null,
+          image_path: normalizedLegacy || null,
+          image_desktop_path: normalizedDesktop || null,
+          image_mobile_path: normalizedMobile || null,
+          link_url: editForm.link_url.trim() || null,
+          button_label: editForm.button_label.trim() || null,
+          sort_order: Number(editForm.sort_order) || 0,
+          active: editForm.active,
+        })
+        .eq("id", editingId);
 
-    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      if (error) throw error;
 
-    invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
-    toast({ title: "Banner salvo", description: "Alterações salvas e refletidas nesta tela e na Home do sistema." });
-    clearLocalPreview(setEditLocalPreview, editLocalPreview);
-    setEditingId(null);
-    await load();
+      invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
+      toast({ title: "Banner salvo", description: "Alterações salvas e refletidas nesta tela e na Home do sistema." });
+      clearLocalPreview(setEditLocalPreview, editLocalPreview);
+      setEditingId(null);
+      await load();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro inesperado ao salvar alterações";
+      toast({ title: "Erro", description: message, variant: "destructive" });
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   const remove = async (id: string) => {
-    const { error } = await cloud.from("store_banners").delete().eq("id", id);
-    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
-    await load();
+    try {
+      const { error } = await cloud.from("store_banners").delete().eq("id", id);
+      if (error) throw error;
+      invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
+      await load();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro ao remover banner";
+      toast({ title: "Erro", description: message, variant: "destructive" });
+    }
   };
 
   const toggleActive = async (b: Banner) => {
-    const { error } = await cloud.from("store_banners").update({ active: !b.active }).eq("id", b.id);
-    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
-    await load();
+    try {
+      const { error } = await cloud.from("store_banners").update({ active: !b.active }).eq("id", b.id);
+      if (error) throw error;
+      invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
+      await load();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro ao atualizar status do banner";
+      toast({ title: "Erro", description: message, variant: "destructive" });
+    }
   };
 
   return (
@@ -513,7 +560,7 @@ export default function AdminBanners() {
           </div>
 
           <div className="flex justify-end">
-            <Button onClick={create}>Criar</Button>
+            <Button onClick={create} disabled={savingCreate || isUploading}>{savingCreate ? "Salvando..." : isUploading ? "Aguardando upload..." : "Criar"}</Button>
           </div>
         </CardContent>
       </Card>
@@ -707,7 +754,7 @@ export default function AdminBanners() {
                       }}>
                         Cancelar
                       </Button>
-                      <Button onClick={saveEdit}>Salvar alterações</Button>
+                      <Button onClick={saveEdit} disabled={savingEdit || isUploading}>{savingEdit ? "Salvando..." : isUploading ? "Aguardando upload..." : "Salvar alterações"}</Button>
                     </div>
                   </div>
                 ) : null}

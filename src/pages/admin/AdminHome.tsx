@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { publicImageUrl } from "@/utils/storage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { invalidateSmartCache } from "@/utils/smartCache";
 
 async function uploadToBucket(bucket: string, file: File) {
   const ext = file.name.split(".").pop() || "bin";
@@ -22,6 +23,26 @@ async function uploadToBucket(bucket: string, file: File) {
   if (error) throw error;
   return path;
 }
+
+function normalizeBannerImagePath(value?: string | null) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("blob:")) return "";
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    const marker = "/storage/v1/object/public/banner-images/";
+    const markerIndex = trimmed.indexOf(marker);
+    if (markerIndex >= 0) {
+      return decodeURIComponent(trimmed.slice(markerIndex + marker.length));
+    }
+    return "";
+  }
+
+  return trimmed.replace(/^\/+/, "");
+}
+
+const HOME_CONTENT_CACHE_KEY = "home_content:v1";
 
 type Banner = {
   id: string;
@@ -192,23 +213,27 @@ export default function AdminHome() {
   const [bMobilePath, setBMobilePath] = useState<string>("");
 
   const createBanner = async () => {
-    const t = bTitle.trim();
-    if (!t) return toast({ title: "Atenção", description: "Informe o título." });
+    const normalizedDesktop = normalizeBannerImagePath(bDesktopPath);
+    const normalizedMobile = normalizeBannerImagePath(bMobilePath);
+    if (!normalizedDesktop && !normalizedMobile) {
+      return toast({ title: "Atenção", description: "Envie ao menos uma imagem (desktop ou mobile)." });
+    }
 
     const { error } = await cloud.from("store_banners").insert({
-      title: t,
+      title: bTitle.trim(),
       subtitle: bSubtitle.trim() || null,
       link_url: bLink.trim() || null,
       button_label: bButton.trim() || null,
       sort_order: Number(bOrder) || 0,
       active: bActive,
-      image_desktop_path: bDesktopPath || null,
-      image_mobile_path: bMobilePath || null,
+      image_desktop_path: normalizedDesktop || null,
+      image_mobile_path: normalizedMobile || null,
     } as any);
 
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
 
-    toast({ title: "Criado", description: "Banner adicionado" });
+    invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
+    toast({ title: "Criado", description: "Banner adicionado e refletido na Home" });
     setBTitle("");
     setBSubtitle("");
     setBLink("");
@@ -233,14 +258,25 @@ export default function AdminHome() {
   };
 
   const updateBanner = async (id: string, patch: Partial<Banner>) => {
-    const { error } = await cloud.from("store_banners").update(patch as any).eq("id", id);
+    const normalizedPatch: Partial<Banner> = {
+      ...patch,
+      image_desktop_path:
+        patch.image_desktop_path === undefined ? undefined : normalizeBannerImagePath(patch.image_desktop_path) || null,
+      image_mobile_path:
+        patch.image_mobile_path === undefined ? undefined : normalizeBannerImagePath(patch.image_mobile_path) || null,
+      image_path: patch.image_path === undefined ? undefined : normalizeBannerImagePath(patch.image_path) || null,
+    };
+
+    const { error } = await cloud.from("store_banners").update(normalizedPatch as any).eq("id", id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
     await loadAll();
   };
 
   const removeBanner = async (id: string) => {
     const { error } = await cloud.from("store_banners").delete().eq("id", id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
     await loadAll();
   };
 

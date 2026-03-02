@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronDown,
@@ -44,6 +44,18 @@ export function StoreTopbar({
 
   const [q, setQ] = useState("");
   const [categoriesOpen, setCategoriesOpen] = useState(true);
+  const [cartPulse, setCartPulse] = useState(false);
+  const prevCartCountRef = useRef(cartCount);
+
+  useEffect(() => {
+    if (cartCount > prevCartCountRef.current) {
+      setCartPulse(true);
+      const t = window.setTimeout(() => setCartPulse(false), 420);
+      prevCartCountRef.current = cartCount;
+      return () => window.clearTimeout(t);
+    }
+    prevCartCountRef.current = cartCount;
+  }, [cartCount]);
 
   const submitSearch = () => {
     const term = q.trim();
@@ -102,7 +114,7 @@ export function StoreTopbar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative h-11 w-11 rounded-xl"
+                  className={cn("relative h-11 w-11 rounded-xl transition-transform", cartPulse && "animate-bounce")}
                   aria-label={`Carrinho${cartCount > 0 ? ` com ${cartCount} itens` : ""}`}
                   onClick={() => {
                     if (onCartClick) {

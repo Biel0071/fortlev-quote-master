@@ -1,103 +1,117 @@
-import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
+import { ShoppingCart } from "lucide-react";
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { useCart } from "@/hooks/useCart";
-import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
+import { useCartDetails } from "@/hooks/useCartDetails";
+import { CartQuantityStepper } from "@/components/store/cart/CartQuantityStepper";
 import { trackClickEvent } from "@/utils/clickTracking";
 import { formatCurrency } from "@/utils/formatters";
+import { publicImageUrl } from "@/utils/storage";
 
 export function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const cart = useCart();
+  const { cart, lines, subtotal } = useCartDetails();
   const tracker = useVisitorTracker();
   const nav = useNavigate();
-  const { activeProducts } = useStoreProducts();
 
-  const lines = useMemo(() => {
-    return cart.lines
-      .map((l) => {
-        const p: any = activeProducts.find((p) => p.id === l.productId);
-        if (!p) return null;
-        const effectivePrice = Number(p.promo_price ?? 0) > 0 ? Number(p.promo_price) : Number(p.price);
-        return {
-          ...l,
-          product: p,
-          effectivePrice,
-          lineTotal: effectivePrice * l.quantity,
-        };
-      })
-      .filter(Boolean) as Array<any>;
-  }, [cart.lines, activeProducts]);
-
-  const subtotal = useMemo(() => lines.reduce((acc, l) => acc + l.lineTotal, 0), [lines]);
+  const total = subtotal;
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh]">
-        <DrawerHeader>
-          <DrawerTitle>Carrinho</DrawerTitle>
+      <DrawerContent className="max-h-[92vh] flex flex-col rounded-t-3xl">
+        <DrawerHeader className="border-b border-border/70 pb-4">
+          <DrawerTitle className="flex items-center gap-2 text-xl tracking-tight">
+            <ShoppingCart className="h-5 w-5" />
+            Seu carrinho
+          </DrawerTitle>
           <DrawerDescription>Revise itens e finalize o pedido.</DrawerDescription>
         </DrawerHeader>
 
-        <div className="px-4 pb-4 overflow-auto">
+        <div className="flex-1 overflow-y-auto px-4 pb-48 pt-4">
           {lines.length === 0 ? (
-            <Card>
-              <CardContent className="py-10 text-center text-muted-foreground">Seu carrinho está vazio.</CardContent>
+            <Card className="rounded-2xl">
+              <CardContent className="py-12 text-center space-y-4">
+                <p className="text-muted-foreground">Seu carrinho está vazio 🛒</p>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-xl"
+                  onClick={() => {
+                    onOpenChange(false);
+                    nav("/loja");
+                  }}
+                >
+                  Ver produtos
+                </Button>
+              </CardContent>
             </Card>
           ) : (
             <div className="space-y-3">
-              {lines.map((l) => (
-                <div key={l.productId} className="rounded-xl border border-border bg-card/60 backdrop-blur p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-medium leading-tight line-clamp-2">{l.product.name}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {formatCurrency(l.effectivePrice)} / {l.product.unit ?? "un"}
+              {lines.map((line) => {
+                const imageUrl = publicImageUrl("product-images", line.imagePath ?? null);
+
+                return (
+                  <div key={line.productId} className="rounded-2xl border border-border/80 bg-card p-3 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-border bg-muted/40">
+                        {imageUrl ? (
+                          <img src={imageUrl} alt={line.name} className="h-full w-full object-cover" loading="lazy" />
+                        ) : (
+                          <div className="h-full w-full bg-muted" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="line-clamp-2 text-base font-semibold leading-tight">{line.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {line.hasPrice ? `${formatCurrency(line.effectivePrice)} / ${line.unit}` : "Preço em atualização"}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2">
+                          <CartQuantityStepper
+                            quantity={line.quantity}
+                            compact
+                            onDecrease={() => cart.setQty(line.productId, Math.max(1, line.quantity - 1))}
+                            onIncrease={() => cart.setQty(line.productId, line.quantity + 1)}
+                            onRemove={() => cart.remove(line.productId)}
+                          />
+                          <div className="text-lg font-bold">{formatCurrency(line.lineTotal)}</div>
+                        </div>
                       </div>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => cart.remove(l.productId)}>
-                      Remover
-                    </Button>
                   </div>
-
-                  <div className="mt-3 flex items-center justify-between gap-2">
-                    <Input
-                      className="w-24"
-                      type="number"
-                      min={0}
-                      value={l.quantity}
-                      onChange={(e) => cart.setQty(l.productId, Math.max(0, Number(e.target.value) || 0))}
-                      aria-label={`Quantidade de ${l.product.name}`}
-                    />
-                    <div className="font-semibold">{formatCurrency(l.lineTotal)}</div>
-                  </div>
-                </div>
-              ))}
-
-              <div className="rounded-xl border border-border bg-muted/20 p-4 flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">Subtotal</div>
-                <div className="text-lg font-bold">{formatCurrency(subtotal)}</div>
-              </div>
+                );
+              })}
             </div>
           )}
         </div>
 
-        <DrawerFooter>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                onOpenChange(false);
-                nav("/carrinho");
-              }}
-            >
-              Ver carrinho
-            </Button>
+        <div className="absolute inset-x-0 bottom-0 border-t border-border/70 bg-background/95 p-4 backdrop-blur-md space-y-3">
+          <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 space-y-1.5 text-sm">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Subtotal</span>
+              <span className="font-medium text-foreground">{formatCurrency(subtotal)}</span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Frete estimado</span>
+              <span>R$ —</span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Desconto</span>
+              <span>R$ —</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-2">
+              <span className="font-semibold text-foreground">Total</span>
+              <span className="text-xl font-extrabold tracking-tight">{formatCurrency(total)}</span>
+            </div>
+          </div>
 
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" className="h-11 rounded-xl" onClick={() => onOpenChange(false)}>
+              Continuar comprando
+            </Button>
             <Button
+              className="h-11 rounded-xl"
               onClick={() => {
                 trackClickEvent({ sessionToken: tracker.sessionToken, type: "start_checkout" });
                 onOpenChange(false);
@@ -110,15 +124,18 @@ export function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange
           </div>
 
           <div className="flex items-center justify-between">
-            <DrawerClose asChild>
-              <Button variant="ghost">Continuar comprando</Button>
-            </DrawerClose>
-            <Button variant="ghost" asChild>
-              <Link to="/loja">Catálogo</Link>
+            <Button variant="ghost" className="h-9 rounded-lg text-xs" onClick={cart.clear}>
+              Limpar carrinho
+            </Button>
+            <Button variant="ghost" className="h-9 rounded-lg" asChild>
+              <Link to="/carrinho" onClick={() => onOpenChange(false)}>
+                Ver carrinho completo
+              </Link>
             </Button>
           </div>
-        </DrawerFooter>
+        </div>
       </DrawerContent>
     </Drawer>
   );
 }
+

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,13 @@ export function StoreProductCard({
   const nav = useNavigate();
   const tracker = useVisitorTracker();
   const [qty, setQty] = useState(1);
+  const [addingFx, setAddingFx] = useState(false);
+
+  useEffect(() => {
+    if (!addingFx) return;
+    const t = window.setTimeout(() => setAddingFx(false), 260);
+    return () => window.clearTimeout(t);
+  }, [addingFx]);
 
   const basePrice = Number(product?.price ?? 0);
   const promo = Number(product?.promo_price ?? 0);
@@ -113,7 +120,6 @@ export function StoreProductCard({
             {installments ? <div className="text-xs text-muted-foreground">{installments}</div> : null}
           </div>
 
-          {/* Controls (mobile-first) */}
           <div
             className="flex flex-col gap-2"
             onClick={(e) => e.stopPropagation()}
@@ -123,9 +129,10 @@ export function StoreProductCard({
               <QtyStepper value={qty} onChange={setQty} />
               <Button
                 variant="accent"
-                className="h-12 rounded-xl px-4 w-full text-base"
+                className={`h-12 rounded-xl px-4 w-full text-base transition-transform ${addingFx ? "scale-[0.97]" : ""}`}
                 onClick={(e) => {
                   e.stopPropagation();
+                  setAddingFx(true);
                   trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: product.id });
                   onAdd(product.id, qty);
                 }}

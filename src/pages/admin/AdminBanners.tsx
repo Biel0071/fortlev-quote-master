@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { cloud } from "@/lib/cloud";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ type BannerForm = {
 };
 
 type BannerImageField = "image_desktop_path" | "image_mobile_path" | "image_path";
+type BannerLocalPreview = Record<BannerImageField, string>; 
 
 const DEFAULT_SIZE_KEY = "desktop-standard";
 
@@ -51,6 +52,14 @@ function emptyForm(): BannerForm {
     sort_order: 0,
     active: true,
     preview_size_key: DEFAULT_SIZE_KEY,
+  };
+}
+
+function emptyLocalPreview(): BannerLocalPreview {
+  return {
+    image_desktop_path: "",
+    image_mobile_path: "",
+    image_path: "",
   };
 }
 
@@ -76,11 +85,37 @@ export default function AdminBanners() {
   const [editImagePrompt, setEditImagePrompt] = useState("");
   const [editingCreateField, setEditingCreateField] = useState<BannerImageField | null>(null);
   const [editingEditField, setEditingEditField] = useState<BannerImageField | null>(null);
+  const [createLocalPreview, setCreateLocalPreview] = useState<BannerLocalPreview>(emptyLocalPreview());
+  const [editLocalPreview, setEditLocalPreview] = useState<BannerLocalPreview>(emptyLocalPreview());
 
   const imageUrl = (path?: string | null) => {
     if (!path) return "";
     return cloud.storage.from("banner-images").getPublicUrl(path).data.publicUrl;
   };
+
+  const updateLocalPreview = useCallback(
+    (
+      setter: Dispatch<SetStateAction<BannerLocalPreview>>,
+      field: BannerImageField,
+      localUrl: string,
+    ) => {
+      setter((prev) => {
+        if (prev[field]) URL.revokeObjectURL(prev[field]);
+        return { ...prev, [field]: localUrl };
+      });
+    },
+    [],
+  );
+
+  const clearLocalPreview = useCallback(
+    (setter: Dispatch<SetStateAction<BannerLocalPreview>>, values: BannerLocalPreview) => {
+      Object.values(values).forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+      setter(emptyLocalPreview());
+    },
+    [],
+  );
 
   const load = async () => {
     setLoading(true);
@@ -109,9 +144,19 @@ export default function AdminBanners() {
     [editForm.preview_size_key],
   );
 
-  async function handleUpload(file: File | null, setPath: (path: string) => void) {
+  async function handleUpload(
+    file: File | null,
+    setPath: (path: string) => void,
+    setLocalPreview?: (localUrl: string) => void,
+  ) {
     if (!file) return;
+
     try {
+      if (setLocalPreview) {
+        const localUrl = URL.createObjectURL(file);
+        setLocalPreview(localUrl);
+      }
+
       const path = await uploadToBucket("banner-images", file);
       setPath(path);
       toast({ title: "Upload concluído", description: "Imagem pronta" });
@@ -211,11 +256,13 @@ export default function AdminBanners() {
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
 
     toast({ title: "Criado", description: "Banner adicionado" });
+    clearLocalPreview(setCreateLocalPreview, createLocalPreview);
     setCreateForm(emptyForm());
     await load();
   };
 
   const startEdit = (b: Banner) => {
+    clearLocalPreview(setEditLocalPreview, editLocalPreview);
     setEditingId(b.id);
     setEditForm({
       title: b.title,
@@ -254,6 +301,7 @@ export default function AdminBanners() {
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
 
     toast({ title: "Atualizado", description: "Banner editado com sucesso" });
+    clearLocalPreview(setEditLocalPreview, editLocalPreview);
     setEditingId(null);
     await load();
   };
@@ -353,7 +401,13 @@ export default function AdminBanners() {
                 <Input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleUpload(e.target.files?.[0] ?? null, (path) => setCreateForm((p) => ({ ...p, image_desktop_path: path })))}
+                  onChange={(e) =>
+                    handleUpload(
+                      e.target.files?.[0] ?? null,
+                      (path) => setCreateForm((p) => ({ ...p, image_desktop_path: path })),
+                      (localUrl) => updateLocalPreview(setCreateLocalPreview, "image_desktop_path", localUrl),
+                    )
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -361,7 +415,13 @@ export default function AdminBanners() {
                 <Input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleUpload(e.target.files?.[0] ?? null, (path) => setCreateForm((p) => ({ ...p, image_mobile_path: path })))}
+                  onChange={(e) =>
+                    handleUpload(
+                      e.target.files?.[0] ?? null,
+                      (path) => setCreateForm((p) => ({ ...p, image_mobile_path: path })),
+                      (localUrl) => updateLocalPreview(setCreateLocalPreview, "image_mobile_path", localUrl),
+                    )
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -369,7 +429,13 @@ export default function AdminBanners() {
                 <Input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleUpload(e.target.files?.[0] ?? null, (path) => setCreateForm((p) => ({ ...p, image_path: path })))}
+                  onChange={(e) =>
+                    handleUpload(
+                      e.target.files?.[0] ?? null,
+                      (path) => setCreateForm((p) => ({ ...p, image_path: path })),
+                      (localUrl) => updateLocalPreview(setCreateLocalPreview, "image_path", localUrl),
+                    )
+                  }
                 />
               </div>
 
@@ -400,9 +466,9 @@ export default function AdminBanners() {
               subtitle={createForm.subtitle}
               buttonLabel={createForm.button_label}
               linkUrl={createForm.link_url}
-              desktopSrc={imageUrl(createForm.image_desktop_path)}
-              mobileSrc={imageUrl(createForm.image_mobile_path)}
-              legacySrc={imageUrl(createForm.image_path)}
+              desktopSrc={createLocalPreview.image_desktop_path || imageUrl(createForm.image_desktop_path)}
+              mobileSrc={createLocalPreview.image_mobile_path || imageUrl(createForm.image_mobile_path)}
+              legacySrc={createLocalPreview.image_path || imageUrl(createForm.image_path)}
               size={createSize}
             />
           </div>
@@ -523,7 +589,13 @@ export default function AdminBanners() {
                           <Input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => handleUpload(e.target.files?.[0] ?? null, (path) => setEditForm((p) => ({ ...p, image_desktop_path: path })))}
+                            onChange={(e) =>
+                              handleUpload(
+                                e.target.files?.[0] ?? null,
+                                (path) => setEditForm((p) => ({ ...p, image_desktop_path: path })),
+                                (localUrl) => updateLocalPreview(setEditLocalPreview, "image_desktop_path", localUrl),
+                              )
+                            }
                           />
                         </div>
                         <div className="space-y-2">
@@ -531,7 +603,13 @@ export default function AdminBanners() {
                           <Input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => handleUpload(e.target.files?.[0] ?? null, (path) => setEditForm((p) => ({ ...p, image_mobile_path: path })))}
+                            onChange={(e) =>
+                              handleUpload(
+                                e.target.files?.[0] ?? null,
+                                (path) => setEditForm((p) => ({ ...p, image_mobile_path: path })),
+                                (localUrl) => updateLocalPreview(setEditLocalPreview, "image_mobile_path", localUrl),
+                              )
+                            }
                           />
                         </div>
                         <div className="space-y-2">
@@ -539,7 +617,13 @@ export default function AdminBanners() {
                           <Input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => handleUpload(e.target.files?.[0] ?? null, (path) => setEditForm((p) => ({ ...p, image_path: path })))}
+                            onChange={(e) =>
+                              handleUpload(
+                                e.target.files?.[0] ?? null,
+                                (path) => setEditForm((p) => ({ ...p, image_path: path })),
+                                (localUrl) => updateLocalPreview(setEditLocalPreview, "image_path", localUrl),
+                              )
+                            }
                           />
                         </div>
 
@@ -570,15 +654,18 @@ export default function AdminBanners() {
                         subtitle={editForm.subtitle}
                         buttonLabel={editForm.button_label}
                         linkUrl={editForm.link_url}
-                        desktopSrc={imageUrl(editForm.image_desktop_path)}
-                        mobileSrc={imageUrl(editForm.image_mobile_path)}
-                        legacySrc={imageUrl(editForm.image_path)}
+                        desktopSrc={editLocalPreview.image_desktop_path || imageUrl(editForm.image_desktop_path)}
+                        mobileSrc={editLocalPreview.image_mobile_path || imageUrl(editForm.image_mobile_path)}
+                        legacySrc={editLocalPreview.image_path || imageUrl(editForm.image_path)}
                         size={editSize}
                       />
                     </div>
 
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="outline" onClick={() => setEditingId(null)}>
+                      <Button variant="outline" onClick={() => {
+                        clearLocalPreview(setEditLocalPreview, editLocalPreview);
+                        setEditingId(null);
+                      }}>
                         Cancelar
                       </Button>
                       <Button onClick={saveEdit}>Salvar alterações</Button>

@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Bolt,
   Boxes,
+  ChevronLeft,
+  ChevronRight,
   Droplets,
   Hammer,
   Home,
@@ -15,9 +17,12 @@ import {
   Waves,
   Wrench,
 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import type { StoreCategory } from "@/hooks/useStoreCategories";
-import { publicImageUrl } from "@/utils/storage";
 import { cn } from "@/lib/utils";
+import { publicImageUrl } from "@/utils/storage";
 
 function pickIcon(name: string) {
   const key = (name ?? "").trim().toLowerCase();
@@ -51,7 +56,6 @@ function CategoryAvatar({
 }) {
   const [imgOk, setImgOk] = useState(Boolean(img));
 
-  // If the URL changes, re-enable image.
   useEffect(() => {
     setImgOk(Boolean(img));
   }, [img]);
@@ -81,7 +85,10 @@ function CategoryAvatar({
           onError={() => setImgOk(false)}
         />
       ) : (
-        <Icon size={46} className={cn("text-primary", "transition-colors duration-200", "group-hover:text-accent")} />
+        <Icon
+          size={46}
+          className={cn("text-primary", "transition-colors duration-200", "group-hover:text-accent")}
+        />
       )}
     </div>
   );
@@ -90,65 +97,70 @@ function CategoryAvatar({
 type Props = {
   categories: StoreCategory[];
   hideHeader?: boolean;
-  loop?: boolean;
 };
 
 export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
-  ({ categories, hideHeader = false, loop = true }, ref) => {
-    const baseItems = useMemo(() => categories ?? [], [categories]);
-    const loopItems = useMemo(() => (loop ? [...baseItems, ...baseItems] : baseItems), [baseItems, loop]);
-
-    const scrollerRef = useRef<HTMLDivElement | null>(null);
-    const rafRef = useRef<number | null>(null);
+  ({ categories, hideHeader = false }, ref) => {
+    const [api, setApi] = useState<CarouselApi>();
+    const [canPrev, setCanPrev] = useState(false);
+    const [canNext, setCanNext] = useState(false);
 
     useEffect(() => {
-      if (!loop) return;
-      const el = scrollerRef.current;
-      if (!el) return;
-      if (baseItems.length === 0) return;
+      if (!api) return;
 
-      el.scrollLeft = 0;
-
-      let last = 0;
-
-      const animate = (ts: number) => {
-        if (!last) last = ts;
-        const delta = ts - last;
-        last = ts;
-
-        // 0.03 px/ms = 30px/s
-        if (el.scrollWidth > el.clientWidth) {
-          el.scrollLeft += delta * 0.03;
-
-          if (el.scrollLeft >= el.scrollWidth / 2) {
-            el.scrollLeft -= el.scrollWidth / 2;
-          }
-        }
-
-        rafRef.current = window.requestAnimationFrame(animate);
+      const updateArrows = () => {
+        setCanPrev(api.canScrollPrev());
+        setCanNext(api.canScrollNext());
       };
 
-      rafRef.current = window.requestAnimationFrame(animate);
+      updateArrows();
+      api.on("select", updateArrows);
+      api.on("reInit", updateArrows);
 
       return () => {
-        if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
+        api.off("select", updateArrows);
+        api.off("reInit", updateArrows);
       };
-    }, [baseItems.length, loop]);
+    }, [api]);
 
-    if (baseItems.length === 0) return null;
+    if (!categories || categories.length === 0) return null;
 
     return (
       <div ref={ref}>
         <section className="space-y-4" aria-label="Categorias">
           {!hideHeader ? (
             <header className="flex items-end justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-xl font-semibold">Categorias</h2>
-                <p className="text-sm text-muted-foreground">Encontre rápido pelo departamento.</p>
+              <h2 className="text-xl font-semibold">Categorias</h2>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => api?.scrollPrev()}
+                  disabled={!canPrev}
+                  aria-label="Categoria anterior"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => api?.scrollNext()}
+                  disabled={!canNext}
+                  aria-label="Próxima categoria"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+
+                <Link to="/loja" className="ml-1 text-sm font-medium underline underline-offset-4">
+                  Ver catálogo
+                </Link>
               </div>
-              <Link to="/loja" className="text-sm font-medium underline underline-offset-4">
-                Ver catálogo
-              </Link>
             </header>
           ) : null}
 
@@ -156,78 +168,74 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
             <div
               aria-hidden="true"
               className={cn(
-                "pointer-events-none absolute inset-y-0 left-0 w-10 sm:w-12 z-10",
+                "pointer-events-none absolute inset-y-0 left-0 w-8 sm:w-10 z-10",
                 "bg-gradient-to-r from-background to-transparent",
               )}
             />
             <div
               aria-hidden="true"
               className={cn(
-                "pointer-events-none absolute inset-y-0 right-0 w-10 sm:w-12 z-10",
+                "pointer-events-none absolute inset-y-0 right-0 w-8 sm:w-10 z-10",
                 "bg-gradient-to-l from-background to-transparent",
               )}
             />
 
-            <div
-              ref={scrollerRef}
-              role="region"
-              aria-roledescription="carousel"
-              tabIndex={0}
-              className={cn(
-                "relative w-full",
-                "inline-flex gap-2",
-                "whitespace-nowrap",
-                "overflow-x-auto overflow-y-hidden",
-                "overscroll-x-contain",
-                "snap-none",
-                "py-0.5",
-                "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              )}
+            <Carousel
+              setApi={setApi}
+              opts={{
+                align: "start",
+                dragFree: true,
+                containScroll: "trimSnaps",
+              }}
+              className="w-full"
             >
-              {loopItems.map((c, idx) => {
-                const Icon = pickIcon(c.name);
-                const img = publicImageUrl("category-images", c.image_path ?? null);
-                const key = `${c.id}-${idx}`;
+              <CarouselContent className="-ml-2 sm:-ml-3">
+                {categories.map((c) => {
+                  const Icon = pickIcon(c.name);
+                  const img = publicImageUrl("category-images", c.image_path ?? null);
 
-                return (
-                  <div
-                    key={key}
-                    className={cn(
-                      "shrink-0",
-                      "basis-[45%]",
-                      "sm:basis-[38%]",
-                      "md:basis-1/3",
-                      "lg:basis-[22%]",
-                      "xl:basis-[20%]",
-                    )}
-                  >
-                    <Link
-                      to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
+                  return (
+                    <CarouselItem
+                      key={c.id}
                       className={cn(
-                        "group flex h-full flex-col items-center text-center",
-                        "rounded-2xl",
-                        "px-2 py-3 sm:px-3 sm:py-4",
-                        "transition-transform duration-200 ease-out",
-                        "hover:-translate-y-1",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        "pl-2 sm:pl-3",
+                        "basis-[48%]",
+                        "sm:basis-[34%]",
+                        "md:basis-[26%]",
+                        "lg:basis-[20%]",
+                        "xl:basis-[16.6%]",
                       )}
-                      aria-label={`Categoria: ${c.name}`}
                     >
-                      <CategoryAvatar name={c.name} img={img} Icon={Icon} />
+                      <Link
+                        to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
+                        className={cn(
+                          "group flex h-full flex-col items-center text-center",
+                          "rounded-2xl",
+                          "px-2 py-3 sm:px-3 sm:py-4",
+                          "transition-transform duration-200 ease-out",
+                          "hover:-translate-y-1",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        )}
+                        aria-label={`Categoria: ${c.name}`}
+                      >
+                        <CategoryAvatar name={c.name} img={img} Icon={Icon} />
 
-                      <div className="mt-3">
-                        <div className="text-[14px] font-semibold leading-snug tracking-tight text-foreground">{c.name}</div>
-                      </div>
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
+                        <div className="mt-3">
+                          <div className="text-[14px] font-semibold leading-snug tracking-tight text-foreground">
+                            {c.name}
+                          </div>
+                        </div>
+                      </Link>
+                    </CarouselItem>
+                  );
+                })}
+              </CarouselContent>
+            </Carousel>
           </div>
         </section>
       </div>
     );
   },
 );
+
 HomeCategoriesCarousel.displayName = "HomeCategoriesCarousel";

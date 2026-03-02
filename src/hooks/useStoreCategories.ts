@@ -16,12 +16,18 @@ export type StoreCategory = {
 const CATEGORIES_CACHE_KEY = "store_categories:list";
 const CATEGORIES_CACHE_TTL_MS = 1000 * 60 * 5;
 
-export function useStoreCategories() {
+type UseStoreCategoriesOptions = {
+  enabled?: boolean;
+};
+
+export function useStoreCategories(options?: UseStoreCategoriesOptions) {
+  const enabled = options?.enabled ?? true;
   const [categories, setCategories] = useState<StoreCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   const load = async (opts?: { silent?: boolean }) => {
+    if (!enabled) return;
     if (!opts?.silent) setLoading(true);
     setError(null);
 
@@ -38,13 +44,18 @@ export function useStoreCategories() {
       return;
     }
 
-    const list = (data ?? []) as any;
+    const list = (data ?? []) as StoreCategory[];
     setCategories(list);
-    setSmartCache(CATEGORIES_CACHE_KEY, list);
+    setSmartCache(CATEGORIES_CACHE_KEY, list, CATEGORIES_CACHE_TTL_MS);
     setLoading(false);
   };
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     const cached = getSmartCache<StoreCategory[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TTL_MS);
     if (cached) {
       setCategories(cached);
@@ -55,7 +66,7 @@ export function useStoreCategories() {
 
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   const activeCategories = useMemo(() => categories.filter((c) => c.active), [categories]);
   const featuredCategories = useMemo(() => activeCategories.filter((c) => c.featured), [activeCategories]);

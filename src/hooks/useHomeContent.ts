@@ -102,8 +102,13 @@ type HomeContentCache = {
 const HOME_CONTENT_CACHE_KEY = "home_content:v1";
 const HOME_CONTENT_CACHE_TTL_MS = 1000 * 60 * 3;
 
-export function useHomeContent() {
-  const [loading, setLoading] = useState(true);
+type UseHomeContentOptions = {
+  enabled?: boolean;
+};
+
+export function useHomeContent(options?: UseHomeContentOptions) {
+  const enabled = options?.enabled ?? true;
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   const [banners, setBanners] = useState<HomeBanner[]>([]);
@@ -117,6 +122,7 @@ export function useHomeContent() {
   const [seo, setSeo] = useState<HomeSeo | null>(null);
 
   const load = async (opts?: { silent?: boolean }) => {
+    if (!enabled) return;
     if (!opts?.silent) setLoading(true);
     setError(null);
 
@@ -206,6 +212,11 @@ export function useHomeContent() {
   };
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     const cached = getSmartCache<HomeContentCache>(HOME_CONTENT_CACHE_KEY, HOME_CONTENT_CACHE_TTL_MS);
     if (cached) {
       setBanners(cached.banners ?? []);
@@ -223,7 +234,7 @@ export function useHomeContent() {
 
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   const hasHero = useMemo(() => banners.length > 0, [banners]);
 

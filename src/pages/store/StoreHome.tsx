@@ -71,7 +71,7 @@ export default function StoreHome() {
       </div>
 
       {/* 2) Categorias principais */}
-      <HomeSection title="Categorias" subtitle="Encontre rápido o que você precisa." tone="plain">
+      <HomeSection title="Categorias" tone="plain">
         <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
       </HomeSection>
 
@@ -79,7 +79,6 @@ export default function StoreHome() {
       <HomeSection
         id="destaques"
         title="Produtos em destaque"
-        subtitle="Seleção rápida para você começar — e ir direto ao que importa."
         tone="plain"
         action={
           <Link to="/loja" className="text-sm font-semibold underline underline-offset-4">
@@ -94,7 +93,6 @@ export default function StoreHome() {
       <HomeSection
         id="mais-vendidos"
         title="Mais vendidos"
-        subtitle="Os 8 itens com maior volume de vendas nos últimos 30 dias."
         tone="plain"
         action={
           <Link to="/loja?sort=popular" className="text-sm font-semibold underline underline-offset-4">

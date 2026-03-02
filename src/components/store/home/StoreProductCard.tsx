@@ -119,7 +119,7 @@ export function StoreProductCard({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <div className="grid grid-cols-[140px,1fr] gap-2 items-center">
+            <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[140px,1fr] sm:items-center">
               <QtyStepper value={qty} onChange={setQty} />
               <Button
                 variant="accent"

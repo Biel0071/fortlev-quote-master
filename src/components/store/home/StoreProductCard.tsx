@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,41 @@ import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { trackClickEvent } from "@/utils/clickTracking";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
+
+function QtyStepper({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+}) {
+  return (
+    <div
+      className="flex items-center justify-between rounded-xl border border-border bg-card px-1 py-1"
+      aria-label={`Quantidade ${value}`}
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        className="h-10 w-10 rounded-lg"
+        onClick={() => onChange(Math.max(1, value - 1))}
+        aria-label="Diminuir quantidade"
+      >
+        −
+      </Button>
+      <div className="min-w-8 text-center text-sm font-bold tabular-nums">{value}</div>
+      <Button
+        type="button"
+        variant="ghost"
+        className="h-10 w-10 rounded-lg"
+        onClick={() => onChange(value + 1)}
+        aria-label="Aumentar quantidade"
+      >
+        +
+      </Button>
+    </div>
+  );
+}
 
 export function StoreProductCard({
   product,
@@ -16,6 +51,7 @@ export function StoreProductCard({
 }) {
   const nav = useNavigate();
   const tracker = useVisitorTracker();
+  const [qty, setQty] = useState(1);
 
   const basePrice = Number(product?.price ?? 0);
   const promo = Number(product?.promo_price ?? 0);
@@ -63,9 +99,9 @@ export function StoreProductCard({
         )}
       </div>
 
-      <CardContent className="p-4 flex flex-col gap-3">
+      <CardContent className="p-4 sm:p-4 flex flex-col gap-3">
         <div className="min-w-0">
-          <div className="font-semibold leading-tight line-clamp-2">{product?.name}</div>
+          <div className="text-[15px] sm:text-sm font-semibold leading-snug line-clamp-2">{product?.name}</div>
         </div>
 
         <div className="mt-auto space-y-3">
@@ -73,21 +109,30 @@ export function StoreProductCard({
             {hasPromo ? (
               <div className="text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div>
             ) : null}
-            <div className="text-lg font-extrabold tracking-tight">{formatCurrency(effectivePrice)}</div>
+            <div className="text-lg sm:text-lg font-extrabold tracking-tight">{formatCurrency(effectivePrice)}</div>
             {installments ? <div className="text-xs text-muted-foreground">{installments}</div> : null}
           </div>
 
-          <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-            <Button
-              className="h-11 rounded-xl px-4 w-full"
-              onClick={(e) => {
-                e.stopPropagation();
-                trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: product.id });
-                onAdd(product.id, 1);
-              }}
-            >
-              Adicionar ao carrinho
-            </Button>
+          {/* Controls (mobile-first) */}
+          <div
+            className="flex flex-col gap-2"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <div className="grid grid-cols-[140px,1fr] gap-2 items-center">
+              <QtyStepper value={qty} onChange={setQty} />
+              <Button
+                variant="accent"
+                className="h-12 rounded-xl px-4 w-full text-base"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: product.id });
+                  onAdd(product.id, qty);
+                }}
+              >
+                Adicionar
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

@@ -168,9 +168,10 @@ export default function AdminBanners() {
       .from("store_banners")
       .select("id, image_path, image_desktop_path, image_mobile_path, title, subtitle, button_label, link_url, sort_order, active")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     if (error) throw new Error(`verify_failed:${error.message}`);
+    if (!data) throw new Error(`verify_not_found:banner_id=${id}`);
 
     const saved = normalizeBannerRow(data as Banner);
     const payloadNormalized = {

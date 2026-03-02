@@ -123,6 +123,29 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
       };
     }, [api]);
 
+    useEffect(() => {
+      if (!api || categories.length < 2) return;
+
+      let timer = window.setInterval(() => {
+        api.scrollNext();
+      }, 3600);
+
+      const stop = () => window.clearInterval(timer);
+      const restart = () => {
+        window.clearInterval(timer);
+        timer = window.setInterval(() => api.scrollNext(), 3600);
+      };
+
+      api.on("pointerDown", stop);
+      api.on("settle", restart);
+
+      return () => {
+        window.clearInterval(timer);
+        api.off("pointerDown", stop);
+        api.off("settle", restart);
+      };
+    }, [api, categories.length]);
+
     if (!categories || categories.length === 0) return null;
 
     return (
@@ -162,7 +185,32 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
                 </Link>
               </div>
             </header>
-          ) : null}
+          ) : (
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => api?.scrollPrev()}
+                disabled={!canPrev}
+                aria-label="Categoria anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => api?.scrollNext()}
+                disabled={!canNext}
+                aria-label="Próxima categoria"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
 
           <div className="relative">
             <div
@@ -184,8 +232,9 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
               setApi={setApi}
               opts={{
                 align: "start",
-                dragFree: true,
+                dragFree: false,
                 containScroll: "trimSnaps",
+                loop: true,
               }}
               className="w-full"
             >

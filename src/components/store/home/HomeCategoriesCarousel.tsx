@@ -1,8 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import useEmblaCarousel from "embla-carousel-react";
 import {
   Bolt,
   Boxes,
+  ChevronLeft,
+  ChevronRight,
   Droplets,
   Hammer,
   Home,
@@ -16,8 +19,14 @@ import {
   Wrench,
 } from "lucide-react";
 import type { StoreCategory } from "@/hooks/useStoreCategories";
-import { publicImageUrl } from "@/utils/storage";
 import { cn } from "@/lib/utils";
+
+type IconLike = React.ComponentType<{
+  size?: string | number;
+  className?: string;
+  strokeWidth?: string | number;
+  color?: string;
+}>;
 
 function pickIcon(name: string) {
   const key = (name ?? "").trim().toLowerCase();
@@ -38,55 +47,6 @@ function pickIcon(name: string) {
   return Package;
 }
 
-type IconLike = React.ComponentType<{ size?: string | number; className?: string }>;
-
-function CategoryAvatar({
-  name,
-  img,
-  Icon,
-}: {
-  name: string;
-  img: string;
-  Icon: IconLike;
-}) {
-  const [imgOk, setImgOk] = useState(Boolean(img));
-
-  // If the URL changes, re-enable image.
-  useEffect(() => {
-    setImgOk(Boolean(img));
-  }, [img]);
-
-  return (
-    <div
-      className={cn(
-        "h-[72px] w-[72px] sm:h-[76px] sm:w-[76px]",
-        "rounded-full",
-        "border border-border/70",
-        "bg-background/80",
-        "grid place-items-center",
-        "shadow-sm",
-        "overflow-hidden",
-        "transition-shadow duration-200",
-        "group-hover:shadow-md",
-      )}
-      aria-hidden="true"
-    >
-      {imgOk ? (
-        <img
-          src={img}
-          alt={`Categoria ${name}`}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          draggable={false}
-          onError={() => setImgOk(false)}
-        />
-      ) : (
-        <Icon size={46} className={cn("text-primary", "transition-colors duration-200", "group-hover:text-accent")} />
-      )}
-    </div>
-  );
-}
-
 type Props = {
   categories: StoreCategory[];
   hideHeader?: boolean;
@@ -94,48 +54,43 @@ type Props = {
 };
 
 export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
-  ({ categories, hideHeader = false, loop = true }, ref) => {
-    const baseItems = useMemo(() => categories ?? [], [categories]);
-    const loopItems = useMemo(() => (loop ? [...baseItems, ...baseItems] : baseItems), [baseItems, loop]);
+  ({ categories, hideHeader = false, loop = false }, ref) => {
+    const items = useMemo(() => categories ?? [], [categories]);
 
-    const scrollerRef = useRef<HTMLDivElement | null>(null);
-    const rafRef = useRef<number | null>(null);
+    const [emblaRef, emblaApi] = useEmblaCarousel({
+      align: "center",
+      containScroll: "trimSnaps",
+      dragFree: false,
+      loop,
+      skipSnaps: false,
+    });
+
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [canScrollPrev, setCanScrollPrev] = useState(false);
+    const [canScrollNext, setCanScrollNext] = useState(false);
+    const [hasOverflow, setHasOverflow] = useState(false);
+
+    const onSelect = useCallback(() => {
+      if (!emblaApi) return;
+      setSelectedIndex(emblaApi.selectedScrollSnap());
+      setCanScrollPrev(emblaApi.canScrollPrev());
+      setCanScrollNext(emblaApi.canScrollNext());
+      setHasOverflow(emblaApi.scrollSnapList().length > 1);
+    }, [emblaApi]);
 
     useEffect(() => {
-      if (!loop) return;
-      const el = scrollerRef.current;
-      if (!el) return;
-      if (baseItems.length === 0) return;
-
-      el.scrollLeft = 0;
-
-      let last = 0;
-
-      const animate = (ts: number) => {
-        if (!last) last = ts;
-        const delta = ts - last;
-        last = ts;
-
-        // 0.03 px/ms = 30px/s
-        if (el.scrollWidth > el.clientWidth) {
-          el.scrollLeft += delta * 0.03;
-
-          if (el.scrollLeft >= el.scrollWidth / 2) {
-            el.scrollLeft -= el.scrollWidth / 2;
-          }
-        }
-
-        rafRef.current = window.requestAnimationFrame(animate);
-      };
-
-      rafRef.current = window.requestAnimationFrame(animate);
+      if (!emblaApi) return;
+      onSelect();
+      emblaApi.on("select", onSelect);
+      emblaApi.on("reInit", onSelect);
 
       return () => {
-        if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
+        emblaApi.off("select", onSelect);
+        emblaApi.off("reInit", onSelect);
       };
-    }, [baseItems.length, loop]);
+    }, [emblaApi, onSelect]);
 
-    if (baseItems.length === 0) return null;
+    if (items.length === 0) return null;
 
     return (
       <div ref={ref}>
@@ -144,7 +99,6 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
             <header className="flex items-end justify-between gap-3 flex-wrap">
               <div>
                 <h2 className="text-xl font-semibold">Categorias</h2>
-                <p className="text-sm text-muted-foreground">Encontre rápido pelo departamento.</p>
               </div>
               <Link to="/loja" className="text-sm font-medium underline underline-offset-4">
                 Ver catálogo
@@ -156,73 +110,111 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
             <div
               aria-hidden="true"
               className={cn(
-                "pointer-events-none absolute inset-y-0 left-0 w-10 sm:w-12 z-10",
+                "pointer-events-none absolute inset-y-0 left-0 z-20 w-10 sm:w-14",
                 "bg-gradient-to-r from-background to-transparent",
               )}
             />
             <div
               aria-hidden="true"
               className={cn(
-                "pointer-events-none absolute inset-y-0 right-0 w-10 sm:w-12 z-10",
+                "pointer-events-none absolute inset-y-0 right-0 z-20 w-10 sm:w-14",
                 "bg-gradient-to-l from-background to-transparent",
               )}
             />
 
-            <div
-              ref={scrollerRef}
-              role="region"
-              aria-roledescription="carousel"
-              tabIndex={0}
-              className={cn(
-                "relative w-full",
-                "inline-flex gap-2",
-                "whitespace-nowrap",
-                "overflow-x-auto overflow-y-hidden",
-                "overscroll-x-contain",
-                "snap-none",
-                "py-0.5",
-                "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              )}
-            >
-              {loopItems.map((c, idx) => {
-                const Icon = pickIcon(c.name);
-                const img = publicImageUrl("category-images", c.image_path ?? null);
-                const key = `${c.id}-${idx}`;
+            {hasOverflow ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => emblaApi?.scrollPrev()}
+                  disabled={!canScrollPrev}
+                  aria-label="Categoria anterior"
+                  className={cn(
+                    "absolute left-1 top-1/2 z-30 -translate-y-1/2",
+                    "h-9 w-9 rounded-full grid place-items-center",
+                    "transition-all duration-300 ease-out",
+                    "disabled:opacity-40 disabled:cursor-not-allowed",
+                  )}
+                  style={{
+                    backgroundColor: "#EDEFF3",
+                    boxShadow: "0 6px 16px rgba(15, 23, 42, 0.12)",
+                  }}
+                >
+                  <ChevronLeft color="#1E3A8A" className="h-5 w-5" strokeWidth={2.8} />
+                </button>
 
-                return (
-                  <div
-                    key={key}
-                    className={cn(
-                      "shrink-0",
-                      "basis-[45%]",
-                      "sm:basis-[38%]",
-                      "md:basis-1/3",
-                      "lg:basis-[22%]",
-                      "xl:basis-[20%]",
-                    )}
-                  >
-                    <Link
-                      to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
+                <button
+                  type="button"
+                  onClick={() => emblaApi?.scrollNext()}
+                  disabled={!canScrollNext}
+                  aria-label="Próxima categoria"
+                  className={cn(
+                    "absolute right-1 top-1/2 z-30 -translate-y-1/2",
+                    "h-9 w-9 rounded-full grid place-items-center",
+                    "transition-all duration-300 ease-out",
+                    "disabled:opacity-40 disabled:cursor-not-allowed",
+                  )}
+                  style={{
+                    backgroundColor: "#EDEFF3",
+                    boxShadow: "0 6px 16px rgba(15, 23, 42, 0.12)",
+                  }}
+                >
+                  <ChevronRight color="#1E3A8A" className="h-5 w-5" strokeWidth={2.8} />
+                </button>
+              </>
+            ) : null}
+
+            <div ref={emblaRef} className="overflow-hidden px-6 sm:px-10">
+              <div className="flex touch-pan-y select-none">
+                {items.map((c, idx) => {
+                  const Icon = pickIcon(c.name);
+                  const isActive = idx === selectedIndex;
+
+                  return (
+                    <div
+                      key={c.id}
                       className={cn(
-                        "group flex h-full flex-col items-center text-center",
-                        "rounded-2xl",
-                        "px-2 py-3 sm:px-3 sm:py-4",
-                        "transition-transform duration-200 ease-out",
-                        "hover:-translate-y-1",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        "min-w-0 shrink-0 grow-0",
+                        "basis-[110px] sm:basis-[126px] md:basis-[132px]",
+                        "px-1.5 sm:px-2",
                       )}
-                      aria-label={`Categoria: ${c.name}`}
                     >
-                      <CategoryAvatar name={c.name} img={img} Icon={Icon} />
+                      <Link
+                        to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
+                        className={cn(
+                          "group flex flex-col items-center text-center",
+                          "transition-transform duration-300 ease-out",
+                          isActive ? "scale-[1.05]" : "scale-100",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-2xl",
+                        )}
+                        aria-label={`Categoria: ${c.name}`}
+                      >
+                        <div
+                          className={cn(
+                            "h-[84px] w-[84px] sm:h-[96px] sm:w-[96px]",
+                            "rounded-full grid place-items-center",
+                            "border border-border/60",
+                            "transition-all duration-300 ease-out",
+                            isActive ? "shadow-md" : "shadow-sm",
+                          )}
+                          style={{ backgroundColor: "#F4F6F9" }}
+                          aria-hidden="true"
+                        >
+                          <Icon
+                            className="h-[68px] w-[68px] sm:h-[76px] sm:w-[76px]"
+                            color="#1E3A8A"
+                            strokeWidth={3.75}
+                          />
+                        </div>
 
-                      <div className="mt-3">
-                        <div className="text-[14px] font-semibold leading-snug tracking-tight text-foreground">{c.name}</div>
-                      </div>
-                    </Link>
-                  </div>
-                );
-              })}
+                        <div className="mt-2.5 text-[13px] sm:text-sm font-semibold leading-tight tracking-tight text-foreground line-clamp-2">
+                          {c.name}
+                        </div>
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>
@@ -231,3 +223,4 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
   },
 );
 HomeCategoriesCarousel.displayName = "HomeCategoriesCarousel";
+

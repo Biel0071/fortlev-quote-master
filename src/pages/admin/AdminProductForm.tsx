@@ -12,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import type { StoreCategory } from "@/hooks/useStoreCategories";
 import { generateStandardProductDescription } from "@/utils/generateStandardProductDescription";
 import { detectUnitByProductName, generateAutomaticSKU } from "@/utils/productIntelligence";
+import { ProductImageSearchModal } from "@/components/admin/ProductImageSearchModal";
 
 type ImageRow = { id: string; path: string; sort_order: number };
 
@@ -70,6 +71,7 @@ export default function AdminProductForm() {
   const [featured, setFeatured] = useState(false);
   const [bestSeller, setBestSeller] = useState(false);
   const [active, setActive] = useState(true);
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
 
   const title = useMemo(() => (editingId ? "Editar produto" : "Novo produto"), [editingId]);
 
@@ -623,8 +625,13 @@ export default function AdminProductForm() {
                 <div className="text-sm text-muted-foreground">Salve o produto primeiro para enviar imagens.</div>
               ) : (
                 <>
-                  <div className="space-y-2">
-                    <Label>Upload (múltiplas)</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <Label>Upload (múltiplas)</Label>
+                      <Button type="button" variant="outline" onClick={() => setImageSearchOpen(true)}>
+                        🔎 Buscar imagens na internet
+                      </Button>
+                    </div>
                     <Input type="file" multiple accept="image/*" onChange={(e) => handleUploadImages(e.target.files)} />
                   </div>
 
@@ -667,6 +674,16 @@ export default function AdminProductForm() {
           </Card>
         </div>
       )}
+
+      {editingId ? (
+        <ProductImageSearchModal
+          open={imageSearchOpen}
+          onOpenChange={setImageSearchOpen}
+          productId={editingId}
+          initialQuery={name}
+          onImported={load}
+        />
+      ) : null}
     </div>
   );
 }

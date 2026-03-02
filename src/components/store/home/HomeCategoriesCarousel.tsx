@@ -100,6 +100,7 @@ type Props = {
 const ITEM_WIDTH_MOBILE = 140;
 const ITEM_WIDTH_DESKTOP = 164;
 const ITEM_GAP = 12;
+const CATEGORY_CAROUSEL_SPEED_FACTOR = 0.6;
 
 export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
   ({ categories, hideHeader = false }, ref) => {
@@ -117,8 +118,9 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
     );
 
     const durationSeconds = useMemo(() => {
-      const basedOnCount = normalizedCategories.length * 4;
-      return Math.min(35, Math.max(20, basedOnCount || 20));
+      const baseDuration = Math.min(35, Math.max(20, normalizedCategories.length * 4 || 20));
+      const adjusted = baseDuration / CATEGORY_CAROUSEL_SPEED_FACTOR;
+      return Math.round(adjusted);
     }, [normalizedCategories.length]);
 
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, type CSSProperties } from "react";
+import React, { useMemo, useRef, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import {
   Bolt,
@@ -100,6 +100,7 @@ type Props = {
 const ITEM_WIDTH_MOBILE = 140;
 const ITEM_WIDTH_DESKTOP = 164;
 const ITEM_GAP = 12;
+const DRAG_CLICK_THRESHOLD = 8;
 const CATEGORY_CAROUSEL_SPEED_FACTOR = 0.3;
 
 export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
@@ -124,19 +125,60 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
     }, [normalizedCategories.length]);
 
 
+    const getCycleWidth = () => {
+      const base = typeof window !== "undefined" && window.innerWidth < 640 ? ITEM_WIDTH_MOBILE : ITEM_WIDTH_DESKTOP;
+      return normalizedCategories.length * (base + ITEM_GAP);
+    };
+
+    const normalizeShift = (value: number) => {
+      if (!hasLoop) return value;
+      const cycleWidth = getCycleWidth();
+      if (cycleWidth <= 0) return value;
+
+      let next = value;
+      while (next <= -cycleWidth) next += cycleWidth;
+      while (next >= cycleWidth) next -= cycleWidth;
+      return next;
+    };
+
     const shiftBy = (direction: "prev" | "next") => {
       if (!hasLoop) return;
-
       const base = typeof window !== "undefined" && window.innerWidth < 640 ? ITEM_WIDTH_MOBILE : ITEM_WIDTH_DESKTOP;
-      const cycleWidth = normalizedCategories.length * (base + ITEM_GAP);
       const step = direction === "next" ? -(base + ITEM_GAP) : base + ITEM_GAP;
+      setManualShift((prev) => normalizeShift(prev + step));
+    };
 
-      setManualShift((prev) => {
-        const next = prev + step;
-        if (next <= -cycleWidth) return next + cycleWidth;
-        if (next >= cycleWidth) return next - cycleWidth;
-        return next;
-      });
+    const dragRef = useRef({
+      active: false,
+      startX: 0,
+      startShift: 0,
+      moved: false,
+    });
+
+    const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!hasLoop) return;
+      dragRef.current = { active: true, startX: e.clientX, startShift: manualShift, moved: false };
+      setIsPaused(true);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    };
+
+    const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!dragRef.current.active) return;
+      const delta = e.clientX - dragRef.current.startX;
+      if (Math.abs(delta) > DRAG_CLICK_THRESHOLD) {
+        dragRef.current.moved = true;
+      }
+      setManualShift(normalizeShift(dragRef.current.startShift + delta));
+    };
+
+    const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!dragRef.current.active) return;
+      dragRef.current.active = false;
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      setIsPaused(false);
+      globalThis.setTimeout(() => {
+        dragRef.current.moved = false;
+      }, 0);
     };
 
     if (!normalizedCategories.length) return null;
@@ -154,12 +196,16 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
           ) : null}
 
           <div
-            className="relative w-full overflow-hidden"
+            className={cn("relative w-full overflow-hidden", hasLoop ? "cursor-grab active:cursor-grabbing" : "")}
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
             onTouchStart={() => setIsPaused(true)}
             onTouchEnd={() => setIsPaused(false)}
             onTouchCancel={() => setIsPaused(false)}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
           >
             <button
               type="button"
@@ -207,6 +253,9 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                         )}
                         aria-label={`Categoria: ${c.name}`}
+                        onClick={(e) => {
+                          if (dragRef.current.moved) e.preventDefault();
+                        }}
                       >
                         <CategoryAvatar name={c.name} img={img} Icon={Icon} />
                         <div className="mt-3 text-[14px] font-semibold leading-snug tracking-tight text-foreground">{c.name}</div>

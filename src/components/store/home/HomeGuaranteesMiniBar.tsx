@@ -10,16 +10,16 @@ const items = [
 export function HomeGuaranteesMiniBar() {
   return (
     <div className="w-full">
-      <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {items.map((x) => {
           const Icon = x.icon;
           return (
             <div
               key={x.title}
-              className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-border bg-secondary/20 px-4 py-2 text-sm"
+              className="flex items-center gap-2 rounded-2xl border border-border bg-secondary/20 px-3 py-2.5 text-sm min-h-11"
             >
-              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-              <span className="font-medium leading-none">{x.title}</span>
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span className="font-medium leading-tight">{x.title}</span>
             </div>
           );
         })}

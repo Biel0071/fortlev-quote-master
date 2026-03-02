@@ -9,13 +9,16 @@ import { useToast } from "@/hooks/use-toast";
 
 type Mode = "quick" | "deep";
 
-type Report = {
-  architecture_summary?: string;
-  improvement_points?: string[];
-  unused_files?: string[];
-  refactor_suggestions?: string[];
-  performance_notes?: string[];
-  security_notes?: string[];
+type FullReport = {
+  generated_at?: string;
+  mode?: string;
+  scope?: string;
+  files_received?: number;
+  files_analyzed?: number;
+  payload_chars?: number;
+  truncated?: boolean;
+  analyzed_paths?: string[];
+  analysis?: Record<string, unknown>;
 };
 
 const SCOPE_OPTIONS = [
@@ -26,7 +29,6 @@ const SCOPE_OPTIONS = [
   { label: "/functions", value: "supabase/functions" },
 ] as const;
 
-// Build-time file loader (raw).
 const fileMap = import.meta.glob(
   [
     "../components/**/*.{ts,tsx}",
@@ -41,15 +43,11 @@ const fileMap = import.meta.glob(
 function filterFilesByScope(scope: string) {
   const entries = Object.entries(fileMap);
   return entries.filter(([path]) => {
-    // normalize: scope uses repo-like paths
     if (scope.startsWith("src/")) {
-      // src/... glob keys start with "../"
       const normalized = path.replace(/^\.\.\//, "src/");
       return normalized.startsWith(scope);
     }
-    if (scope === "supabase/functions") {
-      return path.includes("/supabase/functions/");
-    }
+    if (scope === "supabase/functions") return path.includes("/supabase/functions/");
     return false;
   });
 }
@@ -61,15 +59,15 @@ export default function AdminAiAnalysis() {
   const [scope, setScope] = useState<(typeof SCOPE_OPTIONS)[number]["value"]>("src/components");
   const [loading, setLoading] = useState(false);
   const [rawJson, setRawJson] = useState<string>("");
+  const [reportObj, setReportObj] = useState<FullReport | null>(null);
 
-  const scopeLabel = useMemo(
-    () => SCOPE_OPTIONS.find((x) => x.value === scope)?.label || scope,
-    [scope],
-  );
+  const scopeLabel = useMemo(() => SCOPE_OPTIONS.find((x) => x.value === scope)?.label || scope, [scope]);
 
   const run = async () => {
     setLoading(true);
     setRawJson("");
+    setReportObj(null);
+
     try {
       const files = filterFilesByScope(scope);
       const loaders = files.slice(0, mode === "quick" ? 30 : 120);
@@ -77,10 +75,7 @@ export default function AdminAiAnalysis() {
       const loaded = await Promise.all(
         loaders.map(async ([path, loader]) => {
           const content = await (loader as any)();
-          // normalize path to repo-ish
-          const normalized = path
-            .replace(/^\.\.\//, "src/")
-            .replace(/^\.\.\/\.\.\//, "");
+          const normalized = path.replace(/^\.\.\//, "src/").replace(/^\.\.\/\.\.\//, "");
           return { path: normalized, content: String(content) };
         }),
       );
@@ -90,24 +85,18 @@ export default function AdminAiAnalysis() {
       });
       if (error) throw error;
 
-      const text = String((data as any)?.report_json ?? (data as any)?.report ?? "");
-      setRawJson(text);
+      const report = ((data as any)?.report_json ?? null) as FullReport | null;
+      const serialized = JSON.stringify(report ?? data ?? {}, null, 2);
 
-      // Try parse & persist
-      let parsed: Report | null = null;
-      try {
-        parsed = typeof text === "string" ? (JSON.parse(text) as any) : (text as any);
-      } catch {
-        parsed = null;
-      }
+      setReportObj(report);
+      setRawJson(serialized);
 
       const { data: u } = await cloud.auth.getUser();
-
       await cloud.from("ai_project_reports").insert({
         created_by: u.user?.id ?? null,
         mode,
         selected_scope: scope,
-        report_json: (parsed ?? { raw: text }) as any,
+        report_json: (report ?? { raw: data }) as any,
       } as any);
 
       toast({ title: "Relatório gerado", description: `Análise (${mode}) para ${scopeLabel} salva no histórico.` });
@@ -122,12 +111,25 @@ export default function AdminAiAnalysis() {
     }
   };
 
+  const downloadReport = () => {
+    if (!rawJson) return;
+    const blob = new Blob([rawJson], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `relatorio-ia-${mode}-${scope.replace(/\//g, "-")}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <header className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight">Análise IA do projeto</h1>
         <p className="text-sm text-muted-foreground">
-          Gere relatórios técnicos (arquitetura, refatoração, performance e segurança) a partir das pastas selecionadas.
+          Gere relatórios técnicos completos (arquitetura, refatoração, performance, segurança e plano de ação).
         </p>
       </header>
 
@@ -179,13 +181,30 @@ export default function AdminAiAnalysis() {
 
       <Card className="rounded-2xl">
         <CardHeader>
-          <CardTitle>Relatório (JSON)</CardTitle>
+          <CardTitle>Resumo técnico</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          <div className="rounded-xl border border-border p-3">Arquivos recebidos: <strong>{reportObj?.files_received ?? 0}</strong></div>
+          <div className="rounded-xl border border-border p-3">Arquivos analisados: <strong>{reportObj?.files_analyzed ?? 0}</strong></div>
+          <div className="rounded-xl border border-border p-3">Payload chars: <strong>{reportObj?.payload_chars ?? 0}</strong></div>
+          <div className="rounded-xl border border-border p-3">Truncamento: <strong>{reportObj?.truncated ? "Sim" : "Não"}</strong></div>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle>Relatório completo (JSON)</CardTitle>
+            <Button variant="outline" onClick={downloadReport} disabled={!rawJson}>
+              Baixar relatório (.json)
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Textarea
             value={rawJson}
             readOnly
-            placeholder="O JSON do relatório aparecerá aqui..."
+            placeholder="O JSON completo do relatório aparecerá aqui..."
             className="min-h-[320px] rounded-xl font-mono text-xs"
           />
         </CardContent>

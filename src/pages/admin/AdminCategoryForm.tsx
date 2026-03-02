@@ -38,6 +38,8 @@ export default function AdminCategoryForm() {
 
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [editingImage, setEditingImage] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState("");
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -157,6 +159,46 @@ export default function AdminCategoryForm() {
     }
   };
 
+  const handleEditImageAi = async () => {
+    if (!imagePath) return toast({ title: "Atenção", description: "Faça upload de uma imagem primeiro." });
+    const prompt = imagePrompt.trim();
+    if (!prompt) return toast({ title: "Atenção", description: "Descreva a edição desejada." });
+
+    try {
+      setEditingImage(true);
+      const { data, error } = await cloud.functions.invoke("edit-store-image", {
+        body: {
+          bucket: "category-images",
+          sourcePath: imagePath,
+          prompt,
+          targetFolder: "ai/categorias",
+        },
+      });
+      if (error) throw error;
+      if (!data?.image_path) throw new Error("Falha ao editar imagem");
+
+      const newPath = String(data.image_path);
+      setImagePath(newPath);
+
+      if (editingId) {
+        const { error: updErr } = await cloud.from("store_categories").update({ image_path: newPath }).eq("id", editingId);
+        if (updErr) throw updErr;
+      }
+
+      toast({ title: "Imagem editada", description: "Edição salva no armazenamento em nuvem." });
+    } catch (e: any) {
+      const msg = e?.message ?? "Falha ao editar imagem";
+      const desc = msg.includes("rate_limited")
+        ? "Muitas requisições no momento, tente novamente em instantes."
+        : msg.includes("payment_required")
+          ? "Créditos de IA insuficientes no workspace."
+          : msg;
+      toast({ title: "Erro", description: desc, variant: "destructive" });
+    } finally {
+      setEditingImage(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div className="flex items-end justify-between gap-3 flex-wrap">
@@ -245,6 +287,19 @@ export default function AdminCategoryForm() {
                   <p className="mt-2 text-xs text-muted-foreground">
                     Gera uma thumbnail quadrada para a categoria e salva automaticamente.
                   </p>
+                </div>
+
+                <div className="space-y-2 rounded-xl border border-border p-3">
+                  <Label>Edição por IA da imagem atual</Label>
+                  <Textarea
+                    rows={3}
+                    value={imagePrompt}
+                    onChange={(e) => setImagePrompt(e.target.value)}
+                    placeholder="Ex.: deixar fundo mais claro, aumentar nitidez e reforçar contraste"
+                  />
+                  <Button type="button" variant="outline" className="w-full" disabled={!imagePath || editingImage} onClick={handleEditImageAi}>
+                    {editingImage ? "Editando imagem..." : "Editar e salvar no cloud"}
+                  </Button>
                 </div>
               </div>
 

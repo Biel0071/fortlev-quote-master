@@ -2,18 +2,28 @@ import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
 import type { StoreProduct, StoreProductImage } from "@/types/store";
 import { constructionProducts } from "@/data/constructionProducts";
+import { getSmartCache, runApiMicrotask, setSmartCache } from "@/utils/smartCache";
 
 type ProductRow = StoreProduct;
 
 type ProductWithImages = ProductRow & { images: StoreProductImage[] };
 
-export function useStoreProducts() {
+const PRODUCTS_CACHE_KEY = "store_products:list";
+const PRODUCTS_CACHE_TTL_MS = 1000 * 60 * 3;
+
+type UseStoreProductsOptions = {
+  enabled?: boolean;
+};
+
+export function useStoreProducts(options?: UseStoreProductsOptions) {
+  const enabled = options?.enabled ?? true;
   const [products, setProducts] = useState<ProductWithImages[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (opts?: { silent?: boolean }) => {
+    if (!enabled) return;
+    if (!opts?.silent) setLoading(true);
     setError(null);
 
     const { data, error } = await cloud
@@ -30,38 +40,49 @@ export function useStoreProducts() {
       return;
     }
 
-     const mapped: ProductWithImages[] = (data ?? [])
-       .map((p: any) => ({
-         ...p,
-         // normalize core fields (defensive for runtime stability)
-         id: String(p?.id ?? "").trim(),
-         name: String(p?.name ?? "").trim(),
-         price: Number(p?.price ?? 0),
-         promo_price: Number(p?.promo_price ?? 0),
-         stock: Number(p?.stock ?? 0),
-         images: (p.store_product_images ?? [])
-           .filter((im: any) => !!im?.path)
-           .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
-       }))
-       // drop invalid products so UI doesn't break (and keep console signal)
-       .filter((p: any) => {
-         const ok = !!p.id && !!p.name;
-         if (!ok) console.warn("[useStoreProducts] produto inválido ignorado", p);
-         return ok;
-       });
+    const mapped: ProductWithImages[] = (data ?? [])
+      .map((p: any) => ({
+        ...p,
+        id: String(p?.id ?? "").trim(),
+        name: String(p?.name ?? "").trim(),
+        price: Number(p?.price ?? 0),
+        promo_price: Number(p?.promo_price ?? 0),
+        stock: Number(p?.stock ?? 0),
+        images: (p.store_product_images ?? [])
+          .filter((im: any) => !!im?.path)
+          .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+      }))
+      .filter((p: any) => {
+        const ok = !!p.id && !!p.name;
+        if (!ok) console.warn("[useStoreProducts] produto inválido ignorado", p);
+        return ok;
+      });
 
-     setProducts(mapped);
-     setLoading(false);
+    setProducts(mapped);
+    setSmartCache(PRODUCTS_CACHE_KEY, mapped, PRODUCTS_CACHE_TTL_MS);
+    setLoading(false);
   };
 
   useEffect(() => {
-    load();
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
+    const cached = getSmartCache<ProductWithImages[]>(PRODUCTS_CACHE_KEY, PRODUCTS_CACHE_TTL_MS);
+    if (cached) {
+      setProducts(cached);
+      setLoading(false);
+      runApiMicrotask(() => load({ silent: true }));
+      return;
+    }
+
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   const activeProducts = useMemo(() => products.filter((p) => p.active), [products]);
 
-  // Helper: fallback data (constructionProducts) until admin sets prices/stock.
   const fallbackMap = useMemo(() => {
     const map = new Map<string, { price: number; unit: string; category: string }>();
     for (const p of constructionProducts) {

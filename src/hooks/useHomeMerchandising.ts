@@ -56,8 +56,13 @@ type MerchCache = {
   monthlyTopSales: string[];
 };
 
-export function useHomeMerchandising() {
-  const [loading, setLoading] = useState(true);
+type UseHomeMerchandisingOptions = {
+  enabled?: boolean;
+};
+
+export function useHomeMerchandising(options?: UseHomeMerchandisingOptions) {
+  const enabled = options?.enabled ?? true;
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   const [weeklyPicks, setWeeklyPicks] = useState<string[]>([]);
@@ -65,6 +70,11 @@ export function useHomeMerchandising() {
   const [monthlyTopSales, setMonthlyTopSales] = useState<string[]>([]);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     let alive = true;
 
     const load = async (opts?: { silent?: boolean }) => {
@@ -125,11 +135,15 @@ export function useHomeMerchandising() {
       setWeeklyPicks(weekly);
       setWeeklyBadges(badges);
       setMonthlyTopSales(topSoldMonthly.slice(0, 8));
-      setSmartCache<MerchCache>(MERCH_CACHE_KEY, {
-        weeklyPicks: weekly,
-        weeklyBadges: badges,
-        monthlyTopSales: topSoldMonthly.slice(0, 8),
-      });
+      setSmartCache<MerchCache>(
+        MERCH_CACHE_KEY,
+        {
+          weeklyPicks: weekly,
+          weeklyBadges: badges,
+          monthlyTopSales: topSoldMonthly.slice(0, 8),
+        },
+        MERCH_CACHE_TTL_MS,
+      );
       setLoading(false);
     };
 
@@ -147,7 +161,7 @@ export function useHomeMerchandising() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [enabled]);
 
   return useMemo(
     () => ({ loading, error, weeklyPicks, weeklyBadges, monthlyTopSales }),

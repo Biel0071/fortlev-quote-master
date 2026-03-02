@@ -156,7 +156,7 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
     });
 
     const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!hasLoop) return;
+      if (!hasLoop || e.button !== 0) return;
       dragRef.current = { active: true, startX: e.clientX, startShift: manualShift, moved: false };
       setIsPaused(true);
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -169,12 +169,15 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
         dragRef.current.moved = true;
       }
       setManualShift(normalizeShift(dragRef.current.startShift + delta));
+      e.preventDefault();
     };
 
     const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
       if (!dragRef.current.active) return;
       dragRef.current.active = false;
-      e.currentTarget.releasePointerCapture(e.pointerId);
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
       setIsPaused(false);
       globalThis.setTimeout(() => {
         dragRef.current.moved = false;
@@ -196,7 +199,10 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
           ) : null}
 
           <div
-            className={cn("relative w-full overflow-hidden", hasLoop ? "cursor-grab active:cursor-grabbing" : "")}
+            className={cn(
+              "relative w-full overflow-hidden select-none touch-pan-y",
+              hasLoop ? "cursor-grab active:cursor-grabbing" : "",
+            )}
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
             onTouchStart={() => setIsPaused(true)}
@@ -205,6 +211,7 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
+            onPointerLeave={onPointerUp}
             onPointerCancel={onPointerUp}
           >
             <button
@@ -253,6 +260,8 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                         )}
                         aria-label={`Categoria: ${c.name}`}
+                        draggable={false}
+                        onDragStart={(e) => e.preventDefault()}
                         onClick={(e) => {
                           if (dragRef.current.moved) e.preventDefault();
                         }}

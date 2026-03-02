@@ -37,6 +37,14 @@ export function setSmartCache<T>(key: string, value: T) {
   }
 }
 
+export function invalidateSmartCache(key: string) {
+  try {
+    sessionStorage.removeItem(buildKey(key));
+  } catch {
+    // silent fail for private mode / storage disabled
+  }
+}
+
 export function runApiMicrotask(task: () => void | Promise<void>) {
   if (typeof queueMicrotask === "function") {
     queueMicrotask(() => {

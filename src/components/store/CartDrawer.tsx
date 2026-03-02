@@ -105,7 +105,7 @@ export function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange
               }}
               disabled={lines.length === 0}
             >
-              Finalizar
+              Finalizar sua compra
             </Button>
           </div>
 

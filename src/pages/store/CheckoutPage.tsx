@@ -9,9 +9,10 @@ import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { useCheckoutSessionTracker } from "@/hooks/useCheckoutSessionTracker";
+import { useDynamicSeo } from "@/hooks/useDynamicSeo";
 import { cloud } from "@/lib/cloud";
 import { calcShipping } from "@/utils/shipping";
-import { cleanPhone, formatCurrency } from "@/utils/formatters";
+import { cleanPhone, formatCurrency, formatWhatsappMask, isValidBrazilPhone } from "@/utils/formatters";
 import { fetchCepData, formatAddress } from "@/utils/cepService";
 import { CheckoutIdentifyStep } from "@/components/store/checkout/CheckoutIdentifyStep";
 import { CheckoutDeliveryStep } from "@/components/store/checkout/CheckoutDeliveryStep";
@@ -49,6 +50,9 @@ type OrderRpcResult = {
   total: number;
 };
 
+const sanitizeNameInput = (value: string) => value.replace(/[<>]/g, "").replace(/\s{2,}/g, " ").slice(0, 120);
+const sanitizePhoneInput = (value: string) => cleanPhone(value).slice(0, 11);
+
 export default function CheckoutPage() {
   const nav = useNavigate();
   const cart = useCart();
@@ -56,6 +60,12 @@ export default function CheckoutPage() {
   const leadTracker = useCheckoutSessionTracker();
   const { activeProducts } = useStoreProducts();
   const contact = useStoreContact();
+
+  useDynamicSeo({
+    title: `Finalizar sua compra | ${contact.storeName || "Materiais de Construção"}`,
+    description: "Finalize sua compra com segurança em poucos passos e escolha o melhor envio para sua obra.",
+    canonicalPath: "/checkout",
+  });
 
   const [step, setStep] = useState<Step>("identify");
   const [loadingCep, setLoadingCep] = useState(false);
@@ -118,6 +128,11 @@ export default function CheckoutPage() {
       })),
     [computed.lines],
   );
+
+  const phoneError = useMemo(() => {
+    if (!customerPhone) return undefined;
+    return isValidBrazilPhone(customerPhone) ? undefined : "Informe um WhatsApp válido com DDD (10 ou 11 dígitos).";
+  }, [customerPhone]);
 
   const resolveCouponDiscount = async () => {
     const code = cart.couponCode.trim();
@@ -398,7 +413,11 @@ export default function CheckoutPage() {
       <StoreTopbar cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="mx-auto w-full max-w-4xl px-4 sm:px-6 py-8 pb-24 md:pb-10">
+      <main className="mx-auto w-full max-w-4xl px-4 py-8 pb-24 sm:px-6 md:pb-10">
+        <nav aria-label="breadcrumb" className="mb-4 text-sm text-muted-foreground">
+          Carrinho <span className="mx-1">/</span> <span className="font-medium text-foreground">Finalizar sua compra</span>
+        </nav>
+
         {computed.lines.length === 0 ? (
           <div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
             Carrinho vazio.
@@ -406,10 +425,11 @@ export default function CheckoutPage() {
         ) : step === "identify" ? (
           <CheckoutIdentifyStep
             name={customerName}
-            phone={customerPhone}
+            phone={formatWhatsappMask(customerPhone)}
+            phoneError={phoneError}
             loading={placing}
-            onNameChange={setCustomerName}
-            onPhoneChange={setCustomerPhone}
+            onNameChange={(value) => setCustomerName(sanitizeNameInput(value))}
+            onPhoneChange={(value) => setCustomerPhone(sanitizePhoneInput(value))}
             onContinue={handleContinue}
           />
         ) : (

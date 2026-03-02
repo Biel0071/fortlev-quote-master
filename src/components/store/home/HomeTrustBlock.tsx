@@ -5,7 +5,7 @@ const items = [
   {
     icon: Truck,
     title: "Entrega rápida",
-    desc: "Prazo e custo transparentes no checkout.",
+    desc: "Prazo e custo transparentes ao finalizar sua compra.",
   },
   {
     icon: CreditCard,

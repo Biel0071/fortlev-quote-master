@@ -40,11 +40,12 @@ export function CheckoutDeliveryStep({
   onFinish,
 }: Props) {
   return (
-    <Card className="mx-auto max-w-2xl rounded-2xl">
-      <CardHeader>
-        <CardTitle className="text-2xl tracking-tight">Dados de entrega</CardTitle>
+    <Card className="mx-auto max-w-2xl rounded-2xl border-border/80 shadow-sm">
+      <CardHeader className="space-y-2 pb-3">
+        <CardTitle className="text-2xl tracking-tight">Finalizar sua compra</CardTitle>
+        <p className="text-sm text-muted-foreground">Preencha os dados de entrega para concluir seu pedido.</p>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="checkout-cep">CEP</Label>
           <div className="flex gap-2">
@@ -55,8 +56,9 @@ export function CheckoutDeliveryStep({
               placeholder="00000-000"
               inputMode="numeric"
               maxLength={9}
+              className="h-11 rounded-xl"
             />
-            <Button variant="outline" onClick={onFetchCep} disabled={loadingCep}>
+            <Button variant="outline" onClick={onFetchCep} disabled={loadingCep} className="h-11 rounded-xl px-5">
               {loadingCep ? "Buscando..." : "Buscar"}
             </Button>
           </div>
@@ -69,6 +71,7 @@ export function CheckoutDeliveryStep({
             value={address}
             onChange={(e) => onAddressChange(e.target.value)}
             maxLength={255}
+            className="h-11 rounded-xl"
           />
         </div>
 
@@ -80,6 +83,7 @@ export function CheckoutDeliveryStep({
               value={number}
               onChange={(e) => onNumberChange(e.target.value)}
               maxLength={20}
+              className="h-11 rounded-xl"
             />
           </div>
           <div className="space-y-2">
@@ -89,6 +93,7 @@ export function CheckoutDeliveryStep({
               value={complement}
               onChange={(e) => onComplementChange(e.target.value)}
               maxLength={255}
+              className="h-11 rounded-xl"
             />
           </div>
         </div>
@@ -101,14 +106,15 @@ export function CheckoutDeliveryStep({
             onChange={(e) => onNotesChange(e.target.value)}
             placeholder="Ex.: entregar no portão"
             maxLength={1000}
+            className="min-h-24 rounded-xl"
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 pt-2">
-          <Button variant="outline" onClick={onBack} className="sm:flex-1">
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          <Button variant="outline" onClick={onBack} className="h-11 rounded-xl sm:flex-1">
             Voltar
           </Button>
-          <Button onClick={onFinish} disabled={loadingFinish} className="sm:flex-1">
+          <Button onClick={onFinish} disabled={loadingFinish} className="h-11 rounded-xl sm:flex-1">
             {loadingFinish ? "Processando..." : "Finalizar pedido"}
           </Button>
         </div>

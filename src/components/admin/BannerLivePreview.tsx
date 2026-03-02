@@ -40,6 +40,11 @@ export function BannerLivePreview({
   const mobile = mobileSrc || legacySrc || "";
   const hasImage = Boolean(desktop || mobile);
 
+  const safeTitle = title?.trim() ?? "";
+  const safeSubtitle = subtitle?.trim() ?? "";
+  const safeButton = buttonLabel?.trim() ?? "";
+  const hasOverlayContent = Boolean(safeTitle || safeSubtitle || safeButton);
+
   return (
     <div className="rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
@@ -56,24 +61,25 @@ export function BannerLivePreview({
         {hasImage ? (
           <picture>
             {mobile ? <source media="(max-width: 640px)" srcSet={mobile} /> : null}
-            <img src={desktop || mobile} alt={title || "Preview do banner"} className="h-full w-full object-cover" loading="lazy" />
+            <img src={desktop || mobile} alt={safeTitle || "Preview do banner"} className="h-full w-full object-cover" loading="lazy" />
           </picture>
         ) : (
           <div className="h-full w-full bg-muted" />
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/30 to-transparent" />
+        {hasOverlayContent ? <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/30 to-transparent" /> : null}
 
-        <div className="absolute inset-x-0 bottom-0 p-3 sm:p-5">
-          <h3 className="text-base sm:text-lg font-bold leading-tight text-foreground line-clamp-2">
-            {title || "Título do banner"}
-          </h3>
-          {subtitle ? <p className="mt-1 text-xs sm:text-sm text-muted-foreground line-clamp-2">{subtitle}</p> : null}
-
-          <div className="mt-3 inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs sm:text-sm font-semibold text-primary-foreground">
-            {buttonLabel || "Ver ofertas"}
+        {hasOverlayContent ? (
+          <div className="absolute inset-x-0 bottom-0 p-3 sm:p-5">
+            {safeTitle ? <h3 className="text-base sm:text-lg font-bold leading-tight text-foreground line-clamp-2">{safeTitle}</h3> : null}
+            {safeSubtitle ? <p className="mt-1 text-xs sm:text-sm text-foreground/90 line-clamp-2">{safeSubtitle}</p> : null}
+            {safeButton ? (
+              <div className="mt-3 inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs sm:text-sm font-semibold text-primary-foreground">
+                {safeButton}
+              </div>
+            ) : null}
           </div>
-        </div>
+        ) : null}
       </div>
 
       <div className="mt-2 text-xs text-muted-foreground">Escala visual do tamanho selecionado. Link: {linkUrl || "/loja"}</div>

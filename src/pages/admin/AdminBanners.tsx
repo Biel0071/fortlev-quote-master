@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { BANNER_PRESET_SIZES, BannerLivePreview } from "@/components/admin/BannerLivePreview";
-import { publicImageUrl } from "@/utils/storage";
+import { publicImageUrl, normalizeStorageObjectPath } from "@/utils/storage";
 import { invalidateSmartCache } from "@/utils/smartCache";
 
 type Banner = {
@@ -38,29 +38,15 @@ type BannerForm = {
 };
 
 type BannerImageField = "image_desktop_path" | "image_mobile_path" | "image_path";
-type BannerLocalPreview = Record<BannerImageField, string>; 
+type BannerLocalPreview = Record<BannerImageField, string>;
 
 const DEFAULT_SIZE_KEY = "desktop-standard";
 const HOME_CONTENT_CACHE_KEY = "home_content:v1";
 
 function normalizeBannerImagePath(value?: string | null) {
-  if (!value) return "";
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  if (trimmed.startsWith("blob:")) return "";
-
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    const marker = "/storage/v1/object/public/banner-images/";
-    const markerIndex = trimmed.indexOf(marker);
-    if (markerIndex >= 0) {
-      return decodeURIComponent(trimmed.slice(markerIndex + marker.length));
-    }
-    return "";
-  }
-
-  return trimmed.replace(/^\/+/, "");
+  return normalizeStorageObjectPath("banner-images", value);
 }
+
 
 function emptyForm(): BannerForm {
   return {

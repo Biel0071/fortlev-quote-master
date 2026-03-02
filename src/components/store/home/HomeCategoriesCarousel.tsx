@@ -18,7 +18,6 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import type { StoreCategory } from "@/hooks/useStoreCategories";
 import { cn } from "@/lib/utils";
 import { publicImageUrl } from "@/utils/storage";
@@ -153,68 +152,66 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
           ) : null}
 
           <div
-            className="relative overflow-hidden"
+            className="relative w-full overflow-hidden"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
             onTouchStart={() => setIsPaused(true)}
             onTouchEnd={() => setIsPaused(false)}
             onTouchCancel={() => setIsPaused(false)}
           >
-            <Button
+            <button
               type="button"
-              variant="outline"
-              size="icon"
-              className="absolute left-[10px] top-1/2 z-20 h-9 w-9 -translate-y-1/2 bg-card shadow-sm"
+              className="absolute left-0 top-1/2 z-20 -translate-y-1/2 border-0 bg-transparent p-0 text-primary shadow-none"
               onClick={() => shiftBy("prev")}
               disabled={!hasLoop}
               aria-label="Categoria anterior"
             >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+              <ChevronLeft className="h-6 w-6" />
+            </button>
 
-            <Button
+            <button
               type="button"
-              variant="outline"
-              size="icon"
-              className="absolute right-[10px] top-1/2 z-20 h-9 w-9 -translate-y-1/2 bg-card shadow-sm"
+              className="absolute right-0 top-1/2 z-20 -translate-y-1/2 border-0 bg-transparent p-0 text-primary shadow-none"
               onClick={() => shiftBy("next")}
               disabled={!hasLoop}
               aria-label="Próxima categoria"
             >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+              <ChevronRight className="h-6 w-6" />
+            </button>
 
-            <div
-              className={cn(
-                "w-max [will-change:transform]",
-                "motion-safe:animate-[scrollLoop_var(--carousel-duration)_linear_infinite]",
-                "motion-reduce:animate-none",
-                isPaused && "[animation-play-state:paused]",
-              )}
-              style={{ "--carousel-duration": `${durationSeconds}s` } as CSSProperties}
-            >
-              <div className="flex w-max gap-3 px-12" style={{ transform: `translateX(${manualShift}px)` }}>
-                {loopedCategories.map((c, index) => {
-                  const Icon = pickIcon(c.name);
-                  const img = publicImageUrl("category-images", c.image_path ?? null);
+            <div className="overflow-hidden px-10 sm:px-12">
+              <div
+                className={cn(
+                  "w-max [will-change:transform]",
+                  "motion-safe:animate-[scrollLoop_var(--carousel-duration)_linear_infinite]",
+                  "motion-reduce:animate-none",
+                  isPaused && "[animation-play-state:paused]",
+                )}
+                style={{ "--carousel-duration": `${durationSeconds}s` } as CSSProperties}
+              >
+                <div className="flex w-max gap-3" style={{ transform: `translateX(${manualShift}px)` }}>
+                  {loopedCategories.map((c, index) => {
+                    const Icon = pickIcon(c.name);
+                    const img = publicImageUrl("category-images", c.image_path ?? null);
 
-                  return (
-                    <Link
-                      key={`${c.id}-${index}`}
-                      to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
-                      className={cn(
-                        "group flex w-[140px] shrink-0 flex-col items-center text-center sm:w-[164px]",
-                        "rounded-2xl px-2 py-3 sm:px-3 sm:py-4",
-                        "transition-transform duration-200 ease-out hover:-translate-y-1",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                      )}
-                      aria-label={`Categoria: ${c.name}`}
-                    >
-                      <CategoryAvatar name={c.name} img={img} Icon={Icon} />
-                      <div className="mt-3 text-[14px] font-semibold leading-snug tracking-tight text-foreground">{c.name}</div>
-                    </Link>
-                  );
-                })}
+                    return (
+                      <Link
+                        key={`${c.id}-${index}`}
+                        to={`/loja?categoria=${encodeURIComponent(c.slug)}`}
+                        className={cn(
+                          "group flex w-[140px] shrink-0 flex-col items-center text-center sm:w-[164px]",
+                          "rounded-2xl px-2 py-3 sm:px-3 sm:py-4",
+                          "transition-transform duration-200 ease-out hover:-translate-y-1",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        )}
+                        aria-label={`Categoria: ${c.name}`}
+                      >
+                        <CategoryAvatar name={c.name} img={img} Icon={Icon} />
+                        <div className="mt-3 text-[14px] font-semibold leading-snug tracking-tight text-foreground">{c.name}</div>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

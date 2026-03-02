@@ -100,7 +100,7 @@ type Props = {
 const ITEM_WIDTH_MOBILE = 140;
 const ITEM_WIDTH_DESKTOP = 164;
 const ITEM_GAP = 12;
-const CATEGORY_CAROUSEL_SPEED_FACTOR = 0.6;
+const CATEGORY_CAROUSEL_SPEED_FACTOR = 0.3;
 
 export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
   ({ categories, hideHeader = false }, ref) => {

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
+import { CartDrawer } from "@/components/store/CartDrawer";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
@@ -20,7 +21,6 @@ import { ProductBadges } from "@/components/store/pdp/ProductBadges";
 import { QuantitySelector } from "@/components/store/pdp/QuantitySelector";
 import { ShippingCalculator } from "@/components/store/pdp/ShippingCalculator";
 import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
-
 
 function ProductDescription({ markdown }: { markdown: string }) {
   const lines = useMemo(() => markdown.split(/\r?\n/), [markdown]);
@@ -88,7 +88,6 @@ function splitDescription(markdown: string) {
   const generalIdx = md.search(/^##\s+Descrição Geral\s*$/m);
   const techIdx = md.search(/^##\s+Ficha Técnica\s*$/m);
 
-  // If headings are missing, keep everything as general
   if (generalIdx === -1 && techIdx === -1) return { general: md, tech: "" };
 
   const startGeneral = generalIdx !== -1 ? generalIdx : 0;
@@ -115,6 +114,8 @@ export default function ProductPage() {
     () => storePages.publishedPages.map((p) => ({ title: p.title, slug: p.slug })),
     [storePages.publishedPages],
   );
+
+  const [cartOpen, setCartOpen] = useState(false);
 
   const product = useMemo(() => activeProducts.find((p) => p.id === id), [activeProducts, id]);
 
@@ -144,7 +145,6 @@ export default function ProductPage() {
     return v > 0 ? v : null;
   }, [effectivePrice]);
 
-
   const descriptionMd = useMemo(() => {
     const existing = String((product as any)?.description ?? "").trim();
     if (existing) return existing;
@@ -161,7 +161,6 @@ export default function ProductPage() {
   const descriptionParts = useMemo(() => splitDescription(descriptionMd), [descriptionMd]);
 
   useEffect(() => {
-    // track product visits for "Precisa de ajuda?" badge
     if (!id) return;
     const key = "store_product_views_v1";
     const prev = Number(sessionStorage.getItem(key) || "0");
@@ -177,8 +176,9 @@ export default function ProductPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <StoreTopbar cartCount={cart.totalItems} />
-      <StoreMobileChrome cartCount={cart.totalItems} />
+      <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
+      <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
+      <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
         <Button asChild variant="ghost" className="h-11 rounded-2xl w-fit">
@@ -191,7 +191,6 @@ export default function ProductPage() {
           <div className="text-muted-foreground">Produto não encontrado.</div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-12">
-            {/* 1️⃣ Galeria */}
             <div className="lg:col-span-7">
               <Card className="rounded-3xl overflow-hidden border-border bg-card shadow-sm">
                 <div className="aspect-[4/3] bg-muted/20">
@@ -232,16 +231,12 @@ export default function ProductPage() {
               </Card>
             </div>
 
-            {/* Conteúdo */}
             <div className="lg:col-span-5 space-y-4">
-              {/* 2️⃣ Badge promo/destaque */}
               <ProductBadges featured={Boolean((product as any).featured)} basePrice={basePrice} promoPrice={promoPrice} />
 
-              {/* 3️⃣ Nome */}
               <div>
                 <h1 className="text-[28px] font-bold tracking-tight leading-tight">{product.name}</h1>
 
-                {/* 4️⃣ Disponibilidade */}
                 <div className="mt-2 text-sm">
                   {Number((product as any).stock ?? 0) <= Number((product as any).min_stock ?? 0) ? (
                     <span className="text-muted-foreground">
@@ -255,7 +250,6 @@ export default function ProductPage() {
                 </div>
               </div>
 
-              {/* 6️⃣ Preço premium */}
               <div className="space-y-2">
                 {hasPromo ? (
                   <div className="text-sm text-muted-foreground line-through">De {formatCurrency(basePrice)}</div>
@@ -264,7 +258,6 @@ export default function ProductPage() {
                 {installments ? <div className="text-sm text-muted-foreground">{installments}</div> : null}
               </div>
 
-              {/* 7️⃣ Desconto PIX (global 7%) */}
               {pixPrice ? (
                 <Card className="rounded-3xl border-border bg-card shadow-sm">
                   <CardContent className="p-5">
@@ -276,31 +269,33 @@ export default function ProductPage() {
                 </Card>
               ) : null}
 
-              {/* 9️⃣ Total dinâmico */}
               <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 px-4 py-3">
                 <span className="text-sm text-muted-foreground">Total</span>
                 <span className="text-lg font-bold">{formatCurrency(totalDynamic)}</span>
               </div>
 
-              {/* 🔟 Seletor quantidade */}
               <QuantitySelector value={qty} onChange={setQty} />
 
-              {/* 1️⃣1️⃣ Botão principal */}
               <Button
                 className="h-14 rounded-2xl w-full shadow-sm transition-transform active:scale-[0.99]"
                 onClick={() => {
                   trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: (product as any).id });
                   tracker.track({ type: "add_cart", productId: (product as any).id, categoryId: (product as any).category_id ?? null });
-                  cart.add((product as any).id, Math.max(1, qty));
+
+                  cart.add((product as any).id, Math.max(1, qty), {
+                    name: (product as any).name ?? "Produto",
+                    unitPrice: effectivePrice,
+                    unit: (product as any).unit ?? "un",
+                    imagePath: (product as any)?.images?.[0]?.path ?? null,
+                  });
+                  setCartOpen(true);
                 }}
               >
                 Adicionar ao carrinho
               </Button>
 
-              {/* 1️⃣2️⃣ Bloco cálculo frete (regra atual por valor) */}
               <ShippingCalculator subtotal={totalDynamic} />
 
-              {/* 1️⃣3️⃣ Cards informativos (Unidade / Prazo / Pagamento) */}
               <Card className="rounded-3xl border-border bg-card shadow-sm">
                 <CardContent className="p-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -323,7 +318,6 @@ export default function ProductPage() {
                 </CardContent>
               </Card>
 
-              {/* 6️⃣ Blocos 2x2 (Entrega / Parcelamento / Segurança / Garantia) */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-2xl border border-border bg-card p-4">
                   <div className="flex items-center gap-3">
@@ -350,7 +344,7 @@ export default function ProductPage() {
                   </div>
                 </div>
               </div>
-              {/* 8️⃣ Descrição Geral */}
+
               {descriptionParts.general ? (
                 <Card className="rounded-3xl border-border bg-card shadow-sm">
                   <CardContent className="p-5">
@@ -359,7 +353,6 @@ export default function ProductPage() {
                 </Card>
               ) : null}
 
-              {/* 9️⃣ Ficha Técnica */}
               {descriptionParts.tech ? (
                 <Card className="rounded-3xl border-border bg-card shadow-sm">
                   <CardContent className="p-5">
@@ -372,7 +365,6 @@ export default function ProductPage() {
         )}
       </main>
 
-      {/* 🔟 Footer (mesmo da Home) */}
       <StoreFooter footer={home.footer} pageLinks={pageLinks} />
     </div>
   );

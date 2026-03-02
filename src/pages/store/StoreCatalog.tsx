@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
+import { CartDrawer } from "@/components/store/CartDrawer";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
@@ -19,6 +20,7 @@ export default function StoreCatalog() {
   const { activeCategories } = useStoreCategories();
 
   const [q, setQ] = useState("");
+  const [cartOpen, setCartOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
@@ -45,7 +47,6 @@ export default function StoreCatalog() {
           if ((p.category_id ?? null) !== selectedCategoryId) return false;
         }
 
-        // promo filter
         const promoOnly = searchParams.get("promo") === "1";
         if (promoOnly) {
           const price = Number(p?.price ?? 0);
@@ -76,8 +77,9 @@ export default function StoreCatalog() {
 
   return (
     <div className="min-h-screen bg-background">
-      <StoreTopbar cartCount={cart.totalItems} />
-      <StoreMobileChrome cartCount={cart.totalItems} />
+      <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
+      <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
+      <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
         <section className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
@@ -158,7 +160,17 @@ export default function StoreCatalog() {
                 key={p.id}
                 product={p}
                 onAdd={(productId, qty) => {
-                  cart.add(productId, qty);
+                  const price = Number(p?.price ?? 0);
+                  const promo = Number(p?.promo_price ?? 0);
+                  const effectivePrice = promo > 0 && promo < price ? promo : price;
+
+                  cart.add(productId, qty, {
+                    name: p?.name ?? "Produto",
+                    unitPrice: effectivePrice,
+                    unit: p?.unit ?? "un",
+                    imagePath: p?.images?.[0]?.path ?? null,
+                  });
+                  setCartOpen(true);
                   tracker.track({ type: "add_cart", productId, categoryId: p.category_id ?? null });
                 }}
               />

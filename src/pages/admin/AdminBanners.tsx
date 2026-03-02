@@ -8,6 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { BANNER_PRESET_SIZES, BannerLivePreview } from "@/components/admin/BannerLivePreview";
+import { publicImageUrl } from "@/utils/storage";
+import { invalidateSmartCache } from "@/utils/smartCache";
 
 type Banner = {
   id: string;
@@ -39,6 +41,26 @@ type BannerImageField = "image_desktop_path" | "image_mobile_path" | "image_path
 type BannerLocalPreview = Record<BannerImageField, string>; 
 
 const DEFAULT_SIZE_KEY = "desktop-standard";
+const HOME_CONTENT_CACHE_KEY = "home_content:v1";
+
+function normalizeBannerImagePath(value?: string | null) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  if (trimmed.startsWith("blob:")) return "";
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    const marker = "/storage/v1/object/public/banner-images/";
+    const markerIndex = trimmed.indexOf(marker);
+    if (markerIndex >= 0) {
+      return decodeURIComponent(trimmed.slice(markerIndex + marker.length));
+    }
+    return "";
+  }
+
+  return trimmed.replace(/^\/+/, "");
+}
 
 function emptyForm(): BannerForm {
   return {
@@ -88,10 +110,7 @@ export default function AdminBanners() {
   const [createLocalPreview, setCreateLocalPreview] = useState<BannerLocalPreview>(emptyLocalPreview());
   const [editLocalPreview, setEditLocalPreview] = useState<BannerLocalPreview>(emptyLocalPreview());
 
-  const imageUrl = (path?: string | null) => {
-    if (!path) return "";
-    return cloud.storage.from("banner-images").getPublicUrl(path).data.publicUrl;
-  };
+  const imageUrl = (path?: string | null) => publicImageUrl("banner-images", path);
 
   const updateLocalPreview = useCallback(
     (
@@ -191,7 +210,9 @@ export default function AdminBanners() {
     try {
       setEditingCreateField(field);
       const newPath = await requestBannerEdit(sourcePath, prompt);
-      setCreateForm((p) => ({ ...p, [field]: newPath }));
+      const normalized = normalizeBannerImagePath(newPath);
+      if (!normalized) throw new Error("Caminho de imagem inválido retornado pela edição");
+      setCreateForm((p) => ({ ...p, [field]: normalized }));
       toast({ title: "Imagem editada", description: "Nova versão salva no armazenamento em nuvem." });
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Falha ao editar imagem";
@@ -217,11 +238,14 @@ export default function AdminBanners() {
     try {
       setEditingEditField(field);
       const newPath = await requestBannerEdit(sourcePath, prompt);
+      const normalized = normalizeBannerImagePath(newPath);
+      if (!normalized) throw new Error("Caminho de imagem inválido retornado pela edição");
 
-      setEditForm((p) => ({ ...p, [field]: newPath }));
-      const { error } = await cloud.from("store_banners").update({ [field]: newPath }).eq("id", editingId);
+      setEditForm((p) => ({ ...p, [field]: normalized }));
+      const { error } = await cloud.from("store_banners").update({ [field]: normalized }).eq("id", editingId);
       if (error) throw error;
 
+      invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
       await load();
       toast({ title: "Imagem editada", description: "Banner atualizado e salvo no armazenamento em nuvem." });
     } catch (error: unknown) {
@@ -238,7 +262,10 @@ export default function AdminBanners() {
   };
 
   const create = async () => {
-    const hasAnyImage = Boolean(createForm.image_desktop_path || createForm.image_mobile_path || createForm.image_path);
+    const normalizedDesktop = normalizeBannerImagePath(createForm.image_desktop_path);
+    const normalizedMobile = normalizeBannerImagePath(createForm.image_mobile_path);
+    const normalizedLegacy = normalizeBannerImagePath(createForm.image_path);
+    const hasAnyImage = Boolean(normalizedDesktop || normalizedMobile || normalizedLegacy);
     if (!hasAnyImage) {
       return toast({ title: "Atenção", description: "Faça upload de ao menos uma imagem do banner." });
     }
@@ -246,9 +273,9 @@ export default function AdminBanners() {
     const { error } = await cloud.from("store_banners").insert({
       title: createForm.title.trim(),
       subtitle: createForm.subtitle.trim() || null,
-      image_path: createForm.image_path || null,
-      image_desktop_path: createForm.image_desktop_path || null,
-      image_mobile_path: createForm.image_mobile_path || null,
+      image_path: normalizedLegacy || null,
+      image_desktop_path: normalizedDesktop || null,
+      image_mobile_path: normalizedMobile || null,
       link_url: createForm.link_url.trim() || null,
       button_label: createForm.button_label.trim() || null,
       sort_order: Number(createForm.sort_order) || 0,
@@ -257,6 +284,7 @@ export default function AdminBanners() {
 
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
 
+    invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
     toast({ title: "Banner salvo", description: "Salvo com sucesso e disponível nesta tela e na Home do sistema." });
     clearLocalPreview(setCreateLocalPreview, createLocalPreview);
     setCreateForm(emptyForm());
@@ -269,9 +297,9 @@ export default function AdminBanners() {
     setEditForm({
       title: b.title,
       subtitle: b.subtitle ?? "",
-      image_path: b.image_path ?? "",
-      image_desktop_path: b.image_desktop_path ?? "",
-      image_mobile_path: b.image_mobile_path ?? "",
+      image_path: normalizeBannerImagePath(b.image_path),
+      image_desktop_path: normalizeBannerImagePath(b.image_desktop_path),
+      image_mobile_path: normalizeBannerImagePath(b.image_mobile_path),
       link_url: b.link_url ?? "",
       button_label: b.button_label ?? "",
       sort_order: b.sort_order,
@@ -283,7 +311,10 @@ export default function AdminBanners() {
   const saveEdit = async () => {
     if (!editingId) return;
 
-    const hasAnyImage = Boolean(editForm.image_desktop_path || editForm.image_mobile_path || editForm.image_path);
+    const normalizedDesktop = normalizeBannerImagePath(editForm.image_desktop_path);
+    const normalizedMobile = normalizeBannerImagePath(editForm.image_mobile_path);
+    const normalizedLegacy = normalizeBannerImagePath(editForm.image_path);
+    const hasAnyImage = Boolean(normalizedDesktop || normalizedMobile || normalizedLegacy);
     if (!hasAnyImage) {
       return toast({ title: "Atenção", description: "Faça upload de ao menos uma imagem do banner." });
     }
@@ -293,9 +324,9 @@ export default function AdminBanners() {
       .update({
         title: editForm.title.trim(),
         subtitle: editForm.subtitle.trim() || null,
-        image_path: editForm.image_path || null,
-        image_desktop_path: editForm.image_desktop_path || null,
-        image_mobile_path: editForm.image_mobile_path || null,
+        image_path: normalizedLegacy || null,
+        image_desktop_path: normalizedDesktop || null,
+        image_mobile_path: normalizedMobile || null,
         link_url: editForm.link_url.trim() || null,
         button_label: editForm.button_label.trim() || null,
         sort_order: Number(editForm.sort_order) || 0,
@@ -305,6 +336,7 @@ export default function AdminBanners() {
 
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
 
+    invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
     toast({ title: "Banner salvo", description: "Alterações salvas e refletidas nesta tela e na Home do sistema." });
     clearLocalPreview(setEditLocalPreview, editLocalPreview);
     setEditingId(null);
@@ -314,12 +346,14 @@ export default function AdminBanners() {
   const remove = async (id: string) => {
     const { error } = await cloud.from("store_banners").delete().eq("id", id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
     await load();
   };
 
   const toggleActive = async (b: Banner) => {
     const { error } = await cloud.from("store_banners").update({ active: !b.active }).eq("id", b.id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
     await load();
   };
 

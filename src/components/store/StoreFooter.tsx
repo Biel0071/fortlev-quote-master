@@ -22,39 +22,75 @@ export function StoreFooter({
   const facebookUrl = (footer as any)?.facebook_url ? String((footer as any).facebook_url) : "";
   const hasSocial = Boolean(instagramUrl || facebookUrl);
 
+  const bySlug = new Map(pageLinks.map((p) => [p.slug, p] as const));
+  const institutionalLinks = [
+    bySlug.get("politica-de-privacidade")
+      ? { title: "Política de Privacidade", slug: bySlug.get("politica-de-privacidade")!.slug }
+      : null,
+    bySlug.get("politica-de-trocas-e-devolucoes")
+      ? { title: "Trocas e Devoluções", slug: bySlug.get("politica-de-trocas-e-devolucoes")!.slug }
+      : null,
+    bySlug.get("termos-de-uso")
+      ? { title: "Termos de Uso", slug: bySlug.get("termos-de-uso")!.slug }
+      : bySlug.get("politica-de-vendas")
+        ? { title: "Termos de Uso", slug: bySlug.get("politica-de-vendas")!.slug }
+        : null,
+  ].filter(Boolean) as Array<{ title: string; slug: string }>;
+
+  const helpLinks = [
+    bySlug.get("entrega-e-retirada")
+      ? { title: "Entrega e retirada", slug: bySlug.get("entrega-e-retirada")!.slug }
+      : bySlug.get("entrega")
+        ? { title: "Entrega e retirada", slug: bySlug.get("entrega")!.slug }
+        : null,
+    bySlug.get("formas-de-pagamento")
+      ? { title: "Formas de pagamento", slug: bySlug.get("formas-de-pagamento")!.slug }
+      : bySlug.get("pagamento")
+        ? { title: "Formas de pagamento", slug: bySlug.get("pagamento")!.slug }
+        : null,
+    bySlug.get("garantia")
+      ? { title: "Garantia", slug: bySlug.get("garantia")!.slug }
+      : bySlug.get("politica-de-vendas")
+        ? { title: "Garantia", slug: bySlug.get("politica-de-vendas")!.slug }
+        : null,
+    bySlug.get("fale-conosco")
+      ? { title: "Fale conosco", slug: bySlug.get("fale-conosco")!.slug }
+      : bySlug.get("contato")
+        ? { title: "Fale conosco", slug: bySlug.get("contato")!.slug }
+        : null,
+  ].filter(Boolean) as Array<{ title: string; slug: string }>;
+
+  const usedSlugs = new Set([...institutionalLinks, ...helpLinks].map((l) => l.slug));
+  const extraPublishedLinks = pageLinks.filter((p) => !usedSlugs.has(p.slug));
+
   const gridSpanAll = hasSocial ? "md:col-span-12" : "md:col-span-10";
 
   return (
     <footer className="border-t border-border bg-background">
       <div
-        className={`max-w-6xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 ${hasSocial ? "md:grid-cols-12" : "md:grid-cols-10"} gap-10`}
+        className={`max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-4 grid grid-cols-1 ${hasSocial ? "md:grid-cols-12" : "md:grid-cols-10"} gap-8`}
       >
         {/* Marca */}
         <div className="md:col-span-4 space-y-4">
           <div className="flex items-center gap-3">
-            {logoUrl ? (
-              <img src={logoUrl} alt={`Logo ${storeName}`} className="h-10 w-auto" loading="lazy" />
-            ) : (
-              <div className="h-10 w-10 rounded-2xl fortlev-gradient" aria-hidden="true" />
-            )}
-            <div>
-              <div className="font-semibold">{storeName}</div>
-            </div>
-          </div>
+            {logoUrl ? <img src={logoUrl} alt="Logo da loja" className="h-12 w-auto" loading="lazy" /> : null}
 
-          {whatsapp ? (
-            <div className="flex items-center gap-2 text-sm">
-              <MessageCircle className="h-4 w-4" />
-              <a
-                className="font-medium hover:underline"
-                href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {whatsapp}
-              </a>
-            </div>
-          ) : null}
+            {whatsapp ? (
+              <div className="flex items-center gap-2 text-sm">
+                <MessageCircle className="h-4 w-4" />
+                <a
+                  className="font-medium hover:underline"
+                  href={`https://wa.me/55${whatsapp.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {whatsapp}
+                </a>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">WhatsApp indisponível</div>
+            )}
+          </div>
 
           <div className="flex gap-2 flex-wrap">
             <Button asChild className="h-11 rounded-2xl">
@@ -67,32 +103,29 @@ export function StoreFooter({
         <div className="md:col-span-3 space-y-3">
           <div className="font-semibold">Institucional</div>
           <div className="grid gap-2">
-            {(() => {
-              const bySlug = new Map(pageLinks.map((p) => [p.slug, p] as const));
-              const privacy = bySlug.get("politica-de-privacidade");
-              const returns = bySlug.get("politica-de-trocas-e-devolucoes");
-              const terms = bySlug.get("termos-de-uso") ?? bySlug.get("politica-de-vendas");
+            {institutionalLinks.length > 0 ? (
+              institutionalLinks.map((p) => (
+                <Link
+                  key={p.slug}
+                  to={`/p/${p.slug}`}
+                  className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  {p.title}
+                </Link>
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground">Em breve</div>
+            )}
 
-              const links = [
-                privacy ? { title: "Política de Privacidade", slug: privacy.slug } : null,
-                returns ? { title: "Trocas e Devoluções", slug: returns.slug } : null,
-                terms ? { title: "Termos de Uso", slug: terms.slug } : null,
-              ].filter(Boolean) as Array<{ title: string; slug: string }>;
-
-              return links.length > 0 ? (
-                links.map((p) => (
-                  <Link
-                    key={p.slug}
-                    to={`/p/${p.slug}`}
-                    className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-                  >
-                    {p.title}
-                  </Link>
-                ))
-              ) : (
-                <div className="text-sm text-muted-foreground">Em breve</div>
-              );
-            })()}
+            {extraPublishedLinks.map((p) => (
+              <Link
+                key={p.slug}
+                to={`/p/${p.slug}`}
+                className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+              >
+                {p.title}
+              </Link>
+            ))}
           </div>
         </div>
 
@@ -100,34 +133,19 @@ export function StoreFooter({
         <div className="md:col-span-3 space-y-3">
           <div className="font-semibold">Ajuda</div>
           <div className="grid gap-2">
-            {(() => {
-              const bySlug = new Map(pageLinks.map((p) => [p.slug, p] as const));
-              const delivery = bySlug.get("entrega-e-retirada") ?? bySlug.get("entrega");
-              const payments = bySlug.get("formas-de-pagamento") ?? bySlug.get("pagamento");
-              const warranty = bySlug.get("garantia") ?? bySlug.get("politica-de-vendas");
-              const contact = bySlug.get("fale-conosco") ?? bySlug.get("contato");
-
-              const links = [
-                delivery ? { title: "Entrega e retirada", slug: delivery.slug } : null,
-                payments ? { title: "Formas de pagamento", slug: payments.slug } : null,
-                warranty ? { title: "Garantia", slug: warranty.slug } : null,
-                contact ? { title: "Fale conosco", slug: contact.slug } : null,
-              ].filter(Boolean) as Array<{ title: string; slug: string }>;
-
-              return links.length > 0 ? (
-                links.map((p) => (
-                  <Link
-                    key={p.slug}
-                    to={`/p/${p.slug}`}
-                    className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-                  >
-                    {p.title}
-                  </Link>
-                ))
-              ) : (
-                <div className="text-sm text-muted-foreground">Em breve</div>
-              );
-            })()}
+            {helpLinks.length > 0 ? (
+              helpLinks.map((p) => (
+                <Link
+                  key={p.slug}
+                  to={`/p/${p.slug}`}
+                  className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  {p.title}
+                </Link>
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground">Em breve</div>
+            )}
           </div>
         </div>
 
@@ -195,7 +213,7 @@ export function StoreFooter({
         </div>
       </div>
 
-      <div className="border-t border-border py-6">
+      <div className="border-t border-border py-4 md:py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <div>
             {storeName} • {new Date().getFullYear()}

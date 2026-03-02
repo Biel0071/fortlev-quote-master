@@ -138,7 +138,12 @@ export function HomeHeroCarousel({
                     <picture>
                       {/* mobile first */}
                       {mobileUrl ? <source media="(max-width: 640px)" srcSet={mobileUrl} /> : null}
-                      {desktopUrl ? <img src={desktopUrl} alt={b.title} className="h-56 sm:h-72 w-full object-cover" loading="lazy" /> : null}
+                      <img
+                        src={desktopUrl || mobileUrl}
+                        alt={b.title}
+                        className="h-56 sm:h-72 w-full object-cover"
+                        loading="lazy"
+                      />
                     </picture>
                   ) : (
                     <div className="h-56 sm:h-72 w-full fortlev-gradient opacity-80" />

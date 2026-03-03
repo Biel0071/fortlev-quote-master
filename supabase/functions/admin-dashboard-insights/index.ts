@@ -113,7 +113,7 @@ serve(async (req) => {
       : 0;
 
     const salesDailyMap = new Map<string, number>();
-    for (const row of salesDailyRes.data ?? []) {
+    for (const row of dailySalesRes.data ?? []) {
       const key = new Date(row.created_at).toISOString().slice(0, 10);
       salesDailyMap.set(key, (salesDailyMap.get(key) ?? 0) + Number(row.total ?? 0));
     }

@@ -7,12 +7,14 @@ export function HomeSection({
   children,
   tone = "plain",
   action,
+  className,
 }: {
   id?: string;
   title: string;
   children: ReactNode;
   tone?: "plain" | "alt";
   action?: ReactNode;
+  className?: string;
 }) {
   return (
     <section
@@ -20,6 +22,7 @@ export function HomeSection({
       className={cn(
         "scroll-mt-28 py-10 sm:py-14",
         tone === "alt" ? "bg-secondary/20" : "bg-background",
+        className,
       )}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6">

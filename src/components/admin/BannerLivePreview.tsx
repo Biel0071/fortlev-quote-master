@@ -21,7 +21,9 @@ type Props = {
   buttonLabel?: string | null;
   linkUrl?: string | null;
   desktopSrc?: string | null;
+  desktopFallbackSrc?: string | null;
   mobileSrc?: string | null;
+  mobileFallbackSrc?: string | null;
   legacySrc?: string | null;
   size: BannerPreviewSize;
 };
@@ -32,12 +34,16 @@ export function BannerLivePreview({
   buttonLabel,
   linkUrl,
   desktopSrc,
+  desktopFallbackSrc,
   mobileSrc,
+  mobileFallbackSrc,
   legacySrc,
   size,
 }: Props) {
   const desktop = desktopSrc || legacySrc || "";
+  const desktopFallback = desktopFallbackSrc || legacySrc || "";
   const mobile = mobileSrc || legacySrc || "";
+  const mobileFallback = mobileFallbackSrc || legacySrc || "";
   const hasImage = Boolean(desktop || mobile);
 
   const safeTitle = title?.trim() ?? "";
@@ -61,7 +67,19 @@ export function BannerLivePreview({
         {hasImage ? (
           <picture>
             {mobile ? <source media="(max-width: 640px)" srcSet={mobile} /> : null}
-            <img src={desktop || mobile} alt={safeTitle || "Preview do banner"} className="h-full w-full object-cover" loading="lazy" />
+            <img
+              src={desktop || mobile}
+              alt={safeTitle || "Preview do banner"}
+              className="h-full w-full object-cover"
+              loading="lazy"
+              data-fallback-src={desktopFallback || mobileFallback}
+              onError={(event) => {
+                const fallback = event.currentTarget.dataset.fallbackSrc;
+                if (!fallback) return;
+                if (event.currentTarget.src === fallback) return;
+                event.currentTarget.src = fallback;
+              }}
+            />
           </picture>
         ) : (
           <div className="h-full w-full bg-muted" />

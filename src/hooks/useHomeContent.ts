@@ -8,11 +8,14 @@ export type HomeBanner = {
   subtitle: string | null;
   button_label: string | null;
   link_url: string | null;
+  link: string | null;
   image_path: string | null;
   image_desktop_path: string | null;
   image_mobile_path: string | null;
   sort_order: number;
+  position: number;
   active: boolean;
+  is_active: boolean;
 };
 
 export type HomeBenefit = {
@@ -126,55 +129,102 @@ export function useHomeContent(options?: UseHomeContentOptions) {
     if (!opts?.silent) setLoading(true);
     setError(null);
 
-    const [b, ben, pol, sec, f, deps, off, s] = await Promise.all([
-      cloud
-        .from("store_banners")
-        .select(
-          "id, title, subtitle, button_label, link_url, image_path, image_desktop_path, image_mobile_path, sort_order, active",
-        )
-        .eq("active", true)
-        .order("sort_order", { ascending: true }),
-      cloud
-        .from("home_benefits")
-        .select("id, title, subtitle, icon, sort_order, active")
-        .eq("active", true)
-        .order("sort_order", { ascending: true }),
-      cloud
-        .from("home_policies")
-        .select("id, title, subtitle, icon, link_url, sort_order, active")
-        .eq("active", true)
-        .order("sort_order", { ascending: true }),
-      cloud
-        .from("home_sections")
-        .select("id, category_id, title_override, subtitle_override, sort_order, active")
-        .eq("active", true)
-        .order("sort_order", { ascending: true }),
-      cloud
-        .from("home_footer")
-        .select("id, key, logo_path, store_name, address, whatsapp, hours, extra_note, instagram_url, facebook_url, active")
-        .eq("active", true)
-        .eq("key", "main")
-        .maybeSingle(),
-      cloud
-        .from("home_departments")
-        .select("id, kind, label, icon, link_url, category_id, sort_order, active")
-        .eq("active", true)
-        .order("sort_order", { ascending: true }),
-      cloud
-        .from("home_offers")
-        .select("id, product_id, badge_text, promo_price, starts_at, ends_at, sort_order, active")
-        .order("sort_order", { ascending: true }),
-      cloud
-        .from("home_seo")
-        .select("id, key, meta_title, meta_description, og_image_path, active")
-        .eq("active", true)
-        .eq("key", "store_home")
-        .maybeSingle(),
-    ]);
+    try {
+      const [b, ben, pol, sec, f, deps, off, s] = await Promise.all([
+        cloud
+          .from("store_banners")
+          .select(
+            "id, title, subtitle, button_label, link_url, link, image_path, image_desktop_path, image_mobile_path, sort_order, position, active, is_active",
+          )
+          .or("is_active.eq.true,active.eq.true")
+          .order("position", { ascending: true })
+          .order("sort_order", { ascending: true }),
+        cloud
+          .from("home_benefits")
+          .select("id, title, subtitle, icon, sort_order, active")
+          .eq("active", true)
+          .order("sort_order", { ascending: true }),
+        cloud
+          .from("home_policies")
+          .select("id, title, subtitle, icon, link_url, sort_order, active")
+          .eq("active", true)
+          .order("sort_order", { ascending: true }),
+        cloud
+          .from("home_sections")
+          .select("id, category_id, title_override, subtitle_override, sort_order, active")
+          .eq("active", true)
+          .order("sort_order", { ascending: true }),
+        cloud
+          .from("home_footer")
+          .select("id, key, logo_path, store_name, address, whatsapp, hours, extra_note, instagram_url, facebook_url, active")
+          .eq("active", true)
+          .eq("key", "main")
+          .maybeSingle(),
+        cloud
+          .from("home_departments")
+          .select("id, kind, label, icon, link_url, category_id, sort_order, active")
+          .eq("active", true)
+          .order("sort_order", { ascending: true }),
+        cloud
+          .from("home_offers")
+          .select("id, product_id, badge_text, promo_price, starts_at, ends_at, sort_order, active")
+          .order("sort_order", { ascending: true }),
+        cloud
+          .from("home_seo")
+          .select("id, key, meta_title, meta_description, og_image_path, active")
+          .eq("active", true)
+          .eq("key", "store_home")
+          .maybeSingle(),
+      ]);
 
-    const firstError = b.error || ben.error || pol.error || sec.error || f.error || deps.error || off.error || s.error;
-    if (firstError) {
-      setError(firstError.message);
+      const firstError = b.error || ben.error || pol.error || sec.error || f.error || deps.error || off.error || s.error;
+      if (firstError) {
+        setError(firstError.message);
+        setBanners([]);
+        setBenefits([]);
+        setPolicies([]);
+        setSections([]);
+        setFooter(null);
+        setDepartments([]);
+        setOffers([]);
+        setSeo(null);
+        setLoading(false);
+        return;
+      }
+
+      const normalizedBanners = ((b.data ?? []) as any[]).map((row) => ({
+        ...row,
+        link_url: row.link_url ?? row.link ?? null,
+        link: row.link ?? row.link_url ?? null,
+        sort_order: Number(row.sort_order ?? row.position ?? 0),
+        position: Number(row.position ?? row.sort_order ?? 0),
+        active: Boolean(row.active ?? row.is_active ?? true),
+        is_active: Boolean(row.is_active ?? row.active ?? true),
+      })) as HomeBanner[];
+
+      const payload: HomeContentCache = {
+        banners: normalizedBanners,
+        benefits: (ben.data ?? []) as any,
+        policies: (pol.data ?? []) as any,
+        sections: (sec.data ?? []) as any,
+        footer: (f.data as any) ?? null,
+        departments: (deps.data ?? []) as any,
+        offers: (off.data ?? []) as any,
+        seo: (s.data as any) ?? null,
+      };
+
+      setBanners(payload.banners);
+      setBenefits(payload.benefits);
+      setPolicies(payload.policies);
+      setSections(payload.sections);
+      setFooter(payload.footer);
+      setDepartments(payload.departments);
+      setOffers(payload.offers);
+      setSeo(payload.seo);
+      setSmartCache(HOME_CONTENT_CACHE_KEY, payload);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao carregar conteúdo da Home";
+      setError(message);
       setBanners([]);
       setBenefits([]);
       setPolicies([]);
@@ -183,32 +233,9 @@ export function useHomeContent(options?: UseHomeContentOptions) {
       setDepartments([]);
       setOffers([]);
       setSeo(null);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const payload: HomeContentCache = {
-      banners: (b.data ?? []) as any,
-      benefits: (ben.data ?? []) as any,
-      policies: (pol.data ?? []) as any,
-      sections: (sec.data ?? []) as any,
-      footer: (f.data as any) ?? null,
-      departments: (deps.data ?? []) as any,
-      offers: (off.data ?? []) as any,
-      seo: (s.data as any) ?? null,
-    };
-
-    setBanners(payload.banners);
-    setBenefits(payload.benefits);
-    setPolicies(payload.policies);
-    setSections(payload.sections);
-    setFooter(payload.footer);
-    setDepartments(payload.departments);
-    setOffers(payload.offers);
-    setSeo(payload.seo);
-    setSmartCache(HOME_CONTENT_CACHE_KEY, payload);
-
-    setLoading(false);
   };
 
   useEffect(() => {

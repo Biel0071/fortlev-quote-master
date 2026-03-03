@@ -1016,7 +1016,10 @@ export type Database = {
           image_desktop_path: string | null
           image_mobile_path: string | null
           image_path: string | null
+          is_active: boolean | null
+          link: string | null
           link_url: string | null
+          position: number | null
           sort_order: number
           subtitle: string | null
           title: string
@@ -1030,7 +1033,10 @@ export type Database = {
           image_desktop_path?: string | null
           image_mobile_path?: string | null
           image_path?: string | null
+          is_active?: boolean | null
+          link?: string | null
           link_url?: string | null
+          position?: number | null
           sort_order?: number
           subtitle?: string | null
           title: string
@@ -1044,7 +1050,10 @@ export type Database = {
           image_desktop_path?: string | null
           image_mobile_path?: string | null
           image_path?: string | null
+          is_active?: boolean | null
+          link?: string | null
           link_url?: string | null
+          position?: number | null
           sort_order?: number
           subtitle?: string | null
           title?: string

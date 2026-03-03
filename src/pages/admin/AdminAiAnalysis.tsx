@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import JSZip from "jszip";
 import { cloud } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,7 @@ type FullReport = {
 };
 
 const SCOPE_OPTIONS = [
+  { label: "Projeto completo", value: "all" },
   { label: "/components", value: "src/components" },
   { label: "/pages", value: "src/pages" },
   { label: "/hooks", value: "src/hooks" },
@@ -42,6 +44,8 @@ const fileMap = import.meta.glob(
 
 function filterFilesByScope(scope: string) {
   const entries = Object.entries(fileMap);
+  if (scope === "all") return entries;
+
   return entries.filter(([path]) => {
     if (scope.startsWith("src/")) {
       const normalized = path.replace(/^\.\.\//, "src/");
@@ -56,7 +60,7 @@ export default function AdminAiAnalysis() {
   const { toast } = useToast();
 
   const [mode, setMode] = useState<Mode>("quick");
-  const [scope, setScope] = useState<(typeof SCOPE_OPTIONS)[number]["value"]>("src/components");
+  const [scope, setScope] = useState<(typeof SCOPE_OPTIONS)[number]["value"]>("all");
   const [loading, setLoading] = useState(false);
   const [rawJson, setRawJson] = useState<string>("");
   const [reportObj, setReportObj] = useState<FullReport | null>(null);
@@ -70,7 +74,7 @@ export default function AdminAiAnalysis() {
 
     try {
       const files = filterFilesByScope(scope);
-      const loaders = files.slice(0, mode === "quick" ? 30 : 120);
+      const loaders = files.slice(0, mode === "quick" ? 80 : 240);
 
       const loaded = await Promise.all(
         loaders.map(async ([path, loader]) => {
@@ -111,13 +115,43 @@ export default function AdminAiAnalysis() {
     }
   };
 
-  const downloadReport = () => {
-    if (!rawJson) return;
-    const blob = new Blob([rawJson], { type: "application/json" });
+  const downloadReport = async () => {
+    if (!rawJson || !reportObj) return;
+
+    const analysis = reportObj.analysis ?? {};
+    const asList = (key: string) => ((analysis as Record<string, unknown>)[key] as string[] | undefined) ?? [];
+
+    const summary = [
+      "# Relatório IA Completo",
+      "",
+      `Gerado em: ${reportObj.generated_at ?? "-"}`,
+      `Modo: ${reportObj.mode ?? mode}`,
+      `Escopo: ${reportObj.scope ?? scope}`,
+      `Arquivos recebidos: ${reportObj.files_received ?? 0}`,
+      `Arquivos analisados: ${reportObj.files_analyzed ?? 0}`,
+      `Payload chars: ${reportObj.payload_chars ?? 0}`,
+      `Truncamento: ${reportObj.truncated ? "Sim" : "Não"}`,
+      "",
+      "## Pontos de melhoria",
+      ...asList("improvement_points").map((x) => `- ${x}`),
+      "",
+      "## Sugestões de refatoração",
+      ...asList("refactor_suggestions").map((x) => `- ${x}`),
+      "",
+      "## Plano de ação",
+      ...asList("action_plan").map((x) => `- ${x}`),
+    ].join("\n");
+
+    const zip = new JSZip();
+    zip.file("relatorio-completo.json", rawJson);
+    zip.file("resumo-executivo.md", summary);
+    zip.file("arquivos-analisados.txt", (reportObj.analyzed_paths ?? []).join("\n"));
+
+    const blob = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `relatorio-ia-${mode}-${scope.replace(/\//g, "-")}-${Date.now()}.json`;
+    a.download = `relatorio-completo-${mode}-${scope.replace(/\//g, "-")}-${Date.now()}.zip`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -196,7 +230,7 @@ export default function AdminAiAnalysis() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle>Relatório completo (JSON)</CardTitle>
             <Button variant="outline" onClick={downloadReport} disabled={!rawJson}>
-              Baixar relatório (.json)
+              Baixar relatório completo (.zip)
             </Button>
           </div>
         </CardHeader>

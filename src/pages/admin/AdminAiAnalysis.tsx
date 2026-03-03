@@ -31,29 +31,54 @@ const SCOPE_OPTIONS = [
   { label: "/functions", value: "supabase/functions" },
 ] as const;
 
+const ROOT_EXPORT_FILES = new Set(["package.json", "tsconfig.json", "vite.config.ts", ".env.example"]);
+
 const fileMap = import.meta.glob(
   [
-    "../components/**/*.{ts,tsx}",
-    "../pages/**/*.{ts,tsx}",
-    "../hooks/**/*.{ts,tsx}",
-    "../lib/**/*.{ts,tsx}",
-    "../../supabase/functions/**/*.ts",
+    "../../**/*.{ts,tsx,css,json,md}",
+    "../../../supabase/**/*.{ts,tsx,sql,json,toml,md}",
+    "../../../package.json",
+    "../../../tsconfig.json",
+    "../../../vite.config.ts",
+    "../../../.env.example",
   ],
   { as: "raw" },
 );
 
+function normalizeProjectPath(path: string) {
+  if (path.startsWith("../../../")) return path.slice(9);
+  if (path.startsWith("../../")) return `src/${path.slice(6)}`;
+  if (path.startsWith("../")) return `src/pages/${path.slice(3)}`;
+  if (path.startsWith("./")) return path.slice(2);
+  return path;
+}
+
+function isIgnoredPath(path: string) {
+  return path.includes("/node_modules/") || path.includes("/dist/") || path.endsWith(".zip") || path.endsWith(".log");
+}
+
 function filterFilesByScope(scope: string) {
   const entries = Object.entries(fileMap);
-  if (scope === "all") return entries;
+  if (scope === "all") return entries.filter(([path]) => !isIgnoredPath(normalizeProjectPath(path)));
 
   return entries.filter(([path]) => {
-    if (scope.startsWith("src/")) {
-      const normalized = path.replace(/^\.\.\//, "src/");
-      return normalized.startsWith(scope);
-    }
-    if (scope === "supabase/functions") return path.includes("/supabase/functions/");
+    const normalized = normalizeProjectPath(path);
+    if (isIgnoredPath(normalized)) return false;
+    if (scope.startsWith("src/")) return normalized.startsWith(scope);
+    if (scope === "supabase/functions") return normalized.startsWith("supabase/functions/");
     return false;
   });
+}
+
+async function loadEntries(entries: [string, unknown][]) {
+  const loaded = await Promise.all(
+    entries.map(async ([path, loader]) => {
+      const content = await (loader as () => Promise<string>)();
+      return { path: normalizeProjectPath(path), content: String(content) };
+    }),
+  );
+
+  return loaded.filter((file) => !!file.path && !isIgnoredPath(file.path));
 }
 
 export default function AdminAiAnalysis() {
@@ -75,14 +100,7 @@ export default function AdminAiAnalysis() {
     try {
       const files = filterFilesByScope(scope);
       const loaders = files.slice(0, mode === "quick" ? 80 : 240);
-
-      const loaded = await Promise.all(
-        loaders.map(async ([path, loader]) => {
-          const content = await (loader as any)();
-          const normalized = path.replace(/^\.\.\//, "src/").replace(/^\.\.\/\.\.\//, "");
-          return { path: normalized, content: String(content) };
-        }),
-      );
+      const loaded = await loadEntries(loaders as [string, unknown][]);
 
       const { data, error } = await cloud.functions.invoke("analyze-project-structure", {
         body: { mode, scope, files: loaded },
@@ -118,6 +136,15 @@ export default function AdminAiAnalysis() {
   const downloadReport = async () => {
     if (!rawJson || !reportObj) return;
 
+    if ((reportObj.files_received ?? 0) <= 0 || (reportObj.files_analyzed ?? 0) <= 0 || (reportObj.payload_chars ?? 0) <= 0) {
+      toast({
+        title: "Relatório incompleto",
+        description: "Gere novamente a análise antes de exportar o pacote completo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const analysis = reportObj.analysis ?? {};
     const asList = (key: string) => ((analysis as Record<string, unknown>)[key] as string[] | undefined) ?? [];
 
@@ -142,7 +169,44 @@ export default function AdminAiAnalysis() {
       ...asList("action_plan").map((x) => `- ${x}`),
     ].join("\n");
 
+    const baseEntries = filterFilesByScope(scope);
+    const supplementalEntries = Object.entries(fileMap).filter(([path]) => {
+      const normalized = normalizeProjectPath(path);
+      return ROOT_EXPORT_FILES.has(normalized) || normalized.startsWith("supabase/functions/");
+    });
+
+    const sourceFiles = await loadEntries([...(baseEntries as [string, unknown][]), ...(supplementalEntries as [string, unknown][])]);
+    const uniqueFiles = new Map<string, string>();
+
+    sourceFiles.forEach((file) => {
+      if (!file.path || isIgnoredPath(file.path)) return;
+      uniqueFiles.set(file.path, file.content);
+    });
+
+    if (!uniqueFiles.has(".env.example")) {
+      uniqueFiles.set(
+        ".env.example",
+        [
+          "# Exemplo de variáveis (não inclua segredos)",
+          "VITE_SUPABASE_URL=",
+          "VITE_SUPABASE_PUBLISHABLE_KEY=",
+          "VITE_SUPABASE_PROJECT_ID=",
+        ].join("\n"),
+      );
+    }
+
+    if (uniqueFiles.size === 0) {
+      toast({
+        title: "Nenhum arquivo encontrado",
+        description: "Não foi possível montar o ZIP com arquivos reais do projeto.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const zip = new JSZip();
+    uniqueFiles.forEach((content, filePath) => zip.file(filePath, content));
+
     zip.file("relatorio-completo.json", rawJson);
     zip.file("resumo-executivo.md", summary);
     zip.file("arquivos-analisados.txt", (reportObj.analyzed_paths ?? []).join("\n"));
@@ -151,7 +215,7 @@ export default function AdminAiAnalysis() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `relatorio-completo-${mode}-${scope.replace(/\//g, "-")}-${Date.now()}.zip`;
+    a.download = `projeto-completo-${Date.now()}.zip`;
     document.body.appendChild(a);
     a.click();
     a.remove();

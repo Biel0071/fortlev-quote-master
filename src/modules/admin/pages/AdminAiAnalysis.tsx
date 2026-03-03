@@ -35,20 +35,21 @@ const ROOT_EXPORT_FILES = new Set(["package.json", "tsconfig.json", "vite.config
 
 const fileMap = import.meta.glob(
   [
-    "../../**/*.{ts,tsx,css,json,md}",
-    "../../../supabase/**/*.{ts,tsx,sql,json,toml,md}",
-    "../../../package.json",
-    "../../../tsconfig.json",
-    "../../../vite.config.ts",
-    "../../../.env.example",
+    "../../../../**/*.{ts,tsx,css,json,md}",
+    "../../../../supabase/**/*.{ts,tsx,sql,json,toml,md}",
+    "../../../../package.json",
+    "../../../../tsconfig.json",
+    "../../../../vite.config.ts",
+    "../../../../.env.example",
   ],
   { as: "raw" },
 );
 
 function normalizeProjectPath(path: string) {
-  if (path.startsWith("../../../")) return path.slice(9);
-  if (path.startsWith("../../")) return `src/${path.slice(6)}`;
-  if (path.startsWith("../")) return `src/pages/${path.slice(3)}`;
+  if (path.startsWith("../../../../")) return path.slice(12);
+  if (path.startsWith("../../../")) return `src/${path.slice(9)}`;
+  if (path.startsWith("../../")) return `src/modules/${path.slice(6)}`;
+  if (path.startsWith("../")) return `src/modules/admin/${path.slice(3)}`;
   if (path.startsWith("./")) return path.slice(2);
   return path;
 }

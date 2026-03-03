@@ -1,5 +1,5 @@
-import { Activity, DollarSign, Receipt, TrendingUp, Users, UserRoundCheck } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Line, LineChart } from "recharts";
+import { Activity, DollarSign, Receipt, TrendingUp, Users, UserRoundCheck, ShoppingCart } from "lucide-react";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Line, LineChart, BarChart, Bar } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/utils/formatters";
@@ -19,8 +19,9 @@ export default function AdminDashboardOverview() {
     { label: "Vendas Semana", value: formatCurrency(data.summary.salesWeek), icon: TrendingUp },
     { label: "Ticket Médio", value: formatCurrency(data.summary.ticketAverage), icon: Receipt },
     { label: "Usuários Online", value: String(data.summary.onlineUsers), icon: Users },
-    { label: "Usuários Quentes", value: String(data.summary.hotUsers), icon: UserRoundCheck },
+    { label: "Clientes Quentes", value: String(data.summary.hotUsers), icon: UserRoundCheck },
     { label: "Orçamentos Pendentes", value: String(data.summary.pendingQuotations), icon: Activity },
+    { label: "Carrinhos Abandonados", value: String(data.summary.abandonedCarts ?? data.lists.abandonedCarts.length), icon: ShoppingCart },
   ];
 
   return (
@@ -46,7 +47,7 @@ export default function AdminDashboardOverview() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle>Gráfico de vendas</CardTitle>
+            <CardTitle>Linha de vendas</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
@@ -63,7 +64,43 @@ export default function AdminDashboardOverview() {
 
         <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle>Intenção de compra</CardTitle>
+            <CardTitle>Funil de conversão</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={data.charts.conversionFunnel}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="stage" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip />
+                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <Card className="rounded-2xl">
+          <CardHeader>
+            <CardTitle>Heatmap de intenção</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={data.charts.intentHeatmap.length ? data.charts.intentHeatmap : data.charts.intentDaily}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey={data.charts.intentHeatmap.length ? "hour" : "date"} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip formatter={(value: number) => [String(value), "Score"]} />
+                <Line type="monotone" dataKey="score" stroke="hsl(var(--accent))" strokeWidth={2.5} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl">
+          <CardHeader>
+            <CardTitle>Intenção de compra (diária)</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
@@ -82,7 +119,7 @@ export default function AdminDashboardOverview() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle>Usuários online agora</CardTitle>
+            <CardTitle>Painel em tempo real · sessões ativas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {data.lists.onlineNow.length === 0 ? (

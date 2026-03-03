@@ -956,6 +956,27 @@ export type Database = {
           },
         ]
       }
+      rate_limit_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          key: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          key: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          key?: string
+        }
+        Relationships: []
+      }
       search_cache: {
         Row: {
           created_at: string
@@ -1564,6 +1585,36 @@ export type Database = {
           },
         ]
       }
+      system_event_logs: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          level: string
+          message: string
+          metadata: Json
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          level?: string
+          message: string
+          metadata?: Json
+          source: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          level?: string
+          message?: string
+          metadata?: Json
+          source?: string
+        }
+        Relationships: []
+      }
       system_theme_settings: {
         Row: {
           accent_color: string
@@ -1716,6 +1767,7 @@ export type Database = {
           session_id: string
           source: string
           status: string
+          temperature: string
           total_clicks: number
           total_pages: number
           total_time_seconds: number
@@ -1733,6 +1785,7 @@ export type Database = {
           session_id: string
           source?: string
           status?: string
+          temperature?: string
           total_clicks?: number
           total_pages?: number
           total_time_seconds?: number
@@ -1750,6 +1803,7 @@ export type Database = {
           session_id?: string
           source?: string
           status?: string
+          temperature?: string
           total_clicks?: number
           total_pages?: number
           total_time_seconds?: number
@@ -1892,6 +1946,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          _event_type: string
+          _key: string
+          _max_hits: number
+          _window_seconds: number
+        }
+        Returns: boolean
+      }
       classify_user_session_status: {
         Args: { _score: number }
         Returns: string

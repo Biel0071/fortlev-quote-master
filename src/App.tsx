@@ -16,30 +16,32 @@ import AccountPage from "./pages/account/AccountPage";
 import OrdersPage from "./pages/account/OrdersPage";
 import TrackingPage from "./pages/account/TrackingPage";
 
-import AdminLayout from "./pages/admin/AdminLayout";
-import AdminDashboardShell from "./pages/admin/AdminDashboardShell";
-import AdminDashboardOverview from "./pages/admin/AdminDashboardOverview";
-import AdminHome from "./pages/admin/AdminHome";
-import AdminProductsList from "./pages/admin/AdminProductsList";
-import AdminProductForm from "./pages/admin/AdminProductForm";
-import AdminCategoriesList from "./pages/admin/AdminCategoriesList";
-import AdminCategoryForm from "./pages/admin/AdminCategoryForm";
-import AdminOrders from "./pages/admin/AdminOrders";
-import AdminPages from "./pages/admin/AdminPages";
-import AdminCustomers from "./pages/admin/AdminCustomers";
-import AdminCoupons from "./pages/admin/AdminCoupons";
-import AdminBanners from "./pages/admin/AdminBanners";
-import AdminSettings from "./pages/admin/AdminSettings";
-import AdminTheme from "./pages/admin/AdminTheme";
-import AdminAiAnalysis from "./pages/admin/AdminAiAnalysis";
-import AdminDashboardTracking from "./pages/admin/AdminDashboardTracking";
-import AdminIntelligence from "./pages/admin/AdminIntelligence";
-import AdminDashboardQuotations from "./pages/admin/AdminDashboardQuotations";
+import {
+  AdminLayout,
+  AdminDashboardShell,
+  AdminDashboardOverview,
+  AdminHome,
+  AdminProductsList,
+  AdminProductForm,
+  AdminCategoriesList,
+  AdminCategoryForm,
+  AdminOrders,
+  AdminPages,
+  AdminCustomers,
+  AdminCoupons,
+  AdminBanners,
+  AdminSettings,
+  AdminTheme,
+  AdminAiAnalysis,
+  AdminDashboardTracking,
+  AdminIntelligence,
+  AdminDashboardQuotations,
+} from "@/modules/admin";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 
-import Index from "./pages/Index";
-import Construction from "./pages/Construction";
+import QuotationsIndex from "@/modules/checkout/pages/QuotationsIndex";
+import Construction from "@/modules/checkout/pages/Construction";
 import StoresDashboardLayout from "./pages/StoresDashboardLayout";
 import FortlevOverview from "./pages/dashboard/FortlevOverview";
 import ConstructionOverview from "./pages/dashboard/ConstructionOverview";
@@ -122,13 +124,13 @@ const App = () => (
 
             {/* Sistemas de Orçamento */}
             <Route path="/construcao" element={<Construction />} />
-            <Route path="/orcamentos" element={<Index />} />
+            <Route path="/orcamentos" element={<QuotationsIndex />} />
 
             <Route path="/dashboard" element={<StoresDashboardLayout />}>
               <Route index element={<Navigate to="fortlev" replace />} />
 
               <Route path="fortlev" element={<FortlevOverview />} />
-              <Route path="fortlev/orcamentos" element={<Index />} />
+              <Route path="fortlev/orcamentos" element={<QuotationsIndex />} />
 
               <Route path="construcao" element={<ConstructionOverview />} />
               <Route path="construcao/orcamentos" element={<Construction />} />

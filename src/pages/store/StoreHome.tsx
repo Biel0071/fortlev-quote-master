@@ -11,7 +11,7 @@ import { CartDrawer } from "@/components/store/CartDrawer";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { cloud } from "@/lib/cloud";
 import { pickHomeSeo, useDynamicSeo } from "@/hooks/useDynamicSeo";
-import { publicImageUrl } from "@/utils/storage";
+import { getBannerImageUrls } from "@/utils/bannerStorage";
 import { HomeSection } from "@/components/store/home/HomeSection";
 import { HomeCategoriesCarousel } from "@/components/store/home/HomeCategoriesCarousel";
 import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
@@ -80,18 +80,20 @@ export default function StoreHome() {
   useEffect(() => {
     const candidates = (home.banners ?? []).slice(0, 2).flatMap((b) => [b.image_desktop_path, b.image_mobile_path, b.image_path]);
     candidates.forEach((path) => {
-      const url = publicImageUrl("banner-images", path ?? null);
-      if (!url || url.startsWith("blob:")) return;
-      const img = new Image();
-      img.src = url;
+      const urls = getBannerImageUrls(path ?? null);
+      [urls.primary, urls.legacy].forEach((url) => {
+        if (!url || url.startsWith("blob:")) return;
+        const img = new Image();
+        img.src = url;
+      });
     });
   }, [home.banners]);
 
   const seo = useMemo(() => pickHomeSeo(home.seo), [home.seo]);
-  const ogImageUrl = useMemo(
-    () => publicImageUrl("banner-images", home.seo?.og_image_path ?? null),
-    [home.seo?.og_image_path],
-  );
+  const ogImageUrl = useMemo(() => {
+    const urls = getBannerImageUrls(home.seo?.og_image_path ?? null);
+    return urls.primary || urls.legacy;
+  }, [home.seo?.og_image_path]);
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
   const loading = productsLoading || categoriesLoading || home.loading || merch.loading;

@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { BANNER_PRESET_SIZES, BannerLivePreview } from "@/components/admin/BannerLivePreview";
-import { publicImageUrl, normalizeStorageObjectPath } from "@/utils/storage";
+import { getBannerImageUrls, MAX_BANNER_IMAGE_SIZE_BYTES, SITE_BANNERS_BUCKET, normalizeBannerObjectPath } from "@/utils/bannerStorage";
 import { invalidateSmartCache } from "@/utils/smartCache";
 
 type Banner = {
@@ -19,9 +19,12 @@ type Banner = {
   image_desktop_path: string | null;
   image_mobile_path: string | null;
   link_url: string | null;
+  link: string | null;
   button_label: string | null;
   sort_order: number;
+  position: number;
   active: boolean;
+  is_active: boolean;
 };
 
 type BannerForm = {
@@ -47,9 +50,12 @@ type BannerMutationPayload = {
   image_desktop_path: string | null;
   image_mobile_path: string | null;
   link_url: string | null;
+  link: string | null;
   button_label: string | null;
   sort_order: number;
+  position: number;
   active: boolean;
+  is_active: boolean;
   updated_at?: string;
 };
 
@@ -57,7 +63,7 @@ const DEFAULT_SIZE_KEY = "desktop-standard";
 const HOME_CONTENT_CACHE_KEY = "home_content:v1";
 
 function normalizeBannerImagePath(value?: string | null) {
-  return normalizeStorageObjectPath("banner-images", value);
+  return normalizeBannerObjectPath(value);
 }
 
 
@@ -113,7 +119,6 @@ export default function AdminBanners() {
   const [savingEdit, setSavingEdit] = useState(false);
 
   const isUploading = uploadingCount > 0;
-  const imageUrl = (path?: string | null) => publicImageUrl("banner-images", path);
 
   const updateLocalPreview = useCallback(
     (
@@ -145,20 +150,33 @@ export default function AdminBanners() {
       image_path: normalizeBannerImagePath(row.image_path) || null,
       image_desktop_path: normalizeBannerImagePath(row.image_desktop_path) || null,
       image_mobile_path: normalizeBannerImagePath(row.image_mobile_path) || null,
+      link_url: row.link_url ?? row.link ?? null,
+      link: row.link ?? row.link_url ?? null,
+      sort_order: Number(row.sort_order ?? row.position ?? 0),
+      position: Number(row.position ?? row.sort_order ?? 0),
+      active: Boolean(row.active ?? row.is_active ?? true),
+      is_active: Boolean(row.is_active ?? row.active ?? true),
     };
   }, []);
 
   const buildBannerPayload = useCallback((form: BannerForm, includeUpdatedAt = false): BannerMutationPayload => {
+    const normalizedLink = form.link_url.trim() || null;
+    const normalizedPosition = Number(form.sort_order) || 0;
+    const normalizedActive = form.active;
+
     return {
       title: form.title.trim(),
       subtitle: form.subtitle.trim() || null,
       image_path: normalizeBannerImagePath(form.image_path) || null,
       image_desktop_path: normalizeBannerImagePath(form.image_desktop_path) || null,
       image_mobile_path: normalizeBannerImagePath(form.image_mobile_path) || null,
-      link_url: form.link_url.trim() || null,
+      link_url: normalizedLink,
+      link: normalizedLink,
       button_label: form.button_label.trim() || null,
-      sort_order: Number(form.sort_order) || 0,
-      active: form.active,
+      sort_order: normalizedPosition,
+      position: normalizedPosition,
+      active: normalizedActive,
+      is_active: normalizedActive,
       ...(includeUpdatedAt ? { updated_at: new Date().toISOString() } : {}),
     };
   }, []);
@@ -166,7 +184,7 @@ export default function AdminBanners() {
   const verifySavedBanner = useCallback(async (id: string, payload: BannerMutationPayload) => {
     const { data, error } = await cloud
       .from("store_banners")
-      .select("id, image_path, image_desktop_path, image_mobile_path, title, subtitle, button_label, link_url, sort_order, active")
+      .select("id, image_path, image_desktop_path, image_mobile_path, title, subtitle, button_label, link_url, link, sort_order, position, active, is_active")
       .eq("id", id)
       .maybeSingle();
 
@@ -202,8 +220,8 @@ export default function AdminBanners() {
     try {
       const { data, error } = await cloud
         .from("store_banners")
-        .select("id, title, subtitle, image_path, image_desktop_path, image_mobile_path, link_url, button_label, sort_order, active")
-        .order("sort_order", { ascending: true })
+        .select("id, title, subtitle, image_path, image_desktop_path, image_mobile_path, link_url, link, button_label, sort_order, position, active, is_active")
+        .order("position", { ascending: true })
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -239,6 +257,16 @@ export default function AdminBanners() {
   ) {
     if (!file) return;
 
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Arquivo inválido", description: "Envie apenas imagens (JPG, PNG, WEBP...).", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > MAX_BANNER_IMAGE_SIZE_BYTES) {
+      toast({ title: "Arquivo muito grande", description: "O banner deve ter no máximo 5MB.", variant: "destructive" });
+      return;
+    }
+
     try {
       setUploadingCount((n) => n + 1);
       if (setLocalPreview) {
@@ -246,12 +274,12 @@ export default function AdminBanners() {
         setLocalPreview(localUrl);
       }
 
-      const path = await uploadToBucket("banner-images", file);
+      const path = await uploadToBucket(SITE_BANNERS_BUCKET, file);
       setPath(path);
       toast({ title: "Upload concluído", description: "Imagem pronta para salvar." });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Falha no upload";
-      toast({ title: "Erro", description: message, variant: "destructive" });
+      const message = error instanceof Error ? error.message : "Não foi possível enviar o banner agora.";
+      toast({ title: "Erro de upload", description: message, variant: "destructive" });
     } finally {
       setUploadingCount((n) => Math.max(0, n - 1));
     }
@@ -260,7 +288,7 @@ export default function AdminBanners() {
   async function requestBannerEdit(sourcePath: string, prompt: string) {
     const { data, error } = await cloud.functions.invoke("edit-store-image", {
       body: {
-        bucket: "banner-images",
+        bucket: SITE_BANNERS_BUCKET,
         sourcePath,
         prompt,
         targetFolder: "ai/banners",
@@ -354,7 +382,7 @@ export default function AdminBanners() {
       await verifySavedBanner(createdId, payload);
 
       invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
-      toast({ title: "Banner salvo", description: "Salvo com sucesso e disponível nesta tela e na Home do sistema." });
+      toast({ title: "Banner salvo com sucesso", description: "Banner salvo com sucesso." });
       clearLocalPreview(setCreateLocalPreview, createLocalPreview);
       setCreateForm(emptyForm());
       await load();
@@ -407,7 +435,7 @@ export default function AdminBanners() {
 
       await verifySavedBanner(editingId, payload);
       invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
-      toast({ title: "Banner salvo", description: "Alterações salvas e refletidas nesta tela e na Home do sistema." });
+      toast({ title: "Banner salvo com sucesso", description: "Banner salvo com sucesso." });
       clearLocalPreview(setEditLocalPreview, editLocalPreview);
       setEditingId(null);
       await load();
@@ -422,10 +450,24 @@ export default function AdminBanners() {
 
   const remove = async (id: string) => {
     try {
+      const banner = rows.find((row) => row.id === id);
+      const pathsToDelete = [banner?.image_desktop_path, banner?.image_mobile_path, banner?.image_path]
+        .map((value) => normalizeBannerImagePath(value))
+        .filter((value): value is string => Boolean(value));
+
       const { error } = await cloud.from("store_banners").delete().eq("id", id);
       if (error) throw error;
+
+      if (pathsToDelete.length > 0) {
+        await Promise.all([
+          cloud.storage.from(SITE_BANNERS_BUCKET).remove(pathsToDelete),
+          cloud.storage.from("banner-images").remove(pathsToDelete),
+        ]);
+      }
+
       invalidateSmartCache(HOME_CONTENT_CACHE_KEY);
       await load();
+      toast({ title: "Banner removido", description: "Banner removido com sucesso." });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro ao remover banner";
       toast({ title: "Erro", description: message, variant: "destructive" });
@@ -482,7 +524,7 @@ export default function AdminBanners() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Link</Label>
+               <Label>Link de redirecionamento</Label>
               <Input
                 value={createForm.link_url}
                 onChange={(e) => setCreateForm((p) => ({ ...p, link_url: e.target.value }))}
@@ -490,7 +532,7 @@ export default function AdminBanners() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Ordem</Label>
+               <Label>Posição</Label>
               <Input
                 type="number"
                 value={createForm.sort_order}
@@ -596,9 +638,11 @@ export default function AdminBanners() {
               subtitle={createForm.subtitle}
               buttonLabel={createForm.button_label}
               linkUrl={createForm.link_url}
-              desktopSrc={createLocalPreview.image_desktop_path || imageUrl(createForm.image_desktop_path)}
-              mobileSrc={createLocalPreview.image_mobile_path || imageUrl(createForm.image_mobile_path)}
-              legacySrc={createLocalPreview.image_path || imageUrl(createForm.image_path)}
+              desktopSrc={createLocalPreview.image_desktop_path || getBannerImageUrls(createForm.image_desktop_path).primary}
+              desktopFallbackSrc={getBannerImageUrls(createForm.image_desktop_path).legacy}
+              mobileSrc={createLocalPreview.image_mobile_path || getBannerImageUrls(createForm.image_mobile_path).primary}
+              mobileFallbackSrc={getBannerImageUrls(createForm.image_mobile_path).legacy}
+              legacySrc={createLocalPreview.image_path || getBannerImageUrls(createForm.image_path).primary}
               size={createSize}
             />
           </div>
@@ -624,7 +668,7 @@ export default function AdminBanners() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-medium truncate">{b.title?.trim() || "(Sem título)"}</div>
-                    <div className="text-xs text-muted-foreground">Ordem: {b.sort_order}</div>
+                    <div className="text-xs text-muted-foreground">Posição: {b.position ?? b.sort_order}</div>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap justify-end">
                     <Button size="sm" variant="outline" onClick={() => startEdit(b)}>
@@ -639,14 +683,24 @@ export default function AdminBanners() {
                   </div>
                 </div>
 
-                {(b.image_desktop_path || b.image_mobile_path || b.image_path) && (
-                  <img
-                    src={imageUrl(b.image_desktop_path || b.image_mobile_path || b.image_path)}
-                    alt={`Banner ${b.title}`}
-                    className="w-full h-40 object-cover rounded-xl"
-                    loading="lazy"
-                  />
-                )}
+                {(b.image_desktop_path || b.image_mobile_path || b.image_path) && (() => {
+                  const urls = getBannerImageUrls(b.image_desktop_path || b.image_mobile_path || b.image_path);
+                  return (
+                    <img
+                      src={urls.primary}
+                      data-fallback-src={urls.legacy}
+                      onError={(event) => {
+                        const fallback = event.currentTarget.dataset.fallbackSrc;
+                        if (!fallback) return;
+                        if (event.currentTarget.src === fallback) return;
+                        event.currentTarget.src = fallback;
+                      }}
+                      alt={`Banner ${b.title}`}
+                      className="w-full h-40 object-cover rounded-xl"
+                      loading="lazy"
+                    />
+                  );
+                })()}
 
                 {editingId === b.id ? (
                   <div className="rounded-xl border border-border bg-background p-4 space-y-4">
@@ -674,11 +728,11 @@ export default function AdminBanners() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="space-y-2">
-                        <Label>Link</Label>
+                        <Label>Link de redirecionamento</Label>
                         <Input value={editForm.link_url} onChange={(e) => setEditForm((p) => ({ ...p, link_url: e.target.value }))} />
                       </div>
                       <div className="space-y-2">
-                        <Label>Ordem</Label>
+                        <Label>Posição</Label>
                         <Input
                           type="number"
                           value={editForm.sort_order}
@@ -784,9 +838,11 @@ export default function AdminBanners() {
                         subtitle={editForm.subtitle}
                         buttonLabel={editForm.button_label}
                         linkUrl={editForm.link_url}
-                        desktopSrc={editLocalPreview.image_desktop_path || imageUrl(editForm.image_desktop_path)}
-                        mobileSrc={editLocalPreview.image_mobile_path || imageUrl(editForm.image_mobile_path)}
-                        legacySrc={editLocalPreview.image_path || imageUrl(editForm.image_path)}
+                        desktopSrc={editLocalPreview.image_desktop_path || getBannerImageUrls(editForm.image_desktop_path).primary}
+                        desktopFallbackSrc={getBannerImageUrls(editForm.image_desktop_path).legacy}
+                        mobileSrc={editLocalPreview.image_mobile_path || getBannerImageUrls(editForm.image_mobile_path).primary}
+                        mobileFallbackSrc={getBannerImageUrls(editForm.image_mobile_path).legacy}
+                        legacySrc={editLocalPreview.image_path || getBannerImageUrls(editForm.image_path).primary}
                         size={editSize}
                       />
                     </div>

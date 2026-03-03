@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { publicImageUrl } from "@/utils/storage";
+import { getBannerImageUrls } from "@/utils/bannerStorage";
 import type { HomeBanner } from "@/hooks/useHomeContent";
 
 function pickBannerImage(b: HomeBanner) {
@@ -84,25 +84,17 @@ export function HomeHeroCarousel({
               </div>
             </div>
 
-            <div className="lg:col-span-5 grid grid-cols-2 gap-3">
-              <Card className="col-span-2 rounded-2xl bg-muted/20 backdrop-blur supports-[backdrop-filter]:bg-muted/10">
+            <div className="lg:col-span-5">
+              <Card className="rounded-2xl bg-muted/20 backdrop-blur supports-[backdrop-filter]:bg-muted/10 overflow-hidden">
+                <img
+                  src="/placeholder.svg"
+                  alt="Placeholder de banner"
+                  className="h-56 w-full object-cover"
+                  loading="lazy"
+                />
                 <CardContent className="p-5">
-                  <div className="text-sm text-muted-foreground">Compra simples</div>
-                  <div className="mt-1 font-semibold">Adicione ao carrinho e finalize em minutos</div>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-2xl bg-muted/20 backdrop-blur supports-[backdrop-filter]:bg-muted/10">
-                <CardContent className="p-5">
-                  <div className="text-sm text-muted-foreground">Categorias</div>
-                  <div className="mt-1 font-semibold">Acesso rápido por departamento</div>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-2xl bg-muted/20 backdrop-blur supports-[backdrop-filter]:bg-muted/10">
-                <CardContent className="p-5">
-                  <div className="text-sm text-muted-foreground">Retire ou receba</div>
-                  <div className="mt-1 font-semibold">Flexibilidade na entrega</div>
+                  <div className="text-sm text-muted-foreground">Banner em configuração</div>
+                  <div className="mt-1 font-semibold">Cadastre banners no admin para exibir aqui</div>
                 </CardContent>
               </Card>
             </div>
@@ -125,8 +117,12 @@ export function HomeHeroCarousel({
         <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory px-4 sm:px-6 py-4 sm:py-6">
           {banners.map((b) => {
             const img = pickBannerImage(b);
-            const desktopUrl = publicImageUrl("banner-images", img.desktop);
-            const mobileUrl = publicImageUrl("banner-images", img.mobile);
+            const desktopUrls = getBannerImageUrls(img.desktop);
+            const mobileUrls = getBannerImageUrls(img.mobile);
+            const desktopUrl = desktopUrls.primary;
+            const mobileUrl = mobileUrls.primary;
+            const fallbackDesktopUrl = desktopUrls.legacy;
+            const fallbackMobileUrl = mobileUrls.legacy;
 
             return (
               <article
@@ -143,6 +139,13 @@ export function HomeHeroCarousel({
                         alt={b.title}
                         className="h-56 sm:h-72 w-full object-cover"
                         loading="lazy"
+                        data-fallback-src={fallbackDesktopUrl || fallbackMobileUrl}
+                        onError={(event) => {
+                          const fallback = event.currentTarget.dataset.fallbackSrc;
+                          if (!fallback) return;
+                          if (event.currentTarget.src === fallback) return;
+                          event.currentTarget.src = fallback;
+                        }}
                       />
                     </picture>
                   ) : (
@@ -160,7 +163,7 @@ export function HomeHeroCarousel({
 
                     <div className="mt-4 flex flex-wrap gap-3">
                       <Button asChild size="lg">
-                        <Link to={b.link_url || "/loja"}>{b.button_label || "Ver ofertas"}</Link>
+                        <Link to={b.link_url || b.link || "/loja"}>{b.button_label || "Ver ofertas"}</Link>
                       </Button>
                       <Button asChild size="lg" variant="outline">
                         <Link to="/carrinho">Ver carrinho</Link>

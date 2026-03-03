@@ -2,18 +2,30 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { HomeBanner } from "@/hooks/useHomeContent";
-import { publicImageUrl } from "@/utils/storage";
+import { getBannerImageUrls } from "@/utils/bannerStorage";
 
 export function HomeSecondaryPromoBanner({ banner }: { banner: HomeBanner | null }) {
   if (!banner) return null;
 
-  const img = publicImageUrl("banner-images", banner.image_desktop_path ?? banner.image_path ?? null);
+  const imgUrls = getBannerImageUrls(banner.image_desktop_path ?? banner.image_path ?? null);
 
   return (
     <Card className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
       <div className="relative">
-        {img ? (
-          <img src={img} alt={banner.title} className="h-[220px] sm:h-[260px] w-full object-cover" loading="lazy" />
+        {imgUrls.primary ? (
+          <img
+            src={imgUrls.primary}
+            data-fallback-src={imgUrls.legacy}
+            onError={(event) => {
+              const fallback = event.currentTarget.dataset.fallbackSrc;
+              if (!fallback) return;
+              if (event.currentTarget.src === fallback) return;
+              event.currentTarget.src = fallback;
+            }}
+            alt={banner.title}
+            className="h-[220px] sm:h-[260px] w-full object-cover"
+            loading="lazy"
+          />
         ) : (
           <div className="h-[220px] sm:h-[260px] w-full fortlev-gradient opacity-80" />
         )}
@@ -26,7 +38,7 @@ export function HomeSecondaryPromoBanner({ banner }: { banner: HomeBanner | null
             {banner.subtitle ? <div className="mt-2 text-sm text-muted-foreground">{banner.subtitle}</div> : null}
             <div className="mt-4 flex gap-3 flex-wrap">
               <Button asChild size="lg" className="h-12 rounded-xl">
-                <Link to={banner.link_url || "/loja"}>{banner.button_label || "Ver oferta"}</Link>
+                <Link to={banner.link_url || banner.link || "/loja"}>{banner.button_label || "Ver oferta"}</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="h-12 rounded-xl">
                 <Link to="/loja">Ver catálogo</Link>

@@ -17,7 +17,8 @@ import OrdersPage from "./pages/account/OrdersPage";
 import TrackingPage from "./pages/account/TrackingPage";
 
 import AdminLayout from "./pages/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminDashboardShell from "./pages/admin/AdminDashboardShell";
+import AdminDashboardOverview from "./pages/admin/AdminDashboardOverview";
 import AdminHome from "./pages/admin/AdminHome";
 import AdminProductsList from "./pages/admin/AdminProductsList";
 import AdminProductForm from "./pages/admin/AdminProductForm";
@@ -31,6 +32,9 @@ import AdminBanners from "./pages/admin/AdminBanners";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminTheme from "./pages/admin/AdminTheme";
 import AdminAiAnalysis from "./pages/admin/AdminAiAnalysis";
+import AdminDashboardTracking from "./pages/admin/AdminDashboardTracking";
+import AdminIntelligence from "./pages/admin/AdminIntelligence";
+import AdminDashboardQuotations from "./pages/admin/AdminDashboardQuotations";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 
@@ -82,7 +86,14 @@ const App = () => (
             {/* Admin (protegido) */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="dashboard" element={<AdminDashboardShell />}>
+                <Route index element={<AdminDashboardOverview />} />
+                <Route path="orcamentos" element={<AdminDashboardQuotations />} />
+                <Route path="clientes" element={<AdminCustomers />} />
+                <Route path="analytics" element={<AdminDashboardOverview />} />
+                <Route path="tracking" element={<AdminDashboardTracking />} />
+                <Route path="inteligencia" element={<AdminIntelligence />} />
+              </Route>
               <Route path="home" element={<AdminHome />} />
 
               <Route path="produtos" element={<AdminProductsList />} />

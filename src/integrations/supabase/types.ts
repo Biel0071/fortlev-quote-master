@@ -1651,6 +1651,38 @@ export type Database = {
         }
         Relationships: []
       }
+      user_events: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json
+          session_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          session_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          session_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "user_sessions"
+            referencedColumns: ["session_id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1669,6 +1701,60 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_sessions: {
+        Row: {
+          created_at: string
+          device: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          score: number
+          scroll_depth: number
+          session_id: string
+          source: string
+          status: string
+          total_clicks: number
+          total_pages: number
+          total_time_seconds: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          score?: number
+          scroll_depth?: number
+          session_id: string
+          source?: string
+          status?: string
+          total_clicks?: number
+          total_pages?: number
+          total_time_seconds?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          score?: number
+          scroll_depth?: number
+          session_id?: string
+          source?: string
+          status?: string
+          total_clicks?: number
+          total_pages?: number
+          total_time_seconds?: number
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1806,6 +1892,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      classify_user_session_status: {
+        Args: { _score: number }
+        Returns: string
+      }
       count_products_for_ai_generation: { Args: never; Returns: number }
       create_store_order: {
         Args: {

@@ -1,13 +1,13 @@
-import { cloud } from "@/lib/cloud";
+import { collectAndTrackEvent } from "./trackingService";
 
 type VisitorEventName =
   | "chat_open"
   | "chat_message_sent"
   | "whatsapp_click"
   | "chat_close"
-  | "chat_redirect_whatsapp";
+  | "request_quote";
 
-const SESSION_KEY = "visitor_session_id_v1";
+const SESSION_KEY = "tracking_session_token_temp_v1";
 
 export function getVisitorSessionId() {
   if (typeof window === "undefined") return "";
@@ -35,14 +35,17 @@ export async function trackVisitorEvent({
 }) {
   try {
     if (!sessionId) return;
-    const path = typeof window !== "undefined" ? window.location.pathname + window.location.search + window.location.hash : null;
+    const path = typeof window !== "undefined" ? window.location.pathname + window.location.search + window.location.hash : undefined;
 
-    await cloud.from("visitor_events").insert({
-      session_id: sessionId,
-      event_name: eventName,
-      path,
-      metadata: metadata ?? {},
-    } as any);
+    await collectAndTrackEvent({
+      sessionToken: sessionId,
+      consentGiven: true,
+      event: {
+        type: eventName,
+        path,
+        metadata: metadata ?? {},
+      },
+    });
   } catch {
     // best-effort tracking
   }

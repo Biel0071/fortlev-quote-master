@@ -8,28 +8,27 @@ import { toast } from "@/hooks/use-toast";
 type SessionRow = {
   id: string;
   session_token: string;
-  consent_given: boolean;
+  temperature: "frio" | "morno" | "quente";
   score: number;
-  started_at: string;
-  updated_at: string;
+  first_seen_at: string;
+  last_seen_at: string;
 };
 
-function heatLabel(score: number) {
-  if (score >= 100) return { label: "Muito quente", variant: "default" as const };
-  if (score >= 61) return { label: "Quente", variant: "secondary" as const };
-  if (score >= 31) return { label: "Morno", variant: "outline" as const };
-  return { label: "Frio", variant: "secondary" as const };
+function heatLabel(temperature: string, score: number) {
+  if (temperature === "quente" || score >= 71) return { label: "Quente", variant: "default" as const };
+  if (temperature === "morno" || score >= 31) return { label: "Morno", variant: "secondary" as const };
+  return { label: "Frio", variant: "outline" as const };
 }
 
 export default function AdminAdvancedAnalytics() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const hotSessions = useMemo(() => sessions.filter((s) => (s.score ?? 0) > 60), [sessions]);
+  const hotSessions = useMemo(() => sessions.filter((s) => s.temperature === "quente"), [sessions]);
 
   useEffect(() => {
     let alive = true;
-    let lastNotified = new Set<string>();
+    const lastNotified = new Set<string>();
 
     const tick = async () => {
       try {
@@ -37,21 +36,20 @@ export default function AdminAdvancedAnalytics() {
         const since = new Date(Date.now() - 1000 * 60 * 30).toISOString();
 
         const { data, error } = await cloud
-          .from("visitor_sessions")
-          .select("id, session_token, consent_given, score, started_at, updated_at")
-          .gte("started_at", since)
+          .from("tracking_sessions")
+          .select("id, session_token, temperature, score, first_seen_at, last_seen_at")
+          .gte("first_seen_at", since)
           .order("score", { ascending: false })
           .limit(50);
 
         if (!alive) return;
         if (error) throw error;
 
-        const rows = (data ?? []) as any as SessionRow[];
+        const rows = (data ?? []) as SessionRow[];
         setSessions(rows);
 
-        // Notify very hot leads
         for (const s of rows) {
-          if ((s.score ?? 0) > 90 && !lastNotified.has(s.id)) {
+          if (s.temperature === "quente" && (s.score ?? 0) > 90 && !lastNotified.has(s.id)) {
             lastNotified.add(s.id);
             toast({
               title: "Lead muito quente",
@@ -67,8 +65,8 @@ export default function AdminAdvancedAnalytics() {
       }
     };
 
-    tick();
-    const i = window.setInterval(tick, 5000);
+    void tick();
+    const i = window.setInterval(() => void tick(), 5000);
     return () => {
       alive = false;
       window.clearInterval(i);
@@ -79,7 +77,7 @@ export default function AdminAdvancedAnalytics() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <header className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight">Analytics avançado</h1>
-        <p className="text-sm text-muted-foreground">Sessões e leads com base no tracking (com consentimento).</p>
+        <p className="text-sm text-muted-foreground">Sessões e leads com tracking unificado.</p>
       </header>
 
       <div className="grid md:grid-cols-3 gap-4">
@@ -116,13 +114,13 @@ export default function AdminAdvancedAnalytics() {
           ) : (
             <div className="space-y-2">
               {sessions.map((s) => {
-                const heat = heatLabel(Number(s.score ?? 0));
+                const heat = heatLabel(s.temperature, Number(s.score ?? 0));
                 return (
                   <div key={s.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
                     <div className="min-w-0">
                       <div className="font-medium truncate">Sessão {s.session_token.slice(0, 12)}…</div>
                       <div className="text-xs text-muted-foreground">
-                        {s.consent_given ? "Consentimento: sim" : "Consentimento: não"} • Início: {new Date(s.started_at).toLocaleTimeString()}
+                        Início: {new Date(s.first_seen_at).toLocaleTimeString()} • Última ação: {new Date(s.last_seen_at).toLocaleTimeString()}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

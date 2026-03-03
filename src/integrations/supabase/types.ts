@@ -1702,6 +1702,95 @@ export type Database = {
         }
         Relationships: []
       }
+      tracking_events: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          path: string | null
+          product_id: string | null
+          session_id: string
+          type: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          path?: string | null
+          product_id?: string | null
+          session_id: string
+          type: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          path?: string | null
+          product_id?: string | null
+          session_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "tracking_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tracking_sessions: {
+        Row: {
+          device: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          score: number
+          scroll_depth: number
+          session_token: string
+          source: string
+          temperature: string
+          total_clicks: number
+          total_pages: number
+          total_time_seconds: number
+          user_id: string | null
+        }
+        Insert: {
+          device?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          score?: number
+          scroll_depth?: number
+          session_token: string
+          source?: string
+          temperature?: string
+          total_clicks?: number
+          total_pages?: number
+          total_time_seconds?: number
+          user_id?: string | null
+        }
+        Update: {
+          device?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          score?: number
+          scroll_depth?: number
+          session_token?: string
+          source?: string
+          temperature?: string
+          total_clicks?: number
+          total_pages?: number
+          total_time_seconds?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_events: {
         Row: {
           created_at: string

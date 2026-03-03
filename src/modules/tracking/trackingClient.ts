@@ -1,19 +1,20 @@
-// Backend tracking client (LGPD-aware)
+// Unified tracking client
 import { cloud } from "@/lib/cloud";
 
 export type EventType =
   | "page_view"
   | "product_view"
+  | "search"
+  | "add_to_cart"
+  | "banner_click"
+  | "checkout_start"
+  | "request_quote"
   | "scroll"
-  | "add_cart"
-  | "remove_cart"
   | "chat_open"
   | "chat_close"
   | "chat_message_sent"
   | "whatsapp_click"
-  | "request_quote"
-  | "category_click"
-  | "offer_click";
+  | "category_click";
 
 export type TrackEventInput = {
   type: EventType;
@@ -31,7 +32,7 @@ export async function startOrUpdateVisitorSession({
   sessionToken: string;
   consentGiven: boolean;
 }) {
-  const { data, error } = await cloud.functions.invoke("visitor-track", {
+  const { data, error } = await cloud.functions.invoke("track-event", {
     body: { action: "start_session", session_token: sessionToken, consent_given: consentGiven },
   });
   if (error) throw error;
@@ -45,7 +46,7 @@ export async function setVisitorConsent({
   sessionToken: string;
   consentGiven: boolean;
 }) {
-  const { data, error } = await cloud.functions.invoke("visitor-track", {
+  const { data, error } = await cloud.functions.invoke("track-event", {
     body: { action: "set_consent", session_token: sessionToken, consent_given: consentGiven },
   });
   if (error) throw error;
@@ -61,8 +62,8 @@ export async function trackVisitorEvent({
   consentGiven: boolean;
   event: TrackEventInput;
 }) {
-  if (!consentGiven) return { skipped: true };
-  const { data, error } = await cloud.functions.invoke("visitor-track", {
+  if (!sessionToken) return { skipped: true };
+  const { data, error } = await cloud.functions.invoke("track-event", {
     body: {
       action: "track_event",
       session_token: sessionToken,
@@ -88,7 +89,7 @@ export async function createChatSession({
   sessionToken: string;
   consentGiven: boolean;
 }) {
-  const { data, error } = await cloud.functions.invoke("visitor-track", {
+  const { data, error } = await cloud.functions.invoke("track-event", {
     body: { action: "create_chat_session", session_token: sessionToken, consent_given: consentGiven },
   });
   if (error) throw error;
@@ -104,7 +105,7 @@ export async function logChatMessage({
   role: "user" | "assistant";
   content: string;
 }) {
-  const { data, error } = await cloud.functions.invoke("visitor-track", {
+  const { data, error } = await cloud.functions.invoke("track-event", {
     body: { action: "log_chat_message", chat_session_id: chatSessionId, role, content },
   });
   if (error) throw error;
@@ -112,7 +113,7 @@ export async function logChatMessage({
 }
 
 export async function closeChatSession({ chatSessionId }: { chatSessionId: string }) {
-  const { data, error } = await cloud.functions.invoke("visitor-track", {
+  const { data, error } = await cloud.functions.invoke("track-event", {
     body: { action: "close_chat_session", chat_session_id: chatSessionId },
   });
   if (error) throw error;

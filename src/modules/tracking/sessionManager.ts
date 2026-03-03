@@ -1,5 +1,5 @@
-const TOKEN_KEY_PERSIST = "visitor_session_token_v1";
-const TOKEN_KEY_TEMP = "visitor_session_token_temp_v1";
+const TOKEN_KEY_PERSIST = "tracking_session_token_v1";
+const TOKEN_KEY_TEMP = "tracking_session_token_temp_v1";
 
 function createToken() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto

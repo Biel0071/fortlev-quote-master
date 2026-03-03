@@ -114,15 +114,24 @@ export default function StoreHome() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <div className="pt-4 sm:pt-6">
+      <div className="pt-2 sm:pt-6">
         <HomeHeroCarousel banners={home.banners} loading={home.loading} />
       </div>
 
-      <HomeSection title="Categorias" tone="plain">
+      <HomeSection
+        title="Categorias"
+        tone="plain"
+        className="pt-3 pb-8 sm:py-12"
+        action={
+          <Link to="/loja" className="text-sm font-semibold underline underline-offset-4">
+            Ver catálogo
+          </Link>
+        }
+      >
         {!phase.categories || categoriesLoading ? (
           <SectionSkeleton rows={1} />
         ) : (
-          <HomeCategoriesCarousel categories={activeCategories as any} />
+          <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
         )}
       </HomeSection>
 

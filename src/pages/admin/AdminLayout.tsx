@@ -42,7 +42,7 @@ function AdminSidebar() {
   const items = [
     { title: "Dashboard", url: "/admin/dashboard", icon: LayoutGrid },
     { title: "Home", url: "/admin/home", icon: Home },
-    { title: "Orçamentos", url: routes.quotations, icon: FileText, external: true },
+    { title: "Orçamentos", url: `${routes.quotations}?from=admin`, icon: FileText, external: true },
     { title: "Produtos", url: "/admin/produtos", icon: Package },
     { title: "Categorias", url: "/admin/categorias", icon: Tags },
     { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag },

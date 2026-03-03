@@ -3,8 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronDown,
   Flame,
-  LayoutGrid,
+  Folder,
   MoreVertical,
+  Package,
   PackageSearch,
   Search,
   ShoppingCart,
@@ -150,15 +151,15 @@ export function StoreTopbar({
                         <div className="text-sm font-semibold text-foreground">Atalhos da loja</div>
                         <div className="grid gap-2">
                           <Button asChild variant="outline" className="h-11 justify-start rounded-xl transition-all hover:translate-x-0.5">
-                            <Link to="/materiais#ofertas" className="flex items-center gap-3">
-                              <Tag className="h-5 w-5" />
-                              <span>🏷️ Ofertas</span>
+                            <Link to="/materiais#ofertas" className="flex items-center gap-2">
+                              <Tag className="h-[18px] w-[18px]" />
+                              <span>Ofertas</span>
                             </Link>
                           </Button>
                           <Button asChild variant="outline" className="h-11 justify-start rounded-xl transition-all hover:translate-x-0.5">
-                            <Link to="/materiais#mais-vendidos" className="flex items-center gap-3">
-                              <Flame className="h-5 w-5" />
-                              <span>🔥 Mais vendidos</span>
+                            <Link to="/materiais#mais-vendidos" className="flex items-center gap-2">
+                              <Flame className="h-[18px] w-[18px]" />
+                              <span>Mais vendidos</span>
                             </Link>
                           </Button>
                         </div>
@@ -174,8 +175,8 @@ export function StoreTopbar({
                               className="flex w-full items-center justify-between rounded-xl px-1 py-1 text-left transition-colors hover:bg-accent/60"
                             >
                               <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                                <LayoutGrid className="h-5 w-5" />
-                                📂 Categorias
+                                <Folder className="h-[18px] w-[18px]" />
+                                Categorias
                               </span>
                               <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", categoriesOpen && "rotate-180")} />
                             </button>
@@ -203,10 +204,16 @@ export function StoreTopbar({
                         <div className="text-sm font-semibold text-foreground">Conta</div>
                         <div className="grid gap-2">
                           <Button asChild variant="secondary" className="h-11 justify-start rounded-xl">
-                            <Link to="/conta">👤 Minha conta</Link>
+                            <Link to="/conta" className="flex items-center gap-2">
+                              <User className="h-[18px] w-[18px]" />
+                              <span>Minha conta</span>
+                            </Link>
                           </Button>
                           <Button asChild variant="secondary" className="h-11 justify-start rounded-xl">
-                            <Link to="/pedidos">📦 Meus pedidos / Rastreio</Link>
+                            <Link to="/pedidos" className="flex items-center gap-2">
+                              <Package className="h-[18px] w-[18px]" />
+                              <span>Meus pedidos / Rastreio</span>
+                            </Link>
                           </Button>
                           <Button
                             variant="secondary"
@@ -219,7 +226,10 @@ export function StoreTopbar({
                               nav("/carrinho");
                             }}
                           >
-                            🛒 Carrinho{cartCount > 0 ? ` (${cartCount})` : ""}
+                            <span className="flex items-center gap-2">
+                              <ShoppingCart className="h-[18px] w-[18px]" />
+                              <span>Carrinho{cartCount > 0 ? ` (${cartCount})` : ""}</span>
+                            </span>
                           </Button>
                         </div>
                       </section>

@@ -65,12 +65,9 @@ serve(async (req) => {
       pendingQuoteEventsRes,
       sessionSummaryRes,
       dailySalesRes,
-      dailyIntentRes,
+      weekEventsRes,
       recentEventsRes,
       abandonedRes,
-      topProductEventsRes,
-      topSearchRes,
-      topViewedFromEventsRes,
       totalSessionsRes,
       convertedSessionsRes,
       recentCheckoutSessionsRes,
@@ -78,18 +75,15 @@ serve(async (req) => {
       service.from("store_orders").select("total").in("status", ["pago", "finalizado"]).gte("created_at", todayISO).limit(2000),
       service.from("store_orders").select("total").in("status", ["pago", "finalizado"]).gte("created_at", weekISO).limit(4000),
       service.from("store_orders").select("id", { count: "exact", head: true }).in("status", ["pago", "finalizado"]),
-      service.from("user_sessions").select("session_id, score, status, last_seen_at, device, source").gte("last_seen_at", onlineCutoff).order("last_seen_at", { ascending: false }).limit(30),
-      service.from("user_sessions").select("session_id, score, status, last_seen_at, device, source").eq("status", "quente").order("score", { ascending: false }).limit(20),
-      service.from("user_events").select("id", { count: "exact", head: true }).eq("type", "request_quote").gte("created_at", weekISO),
-      service.from("user_sessions").select("total_time_seconds, total_pages, total_clicks, score").limit(2000),
+      service.from("tracking_sessions").select("session_token, score, temperature, last_seen_at, device, source").gte("last_seen_at", onlineCutoff).order("last_seen_at", { ascending: false }).limit(30),
+      service.from("tracking_sessions").select("session_token, score, temperature, last_seen_at, device, source").eq("temperature", "quente").order("score", { ascending: false }).limit(20),
+      service.from("tracking_events").select("id", { count: "exact", head: true }).eq("type", "request_quote").gte("created_at", weekISO),
+      service.from("tracking_sessions").select("total_time_seconds, total_pages, total_clicks, score").limit(2000),
       service.from("store_orders").select("created_at, total, status").in("status", ["pago", "finalizado"]).gte("created_at", weekISO).limit(4000),
-      service.from("user_sessions").select("updated_at, score").gte("updated_at", weekISO).limit(4000),
-      service.from("user_events").select("type, metadata, created_at, session_id").gte("created_at", recentCutoff).order("created_at", { ascending: false }).limit(200),
+      service.from("tracking_events").select("type, metadata, created_at, session_id, product_id").gte("created_at", weekISO).order("created_at", { ascending: false }).limit(8000),
+      service.from("tracking_events").select("type, metadata, created_at, session_id").gte("created_at", recentCutoff).order("created_at", { ascending: false }).limit(200),
       service.from("abandoned_checkouts").select("id, session_id, total, updated_at, recovery_status").eq("recovery_status", "open").order("updated_at", { ascending: false }).limit(20),
-      service.from("user_events").select("metadata, type").in("type", ["view_product", "product_view"]).gte("created_at", weekISO).limit(5000),
-      service.from("user_events").select("metadata").eq("type", "search").gte("created_at", weekISO).limit(5000),
-      service.from("visitor_events").select("product_id, created_at").eq("event_name", "product_view").gte("created_at", weekISO).limit(5000),
-      service.from("user_sessions").select("id", { count: "exact", head: true }).gte("first_seen_at", weekISO),
+      service.from("tracking_sessions").select("id", { count: "exact", head: true }).gte("first_seen_at", weekISO),
       service.from("store_orders").select("id", { count: "exact", head: true }).in("status", ["pago", "finalizado"]).gte("created_at", weekISO),
       service.from("checkout_sessions").select("id", { count: "exact", head: true }).gte("created_at", weekISO),
     ]);
@@ -119,21 +113,36 @@ serve(async (req) => {
     }
 
     const intentDailyMap = new Map<string, number>();
-    for (const row of dailyIntentRes.data ?? []) {
-      const key = new Date(row.updated_at).toISOString().slice(0, 10);
-      intentDailyMap.set(key, Math.max(intentDailyMap.get(key) ?? 0, Number(row.score ?? 0)));
-    }
-
+    const intentHeatMap = new Map<string, number>();
     const topProductMap = new Map<string, number>();
-    for (const row of topProductEventsRes.data ?? []) {
-      const pid = String(row?.metadata?.product_id ?? row?.metadata?.productId ?? "").trim();
-      if (!pid) continue;
-      topProductMap.set(pid, (topProductMap.get(pid) ?? 0) + 1);
-    }
-    for (const row of topViewedFromEventsRes.data ?? []) {
-      const pid = String(row?.product_id ?? "").trim();
-      if (!pid) continue;
-      topProductMap.set(pid, (topProductMap.get(pid) ?? 0) + 1);
+    const searchTermsMap = new Map<string, number>();
+
+    const sessionsWithProductView = new Set<string>();
+    const sessionsWithAddToCart = new Set<string>();
+    const sessionsWithCheckoutStart = new Set<string>();
+    const sessionsWithRequestQuote = new Set<string>();
+
+    for (const row of weekEventsRes.data ?? []) {
+      const dateKey = new Date(row.created_at).toISOString().slice(0, 10);
+      const hourKey = new Date(row.created_at).getHours().toString().padStart(2, "0");
+      const delta = Number((row.metadata as any)?.score_delta ?? 0);
+
+      intentDailyMap.set(dateKey, (intentDailyMap.get(dateKey) ?? 0) + Math.max(0, delta));
+      intentHeatMap.set(hourKey, (intentHeatMap.get(hourKey) ?? 0) + Math.max(0, delta));
+
+      const sid = String(row.session_id ?? "");
+      if (row.type === "product_view") {
+        if (sid) sessionsWithProductView.add(sid);
+        const pid = String(row.product_id ?? "").trim();
+        if (pid) topProductMap.set(pid, (topProductMap.get(pid) ?? 0) + 1);
+      }
+      if (row.type === "add_to_cart" && sid) sessionsWithAddToCart.add(sid);
+      if (row.type === "checkout_start" && sid) sessionsWithCheckoutStart.add(sid);
+      if (row.type === "request_quote" && sid) sessionsWithRequestQuote.add(sid);
+      if (row.type === "search") {
+        const term = String((row.metadata as any)?.term ?? (row.metadata as any)?.query ?? "").trim().toLowerCase();
+        if (term) searchTermsMap.set(term, (searchTermsMap.get(term) ?? 0) + 1);
+      }
     }
 
     const topProductIds = Array.from(topProductMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([id]) => id);
@@ -144,26 +153,25 @@ serve(async (req) => {
     const namesById = new Map((topProductsData ?? []).map((p: any) => [p.id, p.name]));
     const topViewedProducts = topProductIds.map((id) => ({ id, name: namesById.get(id) ?? "Produto", views: topProductMap.get(id) ?? 0 }));
 
-    const searchTermsMap = new Map<string, number>();
-    for (const row of topSearchRes.data ?? []) {
-      const term = String(row?.metadata?.term ?? row?.metadata?.query ?? "").trim().toLowerCase();
-      if (!term) continue;
-      searchTermsMap.set(term, (searchTermsMap.get(term) ?? 0) + 1);
-    }
-
     const topSearchTerms = Array.from(searchTermsMap.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
       .map(([term, count]) => ({ term, count }));
 
     const recentActivity = (recentEventsRes.data ?? []).slice(0, 25).map((e: any) => ({
-      session_id: e.session_id,
+      session_id: String(e.session_id ?? ""),
       type: e.type,
       created_at: e.created_at,
       metadata: e.metadata ?? {},
     }));
 
-    const scoreToStatus = (score: number) => (score >= 71 ? "quente" : score >= 31 ? "morno" : "frio");
+    const conversionFunnel = [
+      { stage: "Sessões", value: Number(totalSessionsRes.count ?? 0) },
+      { stage: "Visualizou", value: sessionsWithProductView.size },
+      { stage: "Carrinho", value: sessionsWithAddToCart.size },
+      { stage: "Checkout", value: sessionsWithCheckoutStart.size },
+      { stage: "Orçamento", value: sessionsWithRequestQuote.size },
+    ];
 
     const payload = {
       summary: {
@@ -173,29 +181,33 @@ serve(async (req) => {
         onlineUsers: (onlineUsersRes.data ?? []).length,
         hotUsers: (hotUsersRes.data ?? []).length,
         pendingQuotations: pendingQuoteEventsRes.count ?? 0,
+        abandonedCarts: (abandonedRes.data ?? []).length,
       },
       charts: {
         salesDaily: Array.from(salesDailyMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([date, total]) => ({ date, total })),
         intentDaily: Array.from(intentDailyMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([date, score]) => ({ date, score })),
+        conversionFunnel,
+        intentHeatmap: Array.from(intentHeatMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([hour, score]) => ({ hour: `${hour}:00`, score })),
       },
       lists: {
         onlineNow: (onlineUsersRes.data ?? []).map((s: any) => ({
-          session_id: s.session_id,
+          session_id: s.session_token,
           score: Number(s.score ?? 0),
-          status: s.status || scoreToStatus(Number(s.score ?? 0)),
+          status: s.temperature,
           device: s.device,
           source: s.source,
           last_seen_at: s.last_seen_at,
         })),
         hotLeads: (hotUsersRes.data ?? []).map((s: any) => ({
-          session_id: s.session_id,
+          session_id: s.session_token,
           score: Number(s.score ?? 0),
-          status: s.status || scoreToStatus(Number(s.score ?? 0)),
+          status: s.temperature,
           device: s.device,
           source: s.source,
           last_seen_at: s.last_seen_at,
         })),
         recentActivity,
+        liveActions: recentActivity.slice(0, 10),
         abandonedCarts: (abandonedRes.data ?? []).map((c: any) => ({
           id: c.id,
           session_id: c.session_id,

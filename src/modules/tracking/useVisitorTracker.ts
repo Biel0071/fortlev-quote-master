@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { consentGiven, getConsentState, setConsentState, type ConsentState } from "@/utils/consent";
-import {
-  startOrUpdateVisitorSession,
-  trackVisitorEvent,
-  type TrackEventInput,
-} from "@/utils/trackingClient";
+import { startOrUpdateVisitorSession } from "@/utils/trackingClient";
+import { collectAndTrackEvent } from "./trackingService";
+import type { TrackingCollectorEvent } from "./eventCollector";
 
-const TOKEN_KEY_PERSIST = "visitor_session_token_v1";
-const TOKEN_KEY_TEMP = "visitor_session_token_temp_v1";
+const TOKEN_KEY_PERSIST = "tracking_session_token_v1";
+const TOKEN_KEY_TEMP = "tracking_session_token_temp_v1";
 
 function ensureToken(persist: boolean) {
   const key = persist ? TOKEN_KEY_PERSIST : TOKEN_KEY_TEMP;
@@ -33,17 +31,15 @@ export function useVisitorTracker() {
   const consentOk = useMemo(() => consentGiven(consent), [consent]);
   const sessionToken = useMemo(() => ensureToken(consentOk), [consentOk]);
 
-  // Start session (best-effort)
   useEffect(() => {
     startOrUpdateVisitorSession({ sessionToken, consentGiven: consentOk }).catch(() => {});
   }, [sessionToken, consentOk]);
 
-  // Page views + time on page
   useEffect(() => {
     const path = location.pathname + location.search + location.hash;
     const started = Date.now();
 
-    trackVisitorEvent({
+    collectAndTrackEvent({
       sessionToken,
       consentGiven: consentOk,
       event: { type: "page_view", path },
@@ -51,15 +47,14 @@ export function useVisitorTracker() {
 
     return () => {
       const duration = Math.max(0, Math.round((Date.now() - started) / 1000));
-      trackVisitorEvent({
+      collectAndTrackEvent({
         sessionToken,
         consentGiven: consentOk,
-        event: { type: "page_view", path, duration },
+        event: { type: "page_view", path, duration, metadata: { phase: "exit" } },
       }).catch(() => {});
     };
   }, [location.key, sessionToken, consentOk]);
 
-  // Scroll depth (throttled)
   useEffect(() => {
     if (!consentOk) return;
     let ticking = false;
@@ -80,7 +75,7 @@ export function useVisitorTracker() {
         const height = Math.max(1, doc.scrollHeight - doc.clientHeight);
         const depth = Math.min(1, Math.max(0, scrollTop / height));
 
-        trackVisitorEvent({
+        collectAndTrackEvent({
           sessionToken,
           consentGiven: consentOk,
           event: { type: "scroll", path: window.location.pathname, metadata: { depth } },
@@ -92,12 +87,11 @@ export function useVisitorTracker() {
     return () => window.removeEventListener("scroll", onScroll as any);
   }, [consentOk, sessionToken]);
 
-  // Listen to product visit events
   useEffect(() => {
     const handler = (e: any) => {
       const pid = e?.detail?.productId as string | undefined;
       if (!pid) return;
-      trackVisitorEvent({
+      collectAndTrackEvent({
         sessionToken,
         consentGiven: consentOk,
         event: { type: "product_view", productId: pid, path: window.location.pathname },
@@ -121,8 +115,8 @@ export function useVisitorTracker() {
         setConsentState("declined");
         setConsent("declined");
       },
-      track: (event: TrackEventInput) =>
-        trackVisitorEvent({ sessionToken, consentGiven: consentOk, event }).catch(() => {}),
+      track: (event: TrackingCollectorEvent) =>
+        collectAndTrackEvent({ sessionToken, consentGiven: consentOk, event }).catch(() => {}),
     }),
     [consent, consentOk, sessionToken],
   );

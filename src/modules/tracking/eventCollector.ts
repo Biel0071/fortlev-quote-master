@@ -2,19 +2,42 @@ import type { TrackEventInput } from "./trackingClient";
 
 export type TrackingCollectorEvent =
   | TrackEventInput
-  | { type: "search"; metadata?: Record<string, unknown>; path?: string }
-  | { type: "add_to_cart"; productId?: string | null; path?: string; metadata?: Record<string, unknown> }
-  | { type: "banner_click"; metadata?: Record<string, unknown>; path?: string }
-  | { type: "checkout_start"; metadata?: Record<string, unknown>; path?: string };
+  | { type: "add_cart"; productId?: string | null; categoryId?: string | null; path?: string; metadata?: Record<string, unknown> }
+  | { type: "remove_cart"; productId?: string | null; categoryId?: string | null; path?: string; metadata?: Record<string, unknown> }
+  | { type: "offer_click"; metadata?: Record<string, unknown>; path?: string };
+
+const OFFICIAL_EVENT_TYPES = new Set<string>([
+  "page_view",
+  "product_view",
+  "search",
+  "add_to_cart",
+  "banner_click",
+  "checkout_start",
+  "request_quote",
+  "scroll",
+  "chat_open",
+  "chat_close",
+  "chat_message_sent",
+  "whatsapp_click",
+  "category_click",
+]);
 
 export function normalizeCollectedEvent(event: TrackingCollectorEvent): TrackEventInput {
-  if (event.type === "add_to_cart") {
-    return { type: "add_cart", productId: event.productId ?? null, path: event.path, metadata: event.metadata };
+  if (event.type === "add_cart") {
+    return { type: "add_to_cart", productId: event.productId ?? null, categoryId: event.categoryId ?? null, path: event.path, metadata: event.metadata };
   }
 
-  if (event.type === "search" || event.type === "banner_click" || event.type === "checkout_start") {
-    return { type: "offer_click", path: event.path, metadata: { ...(event.metadata ?? {}), normalized_type: event.type } };
+  if (event.type === "offer_click") {
+    const normalized = String((event.metadata as any)?.normalized_type ?? "").trim();
+    if (OFFICIAL_EVENT_TYPES.has(normalized)) {
+      return {
+        type: normalized as TrackEventInput["type"],
+        path: event.path,
+        metadata: { ...(event.metadata ?? {}), original_type: "offer_click" },
+      };
+    }
+    return { type: "banner_click", path: event.path, metadata: { ...(event.metadata ?? {}), original_type: "offer_click" } };
   }
 
-  return event;
+  return event as TrackEventInput;
 }

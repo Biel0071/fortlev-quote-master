@@ -6,9 +6,10 @@ const SCORE_DELTA: Record<string, number> = {
   add_to_cart: 15,
   checkout_start: 30,
   request_quote: 50,
+  banner_click: 3,
 };
 
-export function getScoreDelta(eventType: EventType | "search" | "add_to_cart" | "banner_click" | "checkout_start") {
+export function getScoreDelta(eventType: EventType) {
   return SCORE_DELTA[eventType] ?? 0;
 }
 

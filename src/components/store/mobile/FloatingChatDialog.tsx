@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { analyzeChatConversation, closeChatSession, logChatMessage, trackVisitorEvent } from "@/utils/trackingClient";
+import { analyzeChatConversation, closeChatSession, logChatMessage } from "@/utils/trackingClient";
+import { collectAndTrackEvent } from "@/modules/tracking";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -31,8 +32,6 @@ async function askAI(history: Msg[], userText: string) {
     },
   });
 
-  // IMPORTANT: não transformar qualquer erro em fallback aqui.
-  // A decisão de fallback (402/429) fica exclusivamente no catch do send.
   if (error) throw error as unknown as AIInvokeError;
 
   const answer = String((data as any)?.answer ?? "").trim();
@@ -48,7 +47,6 @@ function buildWhatsAppUrl(phoneDigits: string) {
 }
 
 function WhatsAppIcon({ className }: { className?: string }) {
-  // Ícone oficial simplificado (SVG) sem depender de libs externas.
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true" focusable="false">
       <path
@@ -91,7 +89,6 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
 
     const canWhatsApp = useMemo(() => Boolean(phoneDigits && phoneDigits.length >= 8), [phoneDigits]);
 
-    // Mensagem inicial com delay (simula digitação)
     useEffect(() => {
       if (!open) return;
       if (messages.length > 0) return;
@@ -125,9 +122,11 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
       setMessages((prev) => [...prev, { role: "user", content: text }]);
 
       if (consentOk) {
-        trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "chat_message_sent" } }).catch(
-          () => {},
-        );
+        collectAndTrackEvent({
+          sessionToken: trackerSessionToken,
+          consentGiven: true,
+          event: { type: "chat_message_sent", path: window.location.pathname },
+        }).catch(() => {});
       }
       if (chatSessionId) {
         logChatMessage({ chatSessionId, role: "user", content: text }).catch(() => {});
@@ -143,7 +142,6 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
       } catch (e) {
         const status = (e as any)?.context?.status as number | undefined;
 
-        // 402/429: nunca mostrar erro técnico/vermelho — responder com fallback amigável
         if (status === 402 || status === 429) {
           setMessages((prev) => [
             ...prev,
@@ -154,7 +152,6 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
             },
           ]);
         } else {
-          // Demais erros: UX limpa, sem detalhes técnicos
           setMessages((prev) => [
             ...prev,
             { role: "assistant", content: "Tive uma instabilidade aqui — tenta novamente em instantes." },
@@ -184,7 +181,6 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
               "shadow-xl",
             )}
           >
-            {/* A11y: Radix exige Title/Description dentro do DialogContent */}
             <DialogTitle className="sr-only">Atendimento — Vanessa</DialogTitle>
             <DialogDescription className="sr-only">Chat de atendimento com a consultora técnica.</DialogDescription>
 
@@ -224,17 +220,21 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
                 disabled={!canWhatsApp}
                 onClick={() => {
                   if (consentOk) {
-                    trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "whatsapp_click" } }).catch(
-                      () => {},
-                    );
+                    collectAndTrackEvent({
+                      sessionToken: trackerSessionToken,
+                      consentGiven: true,
+                      event: { type: "whatsapp_click", path: window.location.pathname },
+                    }).catch(() => {});
                   }
                   if (!canWhatsApp) return;
                   const url = buildWhatsAppUrl(phoneDigits!);
                   window.open(url, "_blank", "noreferrer");
                   if (consentOk) {
-                    trackVisitorEvent({ sessionToken: trackerSessionToken, consentGiven: true, event: { type: "request_quote" } }).catch(
-                      () => {},
-                    );
+                    collectAndTrackEvent({
+                      sessionToken: trackerSessionToken,
+                      consentGiven: true,
+                      event: { type: "request_quote", path: window.location.pathname },
+                    }).catch(() => {});
                   }
                 }}
               >
@@ -288,4 +288,3 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
 FloatingChatDialog.displayName = "FloatingChatDialog";
 
 export default FloatingChatDialog;
-

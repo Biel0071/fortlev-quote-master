@@ -86,9 +86,9 @@ export function useHomeMerchandising(options?: UseHomeMerchandisingOptions) {
 
       const [viewsRes, weekItemsRes, monthItemsRes] = await Promise.all([
         cloud
-          .from("visitor_events")
-          .select("product_id, created_at, event_name")
-          .eq("event_name", "product_view")
+          .from("tracking_events")
+          .select("product_id, created_at, type")
+          .eq("type", "product_view")
           .gte("created_at", sinceWeek)
           .limit(1000),
         cloud

@@ -77,17 +77,6 @@ export default function StoreHome() {
     };
   }, [phase.secondary]);
 
-  useEffect(() => {
-    const candidates = (home.banners ?? []).slice(0, 2).flatMap((b) => [b.image_desktop_path, b.image_mobile_path, b.image_path]);
-    candidates.forEach((path) => {
-      const urls = getBannerImageUrls(path ?? null);
-      [urls.primary, urls.legacy].forEach((url) => {
-        if (!url || url.startsWith("blob:")) return;
-        const img = new Image();
-        img.src = url;
-      });
-    });
-  }, [home.banners]);
 
   const seo = useMemo(() => pickHomeSeo(home.seo), [home.seo]);
   const ogImageUrl = useMemo(() => {

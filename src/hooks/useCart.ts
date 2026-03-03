@@ -52,14 +52,31 @@ const parseLines = (raw: string | null): CartLine[] => {
   }
 };
 
+const safeGetItem = (key: string) => {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const safeSetItem = (key: string, value: string) => {
+  try {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(key, value);
+  } catch {
+    // storage blocked: keep in-memory cart only
+  }
+};
+
 const readInitialState = (): CartState => {
   if (typeof window === "undefined") {
     return { lines: [], couponCode: "" };
   }
 
   return {
-    lines: parseLines(window.localStorage.getItem(STORAGE_KEY)),
-    couponCode: window.localStorage.getItem(COUPON_KEY) ?? "",
+    lines: parseLines(safeGetItem(STORAGE_KEY)),
+    couponCode: safeGetItem(COUPON_KEY) ?? "",
   };
 };
 
@@ -71,9 +88,8 @@ const emitChange = () => {
 };
 
 const persistState = () => {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cartState.lines));
-  window.localStorage.setItem(COUPON_KEY, cartState.couponCode);
+  safeSetItem(STORAGE_KEY, JSON.stringify(cartState.lines));
+  safeSetItem(COUPON_KEY, cartState.couponCode);
 };
 
 const setCartState = (updater: (prev: CartState) => CartState) => {
@@ -90,8 +106,8 @@ const ensureStorageSync = () => {
     if (event.key !== STORAGE_KEY && event.key !== COUPON_KEY) return;
 
     cartState = {
-      lines: parseLines(window.localStorage.getItem(STORAGE_KEY)),
-      couponCode: window.localStorage.getItem(COUPON_KEY) ?? "",
+      lines: parseLines(safeGetItem(STORAGE_KEY)),
+      couponCode: safeGetItem(COUPON_KEY) ?? "",
     };
     emitChange();
   });

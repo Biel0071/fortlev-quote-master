@@ -34,13 +34,17 @@ import storeLogo from "@/assets/store-logo-materiais.png";
 export function StoreTopbar({
   cartCount,
   onCartClick,
+  footerStoreName,
+  categories,
 }: {
   cartCount: number;
   onCartClick?: () => void;
+  footerStoreName?: string;
+  categories?: Array<{ id: string; name: string; slug: string }>;
 }) {
   const nav = useNavigate();
-  const { footer } = useHomeContent();
-  const { activeCategories } = useStoreCategories();
+  const { footer } = useHomeContent({ enabled: !footerStoreName });
+  const { activeCategories } = useStoreCategories({ enabled: !categories });
   const contact = useStoreContact();
 
   const [q, setQ] = useState("");
@@ -63,8 +67,11 @@ export function StoreTopbar({
     nav(term ? `/loja?q=${encodeURIComponent(term)}` : "/loja");
   };
 
-  const brandLabel = footer?.store_name || "Materiais de Construção";
-  const menuCategories = useMemo(() => (activeCategories ?? []).slice(0, 12), [activeCategories]);
+  const brandLabel = footerStoreName || footer?.store_name || "Materiais de Construção";
+  const menuCategories = useMemo(
+    () => ((categories?.length ? categories : activeCategories) ?? []).slice(0, 12),
+    [categories, activeCategories],
+  );
 
   return (
     <>

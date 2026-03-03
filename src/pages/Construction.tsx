@@ -11,7 +11,7 @@ import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
 import { FilePlus, LayoutDashboard, Pencil, Building2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +21,8 @@ import { ConstructionQuotationsDashboard } from '@/components/construction/Const
 
 const ConstructionPage = () => {
   const { quotations, saveQuotation, updateQuotation, deleteQuotation, generateQuotationNumber } = useConstructionQuotations();
-
+  const [searchParams] = useSearchParams();
+  const returnPath = searchParams.get('from') === 'admin' ? '/admin/dashboard/orcamentos' : '/';
   const [activeTab, setActiveTab] = useState<'new' | 'saved'>('new');
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
 
@@ -325,7 +326,7 @@ const ConstructionPage = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link to="/">
+              <Link to={returnPath}>
                 <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>

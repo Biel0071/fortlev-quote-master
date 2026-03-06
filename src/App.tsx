@@ -31,6 +31,12 @@ import {
   AdminCoupons,
   AdminBanners,
   AdminSettings,
+  AdminSettingsLayout,
+  AdminUsersAccess,
+  AdminSettingsFrete,
+  AdminSettingsPagamentos,
+  AdminSettingsIdentidade,
+  AdminSettingsIntegracoes,
   AdminTheme,
   AdminAiAnalysis,
   AdminDashboardTracking,
@@ -113,7 +119,14 @@ const App = () => (
               <Route path="banners" element={<AdminBanners />} />
               <Route path="tema" element={<AdminTheme />} />
               <Route path="analise-ia" element={<AdminAiAnalysis />} />
-              <Route path="configuracoes" element={<AdminSettings />} />
+              <Route path="configuracoes" element={<AdminSettingsLayout />}>
+                <Route index element={<AdminSettings />} />
+                <Route path="usuarios" element={<AdminUsersAccess />} />
+                <Route path="frete" element={<AdminSettingsFrete />} />
+                <Route path="pagamentos" element={<AdminSettingsPagamentos />} />
+                <Route path="identidade" element={<AdminSettingsIdentidade />} />
+                <Route path="integracoes" element={<AdminSettingsIntegracoes />} />
+              </Route>
 
               {/* rotas reservadas */}
               <Route path="ofertas" element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>} />

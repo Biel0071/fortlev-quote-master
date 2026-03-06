@@ -33,38 +33,59 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSession } from "@/hooks/useSession";
 import { StoreSwitcher } from "@/components/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+
+type SidebarItem = {
+  title: string;
+  url: string;
+  icon: any;
+  page: string;
+  external?: boolean;
+};
+
+const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
+  { title: "Dashboard", url: "/admin/dashboard", icon: LayoutGrid, page: "dashboard" },
+  { title: "Home", url: "/admin/home", icon: Home, page: "home" },
+  { title: "Orçamentos", url: "", icon: FileText, page: "orcamentos", external: true },
+  { title: "Produtos", url: "/admin/produtos", icon: Package, page: "produtos" },
+  { title: "Categorias", url: "/admin/categorias", icon: Tags, page: "categorias" },
+  { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag, page: "pedidos" },
+  { title: "Clientes", url: "/admin/clientes", icon: Users, page: "clientes" },
+  { title: "Cupons", url: "/admin/cupons", icon: TicketPercent, page: "cupons" },
+  { title: "Banners", url: "/admin/banners", icon: ImageIcon, page: "banners" },
+  { title: "Tema", url: "/admin/tema", icon: Palette, page: "tema" },
+  { title: "Análise IA", url: "/admin/analise-ia", icon: Sparkles, page: "analise-ia" },
+  { title: "Configurações", url: "/admin/configuracoes", icon: Settings, page: "configuracoes" },
+];
 
 function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { routes } = useStore();
+  const { canViewPage, isMaster, storeAccess } = useAdminPermissions();
 
-  const items = [
-    { title: "Dashboard", url: "/admin/dashboard", icon: LayoutGrid },
-    { title: "Home", url: "/admin/home", icon: Home },
-    { title: "Orçamentos", url: `${routes.quotations}?from=admin`, icon: FileText, external: true },
-    { title: "Produtos", url: "/admin/produtos", icon: Package },
-    { title: "Categorias", url: "/admin/categorias", icon: Tags },
-    { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag },
-    { title: "Clientes", url: "/admin/clientes", icon: Users },
-    { title: "Cupons", url: "/admin/cupons", icon: TicketPercent },
-    { title: "Banners", url: "/admin/banners", icon: ImageIcon },
-    { title: "Tema", url: "/admin/tema", icon: Palette },
-    { title: "Análise IA", url: "/admin/analise-ia", icon: Sparkles },
-    { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
-  ] as Array<{ title: string; url: string; icon: any; external?: boolean }>;
+  // Filter items based on permissions
+  const items = ALL_SIDEBAR_ITEMS.filter((item) => canViewPage(item.page)).map((item) => ({
+    ...item,
+    url: item.page === "orcamentos" ? `${routes.quotations}?from=admin` : item.url,
+  }));
+
+  // Hide store switcher if user only has access to one store
+  const showStoreSwitcher = isMaster || storeAccess.length !== 1;
 
   return (
     <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible="icon">
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>{collapsed ? "" : "Loja"}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <div className={collapsed ? "px-2" : "px-3"}>
-              <StoreSwitcher className={collapsed ? "h-10 px-2" : "h-10"} />
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {showStoreSwitcher && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{collapsed ? "" : "Loja"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className={collapsed ? "px-2" : "px-3"}>
+                <StoreSwitcher className={collapsed ? "h-10 px-2" : "h-10"} />
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         <SidebarGroup>
           <SidebarGroupLabel>{collapsed ? "" : "Admin"}</SidebarGroupLabel>

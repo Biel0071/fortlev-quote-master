@@ -28,7 +28,7 @@ type StoreProviderProps = {
   children: React.ReactNode;
 };
 
-export const StoreProvider = React.forwardRef<HTMLDivElement, StoreProviderProps>(({ children }, ref) => {
+export function StoreProvider({ children }: StoreProviderProps) {
   // pedido: padrão sempre "Materiais de Construção"
   const [store, setStore] = useState<AppStore>("materiais");
 
@@ -60,12 +60,9 @@ export const StoreProvider = React.forwardRef<HTMLDivElement, StoreProviderProps
   }, [store]);
 
   return (
-    <div ref={ref}>
-      <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
-    </div>
+    <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
   );
-});
-StoreProvider.displayName = "StoreProvider";
+}
 
 export function useStore() {
   const ctx = useContext(StoreContext);

@@ -77,6 +77,39 @@ export type Database = {
           },
         ]
       }
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          entity: string | null
+          entity_id: string | null
+          id: string
+          metadata: Json
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+          metadata?: Json
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+          metadata?: Json
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       admin_allowlist: {
         Row: {
           created_at: string
@@ -89,6 +122,42 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+        }
+        Relationships: []
+      }
+      admin_users: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          name: string
+          role: Database["public"]["Enums"]["admin_role"]
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          name: string
+          role?: Database["public"]["Enums"]["admin_role"]
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          name?: string
+          role?: Database["public"]["Enums"]["admin_role"]
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1741,6 +1810,36 @@ export type Database = {
           },
         ]
       }
+      stores: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          owner_id: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          owner_id?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       system_event_logs: {
         Row: {
           created_at: string
@@ -1979,6 +2078,53 @@ export type Database = {
           },
         ]
       }
+      user_page_permissions: {
+        Row: {
+          can_create: boolean
+          can_delete: boolean
+          can_edit: boolean
+          can_view: boolean
+          created_at: string
+          id: string
+          page: string
+          store_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          page: string
+          store_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          page?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_page_permissions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2056,6 +2202,35 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      user_store_access: {
+        Row: {
+          created_at: string
+          id: string
+          store_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          store_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          store_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_store_access_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       visitor_events: {
         Row: {
@@ -2225,6 +2400,7 @@ export type Database = {
           total: number
         }[]
       }
+      get_admin_role: { Args: { _user_id: string }; Returns: string }
       get_products_for_ai_generation: {
         Args: { p_limit: number; p_offset: number }
         Returns: {
@@ -2238,6 +2414,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_master: { Args: { _user_id: string }; Returns: boolean }
       upsert_checkout_session: {
         Args: {
           _cart_items: Json
@@ -2289,6 +2466,7 @@ export type Database = {
       }
     }
     Enums: {
+      admin_role: "master" | "admin" | "operator"
       app_role: "admin"
     }
     CompositeTypes: {
@@ -2417,6 +2595,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      admin_role: ["master", "admin", "operator"],
       app_role: ["admin"],
     },
   },

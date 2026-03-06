@@ -29,7 +29,8 @@ import {
   Filter,
   Search,
   X,
-  Download
+  Download,
+  Copy
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartPie, Pie, Cell, BarChart, Bar } from 'recharts';
 import { useMemo, useState } from 'react';
@@ -48,6 +49,7 @@ interface DashboardProps {
   onDelete: (id: string) => void;
   onEdit?: (quotation: Quotation) => void;
   onSave?: (quotation: Quotation) => void;
+  onDuplicate?: (id: string) => void;
 }
 
 const statusConfig = {
@@ -59,7 +61,7 @@ const statusConfig = {
 
 const COLORS = ['hsl(45, 100%, 48%)', 'hsl(210, 80%, 15%)', 'hsl(205, 90%, 45%)', 'hsl(0, 84%, 60%)'];
 
-export const Dashboard = ({ quotations, onDelete, onEdit, onSave }: DashboardProps) => {
+export const Dashboard = ({ quotations, onDelete, onEdit, onSave, onDuplicate }: DashboardProps) => {
   const { isAdmin, loading: adminLoading } = useIsAdmin();
 
   const [nfeDialogOpen, setNfeDialogOpen] = useState(false);
@@ -696,6 +698,16 @@ export const Dashboard = ({ quotations, onDelete, onEdit, onSave }: DashboardPro
                             >
                               <Send className="h-4 w-4" />
                             </Button>
+                            {onDuplicate && (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => onDuplicate(quotation.id)}
+                                title="Duplicar orçamento"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"

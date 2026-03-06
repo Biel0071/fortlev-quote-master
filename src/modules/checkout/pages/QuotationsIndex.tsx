@@ -16,7 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { FilePlus, LayoutDashboard, Pencil } from 'lucide-react';
 
 const Index = () => {
-  const { quotations, saveQuotation, updateQuotation, deleteQuotation, generateQuotationNumber } = useQuotations();
+  const { quotations, saveQuotation, updateQuotation, deleteQuotation, duplicateQuotation, generateQuotationNumber } = useQuotations();
 
   const [activeTab, setActiveTab] = useState('new');
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
@@ -399,6 +399,7 @@ const Index = () => {
               onDelete={handleDeleteQuotation}
               onEdit={handleEditQuotation}
               onSave={(q) => updateQuotation(q.id, q)}
+              onDuplicate={duplicateQuotation}
             />
           </TabsContent>
         </Tabs>

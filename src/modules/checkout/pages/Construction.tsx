@@ -20,7 +20,7 @@ import { useConstructionQuotations } from '@/hooks/useConstructionQuotations';
 import { ConstructionQuotationsDashboard } from '@/components/construction/ConstructionQuotationsDashboard';
 
 const ConstructionPage = () => {
-  const { quotations, saveQuotation, updateQuotation, deleteQuotation, generateQuotationNumber } = useConstructionQuotations();
+  const { quotations, saveQuotation, updateQuotation, deleteQuotation, duplicateQuotation, generateQuotationNumber } = useConstructionQuotations();
   const [searchParams] = useSearchParams();
   const returnPath = searchParams.get('from') === 'admin' ? '/admin/dashboard/orcamentos' : '/';
   const [activeTab, setActiveTab] = useState<'new' | 'saved'>('new');
@@ -518,6 +518,7 @@ const ConstructionPage = () => {
               onEdit={handleEditQuotation}
               onDelete={handleDeleteQuotation}
               onSave={(q) => updateQuotation(q.id, q)}
+              onDuplicate={duplicateQuotation}
             />
           </TabsContent>
         </Tabs>

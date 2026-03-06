@@ -398,6 +398,66 @@ export type Database = {
         }
         Relationships: []
       }
+      construction_quotations: {
+        Row: {
+          company_info_json: Json
+          created_at: string
+          customer_json: Json
+          delivery_date: string
+          discount: number
+          freight: number
+          id: string
+          items_json: Json
+          number: string
+          observations: string
+          payment_method: string
+          show_client_data: boolean
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+          validity: string
+        }
+        Insert: {
+          company_info_json?: Json
+          created_at?: string
+          customer_json?: Json
+          delivery_date?: string
+          discount?: number
+          freight?: number
+          id?: string
+          items_json?: Json
+          number: string
+          observations?: string
+          payment_method?: string
+          show_client_data?: boolean
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          validity?: string
+        }
+        Update: {
+          company_info_json?: Json
+          created_at?: string
+          customer_json?: Json
+          delivery_date?: string
+          discount?: number
+          freight?: number
+          id?: string
+          items_json?: Json
+          number?: string
+          observations?: string
+          payment_method?: string
+          show_client_data?: boolean
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          validity?: string
+        }
+        Relationships: []
+      }
       cookie_consent: {
         Row: {
           accepted_at: string
@@ -589,6 +649,72 @@ export type Database = {
           type?: string
           unit?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      fortlev_quotations: {
+        Row: {
+          branding_json: Json | null
+          company_info_json: Json
+          created_at: string
+          customer_json: Json
+          delivery_time: string
+          discount: number
+          freight: number
+          id: string
+          items_json: Json
+          number: string
+          observations: string
+          payment_conditions_json: Json
+          show_client_data: boolean
+          status: string
+          subtotal: number
+          taxes_json: Json | null
+          total: number
+          updated_at: string
+          validity: string
+        }
+        Insert: {
+          branding_json?: Json | null
+          company_info_json?: Json
+          created_at?: string
+          customer_json?: Json
+          delivery_time?: string
+          discount?: number
+          freight?: number
+          id?: string
+          items_json?: Json
+          number: string
+          observations?: string
+          payment_conditions_json?: Json
+          show_client_data?: boolean
+          status?: string
+          subtotal?: number
+          taxes_json?: Json | null
+          total?: number
+          updated_at?: string
+          validity?: string
+        }
+        Update: {
+          branding_json?: Json | null
+          company_info_json?: Json
+          created_at?: string
+          customer_json?: Json
+          delivery_time?: string
+          discount?: number
+          freight?: number
+          id?: string
+          items_json?: Json
+          number?: string
+          observations?: string
+          payment_conditions_json?: Json
+          show_client_data?: boolean
+          status?: string
+          subtotal?: number
+          taxes_json?: Json | null
+          total?: number
+          updated_at?: string
+          validity?: string
         }
         Relationships: []
       }
@@ -974,6 +1100,36 @@ export type Database = {
           event_type?: string
           id?: string
           key?: string
+        }
+        Relationships: []
+      }
+      sales_records: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          quotation_id: string
+          sold_at: string
+          store: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quotation_id: string
+          sold_at?: string
+          store: string
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quotation_id?: string
+          sold_at?: string
+          store?: string
+          value?: number
         }
         Relationships: []
       }

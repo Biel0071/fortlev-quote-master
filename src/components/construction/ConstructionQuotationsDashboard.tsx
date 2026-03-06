@@ -11,13 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, Copy } from "lucide-react";
 
 interface ConstructionQuotationsDashboardProps {
   quotations: ConstructionQuotation[];
   onEdit: (quotation: ConstructionQuotation) => void;
   onDelete: (id: string) => void;
   onSave?: (quotation: ConstructionQuotation) => void;
+  onDuplicate?: (id: string) => void;
 }
 
 function statusLabel(status: ConstructionQuotation["status"]) {
@@ -35,7 +36,7 @@ function statusLabel(status: ConstructionQuotation["status"]) {
   }
 }
 
-export function ConstructionQuotationsDashboard({ quotations, onEdit, onDelete, onSave }: ConstructionQuotationsDashboardProps) {
+export function ConstructionQuotationsDashboard({ quotations, onEdit, onDelete, onSave, onDuplicate }: ConstructionQuotationsDashboardProps) {
   const { isAdmin, loading: adminLoading } = useIsAdmin();
 
   const [viewOpen, setViewOpen] = useState(false);
@@ -184,6 +185,16 @@ export function ConstructionQuotationsDashboard({ quotations, onEdit, onDelete, 
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
+                            {onDuplicate && (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => onDuplicate(q.id)}
+                                title="Duplicar orçamento"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="icon"

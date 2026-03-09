@@ -226,9 +226,11 @@ export default function AdminUsersAccess() {
         return;
       }
 
+      const finalPassword = invPassword.trim() || generatePassword();
+
       const { data: signUpData, error: signUpError } = await cloud.auth.signUp({
         email: invEmail.trim().toLowerCase(),
-        password: crypto.randomUUID().slice(0, 16) + "Aa1!",
+        password: finalPassword,
         options: { data: { invited_name: invName.trim() } },
       });
 

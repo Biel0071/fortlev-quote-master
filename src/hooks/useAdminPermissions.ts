@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { cloud } from "@/lib/cloud";
 import { useSession } from "@/hooks/useSession";
 
-export type AdminRole = "master" | "admin" | "operator" | null;
+export type AdminRole = "master" | "admin" | "gerente" | "operator" | "visualizador" | null;
 
 export type PagePermission = {
   page: string;

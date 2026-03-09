@@ -263,7 +263,7 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
               <div ref={endRef} />
             </div>
 
-            <div className="border-t border-border p-3 flex items-center gap-2">
+            <div className="border-t border-border/30 bg-muted/10 p-3 flex items-center gap-2">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -272,9 +272,9 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
                   if (e.key === "Enter") send();
                 }}
                 disabled={loading}
-                className="h-12 rounded-xl"
+                className="h-11 rounded-xl border-border/40 bg-card/80"
               />
-              <Button variant="secondary" onClick={send} disabled={loading || !input.trim()} className="h-12 rounded-xl px-4">
+              <Button variant="secondary" onClick={send} disabled={loading || !input.trim()} className="h-11 rounded-xl px-4">
                 Enviar
               </Button>
             </div>

@@ -249,8 +249,10 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
                 <div
                   key={idx}
                   className={cn(
-                    "rounded-2xl border border-border/70 p-3 text-sm leading-relaxed",
-                    m.role === "user" ? "bg-muted/30 ml-10" : "bg-card/60 mr-10",
+                    "rounded-2xl p-3 text-sm leading-relaxed",
+                    m.role === "user"
+                      ? "bg-primary/8 border border-primary/15 ml-10 text-foreground/90"
+                      : "bg-muted/40 border border-border/30 mr-10 text-foreground/85",
                   )}
                 >
                   {m.content}

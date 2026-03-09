@@ -199,6 +199,7 @@ export default function AdminUsersAccess() {
   const resetInviteForm = () => {
     setInvName("");
     setInvEmail("");
+    setInvPassword("");
     setInvRole("operator");
     setInvStores([]);
     setInvPages([...ALL_PAGES]);

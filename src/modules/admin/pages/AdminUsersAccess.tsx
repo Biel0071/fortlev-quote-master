@@ -295,7 +295,7 @@ export default function AdminUsersAccess() {
         metadata: { invited_email: invEmail, role: invRole },
       });
 
-      toast.success(`Usuário ${invName} convidado com sucesso`);
+      toast.success(`Usuário ${invName} criado! Senha: ${finalPassword}`, { duration: 15000 });
       resetInviteForm();
       setInviteOpen(false);
       fetchData();

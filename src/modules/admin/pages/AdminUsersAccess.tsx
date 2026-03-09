@@ -410,6 +410,25 @@ export default function AdminUsersAccess() {
               </div>
 
               <div className="space-y-2">
+                <Label>Senha</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={invPassword}
+                    onChange={(e) => setInvPassword(e.target.value)}
+                    placeholder="Deixe vazio para gerar automaticamente"
+                    type="text"
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={() => generatePassword()}>
+                    Gerar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Defina uma senha ou clique em "Gerar" para criar uma automática.
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Tipo de Acesso</Label>
                 <Select value={invRole} onValueChange={setInvRole}>
                   <SelectTrigger><SelectValue /></SelectTrigger>

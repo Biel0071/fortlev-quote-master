@@ -143,8 +143,15 @@ export default function AdminUsersAccess() {
   const [invDetailPerms, setInvDetailPerms] = useState<
     Record<string, { can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean }>
   >({});
+  const [invPassword, setInvPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [resettingId, setResettingId] = useState<string | null>(null);
+
+  const generatePassword = () => {
+    const pwd = crypto.randomUUID().slice(0, 12) + "Aa1!";
+    setInvPassword(pwd);
+    return pwd;
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);

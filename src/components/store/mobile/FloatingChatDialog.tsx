@@ -177,8 +177,8 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
           <DialogContent
             className={cn(
               "p-0 sm:max-w-xl",
-              "bg-background/80 supports-[backdrop-filter]:bg-background/70 backdrop-blur-xl",
-              "shadow-xl",
+              "bg-card/95 supports-[backdrop-filter]:bg-card/90 backdrop-blur-xl",
+              "shadow-lg border-border/40",
             )}
           >
             <DialogTitle className="sr-only">Atendimento — Vanessa</DialogTitle>

@@ -115,9 +115,12 @@ export function useAdminPermissions() {
     (page: string) => {
       if (isMaster) return true;
       if (role === "admin") {
-        // Admins can see everything except user management
         return page !== "usuarios";
       }
+      if (role === "gerente") {
+        return page !== "usuarios" && page !== "configuracoes";
+      }
+      // operator and visualizador use explicit permissions
       return permissions.some((p) => p.page === page && p.can_view);
     },
     [isMaster, role, permissions]

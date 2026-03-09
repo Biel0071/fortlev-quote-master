@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { cloud } from "@/lib/cloud";
 import { useSession } from "@/hooks/useSession";
 
-export type AdminRole = "master" | "admin" | "operator" | null;
+export type AdminRole = "master" | "admin" | "gerente" | "operator" | "visualizador" | null;
 
 export type PagePermission = {
   page: string;
@@ -115,9 +115,12 @@ export function useAdminPermissions() {
     (page: string) => {
       if (isMaster) return true;
       if (role === "admin") {
-        // Admins can see everything except user management
         return page !== "usuarios";
       }
+      if (role === "gerente") {
+        return page !== "usuarios" && page !== "configuracoes";
+      }
+      // operator and visualizador use explicit permissions
       return permissions.some((p) => p.page === page && p.can_view);
     },
     [isMaster, role, permissions]
@@ -135,6 +138,11 @@ export function useAdminPermissions() {
     (page: string, action: "can_view" | "can_create" | "can_edit" | "can_delete") => {
       if (isMaster) return true;
       if (role === "admin") return action !== "can_delete" || page !== "usuarios";
+      if (role === "gerente") {
+        if (page === "usuarios" || page === "configuracoes") return false;
+        return action !== "can_delete";
+      }
+      if (role === "visualizador") return action === "can_view";
       const perm = permissions.find((p) => p.page === page);
       return perm ? perm[action] : false;
     },

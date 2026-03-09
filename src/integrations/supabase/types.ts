@@ -84,7 +84,9 @@ export type Database = {
           entity: string | null
           entity_id: string | null
           id: string
+          ip: string | null
           metadata: Json
+          store_id: string | null
           user_id: string | null
           user_name: string | null
         }
@@ -94,7 +96,9 @@ export type Database = {
           entity?: string | null
           entity_id?: string | null
           id?: string
+          ip?: string | null
           metadata?: Json
+          store_id?: string | null
           user_id?: string | null
           user_name?: string | null
         }
@@ -104,11 +108,21 @@ export type Database = {
           entity?: string | null
           entity_id?: string | null
           id?: string
+          ip?: string | null
           metadata?: Json
+          store_id?: string | null
           user_id?: string | null
           user_name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_allowlist: {
         Row: {
@@ -2466,7 +2480,7 @@ export type Database = {
       }
     }
     Enums: {
-      admin_role: "master" | "admin" | "operator"
+      admin_role: "master" | "admin" | "operator" | "gerente" | "visualizador"
       app_role: "admin"
     }
     CompositeTypes: {
@@ -2595,7 +2609,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      admin_role: ["master", "admin", "operator"],
+      admin_role: ["master", "admin", "operator", "gerente", "visualizador"],
       app_role: ["admin"],
     },
   },

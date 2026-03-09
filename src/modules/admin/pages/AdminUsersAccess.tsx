@@ -143,8 +143,15 @@ export default function AdminUsersAccess() {
   const [invDetailPerms, setInvDetailPerms] = useState<
     Record<string, { can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean }>
   >({});
+  const [invPassword, setInvPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [resettingId, setResettingId] = useState<string | null>(null);
+
+  const generatePassword = () => {
+    const pwd = crypto.randomUUID().slice(0, 12) + "Aa1!";
+    setInvPassword(pwd);
+    return pwd;
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -192,6 +199,7 @@ export default function AdminUsersAccess() {
   const resetInviteForm = () => {
     setInvName("");
     setInvEmail("");
+    setInvPassword("");
     setInvRole("operator");
     setInvStores([]);
     setInvPages([...ALL_PAGES]);
@@ -218,9 +226,11 @@ export default function AdminUsersAccess() {
         return;
       }
 
+      const finalPassword = invPassword.trim() || generatePassword();
+
       const { data: signUpData, error: signUpError } = await cloud.auth.signUp({
         email: invEmail.trim().toLowerCase(),
-        password: crypto.randomUUID().slice(0, 16) + "Aa1!",
+        password: finalPassword,
         options: { data: { invited_name: invName.trim() } },
       });
 
@@ -285,7 +295,7 @@ export default function AdminUsersAccess() {
         metadata: { invited_email: invEmail, role: invRole },
       });
 
-      toast.success(`Usuário ${invName} convidado com sucesso`);
+      toast.success(`Usuário ${invName} criado! Senha: ${finalPassword}`, { duration: 15000 });
       resetInviteForm();
       setInviteOpen(false);
       fetchData();
@@ -397,6 +407,25 @@ export default function AdminUsersAccess() {
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input value={invEmail} onChange={(e) => setInvEmail(e.target.value)} placeholder="email@exemplo.com" type="email" />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Senha</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={invPassword}
+                    onChange={(e) => setInvPassword(e.target.value)}
+                    placeholder="Deixe vazio para gerar automaticamente"
+                    type="text"
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={() => generatePassword()}>
+                    Gerar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Defina uma senha ou clique em "Gerar" para criar uma automática.
+                </p>
               </div>
 
               <div className="space-y-2">

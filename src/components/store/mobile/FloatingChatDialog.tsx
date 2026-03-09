@@ -177,27 +177,26 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
           <DialogContent
             className={cn(
               "p-0 sm:max-w-xl",
-              "bg-background/80 supports-[backdrop-filter]:bg-background/70 backdrop-blur-xl",
-              "shadow-xl",
+              "bg-card/95 supports-[backdrop-filter]:bg-card/90 backdrop-blur-xl",
+              "shadow-lg border-border/40",
             )}
           >
             <DialogTitle className="sr-only">Atendimento — Vanessa</DialogTitle>
             <DialogDescription className="sr-only">Chat de atendimento com a consultora técnica.</DialogDescription>
 
-            <div className="border-b border-border p-4 flex items-start justify-between gap-4">
+            <div className="border-b border-border/30 bg-muted/20 p-4 flex items-start justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 <div
                   className={cn(
                     "h-11 w-11 rounded-full",
-                    "bg-gradient-to-br from-primary/15 to-accent/10",
-                    "border border-border",
+                    "bg-primary/10",
+                    "border border-primary/20",
                     "grid place-items-center",
-                    "shadow-sm",
                     "shrink-0",
                   )}
                   aria-hidden="true"
                 >
-                  <span className="font-semibold text-primary">V</span>
+                  <span className="font-semibold text-primary/80">V</span>
                 </div>
 
                 <div className="min-w-0">
@@ -211,11 +210,11 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
               <Button
                 variant="whatsapp"
                 className={cn(
-                  "w-full h-14 rounded-2xl font-semibold",
+                  "w-full h-13 rounded-xl font-semibold",
                   "gap-3",
-                  "shadow-md hover:shadow-lg",
+                  "shadow-sm hover:shadow-md",
                   "transition-all duration-200 ease-out",
-                  "hover:scale-[1.02]",
+                  "opacity-90 hover:opacity-100",
                 )}
                 disabled={!canWhatsApp}
                 onClick={() => {
@@ -250,8 +249,10 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
                 <div
                   key={idx}
                   className={cn(
-                    "rounded-2xl border border-border/70 p-3 text-sm leading-relaxed",
-                    m.role === "user" ? "bg-muted/30 ml-10" : "bg-card/60 mr-10",
+                    "rounded-2xl p-3 text-sm leading-relaxed",
+                    m.role === "user"
+                      ? "bg-primary/8 border border-primary/15 ml-10 text-foreground/90"
+                      : "bg-muted/40 border border-border/30 mr-10 text-foreground/85",
                   )}
                 >
                   {m.content}
@@ -262,7 +263,7 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
               <div ref={endRef} />
             </div>
 
-            <div className="border-t border-border p-3 flex items-center gap-2">
+            <div className="border-t border-border/30 bg-muted/10 p-3 flex items-center gap-2">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -271,9 +272,9 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
                   if (e.key === "Enter") send();
                 }}
                 disabled={loading}
-                className="h-12 rounded-xl"
+                className="h-11 rounded-xl border-border/40 bg-card/80"
               />
-              <Button variant="secondary" onClick={send} disabled={loading || !input.trim()} className="h-12 rounded-xl px-4">
+              <Button variant="secondary" onClick={send} disabled={loading || !input.trim()} className="h-11 rounded-xl px-4">
                 Enviar
               </Button>
             </div>

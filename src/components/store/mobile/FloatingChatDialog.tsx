@@ -184,20 +184,19 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
             <DialogTitle className="sr-only">Atendimento — Vanessa</DialogTitle>
             <DialogDescription className="sr-only">Chat de atendimento com a consultora técnica.</DialogDescription>
 
-            <div className="border-b border-border p-4 flex items-start justify-between gap-4">
+            <div className="border-b border-border/30 bg-muted/20 p-4 flex items-start justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 <div
                   className={cn(
                     "h-11 w-11 rounded-full",
-                    "bg-gradient-to-br from-primary/15 to-accent/10",
-                    "border border-border",
+                    "bg-primary/10",
+                    "border border-primary/20",
                     "grid place-items-center",
-                    "shadow-sm",
                     "shrink-0",
                   )}
                   aria-hidden="true"
                 >
-                  <span className="font-semibold text-primary">V</span>
+                  <span className="font-semibold text-primary/80">V</span>
                 </div>
 
                 <div className="min-w-0">

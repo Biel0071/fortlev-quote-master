@@ -138,6 +138,11 @@ export function useAdminPermissions() {
     (page: string, action: "can_view" | "can_create" | "can_edit" | "can_delete") => {
       if (isMaster) return true;
       if (role === "admin") return action !== "can_delete" || page !== "usuarios";
+      if (role === "gerente") {
+        if (page === "usuarios" || page === "configuracoes") return false;
+        return action !== "can_delete";
+      }
+      if (role === "visualizador") return action === "can_view";
       const perm = permissions.find((p) => p.page === page);
       return perm ? perm[action] : false;
     },

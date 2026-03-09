@@ -210,11 +210,11 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
               <Button
                 variant="whatsapp"
                 className={cn(
-                  "w-full h-14 rounded-2xl font-semibold",
+                  "w-full h-13 rounded-xl font-semibold",
                   "gap-3",
-                  "shadow-md hover:shadow-lg",
+                  "shadow-sm hover:shadow-md",
                   "transition-all duration-200 ease-out",
-                  "hover:scale-[1.02]",
+                  "opacity-90 hover:opacity-100",
                 )}
                 disabled={!canWhatsApp}
                 onClick={() => {

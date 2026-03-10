@@ -408,7 +408,9 @@ export const generateNFePDF = async (quotation: Quotation, nfeNumber: string): P
     
     return [
       (index + 1).toString().padStart(3, '0'),
-      getProductFullDescription(item.product.type, item.product.capacity, item.product.unit),
+      item.product.capacity > 0
+        ? getProductFullDescription(item.product.type, item.product.capacity, item.product.unit)
+        : item.product.name,
       ncm,
       CST_CODES.normal,
       cfop,

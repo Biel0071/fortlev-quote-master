@@ -526,7 +526,10 @@ const generateCanvasPNG = (quotation: Quotation) => {
     ctx.strokeRect(padding, yPos, tableWidth, rowHeight);
     
     ctx.fillStyle = textDark;
-    ctx.fillText(getProductFullDescription(item.product.type, item.product.capacity, item.product.unit), colStarts[0] + 8, yPos + 20);
+    const itemLabel = item.product.capacity > 0
+      ? getProductFullDescription(item.product.type, item.product.capacity, item.product.unit)
+      : item.product.name;
+    ctx.fillText(itemLabel, colStarts[0] + 8, yPos + 20);
     ctx.fillText('Un.', colStarts[1] + 8, yPos + 20);
     ctx.fillText(item.quantity.toString(), colStarts[2] + 12, yPos + 20);
     ctx.fillText(formatCurrency(item.unitPrice).replace('R$', '').trim(), colStarts[3] + 8, yPos + 20);

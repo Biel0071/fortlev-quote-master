@@ -64,11 +64,7 @@ function AdminSidebar() {
   const { routes } = useStore();
   const { canViewPage, isMaster, storeAccess } = useAdminPermissions();
 
-  // Filter items based on permissions
-  const items = ALL_SIDEBAR_ITEMS.filter((item) => canViewPage(item.page)).map((item) => ({
-    ...item,
-    url: item.page === "orcamentos" ? `${routes.quotations}?from=admin` : item.url,
-  }));
+  const items = ALL_SIDEBAR_ITEMS.filter((item) => canViewPage(item.page));
 
   // Hide store switcher if user only has access to one store
   const showStoreSwitcher = isMaster || storeAccess.length !== 1;

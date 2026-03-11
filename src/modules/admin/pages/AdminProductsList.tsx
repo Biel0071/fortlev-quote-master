@@ -139,6 +139,9 @@ export default function AdminProductsList() {
           <p className="text-sm text-muted-foreground">Gerencie catálogo, preços, estoque e status.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => nav("/admin/produtos/imagens")}>
+            🔎 Gerador de Imagens
+          </Button>
           <AlertDialog open={batchOpen} onOpenChange={setBatchOpen}>
             <AlertDialogTrigger asChild>
               <Button variant="outline" disabled={loading || batchRunning}>

@@ -154,7 +154,7 @@ serve(async (req) => {
       googleUrl.searchParams.set("cx", GOOGLE_CX);
       googleUrl.searchParams.set("q", rawQuery);
       googleUrl.searchParams.set("searchType", "image");
-      googleUrl.searchParams.set("num", "5");
+      googleUrl.searchParams.set("num", "10");
       googleUrl.searchParams.set("start", String(start));
 
       const googleResp = await fetch(googleUrl.toString(), { method: "GET" });
@@ -176,7 +176,7 @@ serve(async (req) => {
               title: safeText(item?.title, 200),
             }))
             .filter((item: SearchResult) => item.imageUrl.startsWith("http"))
-            .slice(0, 5)
+            .slice(0, 10)
         : [];
 
       await admin.from("search_cache").upsert(
@@ -203,7 +203,7 @@ serve(async (req) => {
       }
 
       const productId = safeText(body.productId, 64);
-      const images = Array.isArray(body.images) ? body.images.slice(0, 5) : [];
+      const images = Array.isArray(body.images) ? body.images.slice(0, 10) : [];
       if (!productId || images.length === 0) {
         return new Response(JSON.stringify({ error: "invalid_payload" }), {
           status: 400,

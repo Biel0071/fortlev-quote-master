@@ -29,8 +29,8 @@ function toQuotationType(q: ReturnType<typeof useConstructionQuotations>["quotat
   return {
     id: q.id,
     number: q.number,
-    customer: q.customer,
-    companyInfo: q.companyInfo,
+    customer: { name: q.customer.name, cnpj: q.customer.cpfCnpj || "", phone: q.customer.phone, address: q.customer.address },
+    companyInfo: { name: q.companyInfo.name, cnpj: q.companyInfo.cnpj, address: q.companyInfo.address, phone: q.companyInfo.phone, email: q.companyInfo.email, website: "", sellerName: q.companyInfo.sellerName, sellerRole: "" },
     items: q.items.map((item: any) => ({
       id: item.id,
       product: {

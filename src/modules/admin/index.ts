@@ -7,6 +7,8 @@ export { default as AdminDashboardShell } from "./pages/AdminDashboardShell";
 export { default as AdminDashboardOverview } from "./pages/AdminDashboardOverview";
 export { default as AdminDashboardTracking } from "./pages/AdminDashboardTracking";
 export { default as AdminDashboardQuotations } from "./pages/AdminDashboardQuotations";
+export { default as AdminQuotations } from "./pages/AdminQuotations";
+export { default as AdminQuotationsOverview } from "./pages/AdminQuotationsOverview";
 export { default as AdminHome } from "./pages/AdminHome";
 export { default as AdminProductsList } from "./pages/AdminProductsList";
 export { default as AdminProductForm } from "./pages/AdminProductForm";

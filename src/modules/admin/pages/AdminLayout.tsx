@@ -40,13 +40,12 @@ type SidebarItem = {
   url: string;
   icon: any;
   page: string;
-  external?: boolean;
 };
 
 const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
   { title: "Dashboard", url: "/admin/dashboard", icon: LayoutGrid, page: "dashboard" },
   { title: "Home", url: "/admin/home", icon: Home, page: "home" },
-  { title: "Orçamentos", url: "", icon: FileText, page: "orcamentos", external: true },
+  { title: "Orçamentos", url: "/admin/orcamentos", icon: FileText, page: "orcamentos" },
   { title: "Produtos", url: "/admin/produtos", icon: Package, page: "produtos" },
   { title: "Categorias", url: "/admin/categorias", icon: Tags, page: "categorias" },
   { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag, page: "pedidos" },
@@ -64,11 +63,7 @@ function AdminSidebar() {
   const { routes } = useStore();
   const { canViewPage, isMaster, storeAccess } = useAdminPermissions();
 
-  // Filter items based on permissions
-  const items = ALL_SIDEBAR_ITEMS.filter((item) => canViewPage(item.page)).map((item) => ({
-    ...item,
-    url: item.page === "orcamentos" ? `${routes.quotations}?from=admin` : item.url,
-  }));
+  const items = ALL_SIDEBAR_ITEMS.filter((item) => canViewPage(item.page));
 
   // Hide store switcher if user only has access to one store
   const showStoreSwitcher = isMaster || storeAccess.length !== 1;
@@ -94,22 +89,15 @@ function AdminSidebar() {
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    {item.external ? (
-                      <a href={item.url} className="hover:bg-muted/50">
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </a>
-                    ) : (
-                      <NavLink
-                        to={item.url}
-                        end
-                        className="hover:bg-muted/50"
-                        activeClassName="bg-muted text-foreground font-medium"
-                      >
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    )}
+                    <NavLink
+                      to={item.url}
+                      end={item.url === "/admin/dashboard"}
+                      className="hover:bg-muted/50"
+                      activeClassName="bg-muted text-foreground font-medium"
+                    >
+                      <item.icon className="mr-2 h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

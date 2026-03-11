@@ -42,6 +42,8 @@ import {
   AdminDashboardTracking,
   AdminIntelligence,
   AdminDashboardQuotations,
+  AdminQuotations,
+  AdminQuotationsOverview,
 } from "@/modules/admin";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
@@ -103,6 +105,12 @@ const App = () => (
                 <Route path="inteligencia" element={<AdminIntelligence />} />
               </Route>
               <Route path="home" element={<AdminHome />} />
+
+              <Route path="orcamentos" element={<AdminQuotations />}>
+                <Route index element={<AdminQuotationsOverview />} />
+                <Route path="fortlev" element={<FortlevOverview />} />
+                <Route path="construcao" element={<ConstructionOverview />} />
+              </Route>
 
               <Route path="produtos" element={<AdminProductsList />} />
               <Route path="produtos/novo" element={<AdminProductForm />} />

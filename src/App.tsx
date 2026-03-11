@@ -44,6 +44,7 @@ import {
   AdminDashboardQuotations,
   AdminQuotations,
   AdminQuotationsOverview,
+  AdminBulkImageSearch,
 } from "@/modules/admin";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";

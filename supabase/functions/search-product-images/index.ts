@@ -383,7 +383,7 @@ serve(async (req) => {
 
       if (usageErr) throw usageErr;
 
-      const cacheKey = `${source}|${start}|${normalizedQuery}`;
+      const cacheKey = `v2|${source}|${start}|${normalizedQuery}`;
 
       const { data: cacheRow } = await admin
         .from("search_cache")

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { CompanyForm } from '@/components/CompanyForm';
@@ -14,41 +14,60 @@ import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Pencil, FileText } from 'lucide-react';
+import { ArrowLeft, Pencil, FileText, Loader2 } from 'lucide-react';
 
 const QuotationsIndex = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit');
 
-  const { quotations, saveQuotation, updateQuotation, generateQuotationNumber } = useQuotations();
+  const { quotations, loading, saveQuotation, updateQuotation, generateQuotationNumber } = useQuotations();
 
-  // If editing, load the quotation
-  const editingSource = editId ? quotations.find(q => q.id === editId) : null;
+  const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
+  const editLoaded = useRef(false);
 
-  const [editingQuotationId, setEditingQuotationId] = useState<string | null>(editingSource?.id ?? null);
-
-  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(editingSource?.companyInfo ?? {
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: '', cnpj: '', address: '', phone: '', email: '', website: '', sellerName: '', sellerRole: 'Gerente de Vendas',
   });
 
-  const [customer, setCustomer] = useState<Customer>(editingSource?.customer ?? {
+  const [customer, setCustomer] = useState<Customer>({
     name: '', cnpj: '', phone: '', address: '',
   });
 
-  const [showClientData, setShowClientData] = useState(editingSource?.showClientData ?? true);
-  const [items, setItems] = useState<QuotationItem[]>(editingSource?.items ?? []);
-  const [validity, setValidity] = useState(editingSource?.validity ?? '7 dias');
-  const [observations, setObservations] = useState(editingSource?.observations ?? '');
-  const [discount, setDiscount] = useState(editingSource?.discount ?? 0);
-  const [freight, setFreight] = useState(editingSource?.freight ?? 0);
-  const [deliveryTime, setDeliveryTime] = useState(editingSource?.deliveryTime ?? '7 a 10 dias úteis');
-  const [paymentConditions, setPaymentConditions] = useState<PaymentConditions>(editingSource?.paymentConditions ?? {
+  const [showClientData, setShowClientData] = useState(true);
+  const [items, setItems] = useState<QuotationItem[]>([]);
+  const [validity, setValidity] = useState('7 dias');
+  const [observations, setObservations] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [freight, setFreight] = useState(0);
+  const [deliveryTime, setDeliveryTime] = useState('7 a 10 dias úteis');
+  const [paymentConditions, setPaymentConditions] = useState<PaymentConditions>({
     cashDiscount: '7% de desconto à vista', installments: '10x no cartão', downPayment: 'Parcelamento sem juros - consultar',
   });
-  const [quotationNumber, setQuotationNumber] = useState<string | null>(editingSource?.number ?? null);
+  const [quotationNumber, setQuotationNumber] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
+
+  // Load quotation data when editing and data becomes available
+  useEffect(() => {
+    if (!editId || editLoaded.current || loading) return;
+    const source = quotations.find(q => q.id === editId);
+    if (!source) return;
+    editLoaded.current = true;
+    setEditingQuotationId(source.id);
+    setQuotationNumber(source.number);
+    setCompanyInfo(source.companyInfo);
+    setCustomer(source.customer);
+    setItems(source.items);
+    setValidity(source.validity);
+    setObservations(source.observations);
+    setDiscount(source.discount);
+    setFreight(source.freight ?? 0);
+    setDeliveryTime(source.deliveryTime);
+    setPaymentConditions(source.paymentConditions);
+    setShowClientData(source.showClientData);
+    toast({ title: 'Modo de edição', description: `Editando orçamento ${source.number}` });
+  }, [editId, quotations, loading]);
 
   const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
   const total = subtotal - discount + freight;

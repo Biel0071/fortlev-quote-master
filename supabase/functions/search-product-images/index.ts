@@ -475,60 +475,115 @@ serve(async (req) => {
       let sort = Number(maxSortRow?.sort_order ?? -1) + 1;
       const inserted: Array<{ path: string; public_url: string; sort_order: number }> = [];
       const usedUrls = new Set<string>();
+      let failed = 0;
 
       for (const img of images) {
         const sourceUrl = safeText(img.imageUrl, 1200);
-        if (!sourceUrl.startsWith("http://") && !sourceUrl.startsWith("https://")) continue;
+        if (!sourceUrl.startsWith("http://") && !sourceUrl.startsWith("https://")) {
+          failed += 1;
+          continue;
+        }
         if (usedUrls.has(sourceUrl)) continue;
         usedUrls.add(sourceUrl);
 
-        const downloadResp = await fetch(sourceUrl, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-          },
-        });
+        try {
+          const candidateUrls = Array.from(
+            new Set(
+              [safeText(img.imageUrl, 1200), safeText(img.thumbnail, 1200)].filter(
+                (u) => u.startsWith("http://") || u.startsWith("https://"),
+              ),
+            ),
+          );
 
-        if (!downloadResp.ok) continue;
+          let downloadResp: Response | null = null;
+          for (const candidateUrl of candidateUrls) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 12000);
 
-        const contentType = downloadResp.headers.get("content-type");
-        if (!contentType || !contentType.startsWith("image/")) continue;
+            try {
+              const response = await fetch(candidateUrl, {
+                signal: controller.signal,
+                headers: {
+                  "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+                },
+              });
 
-        const bytes = new Uint8Array(await downloadResp.arrayBuffer());
-        if (bytes.byteLength < 1024) continue;
+              if (!response.ok) continue;
 
-        const ext = extFromContentType(contentType);
-        const safeProduct = productId.slice(0, 8);
-        const path = `imported/${safeProduct}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+              const contentType = response.headers.get("content-type");
+              if (!contentType || !contentType.startsWith("image/")) continue;
 
-        const { error: uploadErr } = await admin.storage.from("product-images").upload(path, bytes, {
-          contentType,
-          upsert: false,
-          cacheControl: "3600",
-        });
-        if (uploadErr) continue;
+              downloadResp = response;
+              break;
+            } catch (downloadError) {
+              console.warn("import_image_candidate_failed", { candidateUrl, error: String(downloadError) });
+            } finally {
+              clearTimeout(timeout);
+            }
+          }
 
-        const { error: insertErr } = await admin.from("store_product_images").insert({
-          product_id: productId,
-          path,
-          sort_order: sort,
-        } as any);
+          if (!downloadResp) {
+            failed += 1;
+            continue;
+          }
 
-        if (insertErr) continue;
+          const contentType = downloadResp.headers.get("content-type");
+          if (!contentType || !contentType.startsWith("image/")) {
+            failed += 1;
+            continue;
+          }
 
-        const { data: publicData } = admin.storage.from("product-images").getPublicUrl(path);
-        inserted.push({ path, public_url: publicData.publicUrl, sort_order: sort });
-        sort += 1;
+          const bytes = new Uint8Array(await downloadResp.arrayBuffer());
+          if (bytes.byteLength < 1024) {
+            failed += 1;
+            continue;
+          }
+
+          const ext = extFromContentType(contentType);
+          const safeProduct = productId.slice(0, 8);
+          const path = `imported/${safeProduct}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+
+          const { error: uploadErr } = await admin.storage.from("product-images").upload(path, bytes, {
+            contentType,
+            upsert: false,
+            cacheControl: "3600",
+          });
+          if (uploadErr) {
+            failed += 1;
+            continue;
+          }
+
+          const { error: insertErr } = await admin.from("store_product_images").insert({
+            product_id: productId,
+            path,
+            sort_order: sort,
+          } as any);
+
+          if (insertErr) {
+            failed += 1;
+            await admin.storage.from("product-images").remove([path]);
+            continue;
+          }
+
+          const { data: publicData } = admin.storage.from("product-images").getPublicUrl(path);
+          inserted.push({ path, public_url: publicData.publicUrl, sort_order: sort });
+          sort += 1;
+        } catch (importError) {
+          failed += 1;
+          console.error("import_image_failed", { sourceUrl, error: String(importError) });
+          continue;
+        }
       }
 
       if (inserted.length === 0) {
-        return new Response(JSON.stringify({ error: "no_valid_images" }), {
+        return new Response(JSON.stringify({ error: "no_valid_images", requested: images.length, failed }), {
           status: 422,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      return new Response(JSON.stringify({ ok: true, imported: inserted }), {
+      return new Response(JSON.stringify({ ok: true, imported: inserted, requested: images.length, failed }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

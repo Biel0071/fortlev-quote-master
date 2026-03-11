@@ -135,9 +135,21 @@ export function ProductImageSearchModal({
 
     setImporting(true);
     try {
-      await importGoogleProductImages({ productId, images: selected });
+      const result = await importGoogleProductImages({ productId, images: selected });
       await onImported();
-      toast({ title: "Imagens adicionadas", description: `${selected.length} imagem(ns) salvas e vinculadas ao produto.` });
+
+      if (result.failed > 0) {
+        toast({
+          title: "Importação parcial",
+          description: `${result.imported.length} de ${result.requested} imagem(ns) foram salvas no produto.`,
+        });
+      } else {
+        toast({
+          title: "Imagens adicionadas",
+          description: `${result.imported.length} imagem(ns) salvas e vinculadas ao produto.`,
+        });
+      }
+
       onOpenChange(false);
     } catch (e: any) {
       toast({

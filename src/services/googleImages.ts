@@ -20,7 +20,15 @@ type SearchResponse = {
 type ImportResponse = {
   ok?: boolean;
   imported?: Array<{ path: string; public_url: string; sort_order: number }>;
+  requested?: number;
+  failed?: number;
   error?: string;
+};
+
+export type ImportImagesResult = {
+  imported: Array<{ path: string; public_url: string; sort_order: number }>;
+  requested: number;
+  failed: number;
 };
 
 function getFunctionsBaseUrl() {
@@ -79,18 +87,42 @@ export async function searchGoogleProductImages(params: {
 export async function importGoogleProductImages(params: {
   productId: string;
   images: GoogleImageResult[];
-}) {
-  const { data, error } = await cloud.functions.invoke("search-product-images", {
-    body: {
+}): Promise<ImportImagesResult> {
+  const headers = await authHeaders();
+
+  const response = await fetch(`${getFunctionsBaseUrl()}/search-product-images`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
       action: "import",
       productId: params.productId,
       images: params.images,
-    },
+    }),
   });
 
-  if (error) throw new Error(error.message);
-  const payload = (data ?? {}) as ImportResponse;
-  if (!payload.ok) throw new Error(payload.error ?? "Falha ao importar imagens");
+  const payload = (await response.json().catch(() => ({}))) as ImportResponse;
 
-  return payload.imported ?? [];
+  if (!response.ok || !payload.ok) {
+    const errorCode = payload?.error ?? "";
+    let friendlyMsg = "Não foi possível importar imagens.";
+
+    if (errorCode === "unauthorized") friendlyMsg = "Sessão expirada. Faça login novamente.";
+    else if (errorCode === "forbidden") friendlyMsg = "Acesso negado. Você precisa ser administrador.";
+    else if (errorCode === "product_not_found") friendlyMsg = "Produto não encontrado para vincular as imagens.";
+    else if (errorCode === "invalid_payload") friendlyMsg = "Selecione imagens válidas para importar.";
+    else if (errorCode === "no_valid_images") {
+      friendlyMsg = "Não foi possível salvar as imagens selecionadas. Tente outras opções da lista.";
+    } else if (payload?.error) {
+      friendlyMsg = payload.error;
+    }
+
+    throw new Error(friendlyMsg);
+  }
+
+  const imported = payload.imported ?? [];
+  const requested = Number(payload.requested ?? params.images.length);
+  const failed = Number(payload.failed ?? Math.max(0, requested - imported.length));
+
+  return { imported, requested, failed };
 }
+

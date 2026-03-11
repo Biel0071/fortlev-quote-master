@@ -448,7 +448,7 @@ serve(async (req) => {
       }
 
       const productId = safeText(body.productId, 64);
-      const images = Array.isArray(body.images) ? body.images.slice(0, 10) : [];
+      const images = Array.isArray(body.images) ? body.images.slice(0, 40) : [];
       if (!productId || images.length === 0) {
         return new Response(JSON.stringify({ error: "invalid_payload" }), {
           status: 400,

@@ -161,7 +161,7 @@ export function ProductImageSearchModal({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">🔎 Gerador de Imagens — Buscar na Internet</DialogTitle>
             <DialogDescription>
-              Pesquise imagens do produto, selecione até 10 e importe sem hotlink (download direto).
+              Pesquise imagens do produto, selecione quantas quiser e importe sem hotlink (download direto).
             </DialogDescription>
           </DialogHeader>
 

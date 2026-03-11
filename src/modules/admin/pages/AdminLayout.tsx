@@ -90,22 +90,15 @@ function AdminSidebar() {
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    {item.external ? (
-                      <a href={item.url} className="hover:bg-muted/50">
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </a>
-                    ) : (
-                      <NavLink
-                        to={item.url}
-                        end
-                        className="hover:bg-muted/50"
-                        activeClassName="bg-muted text-foreground font-medium"
-                      >
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    )}
+                    <NavLink
+                      to={item.url}
+                      end={item.url === "/admin/dashboard"}
+                      className="hover:bg-muted/50"
+                      activeClassName="bg-muted text-foreground font-medium"
+                    >
+                      <item.icon className="mr-2 h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

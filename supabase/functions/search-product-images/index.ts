@@ -65,6 +65,7 @@ serve(async (req) => {
 
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData?.user) {
+      console.error("auth_error", userErr?.message ?? "no user");
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

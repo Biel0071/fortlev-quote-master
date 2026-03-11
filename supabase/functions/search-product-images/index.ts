@@ -68,6 +68,13 @@ function sourceLabel(source: ImageSource) {
   }
 }
 
+function parseNum(raw?: string | number) {
+  if (raw === undefined || raw === null) return undefined;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return Math.trunc(n);
+}
+
 function decodeEscaped(value: string) {
   return value
     .replace(/\\u002f/g, "/")
@@ -90,91 +97,41 @@ function normalizeUrl(raw: string, baseUrl: string) {
   }
 }
 
-function parseNum(raw?: string) {
-  if (!raw) return undefined;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) return undefined;
-  return Math.trunc(n);
+function isBlockedHost(url: string) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return (
+      host.includes("r.bing.com") ||
+      host.includes("bing.com") ||
+      host.includes("duckduckgo.com") ||
+      host.includes("gstatic.com")
+    );
+  } catch {
+    return true;
+  }
 }
 
 function isLikelyRealImage(url: string) {
   if (!url.startsWith("http://") && !url.startsWith("https://")) return false;
-  if (url.includes("data:image")) return false;
-  if (url.includes("sprite") || url.includes("logo") || url.includes("icon")) return false;
+  if (url.startsWith("data:image")) return false;
+  if (isBlockedHost(url)) return false;
+
+  const lower = url.toLowerCase();
+  if (lower.endsWith(".svg")) return false;
+  if (lower.includes("sprite") || lower.includes("logo") || lower.includes("icon")) return false;
+
   return true;
 }
 
 function filterCandidate(item: SearchResult) {
   if (!isLikelyRealImage(item.imageUrl)) return false;
+  if (item.thumbnail && !isLikelyRealImage(item.thumbnail)) return false;
 
   if (item.width && item.height) {
     if (item.width < 300 || item.height < 300) return false;
   }
 
   return true;
-}
-
-function extractFromBingMarkup(html: string, source: ImageSource): SearchResult[] {
-  const out: SearchResult[] = [];
-  const regex = /"murl":"([^"]+?)"[\s\S]*?"turl":"([^"]+?)"[\s\S]*?"t":"([^"]*?)"/g;
-
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(html)) !== null) {
-    const imageUrl = normalizeUrl(match[1], "https://www.bing.com");
-    const thumbnail = normalizeUrl(match[2], "https://www.bing.com") || imageUrl;
-    const title = safeText(decodeEscaped(match[3]), 160) || `Imagem ${out.length + 1}`;
-
-    if (!imageUrl) continue;
-
-    out.push({
-      imageUrl,
-      thumbnail,
-      title,
-      source,
-    });
-
-    if (out.length >= 60) break;
-  }
-
-  return out;
-}
-
-function extractFromImgTags(html: string, baseUrl: string, source: ImageSource): SearchResult[] {
-  const out: SearchResult[] = [];
-  const imgTagRegex = /<img\b[^>]*>/gi;
-
-  const srcRegex = /(?:data-src|data-image|src)=["']([^"']+)["']/i;
-  const srcSetRegex = /srcset=["']([^"']+)["']/i;
-  const altRegex = /alt=["']([^"']*)["']/i;
-  const widthRegex = /width=["'](\d+)["']/i;
-  const heightRegex = /height=["'](\d+)["']/i;
-
-  const tags = html.match(imgTagRegex) ?? [];
-  for (const tag of tags) {
-    const srcMatch = tag.match(srcRegex);
-    const srcSetMatch = tag.match(srcSetRegex);
-
-    let rawUrl = srcMatch?.[1] ?? "";
-    if (!rawUrl && srcSetMatch?.[1]) {
-      rawUrl = srcSetMatch[1].split(",")[0]?.trim().split(" ")[0] ?? "";
-    }
-
-    const imageUrl = normalizeUrl(rawUrl, baseUrl);
-    if (!imageUrl) continue;
-
-    out.push({
-      imageUrl,
-      thumbnail: imageUrl,
-      title: safeText(decodeEscaped(altRegex.exec(tag)?.[1] ?? ""), 160) || `Imagem ${out.length + 1}`,
-      source,
-      width: parseNum(widthRegex.exec(tag)?.[1]),
-      height: parseNum(heightRegex.exec(tag)?.[1]),
-    });
-
-    if (out.length >= 120) break;
-  }
-
-  return out;
 }
 
 function dedupeAndLimit(items: SearchResult[], limit = 40): SearchResult[] {
@@ -195,23 +152,18 @@ function dedupeAndLimit(items: SearchResult[], limit = 40): SearchResult[] {
   return out;
 }
 
-function buildSearchUrl(source: ImageSource, query: string, start: number) {
-  const encoded = encodeURIComponent(query);
-  const hyphen = query.trim().replace(/\s+/g, "-");
-
+function sourceScopedQuery(source: ImageSource, query: string) {
   switch (source) {
-    case "google":
-      return `https://www.google.com/search?tbm=isch&q=${encoded}&start=${start}`;
     case "mercado_livre":
-      return `https://lista.mercadolivre.com.br/${encodeURIComponent(hyphen)}`;
+      return `${query} site:mercadolivre.com.br`;
     case "amazon":
-      return `https://www.amazon.com.br/s?k=${encoded}`;
+      return `${query} site:amazon.com.br`;
     case "shopee":
-      return `https://shopee.com.br/search?keyword=${encoded}`;
+      return `${query} site:shopee.com.br`;
     case "alibaba":
-      return `https://www.alibaba.com/trade/search?SearchText=${encoded}`;
+      return `${query} site:alibaba.com`;
     default:
-      return `https://www.bing.com/images/search?q=${encoded}&first=${start}`;
+      return query;
   }
 }
 
@@ -226,21 +178,82 @@ async function fetchHtml(url: string) {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
       },
     });
 
-    if (!response.ok) {
-      return { ok: false, html: "", status: response.status };
-    }
-
-    const html = await response.text();
-    return { ok: true, html, status: response.status };
+    if (!response.ok) return "";
+    return await response.text();
   } catch {
-    return { ok: false, html: "", status: 0 };
+    return "";
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+async function searchDuckDuckGoImages(query: string, start: number, source: ImageSource): Promise<SearchResult[]> {
+  const scopedQuery = sourceScopedQuery(source, query);
+  const searchPageUrl = `https://duckduckgo.com/?q=${encodeURIComponent(scopedQuery)}&iax=images&ia=images`;
+
+  const html = await fetchHtml(searchPageUrl);
+  if (!html) return [];
+
+  const vqd =
+    html.match(/vqd=['"]([^'"]+)['"]/i)?.[1] ??
+    html.match(/"vqd":"([^"]+)"/i)?.[1] ??
+    html.match(/vqd=([^&"']+)/i)?.[1] ??
+    "";
+
+  if (!vqd) {
+    console.error("duckduckgo_vqd_missing", { source, query: scopedQuery });
+    return [];
+  }
+
+  const offset = Math.max(0, start - 1);
+  const endpoint = new URL("https://duckduckgo.com/i.js");
+  endpoint.searchParams.set("q", scopedQuery);
+  endpoint.searchParams.set("l", "br-pt");
+  endpoint.searchParams.set("o", "json");
+  endpoint.searchParams.set("vqd", vqd);
+  endpoint.searchParams.set("f", ",,,");
+  endpoint.searchParams.set("p", "1");
+  endpoint.searchParams.set("s", String(offset));
+
+  try {
+    const response = await fetch(endpoint.toString(), {
+      method: "GET",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        Referer: "https://duckduckgo.com/",
+        "X-Requested-With": "XMLHttpRequest",
+        Accept: "application/json,text/javascript,*/*;q=0.1",
+      },
+    });
+
+    if (!response.ok) {
+      const txt = await response.text();
+      console.error("duckduckgo_search_error", response.status, txt.slice(0, 500));
+      return [];
+    }
+
+    const data = await response.json();
+    const raw = Array.isArray(data?.results) ? data.results : [];
+
+    const mapped: SearchResult[] = raw.map((item: any, idx: number) => ({
+      imageUrl: safeText(item?.image, 1200),
+      thumbnail: safeText(item?.thumbnail, 1200) || safeText(item?.image, 1200),
+      title: safeText(item?.title, 160) || `Imagem ${idx + 1}`,
+      source,
+      width: parseNum(item?.width),
+      height: parseNum(item?.height),
+    }));
+
+    return dedupeAndLimit(mapped, 40);
+  } catch (err) {
+    console.error("duckduckgo_fetch_exception", err);
+    return [];
   }
 }
 
@@ -264,28 +277,17 @@ async function searchWithGoogleApi(query: string, start: number, apiKey?: string
 
   const payload = await googleResp.json();
   const items: SearchResult[] = Array.isArray(payload?.items)
-    ? payload.items.map((item: any) => ({
+    ? payload.items.map((item: any, idx: number) => ({
         imageUrl: safeText(item?.link, 1200),
         thumbnail: safeText(item?.image?.thumbnailLink, 1200) || safeText(item?.link, 1200),
-        title: safeText(item?.title, 160),
+        title: safeText(item?.title, 160) || `Imagem ${idx + 1}`,
         source: "google",
-        width: parseNum(String(item?.image?.width ?? "")),
-        height: parseNum(String(item?.image?.height ?? "")),
+        width: parseNum(item?.image?.width),
+        height: parseNum(item?.image?.height),
       }))
     : [];
 
   return dedupeAndLimit(items, 40);
-}
-
-async function scrapeSource(source: ImageSource, query: string, start: number): Promise<SearchResult[]> {
-  const url = buildSearchUrl(source, query, start);
-  const page = await fetchHtml(url);
-  if (!page.ok || !page.html) return [];
-
-  const fromBing = source === "bing" ? extractFromBingMarkup(page.html, source) : [];
-  const fromTags = extractFromImgTags(page.html, url, source);
-
-  return dedupeAndLimit([...fromBing, ...fromTags], 40);
 }
 
 serve(async (req) => {
@@ -318,7 +320,6 @@ serve(async (req) => {
 
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData?.user) {
-      console.error("auth_error", userErr?.message ?? "no user");
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -399,22 +400,17 @@ serve(async (req) => {
         });
       }
 
-      let images: SearchResult[] = [];
+      let images: SearchResult[] = await searchDuckDuckGoImages(rawQuery, start, source);
 
-      if (source === "google") {
+      if (images.length === 0 && source === "google") {
         images = await searchWithGoogleApi(rawQuery, start, GOOGLE_API_KEY, GOOGLE_CX);
       }
 
-      if (images.length === 0) {
-        images = await scrapeSource(source, rawQuery, start);
-      }
-
       if (images.length === 0 && source !== "bing") {
-        images = await scrapeSource("bing", rawQuery, start);
+        images = await searchDuckDuckGoImages(rawQuery, start, "bing");
       }
 
       if (images.length === 0) {
-        console.error("search_empty", { source, query: rawQuery });
         return new Response(JSON.stringify({ error: "no_images_found" }), {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

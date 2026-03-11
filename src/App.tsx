@@ -106,6 +106,12 @@ const App = () => (
               </Route>
               <Route path="home" element={<AdminHome />} />
 
+              <Route path="orcamentos" element={<AdminQuotations />}>
+                <Route index element={<AdminQuotationsOverview />} />
+                <Route path="fortlev" element={<FortlevOverview />} />
+                <Route path="construcao" element={<ConstructionOverview />} />
+              </Route>
+
               <Route path="produtos" element={<AdminProductsList />} />
               <Route path="produtos/novo" element={<AdminProductForm />} />
               <Route path="produtos/editar/:id" element={<AdminProductForm />} />

@@ -221,7 +221,7 @@ export function ProductImageSearchModal({
                   <Square className="w-4 h-4 mr-1" /> Limpar seleção
                 </Button>
                 <span className="text-sm text-muted-foreground ml-auto">
-                  {selected.length}/10 selecionadas · {results.length} resultados
+                  {selected.length} selecionadas · {results.length} resultados
                 </span>
               </div>
             )}

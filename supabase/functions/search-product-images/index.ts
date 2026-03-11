@@ -176,7 +176,7 @@ serve(async (req) => {
               title: safeText(item?.title, 200),
             }))
             .filter((item: SearchResult) => item.imageUrl.startsWith("http"))
-            .slice(0, 5)
+            .slice(0, 10)
         : [];
 
       await admin.from("search_cache").upsert(

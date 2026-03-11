@@ -87,7 +87,7 @@ export default function AdminBulkImageSearch() {
         </Card>
         <Card className="rounded-xl">
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">{products.length - noImagesCount}</div>
+            <div className="text-2xl font-bold text-primary">{products.length - noImagesCount}</div>
             <div className="text-xs text-muted-foreground">Com imagens</div>
           </CardContent>
         </Card>

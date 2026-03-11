@@ -11,13 +11,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import {
   importGoogleProductImages,
   searchGoogleProductImages,
   type GoogleImageResult,
+  type ImageSearchSource,
 } from "@/services/googleImages";
-import { X, ZoomIn, CheckSquare, Square } from "lucide-react";
+import { X, ZoomIn, CheckSquare, Square, RotateCcw } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -27,6 +29,15 @@ type Props = {
   onImported: () => Promise<void> | void;
 };
 
+const sourceOptions: Array<{ value: ImageSearchSource; label: string }> = [
+  { value: "bing", label: "Bing Images" },
+  { value: "google", label: "Google Images" },
+  { value: "mercado_livre", label: "Mercado Livre" },
+  { value: "amazon", label: "Amazon" },
+  { value: "shopee", label: "Shopee" },
+  { value: "alibaba", label: "Alibaba" },
+];
+
 export function ProductImageSearchModal({
   open,
   onOpenChange,
@@ -35,6 +46,7 @@ export function ProductImageSearchModal({
   onImported,
 }: Props) {
   const [query, setQuery] = useState("");
+  const [source, setSource] = useState<ImageSearchSource>("bing");
   const [start, setStart] = useState(1);
   const [results, setResults] = useState<GoogleImageResult[]>([]);
   const [selected, setSelected] = useState<GoogleImageResult[]>([]);
@@ -45,15 +57,14 @@ export function ProductImageSearchModal({
   useEffect(() => {
     if (!open) return;
     setQuery(initialQuery);
+    setSource("bing");
     setStart(1);
     setResults([]);
     setSelected([]);
     setPreviewUrl(null);
   }, [open, initialQuery]);
 
-  const selectedMap = useMemo(() => {
-    return new Set(selected.map((item) => item.imageUrl));
-  }, [selected]);
+  const selectedMap = useMemo(() => new Set(selected.map((item) => item.imageUrl)), [selected]);
 
   const toggleSelect = (item: GoogleImageResult) => {
     setSelected((prev) => {
@@ -87,27 +98,33 @@ export function ProductImageSearchModal({
 
     setLoading(true);
     try {
-      const { images } = await searchGoogleProductImages({ query, start: nextStart });
+      const { images } = await searchGoogleProductImages({ query, start: nextStart, source });
       setStart(nextStart);
       setResults((prev) => {
         if (!append) return images;
-        // deduplicate
         const existing = new Set(prev.map((i) => i.imageUrl));
         const unique = images.filter((i) => !existing.has(i.imageUrl));
         return [...prev, ...unique];
       });
+
       if (images.length === 0 && !append) {
-        toast({ title: "Nenhuma imagem", description: "Tente buscar com outros termos.", variant: "destructive" });
+        toast({ title: "Nenhuma imagem", description: "Tente buscar com outra fonte.", variant: "destructive" });
       }
-    } catch {
+    } catch (e: any) {
       toast({
         title: "Erro",
-        description: "Não foi possível buscar imagens agora.",
+        description: e?.message || "Não foi possível buscar imagens agora.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForNewSource = () => {
+    setStart(1);
+    setResults([]);
+    setSelected([]);
   };
 
   const handleImport = async () => {
@@ -138,30 +155,59 @@ export function ProductImageSearchModal({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              🔎 Gerador de Imagens — Buscar na Internet
-            </DialogTitle>
+            <DialogTitle className="flex items-center gap-2">🔎 Gerador de Imagens — Buscar na Internet</DialogTitle>
             <DialogDescription>
               Pesquise imagens do produto, selecione até 10 e importe sem hotlink (download direto).
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-            {/* Search bar */}
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Digite o nome do produto"
                 disabled={loading || importing}
                 onKeyDown={(e) => e.key === "Enter" && runSearch(1, false)}
+                className="md:col-span-2"
               />
-              <Button onClick={() => runSearch(1, false)} disabled={loading || importing || !query.trim()} className="shrink-0">
-                {loading ? "Buscando..." : "Buscar imagens"}
+              <Select
+                value={source}
+                onValueChange={(v: ImageSearchSource) => {
+                  setSource(v);
+                  resetForNewSource();
+                }}
+                disabled={loading || importing}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a fonte" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sourceOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => runSearch(1, false)} disabled={loading || importing || !query.trim()}>
+                {loading ? "Buscando..." : "Buscar"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  resetForNewSource();
+                  void runSearch(1, false);
+                }}
+                disabled={loading || importing || !query.trim()}
+              >
+                <RotateCcw className="w-4 h-4 mr-1" /> Buscar novamente com outra fonte
               </Button>
             </div>
 
-            {/* Action bar */}
             {results.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" size="sm" onClick={selectAll} disabled={importing}>
@@ -176,7 +222,6 @@ export function ProductImageSearchModal({
               </div>
             )}
 
-            {/* Results grid */}
             <div className="rounded-xl border border-border bg-card/70 backdrop-blur-sm p-3 min-h-[320px]">
               {loading && results.length === 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -207,7 +252,6 @@ export function ProductImageSearchModal({
                         }`}
                         onClick={() => toggleSelect(item)}
                       >
-                        {/* Checkbox */}
                         <div className="absolute top-2.5 left-2.5 z-10">
                           <Checkbox
                             checked={isSelected}
@@ -216,7 +260,6 @@ export function ProductImageSearchModal({
                           />
                         </div>
 
-                        {/* Preview button */}
                         <button
                           type="button"
                           className="absolute top-2.5 right-2.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm rounded-full p-1.5 hover:bg-background"
@@ -244,7 +287,6 @@ export function ProductImageSearchModal({
               )}
             </div>
 
-            {/* Load more */}
             {results.length > 0 && results.length < 40 && (
               <div className="flex justify-center">
                 <Button
@@ -269,22 +311,15 @@ export function ProductImageSearchModal({
         </DialogContent>
       </Dialog>
 
-      {/* Full-size preview overlay */}
       {previewUrl && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setPreviewUrl(null)}
-        >
-          <button
-            className="absolute top-4 right-4 text-white hover:text-white/80 z-10"
-            onClick={() => setPreviewUrl(null)}
-          >
+        <div className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setPreviewUrl(null)}>
+          <button className="absolute top-4 right-4 text-foreground/90 hover:text-foreground z-10" onClick={() => setPreviewUrl(null)}>
             <X className="w-8 h-8" />
           </button>
           <img
             src={previewUrl}
             alt="Preview"
-            className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            className="max-w-full max-h-[85vh] object-contain rounded-lg border border-border"
             onClick={(e) => e.stopPropagation()}
           />
         </div>

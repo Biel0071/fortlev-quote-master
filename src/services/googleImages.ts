@@ -1,9 +1,14 @@
 import { cloud } from "@/lib/cloud";
 
+export type ImageSearchSource = "bing" | "google" | "mercado_livre" | "amazon" | "shopee" | "alibaba";
+
 export type GoogleImageResult = {
   imageUrl: string;
   thumbnail: string;
   title: string;
+  source?: ImageSearchSource;
+  width?: number;
+  height?: number;
 };
 
 type SearchResponse = {
@@ -33,11 +38,16 @@ async function authHeaders() {
   };
 }
 
-export async function searchGoogleProductImages(params: { query: string; start?: number }) {
+export async function searchGoogleProductImages(params: {
+  query: string;
+  start?: number;
+  source?: ImageSearchSource;
+}) {
   const q = params.query.trim();
   const start = Number(params.start ?? 1);
+  const source = params.source ?? "bing";
   const headers = await authHeaders();
-  const qs = new URLSearchParams({ q, start: String(start) });
+  const qs = new URLSearchParams({ q, start: String(start), source });
 
   const response = await fetch(`${getFunctionsBaseUrl()}/search-product-images?${qs.toString()}`, {
     method: "GET",
@@ -48,12 +58,15 @@ export async function searchGoogleProductImages(params: { query: string; start?:
   if (!response.ok) {
     const errorCode = json?.error ?? "";
     let friendlyMsg = "Não foi possível buscar imagens agora.";
+
     if (errorCode === "unauthorized") friendlyMsg = "Sessão expirada. Faça login novamente.";
     else if (errorCode === "forbidden") friendlyMsg = "Acesso negado. Você precisa ser administrador.";
-    else if (errorCode === "daily_limit_exceeded") friendlyMsg = "Limite diário de buscas atingido (10/dia).";
-    else if (errorCode === "google_credentials_missing") friendlyMsg = "Credenciais de busca não configuradas.";
-    else if (errorCode === "google_search_failed") friendlyMsg = "Serviço de busca temporariamente indisponível.";
+    else if (errorCode === "daily_limit_exceeded") friendlyMsg = "Limite diário de buscas atingido. Tente novamente amanhã.";
+    else if (errorCode === "invalid_query") friendlyMsg = "Digite um nome de produto válido para buscar.";
+    else if (errorCode === "no_images_found") friendlyMsg = "Nenhuma imagem encontrada nessa fonte. Tente outra fonte.";
+    else if (errorCode === "search_unavailable") friendlyMsg = "Fonte temporariamente indisponível. Tente outra fonte.";
     else if (json?.error) friendlyMsg = json.error;
+
     throw new Error(friendlyMsg);
   }
 

@@ -143,19 +143,13 @@ const App = () => (
             <Route path="/auth/login" element={<LoginPage />} />
             <Route path="/auth/signup" element={<SignupPage />} />
 
-            {/* Sistemas de Orçamento */}
+            {/* Sistemas de Orçamento (sempre retornam ao admin) */}
             <Route path="/construcao" element={<Construction />} />
             <Route path="/orcamentos" element={<QuotationsIndex />} />
 
-            <Route path="/dashboard" element={<StoresDashboardLayout />}>
-              <Route index element={<Navigate to="fortlev" replace />} />
-
-              <Route path="fortlev" element={<FortlevOverview />} />
-              <Route path="fortlev/orcamentos" element={<QuotationsIndex />} />
-
-              <Route path="construcao" element={<ConstructionOverview />} />
-              <Route path="construcao/orcamentos" element={<Construction />} />
-            </Route>
+            {/* Redirect legacy /dashboard to admin */}
+            <Route path="/dashboard" element={<Navigate to="/admin/orcamentos" replace />} />
+            <Route path="/dashboard/*" element={<Navigate to="/admin/orcamentos" replace />} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

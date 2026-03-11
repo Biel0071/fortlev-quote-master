@@ -70,22 +70,14 @@ export function ProductImageSearchModal({
     setSelected((prev) => {
       const exists = prev.some((x) => x.imageUrl === item.imageUrl);
       if (exists) return prev.filter((x) => x.imageUrl !== item.imageUrl);
-      if (prev.length >= 10) {
-        toast({ title: "Limite atingido", description: "Você pode selecionar no máximo 10 imagens." });
-        return prev;
-      }
       return [...prev, item];
     });
   };
 
   const selectAll = () => {
     const available = results.filter((r) => !selectedMap.has(r.imageUrl));
-    const canAdd = Math.min(available.length, 10 - selected.length);
-    if (canAdd <= 0) {
-      toast({ title: "Limite atingido", description: "Máximo de 10 imagens selecionadas." });
-      return;
-    }
-    setSelected((prev) => [...prev, ...available.slice(0, canAdd)]);
+    if (available.length === 0) return;
+    setSelected((prev) => [...prev, ...available]);
   };
 
   const deselectAll = () => setSelected([]);
@@ -169,7 +161,7 @@ export function ProductImageSearchModal({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">🔎 Gerador de Imagens — Buscar na Internet</DialogTitle>
             <DialogDescription>
-              Pesquise imagens do produto, selecione até 10 e importe sem hotlink (download direto).
+              Pesquise imagens do produto, selecione quantas quiser e importe sem hotlink (download direto).
             </DialogDescription>
           </DialogHeader>
 
@@ -229,7 +221,7 @@ export function ProductImageSearchModal({
                   <Square className="w-4 h-4 mr-1" /> Limpar seleção
                 </Button>
                 <span className="text-sm text-muted-foreground ml-auto">
-                  {selected.length}/10 selecionadas · {results.length} resultados
+                  {selected.length} selecionadas · {results.length} resultados
                 </span>
               </div>
             )}

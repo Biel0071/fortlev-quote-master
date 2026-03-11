@@ -1,12 +1,12 @@
 import { Droplets, Building2, ArrowLeft } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 export const Header = () => {
-  const [searchParams] = useSearchParams();
-  const isFromAdmin = searchParams.get('from') === 'admin';
-  const constructionPath = isFromAdmin ? '/construcao?from=admin' : '/construcao';
-  const returnPath = '/admin/dashboard/orcamentos';
+  const location = useLocation();
+  const isConstruction = location.pathname === '/construcao';
+  const returnPath = isConstruction ? '/admin/orcamentos/construcao' : '/admin/orcamentos/fortlev';
+  const constructionPath = '/construcao';
 
   return (
     <header className="fortlev-gradient text-primary-foreground py-6 px-4 sm:px-6 shadow-lg">
@@ -26,25 +26,23 @@ export const Header = () => {
             </div>
           </div>
 
-          {isFromAdmin ? (
+          <div className="flex items-center gap-2">
             <Link to={returnPath}>
               <Button variant="secondary" className="gap-2">
                 <ArrowLeft className="h-4 w-4" />
-                <span>Voltar ao Dashboard</span>
+                <span className="hidden sm:inline">Voltar ao Painel</span>
+                <span className="sm:hidden">Voltar</span>
               </Button>
             </Link>
-          ) : (
-            <Link to={constructionPath}>
-              <Button 
-                variant="secondary" 
-                className="gap-2"
-              >
-                <Building2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Materiais de Construção</span>
-                <span className="sm:hidden">Construção</span>
-              </Button>
-            </Link>
-          )}
+            {!isConstruction && (
+              <Link to={constructionPath}>
+                <Button variant="secondary" className="gap-2">
+                  <Building2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Construção</span>
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </header>

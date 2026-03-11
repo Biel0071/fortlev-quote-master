@@ -22,7 +22,7 @@ import { ConstructionQuotationsDashboard } from '@/components/construction/Const
 const ConstructionPage = () => {
   const { quotations, saveQuotation, updateQuotation, deleteQuotation, duplicateQuotation, generateQuotationNumber } = useConstructionQuotations();
   const [searchParams] = useSearchParams();
-  const returnPath = searchParams.get('from') === 'admin' ? '/admin/dashboard/orcamentos' : '/';
+  const returnPath = '/admin/orcamentos/construcao';
   const [activeTab, setActiveTab] = useState<'new' | 'saved'>('new');
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
 

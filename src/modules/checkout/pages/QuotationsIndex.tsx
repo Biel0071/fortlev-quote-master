@@ -157,12 +157,7 @@ const QuotationsIndex = () => {
   };
 
   const handleBack = () => {
-    const from = searchParams.get('from');
-    if (from === 'admin') {
-      navigate('/admin/orcamentos/fortlev');
-    } else {
-      navigate(-1);
-    }
+    navigate('/admin/orcamentos/fortlev');
   };
 
   const isFormValid = (showClientData ? customer.name.trim() : true) && items.length > 0;

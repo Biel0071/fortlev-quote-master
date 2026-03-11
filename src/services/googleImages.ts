@@ -29,6 +29,7 @@ async function authHeaders() {
   return {
     Authorization: token ? `Bearer ${token}` : "",
     apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+    "Content-Type": "application/json",
   };
 }
 
@@ -45,8 +46,15 @@ export async function searchGoogleProductImages(params: { query: string; start?:
 
   const json = (await response.json().catch(() => ({}))) as SearchResponse;
   if (!response.ok) {
-    const error = json?.error ?? "Não foi possível buscar imagens agora.";
-    throw new Error(error);
+    const errorCode = json?.error ?? "";
+    let friendlyMsg = "Não foi possível buscar imagens agora.";
+    if (errorCode === "unauthorized") friendlyMsg = "Sessão expirada. Faça login novamente.";
+    else if (errorCode === "forbidden") friendlyMsg = "Acesso negado. Você precisa ser administrador.";
+    else if (errorCode === "daily_limit_exceeded") friendlyMsg = "Limite diário de buscas atingido (10/dia).";
+    else if (errorCode === "google_credentials_missing") friendlyMsg = "Credenciais de busca não configuradas.";
+    else if (errorCode === "google_search_failed") friendlyMsg = "Serviço de busca temporariamente indisponível.";
+    else if (json?.error) friendlyMsg = json.error;
+    throw new Error(friendlyMsg);
   }
 
   return {

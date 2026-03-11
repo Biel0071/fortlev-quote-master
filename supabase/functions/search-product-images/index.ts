@@ -154,7 +154,7 @@ serve(async (req) => {
       googleUrl.searchParams.set("cx", GOOGLE_CX);
       googleUrl.searchParams.set("q", rawQuery);
       googleUrl.searchParams.set("searchType", "image");
-      googleUrl.searchParams.set("num", "5");
+      googleUrl.searchParams.set("num", "10");
       googleUrl.searchParams.set("start", String(start));
 
       const googleResp = await fetch(googleUrl.toString(), { method: "GET" });

@@ -46,7 +46,7 @@ type SidebarItem = {
 const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
   { title: "Dashboard", url: "/admin/dashboard", icon: LayoutGrid, page: "dashboard" },
   { title: "Home", url: "/admin/home", icon: Home, page: "home" },
-  { title: "Orçamentos", url: "", icon: FileText, page: "orcamentos", external: true },
+  { title: "Orçamentos", url: "/admin/orcamentos", icon: FileText, page: "orcamentos" },
   { title: "Produtos", url: "/admin/produtos", icon: Package, page: "produtos" },
   { title: "Categorias", url: "/admin/categorias", icon: Tags, page: "categorias" },
   { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag, page: "pedidos" },

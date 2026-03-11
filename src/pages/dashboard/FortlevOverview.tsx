@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,11 +8,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, ExternalLink } from "lucide-react";
+import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, MoreHorizontal } from "lucide-react";
 import { useQuotations } from "@/hooks/useQuotations";
 import { useSales } from "@/hooks/useSales";
 import { formatCurrency, formatDate } from "@/utils/formatters";
+import { downloadPDF, downloadPNG } from "@/utils/pdfGenerator";
+import { downloadNFePDF } from "@/utils/nfeGenerator";
 import { toast } from "@/hooks/use-toast";
 
 function currencyToNumber(raw: string) {
@@ -21,39 +25,27 @@ function currencyToNumber(raw: string) {
 }
 
 export default function FortlevOverview() {
+  const navigate = useNavigate();
   const { quotations, deleteQuotation, duplicateQuotation } = useQuotations();
   const { sales, salesByQuotationId, createSale } = useSales("fortlev");
 
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
   const [sellQuotationId, setSellQuotationId] = useState<string | null>(null);
   const [sellValue, setSellValue] = useState<string>("");
-  const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
-  const totalQuoted = useMemo(
-    () => quotations.reduce((acc, q) => acc + (q.total || 0), 0),
-    [quotations]
-  );
-
-  const totalSales = useMemo(
-    () => sales.reduce((acc, s) => acc + (s.value || 0), 0),
-    [sales]
-  );
-
+  const totalQuoted = useMemo(() => quotations.reduce((acc, q) => acc + (q.total || 0), 0), [quotations]);
+  const totalSales = useMemo(() => sales.reduce((acc, s) => acc + (s.value || 0), 0), [sales]);
   const conversion = quotations.length > 0 ? (sales.length / quotations.length) * 100 : 0;
 
   const last7DaysSales = useMemo(() => {
     const days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
-      return {
-        label: d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit" }),
-        key: d.toDateString(),
-        valor: 0,
-      };
+      return { label: d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit" }), key: d.toDateString(), valor: 0 };
     });
     sales.forEach((s) => {
       const key = new Date(s.soldAt).toDateString();
@@ -63,10 +55,10 @@ export default function FortlevOverview() {
     return days;
   }, [sales]);
 
-  const recentQuotations = useMemo(() => {
-    return [...quotations]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [quotations]);
+  const recentQuotations = useMemo(() =>
+    [...quotations].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [quotations]
+  );
 
   const openSellDialog = (quotationId: string, defaultValue?: number) => {
     setSellQuotationId(quotationId);
@@ -96,37 +88,41 @@ export default function FortlevOverview() {
     toast({ title: "Orçamento excluído" });
   };
 
-  const handleDuplicate = async (id: string) => {
-    await duplicateQuotation(id);
-  };
+  const handleDuplicate = async (id: string) => { await duplicateQuotation(id); };
 
   const handleBulkDelete = async () => {
-    for (const id of selected) {
-      await deleteQuotation(id);
-    }
+    for (const id of selected) { await deleteQuotation(id); }
     toast({ title: `${selected.size} orçamento(s) excluído(s)` });
     setSelected(new Set());
     setBulkDeleteOpen(false);
   };
 
   const toggleSelect = (id: string) => {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return n;
-    });
+    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
 
   const toggleAll = () => {
-    if (selected.size === recentQuotations.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(recentQuotations.map((q) => q.id)));
-    }
+    selected.size === recentQuotations.length ? setSelected(new Set()) : setSelected(new Set(recentQuotations.map((q) => q.id)));
   };
 
-  const handleEdit = (id: string) => {
-    window.open(`/orcamentos?edit=${id}`, "_blank");
+  const handleEdit = (id: string) => { navigate(`/orcamentos?edit=${id}`); };
+
+  const handleDownloadPDF = (q: typeof quotations[0]) => {
+    try { downloadPDF(q); toast({ title: "PDF gerado com sucesso" }); }
+    catch { toast({ title: "Erro ao gerar PDF", variant: "destructive" }); }
+  };
+
+  const handleDownloadPNG = async (q: typeof quotations[0]) => {
+    try { await downloadPNG(q); toast({ title: "PNG gerado com sucesso" }); }
+    catch { toast({ title: "Erro ao gerar PNG", variant: "destructive" }); }
+  };
+
+  const handleDownloadNFe = async (q: typeof quotations[0]) => {
+    try {
+      const nfeNumber = q.number.slice(0, 9).padStart(9, "0");
+      await downloadNFePDF(q, nfeNumber);
+      toast({ title: "Nota Fiscal gerada com sucesso" });
+    } catch { toast({ title: "Erro ao gerar NFe", variant: "destructive" }); }
   };
 
   return (
@@ -174,7 +170,7 @@ export default function FortlevOverview() {
         </Card>
       </div>
 
-      {/* Quotations table with CRUD */}
+      {/* Quotations table */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -182,13 +178,11 @@ export default function FortlevOverview() {
             <div className="flex items-center gap-2">
               {selected.size > 0 && (
                 <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Excluir ({selected.size})
+                  <Trash2 className="h-4 w-4 mr-1" />Excluir ({selected.size})
                 </Button>
               )}
-              <Button size="sm" onClick={() => setNewDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" />
-                Novo Orçamento
+              <Button size="sm" onClick={() => navigate("/orcamentos")}>
+                <Plus className="h-4 w-4 mr-1" />Novo Orçamento
               </Button>
             </div>
           </div>
@@ -209,6 +203,7 @@ export default function FortlevOverview() {
                     <TableHead>Data</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-center">Documentos</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -230,6 +225,27 @@ export default function FortlevOverview() {
                           ) : (
                             <Button variant="outline" size="sm" onClick={() => openSellDialog(q.id, q.total)}>Registrar</Button>
                           )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" className="gap-1.5">
+                                <FileDown className="h-3.5 w-3.5" />
+                                Gerar
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="center">
+                              <DropdownMenuItem onClick={() => handleDownloadPDF(q)}>
+                                <FileText className="h-4 w-4 mr-2" />PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadPNG(q)}>
+                                <Image className="h-4 w-4 mr-2" />PNG
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadNFe(q)}>
+                                <Receipt className="h-4 w-4 mr-2" />Nota Fiscal
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -268,25 +284,6 @@ export default function FortlevOverview() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setSellDialogOpen(false)}>Cancelar</Button>
             <Button onClick={confirmSell}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* New Quotation Dialog */}
-      <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Novo Orçamento Fortlev</DialogTitle>
-            <DialogDescription>Escolha onde deseja criar o orçamento.</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-3">
-            <Button className="w-full justify-start gap-2" onClick={() => { window.open("/orcamentos", "_blank"); setNewDialogOpen(false); }}>
-              <ExternalLink className="h-4 w-4" />
-              Abrir página de Orçamentos Fortlev
-            </Button>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNewDialogOpen(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

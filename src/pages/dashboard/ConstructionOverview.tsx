@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,12 +8,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, ExternalLink } from "lucide-react";
+import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown } from "lucide-react";
 import { useConstructionQuotations } from "@/hooks/useConstructionQuotations";
 import { useSales } from "@/hooks/useSales";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { toast } from "@/hooks/use-toast";
+import type { Quotation } from "@/types/quotation";
+import { downloadPDF, downloadPNG } from "@/utils/pdfGenerator";
 
 function currencyToNumber(raw: string) {
   const cleaned = raw.replace(/[^0-9,.-]/g, "").replace(".", "").replace(",", ".");
@@ -20,14 +24,52 @@ function currencyToNumber(raw: string) {
   return Number.isFinite(num) ? num : 0;
 }
 
+/** Adapts a construction quotation to the Fortlev Quotation type for PDF generation */
+function toQuotationType(q: ReturnType<typeof useConstructionQuotations>["quotations"][0]): Quotation {
+  return {
+    id: q.id,
+    number: q.number,
+    customer: q.customer,
+    companyInfo: q.companyInfo,
+    items: q.items.map((item: any) => ({
+      id: item.id,
+      product: {
+        id: item.product?.id ?? item.id,
+        name: item.product?.name ?? item.name ?? "Produto",
+        capacity: item.product?.capacity ?? 0,
+        unit: item.product?.unit ?? "un",
+        height: item.product?.height ?? "",
+        diameter: item.product?.diameter ?? "",
+        basePrice: item.product?.basePrice ?? item.unitPrice ?? 0,
+        type: "caixa" as const,
+      },
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      subtotal: item.subtotal,
+    })),
+    subtotal: q.subtotal,
+    discount: q.discount,
+    freight: q.freight,
+    total: q.total,
+    validity: q.validity,
+    observations: q.observations,
+    paymentConditions: { cashDiscount: q.paymentMethod, installments: "", downPayment: "" },
+    deliveryTime: q.deliveryDate,
+    showClientData: q.showClientData,
+    createdAt: q.createdAt,
+    status: q.status as Quotation["status"],
+    branding: { showBrand: false },
+  };
+}
+
 export default function ConstructionOverview() {
+  const navigate = useNavigate();
   const { quotations, deleteQuotation, duplicateQuotation } = useConstructionQuotations();
   const { sales, salesByQuotationId, createSale } = useSales("construcao");
 
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
   const [sellQuotationId, setSellQuotationId] = useState<string | null>(null);
   const [sellValue, setSellValue] = useState<string>("");
-  const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -91,7 +133,17 @@ export default function ConstructionOverview() {
     selected.size === recentQuotations.length ? setSelected(new Set()) : setSelected(new Set(recentQuotations.map((q) => q.id)));
   };
 
-  const handleEdit = (id: string) => { window.open(`/construcao?edit=${id}`, "_blank"); };
+  const handleEdit = (id: string) => { navigate(`/construcao?edit=${id}`); };
+
+  const handleDownloadPDF = (q: typeof quotations[0]) => {
+    try { downloadPDF(toQuotationType(q)); toast({ title: "PDF gerado com sucesso" }); }
+    catch { toast({ title: "Erro ao gerar PDF", variant: "destructive" }); }
+  };
+
+  const handleDownloadPNG = async (q: typeof quotations[0]) => {
+    try { await downloadPNG(toQuotationType(q)); toast({ title: "PNG gerado com sucesso" }); }
+    catch { toast({ title: "Erro ao gerar PNG", variant: "destructive" }); }
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
@@ -141,7 +193,7 @@ export default function ConstructionOverview() {
                   <Trash2 className="h-4 w-4 mr-1" />Excluir ({selected.size})
                 </Button>
               )}
-              <Button size="sm" onClick={() => setNewDialogOpen(true)}>
+              <Button size="sm" onClick={() => navigate("/construcao")}>
                 <Plus className="h-4 w-4 mr-1" />Novo Orçamento
               </Button>
             </div>
@@ -161,6 +213,7 @@ export default function ConstructionOverview() {
                     <TableHead>Data</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-center">Documentos</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -176,6 +229,24 @@ export default function ConstructionOverview() {
                         <TableCell className="text-right font-semibold">{formatCurrency(q.total)}</TableCell>
                         <TableCell>
                           {sold ? <Badge>Vendido</Badge> : <Button variant="outline" size="sm" onClick={() => openSellDialog(q.id, q.total)}>Registrar</Button>}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" className="gap-1.5">
+                                <FileDown className="h-3.5 w-3.5" />
+                                Gerar
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="center">
+                              <DropdownMenuItem onClick={() => handleDownloadPDF(q)}>
+                                <FileText className="h-4 w-4 mr-2" />PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadPNG(q)}>
+                                <Image className="h-4 w-4 mr-2" />PNG
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -200,19 +271,6 @@ export default function ConstructionOverview() {
           <DialogHeader><DialogTitle>Registrar venda</DialogTitle><DialogDescription>Informe o valor final da venda.</DialogDescription></DialogHeader>
           <div className="space-y-2"><Label htmlFor="sellValueC">Valor (R$)</Label><Input id="sellValueC" inputMode="decimal" placeholder="Ex: 1.234,56" value={sellValue} onChange={(e) => setSellValue(e.target.value)} /></div>
           <DialogFooter><Button variant="outline" onClick={() => setSellDialogOpen(false)}>Cancelar</Button><Button onClick={confirmSell}>Salvar</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* New Quotation Dialog */}
-      <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Novo Orçamento Construção</DialogTitle><DialogDescription>Abra a página de criação de orçamentos.</DialogDescription></DialogHeader>
-          <div className="flex flex-col gap-3">
-            <Button className="w-full justify-start gap-2" onClick={() => { window.open("/construcao", "_blank"); setNewDialogOpen(false); }}>
-              <ExternalLink className="h-4 w-4" />Abrir página de Orçamentos Construção
-            </Button>
-          </div>
-          <DialogFooter><Button variant="outline" onClick={() => setNewDialogOpen(false)}>Fechar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

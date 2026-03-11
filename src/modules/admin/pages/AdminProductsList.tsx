@@ -142,35 +142,8 @@ export default function AdminProductsList() {
           <Button variant="outline" onClick={() => nav("/admin/produtos/imagens")}>
             🔎 Gerador de Imagens
           </Button>
-          <AlertDialog open={batchOpen} onOpenChange={setBatchOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" disabled={loading || batchRunning}>
-                Gerar imagens (IA)
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Gerar imagens para todos os produtos ativos?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Isso vai <strong>sobrescrever</strong> as imagens existentes e gerar <strong>5 imagens</strong> por produto com fundo neutro.
-                  O processo pode levar vários minutos e consome créditos de IA.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={batchRunning}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    setBatchOpen(false);
-                    await startBatch();
-                  }}
-                  disabled={batchRunning}
-                >
-                  Iniciar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+
+
 
           <Button onClick={() => nav("/admin/produtos/novo")}>Novo produto</Button>
         </div>

@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, DollarSign, Receipt, TrendingUp } from "lucide-react";
+import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, ExternalLink } from "lucide-react";
 import { useQuotations } from "@/hooks/useQuotations";
 import { useSales } from "@/hooks/useSales";
 import { formatCurrency, formatDate } from "@/utils/formatters";
@@ -20,12 +21,17 @@ function currencyToNumber(raw: string) {
 }
 
 export default function FortlevOverview() {
-  const { quotations } = useQuotations();
+  const { quotations, deleteQuotation, duplicateQuotation } = useQuotations();
   const { sales, salesByQuotationId, createSale } = useSales("fortlev");
 
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
   const [sellQuotationId, setSellQuotationId] = useState<string | null>(null);
   const [sellValue, setSellValue] = useState<string>("");
+  const [newDialogOpen, setNewDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const totalQuoted = useMemo(
     () => quotations.reduce((acc, q) => acc + (q.total || 0), 0),
@@ -49,20 +55,17 @@ export default function FortlevOverview() {
         valor: 0,
       };
     });
-
     sales.forEach((s) => {
       const key = new Date(s.soldAt).toDateString();
       const day = days.find((d) => d.key === key);
       if (day) day.valor += s.value;
     });
-
     return days;
   }, [sales]);
 
   const recentQuotations = useMemo(() => {
     return [...quotations]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 8);
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [quotations]);
 
   const openSellDialog = (quotationId: string, defaultValue?: number) => {
@@ -78,81 +81,65 @@ export default function FortlevOverview() {
       toast({ title: "Valor inválido", description: "Informe um valor de venda maior que zero", variant: "destructive" });
       return;
     }
-
-    createSale({
-      store: "fortlev",
-      quotationId: sellQuotationId,
-      value,
-      soldAt: new Date(),
-    });
-
+    createSale({ store: "fortlev", quotationId: sellQuotationId, value, soldAt: new Date() });
     toast({ title: "Venda registrada", description: "A venda foi adicionada ao dashboard" });
     setSellDialogOpen(false);
     setSellQuotationId(null);
     setSellValue("");
   };
 
+  const handleDelete = async (id: string) => {
+    await deleteQuotation(id);
+    setSelected((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    setDeleteDialogOpen(false);
+    setDeleteTargetId(null);
+    toast({ title: "Orçamento excluído" });
+  };
+
+  const handleDuplicate = async (id: string) => {
+    await duplicateQuotation(id);
+  };
+
+  const handleBulkDelete = async () => {
+    for (const id of selected) {
+      await deleteQuotation(id);
+    }
+    toast({ title: `${selected.size} orçamento(s) excluído(s)` });
+    setSelected(new Set());
+    setBulkDeleteOpen(false);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === recentQuotations.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(recentQuotations.map((q) => q.id)));
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    window.open(`/orcamentos?edit=${id}`, "_blank");
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-muted">
-                <Receipt className="h-5 w-5 text-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Orçamentos</p>
-                <p className="text-lg font-bold truncate">{quotations.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-muted">
-                <TrendingUp className="h-5 w-5 text-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Total orçado</p>
-                <p className="text-lg font-bold truncate">{formatCurrency(totalQuoted)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-muted">
-                <DollarSign className="h-5 w-5 text-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Vendas (manual)</p>
-                <p className="text-lg font-bold truncate">{formatCurrency(totalSales)}</p>
-                <p className="text-xs text-muted-foreground">{sales.length} venda(s)</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-muted">
-                <BarChart3 className="h-5 w-5 text-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Conversão</p>
-                <p className="text-lg font-bold truncate">{conversion.toFixed(1)}%</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2.5 rounded-xl bg-muted"><Receipt className="h-5 w-5 text-foreground" /></div><div className="min-w-0"><p className="text-xs text-muted-foreground">Orçamentos</p><p className="text-lg font-bold truncate">{quotations.length}</p></div></div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2.5 rounded-xl bg-muted"><TrendingUp className="h-5 w-5 text-foreground" /></div><div className="min-w-0"><p className="text-xs text-muted-foreground">Total orçado</p><p className="text-lg font-bold truncate">{formatCurrency(totalQuoted)}</p></div></div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2.5 rounded-xl bg-muted"><DollarSign className="h-5 w-5 text-foreground" /></div><div className="min-w-0"><p className="text-xs text-muted-foreground">Vendas (manual)</p><p className="text-lg font-bold truncate">{formatCurrency(totalSales)}</p><p className="text-xs text-muted-foreground">{sales.length} venda(s)</p></div></div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2.5 rounded-xl bg-muted"><BarChart3 className="h-5 w-5 text-foreground" /></div><div className="min-w-0"><p className="text-xs text-muted-foreground">Conversão</p><p className="text-lg font-bold truncate">{conversion.toFixed(1)}%</p></div></div></CardContent></Card>
       </div>
 
+      {/* Chart + Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
@@ -163,75 +150,66 @@ export default function FortlevOverview() {
           </CardHeader>
           <CardContent>
             {sales.length === 0 ? (
-              <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                Sem dados para exibir
-              </div>
+              <div className="h-[200px] flex items-center justify-center text-muted-foreground">Sem dados para exibir</div>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={last7DaysSales}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} />
                   <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                    formatter={(value: number) => [formatCurrency(value), "Vendas"]}
-                  />
+                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(value: number) => [formatCurrency(value), "Vendas"]} />
                   <Area type="monotone" dataKey="valor" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Resumo</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Resumo</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Ticket médio (orçado)</span>
-              <span className="font-semibold">
-                {formatCurrency(quotations.length ? totalQuoted / quotations.length : 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Ticket médio (venda)</span>
-              <span className="font-semibold">
-                {formatCurrency(sales.length ? totalSales / sales.length : 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Orçamentos sem venda</span>
-              <span className="font-semibold">
-                {Math.max(0, quotations.length - new Set(sales.map((s) => s.quotationId)).size)}
-              </span>
-            </div>
+            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Ticket médio (orçado)</span><span className="font-semibold">{formatCurrency(quotations.length ? totalQuoted / quotations.length : 0)}</span></div>
+            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Ticket médio (venda)</span><span className="font-semibold">{formatCurrency(sales.length ? totalSales / sales.length : 0)}</span></div>
+            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Orçamentos sem venda</span><span className="font-semibold">{Math.max(0, quotations.length - new Set(sales.map((s) => s.quotationId)).size)}</span></div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Quotations table with CRUD */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-3">
-            <CardTitle>Orçamentos recentes</CardTitle>
-            <Badge variant="secondary">Top 8</Badge>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle>Orçamentos</CardTitle>
+            <div className="flex items-center gap-2">
+              {selected.size > 0 && (
+                <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Excluir ({selected.size})
+                </Button>
+              )}
+              <Button size="sm" onClick={() => setNewDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Novo Orçamento
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {recentQuotations.length === 0 ? (
-            <div className="py-10 text-center text-muted-foreground">
-              Nenhum orçamento emitido ainda.
-            </div>
+            <div className="py-10 text-center text-muted-foreground">Nenhum orçamento emitido ainda.</div>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
+                    <TableHead className="w-10">
+                      <Checkbox checked={selected.size === recentQuotations.length && recentQuotations.length > 0} onCheckedChange={toggleAll} />
+                    </TableHead>
                     <TableHead>Nº</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Venda</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -239,18 +217,32 @@ export default function FortlevOverview() {
                     const sold = (salesByQuotationId.get(q.id) ?? []).length > 0;
                     return (
                       <TableRow key={q.id} className="hover:bg-muted/30">
+                        <TableCell>
+                          <Checkbox checked={selected.has(q.id)} onCheckedChange={() => toggleSelect(q.id)} />
+                        </TableCell>
                         <TableCell className="font-medium">{q.number}</TableCell>
-                        <TableCell className="max-w-[240px] truncate">{q.customer.name}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{q.customer.name}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(q.createdAt))}</TableCell>
                         <TableCell className="text-right font-semibold">{formatCurrency(q.total)}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>
                           {sold ? (
-                            <Badge>Registrada</Badge>
+                            <Badge>Vendido</Badge>
                           ) : (
-                            <Button variant="outline" size="sm" onClick={() => openSellDialog(q.id, q.total)}>
-                              Registrar
-                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => openSellDialog(q.id, q.total)}>Registrar</Button>
                           )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar" onClick={() => handleEdit(q.id)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Duplicar" onClick={() => handleDuplicate(q.id)}>
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Excluir" onClick={() => { setDeleteTargetId(q.id); setDeleteDialogOpen(true); }}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -262,31 +254,67 @@ export default function FortlevOverview() {
         </CardContent>
       </Card>
 
+      {/* Sell Dialog */}
       <Dialog open={sellDialogOpen} onOpenChange={setSellDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Registrar venda</DialogTitle>
-            <DialogDescription>
-              Informe o valor final da venda (controle manual, usado nas métricas do dashboard).
-            </DialogDescription>
+            <DialogDescription>Informe o valor final da venda (controle manual, usado nas métricas do dashboard).</DialogDescription>
           </DialogHeader>
-
           <div className="space-y-2">
             <Label htmlFor="sellValue">Valor (R$)</Label>
-            <Input
-              id="sellValue"
-              inputMode="decimal"
-              placeholder="Ex: 1.234,56"
-              value={sellValue}
-              onChange={(e) => setSellValue(e.target.value)}
-            />
+            <Input id="sellValue" inputMode="decimal" placeholder="Ex: 1.234,56" value={sellValue} onChange={(e) => setSellValue(e.target.value)} />
           </div>
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSellDialogOpen(false)}>
-              Cancelar
-            </Button>
+            <Button variant="outline" onClick={() => setSellDialogOpen(false)}>Cancelar</Button>
             <Button onClick={confirmSell}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Quotation Dialog */}
+      <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Orçamento Fortlev</DialogTitle>
+            <DialogDescription>Escolha onde deseja criar o orçamento.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <Button className="w-full justify-start gap-2" onClick={() => { window.open("/orcamentos", "_blank"); setNewDialogOpen(false); }}>
+              <ExternalLink className="h-4 w-4" />
+              Abrir página de Orçamentos Fortlev
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewDialogOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete single confirm */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir orçamento?</DialogTitle>
+            <DialogDescription>Essa ação não pode ser desfeita. O orçamento será removido permanentemente.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={() => deleteTargetId && handleDelete(deleteTargetId)}>Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk delete confirm */}
+      <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir {selected.size} orçamento(s)?</DialogTitle>
+            <DialogDescription>Todos os orçamentos selecionados serão removidos permanentemente.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleBulkDelete}>Excluir todos</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

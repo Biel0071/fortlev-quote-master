@@ -40,7 +40,6 @@ type SidebarItem = {
   url: string;
   icon: any;
   page: string;
-  external?: boolean;
 };
 
 const ALL_SIDEBAR_ITEMS: SidebarItem[] = [

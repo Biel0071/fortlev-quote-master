@@ -179,6 +179,18 @@ const QuotationsIndex = () => {
     navigate('/admin/orcamentos/fortlev');
   };
 
+  // Show loading state when editing but data hasn't loaded yet
+  if (editId && loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Carregando orçamento...</span>
+        </div>
+      </div>
+    );
+  }
+
   const isFormValid = (showClientData ? customer.name.trim() : true) && items.length > 0;
 
   return (

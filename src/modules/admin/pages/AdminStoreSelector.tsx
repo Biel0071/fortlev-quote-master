@@ -100,11 +100,17 @@ export default function AdminStoreSelector() {
 
   const loadStores = async () => {
     setLoading(true);
-    const { data } = await cloud
+    // Master sees ALL stores (active + inactive); others only active
+    const query = cloud
       .from("stores")
       .select("id, name, slug, active, domain, favicon_path")
-      .eq("active", true)
       .order("name");
+
+    if (!isMaster) {
+      query.eq("active", true);
+    }
+
+    const { data } = await query;
 
     let available = (data as StoreRow[]) ?? [];
 
@@ -129,23 +135,19 @@ export default function AdminStoreSelector() {
 
     const allDomains = (domains as StoreDomain[]) ?? [];
 
+    // Fetch real counts
+    const [{ count: orderCount }, { count: productCount }] = await Promise.all([
+      cloud.from("store_orders").select("*", { count: "exact", head: true }),
+      cloud.from("store_products").select("*", { count: "exact", head: true }).eq("active", true),
+    ]);
+
     const sums: StoreSummary[] = available.map((store) => ({
       store,
-      orderCount: 0,
-      productCount: 0,
+      // Assign real counts to the active "construcao" store (main store with data)
+      orderCount: store.slug === "construcao" ? (orderCount ?? 0) : 0,
+      productCount: store.slug === "construcao" ? (productCount ?? 0) : 0,
       domains: allDomains.filter((d) => d.store_id === store.id),
     }));
-
-    if (isMaster) {
-      const [{ count: orderCount }, { count: productCount }] = await Promise.all([
-        cloud.from("store_orders").select("*", { count: "exact", head: true }),
-        cloud.from("store_products").select("*", { count: "exact", head: true }).eq("active", true),
-      ]);
-      if (sums.length > 0) {
-        sums[0].orderCount = orderCount ?? 0;
-        sums[0].productCount = productCount ?? 0;
-      }
-    }
 
     setSummaries(sums);
     setLoading(false);
@@ -300,7 +302,7 @@ export default function AdminStoreSelector() {
       {isMaster && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { icon: Store, value: stores.length, label: "Lojas ativas" },
+            { icon: Store, value: stores.filter(s => s.active).length, label: "Lojas ativas" },
             { icon: ShoppingCart, value: summaries.reduce((s, x) => s + x.orderCount, 0), label: "Pedidos total" },
             { icon: Package, value: summaries.reduce((s, x) => s + x.productCount, 0), label: "Produtos ativos" },
             { icon: Users, value: storeAccess.length || "∞", label: "Acessos" },
@@ -326,7 +328,7 @@ export default function AdminStoreSelector() {
           return (
             <Card
               key={store.id}
-              className="rounded-2xl hover:shadow-lg transition-all border-2 hover:border-primary/40 group"
+              className={`rounded-2xl hover:shadow-lg transition-all border-2 hover:border-primary/40 group ${!store.active ? 'opacity-60' : ''}`}
             >
               <CardContent className="p-5 sm:p-6 space-y-4">
                 {/* Store header */}
@@ -374,7 +376,7 @@ export default function AdminStoreSelector() {
                       <div className="text-[10px] text-muted-foreground">Produtos</div>
                     </div>
                     <div className="text-center">
-                      <Badge variant="outline" className="text-[10px]">Ativa</Badge>
+                      <Badge variant={store.active ? "default" : "secondary"} className="text-[10px]">{store.active ? "Ativa" : "Inativa"}</Badge>
                       <div className="text-[10px] text-muted-foreground">Status</div>
                     </div>
                   </div>

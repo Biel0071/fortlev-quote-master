@@ -163,7 +163,7 @@ export default function AdminProductsList() {
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Produtos</h1>
-          <p className="text-sm text-muted-foreground">Gerencie catálogo, preços, estoque e status.</p>
+          <p className="text-sm text-muted-foreground">Gerencie catálogo, preços, estoque e status dos seus produtos.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => nav("/admin/produtos/imagens")}>

@@ -384,7 +384,7 @@ export default function AdminUsersAccess() {
 
       // Build page permissions payload
       let pagePermissions: any[] = [];
-      if (invRole === "operator" || invRole === "visualizador") {
+      if (invRole === "operator" || invRole === "visualizador" || invRole === "gerente") {
         pagePermissions = invPages.map((page) => ({
           page,
           can_view: true,
@@ -406,15 +406,21 @@ export default function AdminUsersAccess() {
         },
       });
 
-      if (fnError || result?.error) {
-        toast.error("Erro ao criar usuário: " + (result?.error || fnError?.message));
+      if (fnError) {
+        const message = await parseFunctionErrorMessage(fnError);
+        toast.error("Erro ao criar usuário: " + message);
         setSaving(false);
         return;
       }
 
-      toast.success(`Usuário ${invName} criado! Senha: ${finalPassword}`, { duration: 15000 });
+      if (result?.error || result?.success === false) {
+        toast.error("Erro ao criar usuário: " + result.error);
+        setSaving(false);
+        return;
+      }
+
+      toast.success(`Usuário ${invName} criado com sucesso! Senha: ${finalPassword}`, { duration: 15000 });
       resetInviteForm();
-      setInviteOpen(false);
       fetchData();
     } catch (e: any) {
       toast.error("Erro: " + e.message);

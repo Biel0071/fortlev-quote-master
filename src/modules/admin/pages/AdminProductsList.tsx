@@ -166,7 +166,10 @@ export default function AdminProductsList() {
           <h1 className="text-2xl font-bold tracking-tight">Produtos</h1>
           <p className="text-sm text-muted-foreground">Gerencie catálogo, preços, estoque e status dos seus produtos.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" onClick={exportExcel} disabled={rows.length === 0}>
+            <Download className="h-4 w-4 mr-1" /> Exportar Excel
+          </Button>
           <Button variant="outline" onClick={() => nav("/admin/produtos/imagens")}>
             🔎 Gerador de Imagens
           </Button>

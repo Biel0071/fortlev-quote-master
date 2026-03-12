@@ -14,10 +14,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
+import { MoreVertical, Pencil, Power, Trash2 } from "lucide-react";
 
 type Row = {
   id: string;
@@ -33,8 +39,8 @@ export default function AdminProductsList() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
 
-  const [batchOpen, setBatchOpen] = useState(false);
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchDone, setBatchDone] = useState(0);
   const [batchTotal, setBatchTotal] = useState(0);
@@ -57,9 +63,7 @@ export default function AdminProductsList() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -69,10 +73,36 @@ export default function AdminProductsList() {
 
   const activeIds = useMemo(() => rows.filter((r) => r.active).map((r) => r.id), [rows]);
 
+  const toggleActive = async (p: Row) => {
+    const { error } = await cloud
+      .from("store_products")
+      .update({ active: !p.active } as any)
+      .eq("id", p.id);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: p.active ? "Desativado" : "Ativado", description: p.name });
+      setRows((prev) => prev.map((r) => (r.id === p.id ? { ...r, active: !r.active } : r)));
+    }
+  };
+
+  const deleteProduct = async () => {
+    if (!deleteTarget) return;
+    // Delete images first, then product
+    await cloud.from("store_product_images").delete().eq("product_id", deleteTarget.id);
+    const { error } = await cloud.from("store_products").delete().eq("id", deleteTarget.id);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Excluído", description: deleteTarget.name });
+      setRows((prev) => prev.filter((r) => r.id !== deleteTarget.id));
+    }
+    setDeleteTarget(null);
+  };
+
   const startBatch = async () => {
     if (runningRef.current) return;
     runningRef.current = true;
-
     cancelRef.current = false;
     setBatchRunning(true);
     setBatchDone(0);
@@ -85,50 +115,24 @@ export default function AdminProductsList() {
       return;
     }
 
-    toast({
-      title: "Geração iniciada",
-      description: `Gerando 5 imagens por produto (sobrescrevendo). Isso pode levar vários minutos.`,
-    });
-
     let done = 0;
-
     for (const productId of activeIds) {
       if (cancelRef.current) break;
-
       const { error } = await cloud.functions.invoke("generate-product-images", {
         body: { productId, overwrite: true, count: 5 },
       });
-
       if (error) {
-        toast({
-          title: "Falha ao gerar",
-          description: String((error as any).message ?? error),
-          variant: "destructive",
-        });
-        // continua para o próximo
+        toast({ title: "Falha ao gerar", description: String((error as any).message ?? error), variant: "destructive" });
       }
-
       done += 1;
       setBatchDone(done);
-
-      // Pequena pausa para reduzir risco de rate limit
       await new Promise((r) => setTimeout(r, 800));
     }
 
     setBatchRunning(false);
     runningRef.current = false;
-
-    if (cancelRef.current) {
-      toast({ title: "Interrompido", description: `Processado: ${done}/${activeIds.length}` });
-    } else {
-      toast({ title: "Concluído", description: `Imagens geradas para ${done}/${activeIds.length} produtos.` });
-    }
-
+    toast({ title: cancelRef.current ? "Interrompido" : "Concluído", description: `${done}/${activeIds.length} produtos.` });
     await load();
-  };
-
-  const stopBatch = () => {
-    cancelRef.current = true;
   };
 
   return (
@@ -142,36 +146,27 @@ export default function AdminProductsList() {
           <Button variant="outline" onClick={() => nav("/admin/produtos/imagens")}>
             🔎 Gerador de Imagens
           </Button>
-
-
-
           <Button onClick={() => nav("/admin/produtos/novo")}>Novo produto</Button>
         </div>
       </div>
 
-      {batchRunning ? (
+      {batchRunning && (
         <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <div className="font-medium">Gerando imagens…</div>
             <div className="text-sm text-muted-foreground">{batchDone}/{batchTotal} produtos processados</div>
           </div>
-          <Button variant="outline" onClick={stopBatch}>
-            Parar
-          </Button>
+          <Button variant="outline" onClick={() => { cancelRef.current = true; }}>Parar</Button>
         </div>
-      ) : null}
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar produto..." className="md:col-span-2" />
-        <Button variant="outline" onClick={load} disabled={loading || batchRunning}>
-          Recarregar
-        </Button>
+        <Button variant="outline" onClick={load} disabled={loading || batchRunning}>Recarregar</Button>
       </div>
 
       <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle>Lista</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Lista</CardTitle></CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-muted-foreground">Carregando...</div>
@@ -180,30 +175,79 @@ export default function AdminProductsList() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {filtered.map((p) => (
-                <Link
+                <div
                   key={p.id}
-                  to={`/admin/produtos/editar/${p.id}`}
-                  className="text-left rounded-xl border border-border bg-card/60 backdrop-blur p-4 hover:bg-muted/30 transition"
+                  className="relative rounded-xl border border-border bg-card/60 backdrop-blur p-4 hover:bg-muted/30 transition"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="font-medium line-clamp-1">{p.name}</div>
-                    <Badge variant={p.active ? "default" : "secondary"}>{p.active ? "Ativo" : "Inativo"}</Badge>
-                  </div>
-                  <div className="mt-1 text-sm text-muted-foreground flex items-center justify-between">
-                    <span>Estoque: {p.stock}</span>
-                    <span className="font-semibold text-foreground">
-                      {p.promo_price > 0 ? formatCurrency(Number(p.promo_price)) : formatCurrency(Number(p.price))}
-                    </span>
-                  </div>
-                  {p.promo_price > 0 && (
-                    <div className="mt-1 text-xs text-muted-foreground">Preço normal: {formatCurrency(Number(p.price))}</div>
-                  )}
-                </Link>
+                  <Link to={`/admin/produtos/editar/${p.id}`} className="block">
+                    <div className="flex items-center justify-between gap-8">
+                      <div className="font-medium line-clamp-1">{p.name}</div>
+                      <Badge variant={p.active ? "default" : "secondary"} className="shrink-0">
+                        {p.active ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground flex items-center justify-between">
+                      <span>Estoque: {p.stock}</span>
+                      <span className="font-semibold text-foreground">
+                        {p.promo_price > 0 ? formatCurrency(Number(p.promo_price)) : formatCurrency(Number(p.price))}
+                      </span>
+                    </div>
+                    {p.promo_price > 0 && (
+                      <div className="mt-1 text-xs text-muted-foreground">Preço normal: {formatCurrency(Number(p.price))}</div>
+                    )}
+                  </Link>
+
+                  {/* Actions menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 h-7 w-7"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
+                        <Pencil className="h-4 w-4 mr-2" /> Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => toggleActive(p)}>
+                        <Power className="h-4 w-4 mr-2" /> {p.active ? "Desativar" : "Ativar"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setDeleteTarget(p)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O produto <strong>{deleteTarget?.name}</strong> será removido permanentemente junto com suas imagens.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteProduct} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

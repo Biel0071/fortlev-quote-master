@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
-import { Copy, Pencil, Power, Trash2 } from "lucide-react";
+import { Copy, Download, Pencil, Power, Trash2 } from "lucide-react";
 
 type Row = {
   id: string;
@@ -158,6 +158,40 @@ export default function AdminProductsList() {
     toast({ title: cancelRef.current ? "Interrompido" : "Concluído", description: `${done}/${activeIds.length} produtos.` });
     await load();
   };
+  const exportExcel = async () => {
+    toast({ title: "Exportando…", description: "Buscando todos os produtos." });
+    const { data, error } = await cloud
+      .from("store_products")
+      .select("id, name, sku, category, unit, price, promo_price, stock, min_stock, active, status, views, clicks, sales, created_at")
+      .order("name", { ascending: true });
+    if (error || !data) {
+      toast({ title: "Erro", description: error?.message ?? "Sem dados", variant: "destructive" });
+      return;
+    }
+    const header = ["ID","Nome","SKU","Categoria","Unidade","Preço","Preço Promo","Estoque","Estoque Mín","Ativo","Status","Views","Clicks","Vendas","Criado em"];
+    const escape = (v: unknown) => {
+      const s = String(v ?? "");
+      return s.includes(";") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csvRows = [header.join(";")];
+    for (const r of data as any[]) {
+      csvRows.push([
+        r.id, r.name, r.sku ?? "", r.category ?? "", r.unit ?? "",
+        String(r.price).replace(".", ","), String(r.promo_price ?? 0).replace(".", ","),
+        r.stock, r.min_stock ?? 0, r.active ? "Sim" : "Não", r.status,
+        r.views, r.clicks, r.sales, r.created_at,
+      ].map(escape).join(";"));
+    }
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `produtos-loja-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exportado!", description: `${data.length} produtos no arquivo.` });
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -166,7 +200,10 @@ export default function AdminProductsList() {
           <h1 className="text-2xl font-bold tracking-tight">Produtos</h1>
           <p className="text-sm text-muted-foreground">Gerencie catálogo, preços, estoque e status dos seus produtos.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" onClick={exportExcel} disabled={rows.length === 0}>
+            <Download className="h-4 w-4 mr-1" /> Exportar Excel
+          </Button>
           <Button variant="outline" onClick={() => nav("/admin/produtos/imagens")}>
             🔎 Gerador de Imagens
           </Button>

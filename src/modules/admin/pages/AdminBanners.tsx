@@ -255,6 +255,7 @@ export default function AdminBanners() {
     file: File | null,
     setPath: (path: string) => void,
     setLocalPreview?: (localUrl: string) => void,
+    targetDims?: { width: number; height: number },
   ) {
     if (!file) return;
 
@@ -270,14 +271,31 @@ export default function AdminBanners() {
 
     try {
       setUploadingCount((n) => n + 1);
+
+      // Process image to fit target dimensions
+      let processedFile = file;
+      if (targetDims) {
+        try {
+          processedFile = await processBannerImage(file, targetDims);
+        } catch {
+          // If processing fails, upload original
+          console.warn("[AdminBanners] Image processing failed, uploading original");
+        }
+      }
+
       if (setLocalPreview) {
-        const localUrl = URL.createObjectURL(file);
+        const localUrl = URL.createObjectURL(processedFile);
         setLocalPreview(localUrl);
       }
 
-      const path = await uploadToBucket(SITE_BANNERS_BUCKET, file);
+      const path = await uploadToBucket(SITE_BANNERS_BUCKET, processedFile);
       setPath(path);
-      toast({ title: "Upload concluído", description: "Imagem pronta para salvar." });
+      toast({
+        title: "Upload concluído",
+        description: targetDims
+          ? `Imagem redimensionada para ${targetDims.width}×${targetDims.height}px e pronta para salvar.`
+          : "Imagem pronta para salvar.",
+      });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Não foi possível enviar o banner agora.";
       toast({ title: "Erro de upload", description: message, variant: "destructive" });

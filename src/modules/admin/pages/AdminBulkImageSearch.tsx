@@ -260,14 +260,16 @@ export default function AdminBulkImageSearch() {
       entry.time = Date.now() - startTime;
 
       // Save log to database
-      await cloud.from("image_import_logs").insert({
-        product_id: product.id,
-        images_found: entry.imagesFound,
-        images_saved: entry.imagesSaved,
-        status: entry.status,
-        processing_time: entry.time,
-        error_message: entry.error || null,
-      } as any).catch(() => {});
+      try {
+        await cloud.from("image_import_logs").insert({
+          product_id: product.id,
+          images_found: entry.imagesFound,
+          images_saved: entry.imagesSaved,
+          status: entry.status,
+          processing_time: entry.time,
+          error_message: entry.error || null,
+        } as any);
+      } catch (_) { /* ignore logging errors */ }
 
       logs.push(entry);
       setAutoLogs([...logs]);

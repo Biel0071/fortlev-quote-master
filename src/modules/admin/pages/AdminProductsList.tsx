@@ -242,6 +242,9 @@ export default function AdminProductsList() {
                       <DropdownMenuItem onClick={() => toggleActive(p)}>
                         <Power className="h-4 w-4 mr-2" /> {p.active ? "Desativar" : "Ativar"}
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setDeleteTarget(p)}
                       >
                         <Trash2 className="h-4 w-4 mr-2" /> Excluir
                       </DropdownMenuItem>

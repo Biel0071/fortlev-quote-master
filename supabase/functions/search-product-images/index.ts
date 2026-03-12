@@ -363,7 +363,7 @@ serve(async (req) => {
         .eq("usage_date", today)
         .maybeSingle();
 
-      if ((usageRow?.searches_count ?? 0) >= 40) {
+      if ((usageRow?.searches_count ?? 0) >= 500) {
         return new Response(JSON.stringify({ error: "daily_limit_exceeded" }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -389,12 +389,19 @@ serve(async (req) => {
         .from("search_cache")
         .select("images_json, created_at")
         .eq("query", cacheKey)
-        .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (cacheRow?.images_json && Array.isArray(cacheRow.images_json)) {
+        // Cache hit: refund the usage count
+        if (usageRow) {
+          await admin
+            .from("search_image_usage")
+            .update({ searches_count: Math.max(0, (usageRow.searches_count ?? 1) - 1) })
+            .eq("id", usageRow.id);
+        }
         return new Response(JSON.stringify({ images: cacheRow.images_json, cached: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

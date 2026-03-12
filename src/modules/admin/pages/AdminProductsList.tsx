@@ -90,10 +90,17 @@ export default function AdminProductsList() {
       toast({ title: "Erro ao duplicar", description: fetchErr?.message ?? "Produto não encontrado", variant: "destructive" });
       return;
     }
-    const { id, created_at, updated_at, views, clicks, sales, ...rest } = original as any;
+    const { id, created_at, updated_at, views, clicks, sales, source_id, sku, ...rest } = original as any;
     const { data: newProd, error: insertErr } = await cloud
       .from("store_products")
-      .insert({ ...rest, name: `${rest.name} (cópia)`, active: false, status: "draft" } as any)
+      .insert({
+        ...rest,
+        name: `${rest.name} (cópia)`,
+        active: false,
+        status: "draft",
+        source_id: null,
+        sku: null,
+      } as any)
       .select("id, name, price, promo_price, stock, active")
       .single();
     if (insertErr) {

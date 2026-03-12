@@ -236,12 +236,12 @@ export default function AdminProductsList() {
                       <DropdownMenuItem onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
                         <Pencil className="h-4 w-4 mr-2" /> Editar
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => duplicateProduct(p)}>
+                        <Copy className="h-4 w-4 mr-2" /> Duplicar
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => toggleActive(p)}>
                         <Power className="h-4 w-4 mr-2" /> {p.active ? "Desativar" : "Ativar"}
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleteTarget(p)}
                       >
                         <Trash2 className="h-4 w-4 mr-2" /> Excluir
                       </DropdownMenuItem>

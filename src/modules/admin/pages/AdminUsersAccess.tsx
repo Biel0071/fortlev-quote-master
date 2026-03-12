@@ -42,6 +42,7 @@ import {
   Eye,
   Search,
   Crown,
+  Pencil,
 } from "lucide-react";
 
 type AdminUser = {

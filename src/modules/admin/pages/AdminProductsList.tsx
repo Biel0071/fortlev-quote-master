@@ -162,7 +162,7 @@ export default function AdminProductsList() {
     toast({ title: "Exportando…", description: "Buscando todos os produtos." });
     const { data, error } = await cloud
       .from("store_products")
-      .select("id, name, sku, category, unit, price, promo_price, stock, min_stock, active, status, views, clicks, sales, created_at")
+      .select("id, name, sku, category, category_id, unit, price, promo_price, stock, min_stock, active, status, views, clicks, sales, created_at, store_categories(name)")
       .order("name", { ascending: true });
     if (error || !data) {
       toast({ title: "Erro", description: error?.message ?? "Sem dados", variant: "destructive" });
@@ -175,8 +175,9 @@ export default function AdminProductsList() {
     };
     const csvRows = [header.join(";")];
     for (const r of data as any[]) {
+      const catName = r.store_categories?.name ?? r.category ?? "";
       csvRows.push([
-        r.id, r.name, r.sku ?? "", r.category ?? "", r.unit ?? "",
+        r.id, r.name, r.sku ?? "", catName, r.unit ?? "",
         String(r.price).replace(".", ","), String(r.promo_price ?? 0).replace(".", ","),
         r.stock, r.min_stock ?? 0, r.active ? "Sim" : "Não", r.status,
         r.views, r.clicks, r.sales, r.created_at,

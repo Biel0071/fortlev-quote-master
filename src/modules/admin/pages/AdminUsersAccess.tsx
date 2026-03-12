@@ -858,6 +858,14 @@ export default function AdminUsersAccess() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            title="Editar acessos"
+                            onClick={() => openEditDialog(u)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             title="Resetar senha"
                             disabled={resettingId === u.id}
                             onClick={() => handleResetPassword(u)}

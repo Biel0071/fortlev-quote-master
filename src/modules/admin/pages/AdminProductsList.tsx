@@ -86,9 +86,32 @@ export default function AdminProductsList() {
     }
   };
 
+  const duplicateProduct = async (p: Row) => {
+    const { data: original, error: fetchErr } = await cloud
+      .from("store_products")
+      .select("*")
+      .eq("id", p.id)
+      .single();
+    if (fetchErr || !original) {
+      toast({ title: "Erro ao duplicar", description: fetchErr?.message ?? "Produto não encontrado", variant: "destructive" });
+      return;
+    }
+    const { id, created_at, updated_at, views, clicks, sales, ...rest } = original as any;
+    const { data: newProd, error: insertErr } = await cloud
+      .from("store_products")
+      .insert({ ...rest, name: `${rest.name} (cópia)`, active: false, status: "draft" } as any)
+      .select("id, name, price, promo_price, stock, active")
+      .single();
+    if (insertErr) {
+      toast({ title: "Erro ao duplicar", description: insertErr.message, variant: "destructive" });
+    } else if (newProd) {
+      toast({ title: "Duplicado", description: `${(newProd as any).name} criado como rascunho.` });
+      setRows((prev) => [...prev, newProd as any]);
+    }
+  };
+
   const deleteProduct = async () => {
     if (!deleteTarget) return;
-    // Delete images first, then product
     await cloud.from("store_product_images").delete().eq("product_id", deleteTarget.id);
     const { error } = await cloud.from("store_products").delete().eq("id", deleteTarget.id);
     if (error) {

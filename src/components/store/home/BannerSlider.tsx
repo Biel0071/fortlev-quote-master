@@ -46,7 +46,7 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
   if (slides.length === 0) {
     return (
       <div className="w-full overflow-hidden rounded-3xl border border-border bg-card">
-        <div className="w-full aspect-square sm:aspect-auto sm:h-[300px] md:h-[380px] lg:h-[400px] xl:h-[420px] bg-muted flex items-center justify-center text-sm text-muted-foreground">
+        <div className="w-full aspect-[9/10] sm:aspect-auto sm:h-[300px] md:h-[380px] lg:h-[400px] xl:h-[420px] bg-muted flex items-center justify-center text-sm text-muted-foreground">
           Nenhum banner disponível
         </div>
       </div>
@@ -70,7 +70,7 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
                 <img
                   src={desktopUrl || mobileUrl || "/placeholder.svg"}
                   alt={`Banner promocional ${banner.position || index + 1}`}
-                  className="w-full aspect-square sm:aspect-auto sm:h-[300px] md:h-[380px] lg:h-[400px] xl:h-[420px] object-cover object-center"
+                  className="w-full aspect-[9/10] sm:aspect-auto sm:h-[300px] md:h-[380px] lg:h-[400px] xl:h-[420px] object-cover object-center"
                   loading="lazy"
                   decoding="async"
                   data-fallback-src={desktopUrls.legacy || mobileUrls.legacy || ""}
@@ -82,7 +82,7 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
                 />
               </picture>
             ) : (
-              <div className="w-full aspect-square sm:aspect-auto sm:h-[300px] md:h-[380px] lg:h-[400px] xl:h-[420px] bg-muted" />
+              <div className="w-full aspect-[9/10] sm:aspect-auto sm:h-[300px] md:h-[380px] lg:h-[400px] xl:h-[420px] bg-muted" />
             );
 
             return (

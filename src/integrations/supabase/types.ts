@@ -1459,6 +1459,44 @@ export type Database = {
         }
         Relationships: []
       }
+      store_domains: {
+        Row: {
+          created_at: string
+          domain: string
+          id: string
+          is_primary: boolean
+          store_id: string
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          id?: string
+          is_primary?: boolean
+          store_id: string
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          id?: string
+          is_primary?: boolean
+          store_id?: string
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_domains_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_offers: {
         Row: {
           active: boolean
@@ -1828,6 +1866,8 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          domain: string | null
+          favicon_path: string | null
           id: string
           name: string
           owner_id: string | null
@@ -1837,6 +1877,8 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          domain?: string | null
+          favicon_path?: string | null
           id?: string
           name: string
           owner_id?: string | null
@@ -1846,6 +1888,8 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          domain?: string | null
+          favicon_path?: string | null
           id?: string
           name?: string
           owner_id?: string | null

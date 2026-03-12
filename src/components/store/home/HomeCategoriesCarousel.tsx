@@ -200,7 +200,7 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
 
           <div
             className={cn(
-              "relative w-full overflow-hidden select-none touch-pan-y",
+              "relative w-full select-none touch-pan-y",
               hasLoop ? "cursor-grab active:cursor-grabbing" : "",
             )}
             onMouseEnter={() => setIsPaused(true)}
@@ -234,7 +234,7 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
               <ChevronRight className="h-6 w-6" />
             </button>
 
-            <div className="overflow-hidden px-10 sm:px-12">
+            <div className="overflow-hidden mx-7 sm:mx-9">
               <div
                 className={cn(
                   "w-max [will-change:transform]",

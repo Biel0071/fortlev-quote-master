@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { BANNER_PRESET_SIZES, BannerLivePreview } from "@/components/admin/BannerLivePreview";
 import { getBannerImageUrls, MAX_BANNER_IMAGE_SIZE_BYTES, SITE_BANNERS_BUCKET, normalizeBannerObjectPath } from "@/utils/bannerStorage";
+import { processBannerImage, BANNER_DESKTOP_DIMS, BANNER_MOBILE_DIMS } from "@/utils/bannerImageProcessor";
 import { invalidateSmartCache } from "@/utils/smartCache";
 
 type Banner = {
@@ -254,6 +255,7 @@ export default function AdminBanners() {
     file: File | null,
     setPath: (path: string) => void,
     setLocalPreview?: (localUrl: string) => void,
+    targetDims?: { width: number; height: number },
   ) {
     if (!file) return;
 
@@ -269,14 +271,31 @@ export default function AdminBanners() {
 
     try {
       setUploadingCount((n) => n + 1);
+
+      // Process image to fit target dimensions
+      let processedFile = file;
+      if (targetDims) {
+        try {
+          processedFile = await processBannerImage(file, targetDims);
+        } catch {
+          // If processing fails, upload original
+          console.warn("[AdminBanners] Image processing failed, uploading original");
+        }
+      }
+
       if (setLocalPreview) {
-        const localUrl = URL.createObjectURL(file);
+        const localUrl = URL.createObjectURL(processedFile);
         setLocalPreview(localUrl);
       }
 
-      const path = await uploadToBucket(SITE_BANNERS_BUCKET, file);
+      const path = await uploadToBucket(SITE_BANNERS_BUCKET, processedFile);
       setPath(path);
-      toast({ title: "Upload concluído", description: "Imagem pronta para salvar." });
+      toast({
+        title: "Upload concluído",
+        description: targetDims
+          ? `Imagem redimensionada para ${targetDims.width}×${targetDims.height}px e pronta para salvar.`
+          : "Imagem pronta para salvar.",
+      });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Não foi possível enviar o banner agora.";
       toast({ title: "Erro de upload", description: message, variant: "destructive" });
@@ -495,6 +514,11 @@ export default function AdminBanners() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Banners</h1>
         <p className="text-sm text-muted-foreground">Crie, edite e visualize o banner da Home em diferentes tamanhos.</p>
+        <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
+          <p><strong>Desktop:</strong> {BANNER_DESKTOP_DIMS.width}×{BANNER_DESKTOP_DIMS.height}px (proporção ~2.86:1)</p>
+          <p><strong>Mobile:</strong> {BANNER_MOBILE_DIMS.width}×{BANNER_MOBILE_DIMS.height}px (proporção 9:10)</p>
+          <p>As imagens enviadas são automaticamente redimensionadas e cortadas para se adequar à proporção do sistema.</p>
+        </div>
       </div>
 
       <Card className="rounded-2xl">
@@ -569,7 +593,8 @@ export default function AdminBanners() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label>Imagem (Desktop)</Label>
+              <Label>Imagem Desktop <span className="text-muted-foreground font-normal">({BANNER_DESKTOP_DIMS.width}×{BANNER_DESKTOP_DIMS.height}px)</span></Label>
+                <p className="text-xs text-muted-foreground">A imagem será redimensionada automaticamente para {BANNER_DESKTOP_DIMS.width}×{BANNER_DESKTOP_DIMS.height}px.</p>
                 <Input
                   type="file"
                   accept="image/*"
@@ -578,12 +603,14 @@ export default function AdminBanners() {
                       e.target.files?.[0] ?? null,
                       (path) => setCreateForm((p) => ({ ...p, image_desktop_path: path })),
                       (localUrl) => updateLocalPreview(setCreateLocalPreview, "image_desktop_path", localUrl),
+                      BANNER_DESKTOP_DIMS,
                     )
                   }
                 />
               </div>
               <div className="space-y-2">
-                <Label>Imagem (Mobile)</Label>
+                <Label>Imagem Mobile <span className="text-muted-foreground font-normal">({BANNER_MOBILE_DIMS.width}×{BANNER_MOBILE_DIMS.height}px)</span></Label>
+                <p className="text-xs text-muted-foreground">A imagem será redimensionada automaticamente para {BANNER_MOBILE_DIMS.width}×{BANNER_MOBILE_DIMS.height}px.</p>
                 <Input
                   type="file"
                   accept="image/*"
@@ -592,6 +619,7 @@ export default function AdminBanners() {
                       e.target.files?.[0] ?? null,
                       (path) => setCreateForm((p) => ({ ...p, image_mobile_path: path })),
                       (localUrl) => updateLocalPreview(setCreateLocalPreview, "image_mobile_path", localUrl),
+                      BANNER_MOBILE_DIMS,
                     )
                   }
                 />
@@ -769,7 +797,8 @@ export default function AdminBanners() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       <div className="space-y-3">
                         <div className="space-y-2">
-                          <Label>Trocar imagem (Desktop)</Label>
+                          <Label>Trocar imagem Desktop <span className="text-muted-foreground font-normal">({BANNER_DESKTOP_DIMS.width}×{BANNER_DESKTOP_DIMS.height}px)</span></Label>
+                          <p className="text-xs text-muted-foreground">Redimensionada automaticamente.</p>
                           <Input
                             type="file"
                             accept="image/*"
@@ -778,12 +807,14 @@ export default function AdminBanners() {
                                 e.target.files?.[0] ?? null,
                                 (path) => setEditForm((p) => ({ ...p, image_desktop_path: path })),
                                 (localUrl) => updateLocalPreview(setEditLocalPreview, "image_desktop_path", localUrl),
+                                BANNER_DESKTOP_DIMS,
                               )
                             }
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Trocar imagem (Mobile)</Label>
+                          <Label>Trocar imagem Mobile <span className="text-muted-foreground font-normal">({BANNER_MOBILE_DIMS.width}×{BANNER_MOBILE_DIMS.height}px)</span></Label>
+                          <p className="text-xs text-muted-foreground">Redimensionada automaticamente.</p>
                           <Input
                             type="file"
                             accept="image/*"
@@ -792,6 +823,7 @@ export default function AdminBanners() {
                                 e.target.files?.[0] ?? null,
                                 (path) => setEditForm((p) => ({ ...p, image_mobile_path: path })),
                                 (localUrl) => updateLocalPreview(setEditLocalPreview, "image_mobile_path", localUrl),
+                                BANNER_MOBILE_DIMS,
                               )
                             }
                           />

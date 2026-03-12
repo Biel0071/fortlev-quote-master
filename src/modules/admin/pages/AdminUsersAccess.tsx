@@ -228,72 +228,35 @@ export default function AdminUsersAccess() {
 
       const finalPassword = invPassword.trim() || generatePassword();
 
-      const { data: signUpData, error: signUpError } = await cloud.auth.signUp({
-        email: invEmail.trim().toLowerCase(),
-        password: finalPassword,
-        options: { data: { invited_name: invName.trim() } },
-      });
-
-      if (signUpError) {
-        toast.error("Erro ao criar usuário: " + signUpError.message);
-        setSaving(false);
-        return;
-      }
-
-      const newUserId = signUpData.user?.id;
-      if (!newUserId) {
-        toast.error("Erro ao obter ID do usuário criado");
-        setSaving(false);
-        return;
-      }
-
-      const { error: insertError } = await cloud.from("admin_users").insert({
-        user_id: newUserId,
-        name: invName.trim(),
-        email: invEmail.trim().toLowerCase(),
-        role: invRole,
-        created_by: user?.id,
-      });
-
-      if (insertError) {
-        toast.error("Erro ao salvar usuário: " + insertError.message);
-        setSaving(false);
-        return;
-      }
-
-      await cloud.from("user_roles").insert({
-        user_id: newUserId,
-        role: "admin" as any,
-      });
-
-      if (invRole !== "master" && invStores.length > 0) {
-        await cloud.from("user_store_access").insert(
-          invStores.map((storeId) => ({ user_id: newUserId, store_id: storeId }))
-        );
-      }
-
+      // Build page permissions payload
+      let pagePermissions: any[] = [];
       if (invRole === "operator" || invRole === "visualizador") {
-        const permRows = invPages.map((page) => ({
-          user_id: newUserId,
+        pagePermissions = invPages.map((page) => ({
           page,
           can_view: true,
           can_create: invRole === "visualizador" ? false : (invDetailPerms[page]?.can_create ?? false),
           can_edit: invRole === "visualizador" ? false : (invDetailPerms[page]?.can_edit ?? false),
           can_delete: invRole === "visualizador" ? false : (invDetailPerms[page]?.can_delete ?? false),
         }));
-        if (permRows.length > 0) {
-          await cloud.from("user_page_permissions").insert(permRows);
-        }
       }
 
-      await cloud.from("activity_logs").insert({
-        user_id: user?.id,
-        user_name: user?.email,
-        action: "invited_user",
-        entity: "admin_users",
-        entity_id: newUserId,
-        metadata: { invited_email: invEmail, role: invRole },
+      // Use edge function to create user with service role (avoids session switch & RLS issues)
+      const { data: result, error: fnError } = await cloud.functions.invoke("admin-create-user", {
+        body: {
+          name: invName.trim(),
+          email: invEmail.trim().toLowerCase(),
+          password: finalPassword,
+          role: invRole,
+          store_ids: invRole !== "master" ? invStores : [],
+          page_permissions: pagePermissions,
+        },
       });
+
+      if (fnError || result?.error) {
+        toast.error("Erro ao criar usuário: " + (result?.error || fnError?.message));
+        setSaving(false);
+        return;
+      }
 
       toast.success(`Usuário ${invName} criado! Senha: ${finalPassword}`, { duration: 15000 });
       resetInviteForm();

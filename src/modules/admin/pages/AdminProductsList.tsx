@@ -200,10 +200,10 @@ export default function AdminProductsList() {
               {filtered.map((p) => (
                 <div
                   key={p.id}
-                  className="relative rounded-xl border border-border bg-card/60 backdrop-blur p-4 hover:bg-muted/30 transition"
+                  className="rounded-xl border border-border bg-card/60 backdrop-blur p-4 hover:bg-muted/30 transition space-y-3"
                 >
                   <Link to={`/admin/produtos/editar/${p.id}`} className="block">
-                    <div className="flex items-center justify-between gap-8">
+                    <div className="flex items-center justify-between gap-4">
                       <div className="font-medium line-clamp-1">{p.name}</div>
                       <Badge variant={p.active ? "default" : "secondary"} className="shrink-0">
                         {p.active ? "Ativo" : "Inativo"}
@@ -220,36 +220,21 @@ export default function AdminProductsList() {
                     )}
                   </Link>
 
-                  {/* Actions menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-2 right-2 h-7 w-7"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
-                        <Pencil className="h-4 w-4 mr-2" /> Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => duplicateProduct(p)}>
-                        <Copy className="h-4 w-4 mr-2" /> Duplicar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toggleActive(p)}>
-                        <Power className="h-4 w-4 mr-2" /> {p.active ? "Desativar" : "Ativar"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleteTarget(p)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {/* Action buttons row */}
+                  <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                    <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
+                      <Pencil className="h-3 w-3 mr-1" /> Editar
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={() => duplicateProduct(p)}>
+                      <Copy className="h-3 w-3 mr-1" /> Duplicar
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={() => toggleActive(p)}>
+                      <Power className="h-3 w-3 mr-1" /> {p.active ? "Desativar" : "Ativar"}
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => setDeleteTarget(p)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

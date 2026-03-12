@@ -3,8 +3,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CompanyInfo } from '@/types/quotation';
-import { Building2, Phone, Mail, Globe, User, Save, Trash2 } from 'lucide-react';
+import { Building2, Phone, Mail, Globe, User, Save, Trash2, Plus } from 'lucide-react';
 import { useSavedCompanies } from '@/hooks/useSavedCompanies';
+import { useSavedSellers, SavedSeller } from '@/hooks/useSavedSellers';
 import { toast } from '@/hooks/use-toast';
 
 interface CompanyFormProps {
@@ -14,6 +15,7 @@ interface CompanyFormProps {
 
 export const CompanyForm = ({ companyInfo, onChange }: CompanyFormProps) => {
   const { companies, saveCompany, deleteCompany } = useSavedCompanies();
+  const { sellers, saveSeller, deleteSeller } = useSavedSellers();
 
   const handleChange = (field: keyof CompanyInfo, value: string) => {
     onChange({ ...companyInfo, [field]: value });
@@ -30,38 +32,54 @@ export const CompanyForm = ({ companyInfo, onChange }: CompanyFormProps) => {
 
   const handleSaveCompany = () => {
     if (!companyInfo.name.trim() || !companyInfo.cnpj.trim()) {
-      toast({
-        title: 'Erro',
-        description: 'Preencha pelo menos o nome e CNPJ da empresa',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Preencha pelo menos o nome e CNPJ da empresa', variant: 'destructive' });
       return;
     }
     saveCompany(companyInfo);
-    toast({
-      title: 'Empresa salva!',
-      description: `${companyInfo.name} foi salva com sucesso`,
-    });
+    toast({ title: 'Empresa salva!', description: `${companyInfo.name} foi salva com sucesso` });
   };
 
   const handleSelectCompany = (cnpj: string) => {
     const selected = companies.find(c => c.cnpj === cnpj);
     if (selected) {
       onChange(selected);
-      toast({
-        title: 'Empresa carregada',
-        description: `Dados de ${selected.name} carregados`,
-      });
+      toast({ title: 'Empresa carregada', description: `Dados de ${selected.name} carregados` });
     }
   };
 
   const handleDeleteCompany = () => {
     if (!companyInfo.cnpj) return;
     deleteCompany(companyInfo.cnpj);
-    toast({
-      title: 'Empresa removida',
-      variant: 'destructive',
-    });
+    toast({ title: 'Empresa removida', variant: 'destructive' });
+  };
+
+  // ── Seller management ──
+  const handleSaveSeller = () => {
+    if (!companyInfo.sellerName.trim()) {
+      toast({ title: 'Erro', description: 'Preencha o nome do vendedor', variant: 'destructive' });
+      return;
+    }
+    const seller: SavedSeller = {
+      id: companyInfo.sellerName.toLowerCase().replace(/\s+/g, '-'),
+      name: companyInfo.sellerName,
+      role: companyInfo.sellerRole || 'Vendedor',
+    };
+    saveSeller(seller);
+    toast({ title: 'Vendedor salvo!', description: `${seller.name} salvo com sucesso` });
+  };
+
+  const handleSelectSeller = (id: string) => {
+    const sel = sellers.find(s => s.id === id);
+    if (sel) {
+      onChange({ ...companyInfo, sellerName: sel.name, sellerRole: sel.role });
+      toast({ title: 'Vendedor selecionado', description: sel.name });
+    }
+  };
+
+  const handleDeleteSeller = () => {
+    const id = companyInfo.sellerName.toLowerCase().replace(/\s+/g, '-');
+    deleteSeller(id);
+    toast({ title: 'Vendedor removido', variant: 'destructive' });
   };
 
   return (
@@ -80,33 +98,16 @@ export const CompanyForm = ({ companyInfo, onChange }: CompanyFormProps) => {
               </SelectTrigger>
               <SelectContent>
                 {companies.map((company) => (
-                  <SelectItem key={company.cnpj} value={company.cnpj}>
-                    {company.name}
-                  </SelectItem>
+                  <SelectItem key={company.cnpj} value={company.cnpj}>{company.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           )}
-          
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleSaveCompany}
-            className="gap-1"
-          >
-            <Save className="h-4 w-4" />
-            Salvar
+          <Button type="button" variant="outline" size="sm" onClick={handleSaveCompany} className="gap-1">
+            <Save className="h-4 w-4" /> Salvar
           </Button>
-          
           {companyInfo.cnpj && companies.some(c => c.cnpj === companyInfo.cnpj) && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleDeleteCompany}
-              className="gap-1 text-destructive hover:text-destructive"
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={handleDeleteCompany} className="gap-1 text-destructive hover:text-destructive">
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
@@ -115,117 +116,72 @@ export const CompanyForm = ({ companyInfo, onChange }: CompanyFormProps) => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="companyName" className="text-sm font-medium">
-            Nome da Empresa
-          </Label>
-          <Input
-            id="companyName"
-            placeholder="Razão social da empresa"
-            value={companyInfo.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-            className="h-11"
-          />
+          <Label htmlFor="companyName" className="text-sm font-medium">Nome da Empresa</Label>
+          <Input id="companyName" placeholder="Razão social da empresa" value={companyInfo.name} onChange={(e) => handleChange('name', e.target.value)} className="h-11" />
         </div>
-        
         <div className="space-y-2">
-          <Label htmlFor="companyCnpj" className="text-sm font-medium">
-            CNPJ
-          </Label>
-          <Input
-            id="companyCnpj"
-            placeholder="00.000.000/0000-00"
-            value={companyInfo.cnpj}
-            onChange={(e) => handleChange('cnpj', formatCNPJ(e.target.value))}
-            className="h-11"
-            maxLength={18}
-          />
+          <Label htmlFor="companyCnpj" className="text-sm font-medium">CNPJ</Label>
+          <Input id="companyCnpj" placeholder="00.000.000/0000-00" value={companyInfo.cnpj} onChange={(e) => handleChange('cnpj', formatCNPJ(e.target.value))} className="h-11" maxLength={18} />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="companyAddress" className="text-sm font-medium">
-          Endereço
-        </Label>
-        <Input
-          id="companyAddress"
-          placeholder="Rua, número, bairro, cidade - UF"
-          value={companyInfo.address}
-          onChange={(e) => handleChange('address', e.target.value)}
-          className="h-11"
-        />
+        <Label htmlFor="companyAddress" className="text-sm font-medium">Endereço</Label>
+        <Input id="companyAddress" placeholder="Rua, número, bairro, cidade - UF" value={companyInfo.address} onChange={(e) => handleChange('address', e.target.value)} className="h-11" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="companyPhone" className="text-sm font-medium flex items-center gap-1">
-            <Phone className="h-4 w-4" />
-            Telefone / WhatsApp
+            <Phone className="h-4 w-4" /> Telefone / WhatsApp
           </Label>
-          <Input
-            id="companyPhone"
-            placeholder="(00) 00000-0000"
-            value={companyInfo.phone}
-            onChange={(e) => handleChange('phone', e.target.value)}
-            className="h-11"
-          />
+          <Input id="companyPhone" placeholder="(00) 00000-0000" value={companyInfo.phone} onChange={(e) => handleChange('phone', e.target.value)} className="h-11" />
         </div>
-        
         <div className="space-y-2">
           <Label htmlFor="companyEmail" className="text-sm font-medium flex items-center gap-1">
-            <Mail className="h-4 w-4" />
-            E-mail
+            <Mail className="h-4 w-4" /> E-mail
           </Label>
-          <Input
-            id="companyEmail"
-            type="email"
-            placeholder="contato@empresa.com.br"
-            value={companyInfo.email}
-            onChange={(e) => handleChange('email', e.target.value)}
-            className="h-11"
-          />
+          <Input id="companyEmail" type="email" placeholder="contato@empresa.com.br" value={companyInfo.email} onChange={(e) => handleChange('email', e.target.value)} className="h-11" />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label htmlFor="companyWebsite" className="text-sm font-medium flex items-center gap-1">
-            <Globe className="h-4 w-4" />
-            Site
+            <Globe className="h-4 w-4" /> Site
           </Label>
-          <Input
-            id="companyWebsite"
-            placeholder="www.empresa.com.br"
-            value={companyInfo.website}
-            onChange={(e) => handleChange('website', e.target.value)}
-            className="h-11"
-          />
+          <Input id="companyWebsite" placeholder="www.empresa.com.br" value={companyInfo.website} onChange={(e) => handleChange('website', e.target.value)} className="h-11" />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="sellerName" className="text-sm font-medium flex items-center gap-1">
-            <User className="h-4 w-4" />
-            Nome do Vendedor
-          </Label>
-          <Input
-            id="sellerName"
-            placeholder="Nome completo"
-            value={companyInfo.sellerName}
-            onChange={(e) => handleChange('sellerName', e.target.value)}
-            className="h-11"
-          />
+          <div className="flex items-center justify-between">
+            <Label htmlFor="sellerName" className="text-sm font-medium flex items-center gap-1">
+              <User className="h-4 w-4" /> Vendedor
+            </Label>
+            <div className="flex items-center gap-1">
+              {sellers.length > 0 && (
+                <Select onValueChange={handleSelectSeller}>
+                  <SelectTrigger className="w-[130px] h-7 text-xs">
+                    <SelectValue placeholder="Vendedores" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sellers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name} — {s.role}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button type="button" variant="ghost" size="sm" onClick={handleSaveSeller} className="h-7 w-7 p-0">
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+          <Input id="sellerName" placeholder="Nome completo" value={companyInfo.sellerName} onChange={(e) => handleChange('sellerName', e.target.value)} className="h-11" />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="sellerRole" className="text-sm font-medium">
-            Cargo
-          </Label>
-          <Input
-            id="sellerRole"
-            placeholder="Gerente de Vendas"
-            value={companyInfo.sellerRole}
-            onChange={(e) => handleChange('sellerRole', e.target.value)}
-            className="h-11"
-          />
+          <Label htmlFor="sellerRole" className="text-sm font-medium">Cargo</Label>
+          <Input id="sellerRole" placeholder="Gerente de Vendas" value={companyInfo.sellerRole} onChange={(e) => handleChange('sellerRole', e.target.value)} className="h-11" />
         </div>
       </div>
     </div>

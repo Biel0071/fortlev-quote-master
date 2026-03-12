@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConstructionProductSelector } from '@/components/ConstructionProductSelector';
+import { CompanyForm } from '@/components/CompanyForm';
 import { ConstructionItemsList } from '@/components/ConstructionItemsList';
 import { CustomerForm } from '@/components/CustomerForm';
 import { QuotationPreview } from '@/components/QuotationPreview';
@@ -385,36 +386,7 @@ const ConstructionPage = () => {
 
             {/* Company Info */}
             <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-4">
-              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-orange-500" />
-                Dados da Empresa
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Nome da Empresa</Label>
-                  <Input value={companyInfo.name} onChange={(e) => setCompanyInfo({ ...companyInfo, name: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>CNPJ</Label>
-                  <Input value={companyInfo.cnpj} onChange={(e) => setCompanyInfo({ ...companyInfo, cnpj: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Telefone</Label>
-                  <Input value={companyInfo.phone} onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })} />
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <Label>Endereço</Label>
-                  <Input value={companyInfo.address} onChange={(e) => setCompanyInfo({ ...companyInfo, address: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Vendedor</Label>
-                  <Input
-                    value={companyInfo.sellerName}
-                    onChange={(e) => setCompanyInfo({ ...companyInfo, sellerName: e.target.value })}
-                    placeholder="Nome do vendedor"
-                  />
-                </div>
-              </div>
+              <CompanyForm companyInfo={companyInfo} onChange={setCompanyInfo} />
             </div>
 
             {/* Customer Form */}

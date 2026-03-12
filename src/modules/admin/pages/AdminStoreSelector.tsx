@@ -376,7 +376,7 @@ export default function AdminStoreSelector() {
                       <div className="text-[10px] text-muted-foreground">Produtos</div>
                     </div>
                     <div className="text-center">
-                      <Badge variant="outline" className="text-[10px]">Ativa</Badge>
+                      <Badge variant={store.active ? "default" : "secondary"} className="text-[10px]">{store.active ? "Ativa" : "Inativa"}</Badge>
                       <div className="text-[10px] text-muted-foreground">Status</div>
                     </div>
                   </div>

@@ -20,12 +20,18 @@ export function useSession() {
 
       const { data, error } = await cloud.auth.getUser();
       if (error || !data.user) {
-        await cloud.auth.signOut();
-        if (!cancelled) {
-          setSession(null);
-          setLoading(false);
+        const msg = error?.message?.toLowerCase() ?? "";
+        const shouldResetSession =
+          !data.user || msg.includes("jwt") || msg.includes("token") || msg.includes("claim");
+
+        if (shouldResetSession) {
+          await cloud.auth.signOut();
+          if (!cancelled) {
+            setSession(null);
+            setLoading(false);
+          }
+          return;
         }
-        return;
       }
 
       if (!cancelled) {

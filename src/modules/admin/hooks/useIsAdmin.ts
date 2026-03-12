@@ -14,8 +14,14 @@ export function useIsAdmin() {
       const user = data.user;
 
       if (userError || !user) {
-        // Sessão inválida/corrompida (ex: bad_jwt) deve forçar logout para recuperar o app
-        await cloud.auth.signOut();
+        const msg = userError?.message?.toLowerCase() ?? "";
+        const shouldResetSession =
+          Boolean(userError) && (msg.includes("jwt") || msg.includes("token") || msg.includes("claim"));
+
+        if (shouldResetSession) {
+          await cloud.auth.signOut();
+        }
+
         if (!cancelled) {
           setIsAdmin(false);
           setLoading(false);

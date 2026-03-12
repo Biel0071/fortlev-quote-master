@@ -661,6 +661,120 @@ export default function AdminUsersAccess() {
             </div>
           </DialogContent>
         </Dialog>
+
+        <Dialog
+          open={editOpen}
+          onOpenChange={(open) => {
+            setEditOpen(open);
+            if (!open) resetEditForm();
+          }}
+        >
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Acessos: {editingUser?.name ?? "Usuário"}</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Tipo de Acesso</Label>
+                <Select value={editRole} onValueChange={setEditRole}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="master">Master</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="gerente">Gerente</SelectItem>
+                    <SelectItem value="operator">Operador</SelectItem>
+                    <SelectItem value="visualizador">Visualizador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {editRole !== "master" && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Lojas com acesso</Label>
+                    <div className="space-y-2 rounded-lg border border-border/50 p-3">
+                      {stores.map((store) => (
+                        <label key={store.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={editStores.includes(store.id)}
+                            onCheckedChange={(checked) => {
+                              setEditStores((prev) =>
+                                checked ? [...prev, store.id] : prev.filter((id) => id !== store.id)
+                              );
+                            }}
+                          />
+                          {store.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Páginas do sistema</Label>
+                    <div className="space-y-2 rounded-lg border border-border/50 p-3 max-h-48 overflow-y-auto">
+                      {ALL_PAGES.map((page) => (
+                        <label key={page} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={editPages.includes(page)}
+                            onCheckedChange={(checked) => {
+                              setEditPages((prev) =>
+                                checked ? [...prev, page] : prev.filter((p) => p !== page)
+                              );
+                            }}
+                          />
+                          {PAGE_LABELS[page]}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {(editRole === "operator" || editRole === "gerente") && (
+                    <div className="space-y-2">
+                      <Label>Permissões detalhadas</Label>
+                      <div className="space-y-3 rounded-lg border border-border/50 p-3">
+                        {DETAIL_PAGES.filter((p) => editPages.includes(p)).map((page) => {
+                          const perms = editDetailPerms[page] ?? {
+                            can_view: true,
+                            can_create: false,
+                            can_edit: false,
+                            can_delete: false,
+                          };
+
+                          return (
+                            <div key={page} className="space-y-1">
+                              <p className="text-sm font-medium">{PAGE_LABELS[page]}</p>
+                              <div className="flex flex-wrap gap-3">
+                                {(["can_view", "can_create", "can_edit", "can_delete"] as const).map((action) => (
+                                  <label key={action} className="flex items-center gap-1 text-xs cursor-pointer">
+                                    <Checkbox
+                                      checked={perms[action]}
+                                      onCheckedChange={(checked) => {
+                                        setEditDetailPerms((prev) => ({
+                                          ...prev,
+                                          [page]: { ...perms, [action]: !!checked },
+                                        }));
+                                      }}
+                                    />
+                                    {action.replace("can_", "")}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <Button onClick={handleSaveEdit} disabled={savingEdit} className="w-full">
+                {savingEdit ? "Salvando..." : "Salvar alterações"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filters */}

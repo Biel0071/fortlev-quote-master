@@ -1086,6 +1086,47 @@ export type Database = {
         }
         Relationships: []
       }
+      image_import_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          images_found: number
+          images_saved: number
+          processing_time: number
+          product_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          images_found?: number
+          images_saved?: number
+          processing_time?: number
+          product_id?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          images_found?: number
+          images_saved?: number
+          processing_time?: number
+          product_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_import_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_ai_previews: {
         Row: {
           approved: boolean

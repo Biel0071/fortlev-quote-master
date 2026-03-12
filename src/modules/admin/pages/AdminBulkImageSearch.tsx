@@ -1,12 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { cloud } from "@/lib/cloud";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import { ProductImageSearchModal } from "@/components/admin/ProductImageSearchModal";
-import { ImageIcon, Search, ArrowLeft, Trash2, X, CheckSquare, RefreshCw } from "lucide-react";
+import {
+  searchGoogleProductImages,
+  importGoogleProductImages,
+  type GoogleImageResult,
+} from "@/services/googleImages";
+import {
+  ImageIcon, Search, ArrowLeft, Trash2, X, CheckSquare, RefreshCw,
+  Zap, StopCircle, Play, Clock, CheckCircle2, XCircle, BarChart3,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 type ProductRow = {
@@ -17,10 +26,36 @@ type ProductRow = {
   images: Array<{ id: string; path: string; sort_order: number }>;
 };
 
+type AutoImportStats = {
+  total: number;
+  processed: number;
+  imagesApproved: number;
+  imagesRejected: number;
+  errors: number;
+  currentProduct: string;
+};
+
+type LogEntry = {
+  productId: string;
+  productName: string;
+  imagesFound: number;
+  imagesSaved: number;
+  status: "success" | "partial" | "error" | "skipped";
+  time: number;
+  error?: string;
+};
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const BATCH_SIZE = 10;
+const DELAY_MS = 1200;
+const MAX_IMAGES_PER_PRODUCT = 6;
 
 function getPublicUrl(path: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`;
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 export default function AdminBulkImageSearch() {
@@ -30,12 +65,18 @@ export default function AdminBulkImageSearch() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null);
   const [detailProduct, setDetailProduct] = useState<ProductRow | null>(null);
-  const [filter, setFilter] = useState<"all" | "no-images">("no-images");
+  const [filter, setFilter] = useState<"all" | "no-images" | "incomplete">("no-images");
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // Auto-import state
+  const [autoRunning, setAutoRunning] = useState(false);
+  const [autoStats, setAutoStats] = useState<AutoImportStats | null>(null);
+  const [autoLogs, setAutoLogs] = useState<LogEntry[]>([]);
+  const abortRef = useRef(false);
 
   const load = async () => {
     setLoading(true);
@@ -43,7 +84,7 @@ export default function AdminBulkImageSearch() {
       .from("store_products")
       .select("id, name, active, store_product_images(id, path, sort_order)")
       .order("name", { ascending: true })
-      .limit(500);
+      .limit(1000);
 
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -70,8 +111,15 @@ export default function AdminBulkImageSearch() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = filter === "no-images" ? products.filter((p) => p.imageCount === 0) : products;
+  const getFilteredProducts = useCallback(() => {
+    if (filter === "no-images") return products.filter((p) => p.imageCount === 0);
+    if (filter === "incomplete") return products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT);
+    return products;
+  }, [products, filter]);
+
+  const filtered = getFilteredProducts();
   const noImagesCount = products.filter((p) => p.imageCount === 0).length;
+  const incompleteCount = products.filter((p) => p.imageCount > 0 && p.imageCount < MAX_IMAGES_PER_PRODUCT).length;
 
   const openSearch = (product: ProductRow) => { setSelectedProduct(product); setSearchOpen(true); };
   const openDetail = (product: ProductRow) => { setDetailProduct(product); setSelectedImages(new Set()); setSelectionMode(false); };
@@ -120,11 +168,135 @@ export default function AdminBulkImageSearch() {
     } finally { setBulkDeleting(false); }
   };
 
+  // ─── AUTO IMPORT ───
+  const startAutoImport = async () => {
+    const eligible = products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT);
+    if (eligible.length === 0) {
+      toast({ title: "Nada a importar", description: "Todos os produtos já possuem 6+ imagens." });
+      return;
+    }
+
+    abortRef.current = false;
+    setAutoRunning(true);
+    setAutoLogs([]);
+    setAutoStats({
+      total: eligible.length,
+      processed: 0,
+      imagesApproved: 0,
+      imagesRejected: 0,
+      errors: 0,
+      currentProduct: "",
+    });
+
+    const logs: LogEntry[] = [];
+
+    for (let i = 0; i < eligible.length; i++) {
+      if (abortRef.current) break;
+
+      const product = eligible[i];
+      const neededImages = MAX_IMAGES_PER_PRODUCT - product.imageCount;
+      const query = `${product.name} produto construção`;
+      const startTime = Date.now();
+
+      setAutoStats((prev) => prev ? { ...prev, currentProduct: product.name, processed: i } : prev);
+
+      let entry: LogEntry = {
+        productId: product.id,
+        productName: product.name,
+        imagesFound: 0,
+        imagesSaved: 0,
+        status: "error",
+        time: 0,
+      };
+
+      try {
+        // Search for images
+        const { images: searchResults } = await searchGoogleProductImages({
+          query,
+          start: 1,
+          source: "bing",
+        });
+
+        entry.imagesFound = searchResults.length;
+
+        if (searchResults.length === 0) {
+          entry.status = "skipped";
+          entry.error = "Nenhuma imagem encontrada";
+        } else {
+          // Select top images (up to needed amount)
+          const toImport = searchResults.slice(0, Math.min(neededImages, 10));
+
+          // Import them
+          const result = await importGoogleProductImages({
+            productId: product.id,
+            images: toImport,
+          });
+
+          entry.imagesSaved = result.imported.length;
+
+          setAutoStats((prev) =>
+            prev ? {
+              ...prev,
+              imagesApproved: prev.imagesApproved + result.imported.length,
+              imagesRejected: prev.imagesRejected + result.failed,
+            } : prev
+          );
+
+          if (result.imported.length === 0) {
+            entry.status = "error";
+            entry.error = "Nenhuma imagem válida para salvar";
+          } else if (result.failed > 0) {
+            entry.status = "partial";
+          } else {
+            entry.status = "success";
+          }
+        }
+      } catch (e: any) {
+        entry.status = "error";
+        entry.error = e?.message || "Erro desconhecido";
+        setAutoStats((prev) => prev ? { ...prev, errors: prev.errors + 1 } : prev);
+      }
+
+      entry.time = Date.now() - startTime;
+
+      // Save log to database
+      try {
+        await cloud.from("image_import_logs").insert({
+          product_id: product.id,
+          images_found: entry.imagesFound,
+          images_saved: entry.imagesSaved,
+          status: entry.status,
+          processing_time: entry.time,
+          error_message: entry.error || null,
+        } as any);
+      } catch (_) { /* ignore logging errors */ }
+
+      logs.push(entry);
+      setAutoLogs([...logs]);
+      setAutoStats((prev) => prev ? { ...prev, processed: i + 1 } : prev);
+
+      // Delay between products (batch breathing room)
+      if (i < eligible.length - 1 && !abortRef.current) {
+        await sleep(DELAY_MS);
+      }
+    }
+
+    setAutoRunning(false);
+    await load();
+    toast({
+      title: "Importação automática concluída",
+      description: `${logs.filter((l) => l.status === "success" || l.status === "partial").length} de ${logs.length} produtos processados com sucesso.`,
+    });
+  };
+
+  const stopAutoImport = () => {
+    abortRef.current = true;
+  };
+
   // ─── DETAIL VIEW ───
   if (detailProduct) {
     return (
       <div className="space-y-4 px-1 sm:px-0">
-        {/* Back + Title */}
         <div className="flex items-start gap-2">
           <Button variant="ghost" size="icon" className="shrink-0 mt-0.5 h-8 w-8" onClick={() => setDetailProduct(null)}>
             <ArrowLeft className="w-4 h-4" />
@@ -143,7 +315,6 @@ export default function AdminBulkImageSearch() {
         </div>
 
         <Card className="rounded-xl sm:rounded-2xl">
-          {/* Card header: stack on mobile, row on desktop */}
           <CardHeader className="pb-3 space-y-2 sm:space-y-0 sm:flex sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base sm:text-lg">Imagens do produto</CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
@@ -246,6 +417,8 @@ export default function AdminBulkImageSearch() {
   }
 
   // ─── LIST VIEW ───
+  const progressPercent = autoStats ? Math.round((autoStats.processed / Math.max(1, autoStats.total)) * 100) : 0;
+
   return (
     <div className="space-y-4 px-1 sm:px-0">
       {/* Header */}
@@ -261,17 +434,17 @@ export default function AdminBulkImageSearch() {
             Busque e importe imagens para os produtos do catálogo.
           </p>
         </div>
-        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => load()} disabled={loading}>
+        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => load()} disabled={loading || autoRunning}>
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </div>
 
-      {/* Stats — 2 cols mobile, 4 cols desktop */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {[
           { value: products.length, label: "Total", color: "" },
           { value: noImagesCount, label: "Sem imagens", color: "text-destructive" },
-          { value: products.length - noImagesCount, label: "Com imagens", color: "text-primary" },
+          { value: incompleteCount, label: "Incompletos (<6)", color: "text-orange-500" },
           { value: `${products.length > 0 ? Math.round(((products.length - noImagesCount) / products.length) * 100) : 0}%`, label: "Cobertura", color: "" },
         ].map((stat) => (
           <Card key={stat.label} className="rounded-xl">
@@ -283,10 +456,133 @@ export default function AdminBulkImageSearch() {
         ))}
       </div>
 
+      {/* Auto Import Section */}
+      <Card className="rounded-xl sm:rounded-2xl border-primary/30 bg-primary/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            Importação Automática
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!autoRunning && !autoStats && (
+            <div className="space-y-3">
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Processa automaticamente todos os produtos com menos de 6 imagens. 
+                Busca, filtra e importa as melhores imagens em lotes de {BATCH_SIZE} produtos.
+              </p>
+              <Button
+                onClick={startAutoImport}
+                disabled={loading || noImagesCount + incompleteCount === 0}
+                className="w-full sm:w-auto h-10 sm:h-11 text-sm sm:text-base font-semibold gap-2"
+              >
+                <Play className="w-4 h-4" />
+                IMPORTAR IMAGENS AUTOMATICAMENTE
+              </Button>
+              {noImagesCount + incompleteCount === 0 && (
+                <p className="text-xs text-muted-foreground">✅ Todos os produtos já possuem 6+ imagens.</p>
+              )}
+            </div>
+          )}
+
+          {/* Progress */}
+          {autoStats && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs sm:text-sm">
+                  <span className="font-medium">
+                    {autoRunning ? "Processando..." : "Concluído"}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {autoStats.processed} / {autoStats.total} produtos
+                  </span>
+                </div>
+                <Progress value={progressPercent} className="h-3 sm:h-4" />
+                <div className="text-[10px] sm:text-xs text-muted-foreground text-center">{progressPercent}%</div>
+              </div>
+
+              {autoRunning && autoStats.currentProduct && (
+                <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span className="truncate">{autoStats.currentProduct}</span>
+                </div>
+              )}
+
+              {/* Stats grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
+                  <div className="text-base sm:text-lg font-bold text-primary">{autoStats.processed}</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Processados</div>
+                </div>
+                <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
+                  <div className="text-base sm:text-lg font-bold text-muted-foreground">{autoStats.total - autoStats.processed}</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Restantes</div>
+                </div>
+                <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
+                  <div className="text-base sm:text-lg font-bold text-green-600">{autoStats.imagesApproved}</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Aprovadas</div>
+                </div>
+                <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
+                  <div className="text-base sm:text-lg font-bold text-destructive">{autoStats.imagesRejected}</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Rejeitadas</div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {autoRunning ? (
+                  <Button variant="destructive" size="sm" className="h-8 text-xs sm:text-sm" onClick={stopAutoImport}>
+                    <StopCircle className="w-3.5 h-3.5 mr-1" /> Parar
+                  </Button>
+                ) : (
+                  <>
+                    <Button size="sm" className="h-8 text-xs sm:text-sm" onClick={startAutoImport}>
+                      <Play className="w-3.5 h-3.5 mr-1" /> Executar novamente
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 text-xs sm:text-sm" onClick={() => { setAutoStats(null); setAutoLogs([]); }}>
+                      Limpar
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {/* Logs */}
+              {autoLogs.length > 0 && (
+                <div className="space-y-1.5">
+                  <h4 className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
+                    <BarChart3 className="w-3.5 h-3.5" /> Log do processo
+                  </h4>
+                  <div className="max-h-[40vh] overflow-y-auto space-y-1 rounded-lg border border-border p-2 bg-muted/20">
+                    {autoLogs.map((log, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-[10px] sm:text-xs py-1 border-b border-border/50 last:border-0">
+                        {log.status === "success" && <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />}
+                        {log.status === "partial" && <CheckCircle2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />}
+                        {log.status === "error" && <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                        {log.status === "skipped" && <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                        <span className="truncate flex-1 font-medium">{log.productName}</span>
+                        <span className="text-muted-foreground shrink-0">
+                          {log.imagesSaved}/{log.imagesFound} img
+                        </span>
+                        <span className="text-muted-foreground shrink-0 flex items-center gap-0.5">
+                          <Clock className="w-2.5 h-2.5" />
+                          {(log.time / 1000).toFixed(1)}s
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Filter */}
-      <div className="flex gap-1.5 sm:gap-2">
+      <div className="flex gap-1.5 sm:gap-2 flex-wrap">
         <Button variant={filter === "no-images" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("no-images")}>
           Sem imagens ({noImagesCount})
+        </Button>
+        <Button variant={filter === "incomplete" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("incomplete")}>
+          Incompletos ({incompleteCount + noImagesCount})
         </Button>
         <Button variant={filter === "all" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("all")}>
           Todos ({products.length})
@@ -297,7 +593,7 @@ export default function AdminBulkImageSearch() {
       <Card className="rounded-xl sm:rounded-2xl">
         <CardHeader className="pb-2 sm:pb-3">
           <CardTitle className="text-base sm:text-lg">
-            {filter === "no-images" ? "Produtos sem imagens" : "Todos os produtos"}
+            {filter === "no-images" ? "Produtos sem imagens" : filter === "incomplete" ? "Produtos com menos de 6 imagens" : "Todos os produtos"}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -315,7 +611,6 @@ export default function AdminBulkImageSearch() {
                   className="flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl border border-border p-2.5 sm:p-3 hover:bg-muted/30 transition cursor-pointer active:bg-muted/50"
                   onClick={() => openDetail(p)}
                 >
-                  {/* Thumbnail preview for items with images */}
                   {p.imageCount > 0 && p.images[0] && (
                     <img
                       src={getPublicUrl(p.images[0].path)}
@@ -332,7 +627,7 @@ export default function AdminBulkImageSearch() {
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-xs sm:text-sm truncate">{p.name}</div>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <Badge variant={p.imageCount > 0 ? "default" : "secondary"} className="text-[10px] sm:text-xs px-1.5 py-0">
+                      <Badge variant={p.imageCount >= MAX_IMAGES_PER_PRODUCT ? "default" : p.imageCount > 0 ? "outline" : "secondary"} className="text-[10px] sm:text-xs px-1.5 py-0">
                         {p.imageCount} img
                       </Badge>
                       <Badge variant={p.active ? "outline" : "secondary"} className="text-[10px] sm:text-xs px-1.5 py-0">

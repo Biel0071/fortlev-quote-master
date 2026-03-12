@@ -588,7 +588,8 @@ export default function AdminBanners() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label>Imagem (Desktop)</Label>
+              <Label>Imagem Desktop <span className="text-muted-foreground font-normal">({BANNER_DESKTOP_DIMS.width}×{BANNER_DESKTOP_DIMS.height}px)</span></Label>
+                <p className="text-xs text-muted-foreground">A imagem será redimensionada automaticamente para {BANNER_DESKTOP_DIMS.width}×{BANNER_DESKTOP_DIMS.height}px.</p>
                 <Input
                   type="file"
                   accept="image/*"
@@ -597,12 +598,14 @@ export default function AdminBanners() {
                       e.target.files?.[0] ?? null,
                       (path) => setCreateForm((p) => ({ ...p, image_desktop_path: path })),
                       (localUrl) => updateLocalPreview(setCreateLocalPreview, "image_desktop_path", localUrl),
+                      BANNER_DESKTOP_DIMS,
                     )
                   }
                 />
               </div>
               <div className="space-y-2">
-                <Label>Imagem (Mobile)</Label>
+                <Label>Imagem Mobile <span className="text-muted-foreground font-normal">({BANNER_MOBILE_DIMS.width}×{BANNER_MOBILE_DIMS.height}px)</span></Label>
+                <p className="text-xs text-muted-foreground">A imagem será redimensionada automaticamente para {BANNER_MOBILE_DIMS.width}×{BANNER_MOBILE_DIMS.height}px.</p>
                 <Input
                   type="file"
                   accept="image/*"
@@ -611,6 +614,7 @@ export default function AdminBanners() {
                       e.target.files?.[0] ?? null,
                       (path) => setCreateForm((p) => ({ ...p, image_mobile_path: path })),
                       (localUrl) => updateLocalPreview(setCreateLocalPreview, "image_mobile_path", localUrl),
+                      BANNER_MOBILE_DIMS,
                     )
                   }
                 />

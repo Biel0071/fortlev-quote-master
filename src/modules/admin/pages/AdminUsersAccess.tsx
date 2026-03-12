@@ -42,6 +42,7 @@ import {
   Eye,
   Search,
   Crown,
+  Pencil,
 } from "lucide-react";
 
 type AdminUser = {
@@ -60,6 +61,11 @@ type Store = {
   name: string;
   slug: string;
 };
+
+type PermissionMatrix = Record<
+  string,
+  { can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean }
+>;
 
 const ALL_PAGES = [
   "dashboard",
@@ -140,11 +146,19 @@ export default function AdminUsersAccess() {
   const [invRole, setInvRole] = useState<string>("operator");
   const [invStores, setInvStores] = useState<string[]>([]);
   const [invPages, setInvPages] = useState<string[]>([...ALL_PAGES]);
-  const [invDetailPerms, setInvDetailPerms] = useState<
-    Record<string, { can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean }>
-  >({});
+  const [invDetailPerms, setInvDetailPerms] = useState<PermissionMatrix>({});
   const [invPassword, setInvPassword] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Edit form state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [editRole, setEditRole] = useState<string>("operator");
+  const [editStores, setEditStores] = useState<string[]>([]);
+  const [editPages, setEditPages] = useState<string[]>([...ALL_PAGES]);
+  const [editDetailPerms, setEditDetailPerms] = useState<PermissionMatrix>({});
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const [resettingId, setResettingId] = useState<string | null>(null);
 
   const generatePassword = () => {
@@ -206,6 +220,146 @@ export default function AdminUsersAccess() {
     setInvDetailPerms({});
   };
 
+  const resetEditForm = () => {
+    setEditingUser(null);
+    setEditRole("operator");
+    setEditStores([]);
+    setEditPages([...ALL_PAGES]);
+    setEditDetailPerms({});
+  };
+
+  const parseFunctionErrorMessage = async (fnError: any) => {
+    const fallback = fnError?.message || "Erro ao processar solicitação";
+    const context = fnError?.context;
+    if (!context) return fallback;
+
+    try {
+      const payload = await context.clone().json();
+      if (payload?.error) return payload.error;
+    } catch {
+      // ignore
+    }
+
+    try {
+      const raw = await context.clone().text();
+      if (raw) return raw;
+    } catch {
+      // ignore
+    }
+
+    return fallback;
+  };
+
+  const openEditDialog = async (adminUser: AdminUser) => {
+    if (adminUser.id === "legacy") return;
+
+    setEditingUser(adminUser);
+    setEditRole(adminUser.role);
+    setEditOpen(true);
+
+    const [{ data: accessRows }, { data: permRows }] = await Promise.all([
+      cloud.from("user_store_access").select("store_id").eq("user_id", adminUser.user_id),
+      cloud
+        .from("user_page_permissions")
+        .select("page, can_view, can_create, can_edit, can_delete")
+        .eq("user_id", adminUser.user_id),
+    ]);
+
+    const selectedStores = (accessRows ?? []).map((row: any) => row.store_id).filter(Boolean);
+    const permissions = (permRows ?? []) as Array<{
+      page: string;
+      can_view: boolean;
+      can_create: boolean;
+      can_edit: boolean;
+      can_delete: boolean;
+    }>;
+
+    const selectedPages = permissions.length
+      ? Array.from(new Set(permissions.map((p) => p.page)))
+      : [...ALL_PAGES];
+
+    const mappedPerms: PermissionMatrix = permissions.reduce((acc, item) => {
+      acc[item.page] = {
+        can_view: item.can_view,
+        can_create: item.can_create,
+        can_edit: item.can_edit,
+        can_delete: item.can_delete,
+      };
+      return acc;
+    }, {} as PermissionMatrix);
+
+    setEditStores(selectedStores);
+    setEditPages(selectedPages);
+    setEditDetailPerms(mappedPerms);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingUser) return;
+
+    setSavingEdit(true);
+    try {
+      const { error: userUpdateError } = await cloud
+        .from("admin_users")
+        .update({ role: editRole })
+        .eq("id", editingUser.id);
+
+      if (userUpdateError) {
+        toast.error("Erro ao atualizar usuário: " + userUpdateError.message);
+        return;
+      }
+
+      await cloud.from("user_store_access").delete().eq("user_id", editingUser.user_id);
+      await cloud.from("user_page_permissions").delete().eq("user_id", editingUser.user_id);
+
+      if (editRole !== "master" && editStores.length > 0) {
+        const { error: accessError } = await cloud.from("user_store_access").insert(
+          editStores.map((storeId) => ({ user_id: editingUser.user_id, store_id: storeId }))
+        );
+        if (accessError) {
+          toast.error("Erro ao salvar lojas: " + accessError.message);
+          return;
+        }
+      }
+
+      if (editRole === "operator" || editRole === "visualizador" || editRole === "gerente") {
+        const permissionRows = editPages.map((page) => ({
+          user_id: editingUser.user_id,
+          page,
+          can_view: true,
+          can_create: editRole === "visualizador" ? false : (editDetailPerms[page]?.can_create ?? false),
+          can_edit: editRole === "visualizador" ? false : (editDetailPerms[page]?.can_edit ?? false),
+          can_delete: editRole === "visualizador" ? false : (editDetailPerms[page]?.can_delete ?? false),
+        }));
+
+        if (permissionRows.length > 0) {
+          const { error: permError } = await cloud.from("user_page_permissions").insert(permissionRows);
+          if (permError) {
+            toast.error("Erro ao salvar permissões: " + permError.message);
+            return;
+          }
+        }
+      }
+
+      await cloud.from("activity_logs").insert({
+        user_id: user?.id,
+        user_name: user?.email,
+        action: "updated_user_permissions",
+        entity: "admin_users",
+        entity_id: editingUser.user_id,
+        metadata: { role: editRole },
+      });
+
+      toast.success("Usuário atualizado com sucesso");
+      setEditOpen(false);
+      resetEditForm();
+      fetchData();
+    } catch (e: any) {
+      toast.error("Erro ao atualizar: " + e.message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleInvite = async () => {
     if (!invName.trim() || !invEmail.trim()) {
       toast.error("Nome e email são obrigatórios");
@@ -230,7 +384,7 @@ export default function AdminUsersAccess() {
 
       // Build page permissions payload
       let pagePermissions: any[] = [];
-      if (invRole === "operator" || invRole === "visualizador") {
+      if (invRole === "operator" || invRole === "visualizador" || invRole === "gerente") {
         pagePermissions = invPages.map((page) => ({
           page,
           can_view: true,
@@ -252,15 +406,21 @@ export default function AdminUsersAccess() {
         },
       });
 
-      if (fnError || result?.error) {
-        toast.error("Erro ao criar usuário: " + (result?.error || fnError?.message));
+      if (fnError) {
+        const message = await parseFunctionErrorMessage(fnError);
+        toast.error("Erro ao criar usuário: " + message);
         setSaving(false);
         return;
       }
 
-      toast.success(`Usuário ${invName} criado! Senha: ${finalPassword}`, { duration: 15000 });
+      if (result?.error || result?.success === false) {
+        toast.error("Erro ao criar usuário: " + result.error);
+        setSaving(false);
+        return;
+      }
+
+      toast.success(`Usuário ${invName} criado com sucesso! Senha: ${finalPassword}`, { duration: 15000 });
       resetInviteForm();
-      setInviteOpen(false);
       fetchData();
     } catch (e: any) {
       toast.error("Erro: " + e.message);
@@ -501,6 +661,120 @@ export default function AdminUsersAccess() {
             </div>
           </DialogContent>
         </Dialog>
+
+        <Dialog
+          open={editOpen}
+          onOpenChange={(open) => {
+            setEditOpen(open);
+            if (!open) resetEditForm();
+          }}
+        >
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Acessos: {editingUser?.name ?? "Usuário"}</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Tipo de Acesso</Label>
+                <Select value={editRole} onValueChange={setEditRole}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="master">Master</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="gerente">Gerente</SelectItem>
+                    <SelectItem value="operator">Operador</SelectItem>
+                    <SelectItem value="visualizador">Visualizador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {editRole !== "master" && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Lojas com acesso</Label>
+                    <div className="space-y-2 rounded-lg border border-border/50 p-3">
+                      {stores.map((store) => (
+                        <label key={store.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={editStores.includes(store.id)}
+                            onCheckedChange={(checked) => {
+                              setEditStores((prev) =>
+                                checked ? [...prev, store.id] : prev.filter((id) => id !== store.id)
+                              );
+                            }}
+                          />
+                          {store.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Páginas do sistema</Label>
+                    <div className="space-y-2 rounded-lg border border-border/50 p-3 max-h-48 overflow-y-auto">
+                      {ALL_PAGES.map((page) => (
+                        <label key={page} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={editPages.includes(page)}
+                            onCheckedChange={(checked) => {
+                              setEditPages((prev) =>
+                                checked ? [...prev, page] : prev.filter((p) => p !== page)
+                              );
+                            }}
+                          />
+                          {PAGE_LABELS[page]}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {(editRole === "operator" || editRole === "gerente") && (
+                    <div className="space-y-2">
+                      <Label>Permissões detalhadas</Label>
+                      <div className="space-y-3 rounded-lg border border-border/50 p-3">
+                        {DETAIL_PAGES.filter((p) => editPages.includes(p)).map((page) => {
+                          const perms = editDetailPerms[page] ?? {
+                            can_view: true,
+                            can_create: false,
+                            can_edit: false,
+                            can_delete: false,
+                          };
+
+                          return (
+                            <div key={page} className="space-y-1">
+                              <p className="text-sm font-medium">{PAGE_LABELS[page]}</p>
+                              <div className="flex flex-wrap gap-3">
+                                {(["can_view", "can_create", "can_edit", "can_delete"] as const).map((action) => (
+                                  <label key={action} className="flex items-center gap-1 text-xs cursor-pointer">
+                                    <Checkbox
+                                      checked={perms[action]}
+                                      onCheckedChange={(checked) => {
+                                        setEditDetailPerms((prev) => ({
+                                          ...prev,
+                                          [page]: { ...perms, [action]: !!checked },
+                                        }));
+                                      }}
+                                    />
+                                    {action.replace("can_", "")}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <Button onClick={handleSaveEdit} disabled={savingEdit} className="w-full">
+                {savingEdit ? "Salvando..." : "Salvar alterações"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filters */}
@@ -581,6 +855,14 @@ export default function AdminUsersAccess() {
                     <TableCell className="text-right">
                       {u.id !== "legacy" && (
                         <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Editar acessos"
+                            onClick={() => openEditDialog(u)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"

@@ -62,6 +62,11 @@ type Store = {
   slug: string;
 };
 
+type PermissionMatrix = Record<
+  string,
+  { can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean }
+>;
+
 const ALL_PAGES = [
   "dashboard",
   "home",

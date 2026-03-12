@@ -101,7 +101,7 @@ const ITEM_WIDTH_MOBILE = 140;
 const ITEM_WIDTH_DESKTOP = 164;
 const ITEM_GAP = 12;
 const DRAG_CLICK_THRESHOLD = 8;
-const CATEGORY_CAROUSEL_SPEED_FACTOR = 0.3;
+const CATEGORY_CAROUSEL_SPEED_FACTOR = 0.36;
 
 export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
   ({ categories, hideHeader = false }, ref) => {

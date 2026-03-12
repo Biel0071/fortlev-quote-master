@@ -56,7 +56,6 @@ import Construction from "@/modules/checkout/pages/Construction";
 import FortlevOverview from "./pages/dashboard/FortlevOverview";
 import ConstructionOverview from "./pages/dashboard/ConstructionOverview";
 import NotFound from "./pages/NotFound";
-import HomeSelector from "./pages/HomeSelector";
 
 const queryClient = new QueryClient();
 

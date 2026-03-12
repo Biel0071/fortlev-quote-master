@@ -3,9 +3,11 @@ import { cloud } from "@/lib/cloud";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { ProductImageSearchModal } from "@/components/admin/ProductImageSearchModal";
-import { ImageIcon, Search, ArrowLeft, Trash2, X } from "lucide-react";
+import { ImageIcon, Search, ArrowLeft, Trash2, X, CheckSquare } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 type ProductRow = {
   id: string;
@@ -18,10 +20,12 @@ type ProductRow = {
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 function getPublicUrl(path: string) {
-  return `${SUPABASE_URL}/storage/v1/object/public/${path}`;
+  // paths are stored without bucket prefix, e.g. "imported/xxx/file.jpg"
+  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`;
 }
 
 export default function AdminBulkImageSearch() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -30,6 +34,9 @@ export default function AdminBulkImageSearch() {
   const [filter, setFilter] = useState<"all" | "no-images">("no-images");
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -54,7 +61,6 @@ export default function AdminBulkImageSearch() {
       }));
       setProducts(mapped);
 
-      // Update detail product if open
       if (detailProduct) {
         const updated = mapped.find((p) => p.id === detailProduct.id);
         if (updated) setDetailProduct(updated);
@@ -80,25 +86,63 @@ export default function AdminBulkImageSearch() {
 
   const openDetail = (product: ProductRow) => {
     setDetailProduct(product);
+    setSelectedImages(new Set());
+    setSelectionMode(false);
+  };
+
+  const toggleImageSelection = (imageId: string) => {
+    setSelectedImages((prev) => {
+      const next = new Set(prev);
+      if (next.has(imageId)) next.delete(imageId);
+      else next.add(imageId);
+      return next;
+    });
+  };
+
+  const selectAllImages = () => {
+    if (!detailProduct) return;
+    if (selectedImages.size === detailProduct.images.length) {
+      setSelectedImages(new Set());
+    } else {
+      setSelectedImages(new Set(detailProduct.images.map((img) => img.id)));
+    }
   };
 
   const deleteImage = async (imageId: string, path: string) => {
     setDeletingImageId(imageId);
     try {
-      // Delete from storage
-      const storagePath = path.replace(/^product-images\//, "");
-      await cloud.storage.from("product-images").remove([storagePath]);
-
-      // Delete from database
+      await cloud.storage.from("product-images").remove([path]);
       const { error } = await cloud.from("store_product_images").delete().eq("id", imageId);
       if (error) throw error;
-
       toast({ title: "Imagem removida" });
       await load();
     } catch (e: any) {
       toast({ title: "Erro", description: e?.message || "Falha ao remover imagem", variant: "destructive" });
     } finally {
       setDeletingImageId(null);
+    }
+  };
+
+  const bulkDelete = async () => {
+    if (!detailProduct || selectedImages.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      const toDelete = detailProduct.images.filter((img) => selectedImages.has(img.id));
+      // Delete from storage
+      const paths = toDelete.map((img) => img.path);
+      await cloud.storage.from("product-images").remove(paths);
+      // Delete from DB
+      const ids = toDelete.map((img) => img.id);
+      const { error } = await cloud.from("store_product_images").delete().in("id", ids);
+      if (error) throw error;
+      toast({ title: `${toDelete.length} imagem(ns) removida(s)` });
+      setSelectedImages(new Set());
+      setSelectionMode(false);
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e?.message || "Falha ao remover imagens", variant: "destructive" });
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -124,15 +168,42 @@ export default function AdminBulkImageSearch() {
           </div>
         </div>
 
-        {/* Existing images */}
         <Card className="rounded-2xl">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-lg">Imagens do produto</CardTitle>
-            <Button size="sm" onClick={() => openSearch(detailProduct)}>
-              <Search className="w-4 h-4 mr-1" /> Buscar mais imagens
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {detailProduct.images.length > 0 && (
+                <Button
+                  size="sm"
+                  variant={selectionMode ? "default" : "outline"}
+                  onClick={() => {
+                    setSelectionMode(!selectionMode);
+                    setSelectedImages(new Set());
+                  }}
+                >
+                  <CheckSquare className="w-4 h-4 mr-1" />
+                  {selectionMode ? "Cancelar seleção" : "Selecionar"}
+                </Button>
+              )}
+              {selectionMode && selectedImages.size > 0 && (
+                <Button size="sm" variant="destructive" onClick={bulkDelete} disabled={bulkDeleting}>
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Excluir {selectedImages.size}
+                </Button>
+              )}
+              <Button size="sm" onClick={() => openSearch(detailProduct)}>
+                <Search className="w-4 h-4 mr-1" /> Buscar mais imagens
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
+            {selectionMode && detailProduct.images.length > 0 && (
+              <div className="mb-3">
+                <Button size="sm" variant="ghost" onClick={selectAllImages}>
+                  {selectedImages.size === detailProduct.images.length ? "Desmarcar todos" : "Selecionar todos"}
+                </Button>
+              </div>
+            )}
             {detailProduct.images.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-40" />
@@ -141,37 +212,60 @@ export default function AdminBulkImageSearch() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {detailProduct.images.map((img, idx) => (
-                  <div
-                    key={img.id}
-                    className="relative group rounded-xl border border-border overflow-hidden bg-muted/20"
-                  >
-                    <img
-                      src={getPublicUrl(img.path)}
-                      alt={`Imagem ${idx + 1}`}
-                      className="w-full aspect-square object-cover cursor-pointer"
-                      loading="lazy"
-                      onClick={() => setPreviewUrl(getPublicUrl(img.path))}
-                    />
-                    <div className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm text-xs font-medium px-1.5 py-0.5 rounded">
-                      #{idx + 1}
-                    </div>
-                    <button
-                      type="button"
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-destructive-foreground rounded-full p-1.5 hover:bg-destructive/90"
-                      disabled={deletingImageId === img.id}
-                      onClick={() => deleteImage(img.id, img.path)}
+                {detailProduct.images.map((img, idx) => {
+                  const isSelected = selectedImages.has(img.id);
+                  return (
+                    <div
+                      key={img.id}
+                      className={`relative group rounded-xl border-2 overflow-hidden bg-muted/20 transition-all ${
+                        selectionMode && isSelected ? "border-primary ring-2 ring-primary/30" : "border-border"
+                      }`}
+                      onClick={() => {
+                        if (selectionMode) toggleImageSelection(img.id);
+                        else setPreviewUrl(getPublicUrl(img.path));
+                      }}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
+                      {selectionMode && (
+                        <div className="absolute top-2 left-2 z-10">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleImageSelection(img.id)}
+                            className="bg-background/80"
+                          />
+                        </div>
+                      )}
+                      <img
+                        src={getPublicUrl(img.path)}
+                        alt={`Imagem ${idx + 1}`}
+                        className="w-full aspect-square object-cover cursor-pointer"
+                        loading="lazy"
+                      />
+                      {!selectionMode && (
+                        <div className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm text-xs font-medium px-1.5 py-0.5 rounded">
+                          #{idx + 1}
+                        </div>
+                      )}
+                      {!selectionMode && (
+                        <button
+                          type="button"
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-destructive-foreground rounded-full p-1.5 hover:bg-destructive/90"
+                          disabled={deletingImageId === img.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteImage(img.id, img.path);
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Search modal */}
         {selectedProduct && (
           <ProductImageSearchModal
             open={searchOpen}
@@ -182,7 +276,6 @@ export default function AdminBulkImageSearch() {
           />
         )}
 
-        {/* Full preview */}
         {previewUrl && (
           <div className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setPreviewUrl(null)}>
             <button className="absolute top-4 right-4 text-foreground/90 hover:text-foreground z-10" onClick={() => setPreviewUrl(null)}>
@@ -203,16 +296,20 @@ export default function AdminBulkImageSearch() {
   // LIST VIEW
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <ImageIcon className="w-6 h-6" /> Gerador de Imagens
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Busque e importe imagens da internet para todos os produtos do catálogo.
-        </p>
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <ImageIcon className="w-6 h-6" /> Gerador de Imagens
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Busque e importe imagens da internet para todos os produtos do catálogo.
+          </p>
+        </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="rounded-xl">
           <CardContent className="p-4 text-center">
@@ -244,25 +341,15 @@ export default function AdminBulkImageSearch() {
         </Card>
       </div>
 
-      {/* Filter */}
       <div className="flex gap-2">
-        <Button
-          variant={filter === "no-images" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setFilter("no-images")}
-        >
+        <Button variant={filter === "no-images" ? "default" : "outline"} size="sm" onClick={() => setFilter("no-images")}>
           Sem imagens ({noImagesCount})
         </Button>
-        <Button
-          variant={filter === "all" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setFilter("all")}
-        >
+        <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>
           Todos ({products.length})
         </Button>
       </div>
 
-      {/* Products list */}
       <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle className="text-lg">
@@ -307,7 +394,6 @@ export default function AdminBulkImageSearch() {
         </CardContent>
       </Card>
 
-      {/* Search modal */}
       {selectedProduct && (
         <ProductImageSearchModal
           open={searchOpen}

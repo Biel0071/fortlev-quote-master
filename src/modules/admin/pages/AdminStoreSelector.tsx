@@ -302,7 +302,7 @@ export default function AdminStoreSelector() {
       {isMaster && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { icon: Store, value: stores.length, label: "Lojas ativas" },
+            { icon: Store, value: stores.filter(s => s.active).length, label: "Lojas ativas" },
             { icon: ShoppingCart, value: summaries.reduce((s, x) => s + x.orderCount, 0), label: "Pedidos total" },
             { icon: Package, value: summaries.reduce((s, x) => s + x.productCount, 0), label: "Produtos ativos" },
             { icon: Users, value: storeAccess.length || "∞", label: "Acessos" },

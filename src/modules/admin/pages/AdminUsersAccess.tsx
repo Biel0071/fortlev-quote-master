@@ -220,6 +220,146 @@ export default function AdminUsersAccess() {
     setInvDetailPerms({});
   };
 
+  const resetEditForm = () => {
+    setEditingUser(null);
+    setEditRole("operator");
+    setEditStores([]);
+    setEditPages([...ALL_PAGES]);
+    setEditDetailPerms({});
+  };
+
+  const parseFunctionErrorMessage = async (fnError: any) => {
+    const fallback = fnError?.message || "Erro ao processar solicitação";
+    const context = fnError?.context;
+    if (!context) return fallback;
+
+    try {
+      const payload = await context.clone().json();
+      if (payload?.error) return payload.error;
+    } catch {
+      // ignore
+    }
+
+    try {
+      const raw = await context.clone().text();
+      if (raw) return raw;
+    } catch {
+      // ignore
+    }
+
+    return fallback;
+  };
+
+  const openEditDialog = async (adminUser: AdminUser) => {
+    if (adminUser.id === "legacy") return;
+
+    setEditingUser(adminUser);
+    setEditRole(adminUser.role);
+    setEditOpen(true);
+
+    const [{ data: accessRows }, { data: permRows }] = await Promise.all([
+      cloud.from("user_store_access").select("store_id").eq("user_id", adminUser.user_id),
+      cloud
+        .from("user_page_permissions")
+        .select("page, can_view, can_create, can_edit, can_delete")
+        .eq("user_id", adminUser.user_id),
+    ]);
+
+    const selectedStores = (accessRows ?? []).map((row: any) => row.store_id).filter(Boolean);
+    const permissions = (permRows ?? []) as Array<{
+      page: string;
+      can_view: boolean;
+      can_create: boolean;
+      can_edit: boolean;
+      can_delete: boolean;
+    }>;
+
+    const selectedPages = permissions.length
+      ? Array.from(new Set(permissions.map((p) => p.page)))
+      : [...ALL_PAGES];
+
+    const mappedPerms: PermissionMatrix = permissions.reduce((acc, item) => {
+      acc[item.page] = {
+        can_view: item.can_view,
+        can_create: item.can_create,
+        can_edit: item.can_edit,
+        can_delete: item.can_delete,
+      };
+      return acc;
+    }, {} as PermissionMatrix);
+
+    setEditStores(selectedStores);
+    setEditPages(selectedPages);
+    setEditDetailPerms(mappedPerms);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingUser) return;
+
+    setSavingEdit(true);
+    try {
+      const { error: userUpdateError } = await cloud
+        .from("admin_users")
+        .update({ role: editRole })
+        .eq("id", editingUser.id);
+
+      if (userUpdateError) {
+        toast.error("Erro ao atualizar usuário: " + userUpdateError.message);
+        return;
+      }
+
+      await cloud.from("user_store_access").delete().eq("user_id", editingUser.user_id);
+      await cloud.from("user_page_permissions").delete().eq("user_id", editingUser.user_id);
+
+      if (editRole !== "master" && editStores.length > 0) {
+        const { error: accessError } = await cloud.from("user_store_access").insert(
+          editStores.map((storeId) => ({ user_id: editingUser.user_id, store_id: storeId }))
+        );
+        if (accessError) {
+          toast.error("Erro ao salvar lojas: " + accessError.message);
+          return;
+        }
+      }
+
+      if (editRole === "operator" || editRole === "visualizador" || editRole === "gerente") {
+        const permissionRows = editPages.map((page) => ({
+          user_id: editingUser.user_id,
+          page,
+          can_view: true,
+          can_create: editRole === "visualizador" ? false : (editDetailPerms[page]?.can_create ?? false),
+          can_edit: editRole === "visualizador" ? false : (editDetailPerms[page]?.can_edit ?? false),
+          can_delete: editRole === "visualizador" ? false : (editDetailPerms[page]?.can_delete ?? false),
+        }));
+
+        if (permissionRows.length > 0) {
+          const { error: permError } = await cloud.from("user_page_permissions").insert(permissionRows);
+          if (permError) {
+            toast.error("Erro ao salvar permissões: " + permError.message);
+            return;
+          }
+        }
+      }
+
+      await cloud.from("activity_logs").insert({
+        user_id: user?.id,
+        user_name: user?.email,
+        action: "updated_user_permissions",
+        entity: "admin_users",
+        entity_id: editingUser.user_id,
+        metadata: { role: editRole },
+      });
+
+      toast.success("Usuário atualizado com sucesso");
+      setEditOpen(false);
+      resetEditForm();
+      fetchData();
+    } catch (e: any) {
+      toast.error("Erro ao atualizar: " + e.message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleInvite = async () => {
     if (!invName.trim() || !invEmail.trim()) {
       toast.error("Nome e email são obrigatórios");

@@ -792,7 +792,8 @@ export default function AdminBanners() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       <div className="space-y-3">
                         <div className="space-y-2">
-                          <Label>Trocar imagem (Desktop)</Label>
+                          <Label>Trocar imagem Desktop <span className="text-muted-foreground font-normal">({BANNER_DESKTOP_DIMS.width}×{BANNER_DESKTOP_DIMS.height}px)</span></Label>
+                          <p className="text-xs text-muted-foreground">Redimensionada automaticamente.</p>
                           <Input
                             type="file"
                             accept="image/*"
@@ -801,12 +802,14 @@ export default function AdminBanners() {
                                 e.target.files?.[0] ?? null,
                                 (path) => setEditForm((p) => ({ ...p, image_desktop_path: path })),
                                 (localUrl) => updateLocalPreview(setEditLocalPreview, "image_desktop_path", localUrl),
+                                BANNER_DESKTOP_DIMS,
                               )
                             }
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Trocar imagem (Mobile)</Label>
+                          <Label>Trocar imagem Mobile <span className="text-muted-foreground font-normal">({BANNER_MOBILE_DIMS.width}×{BANNER_MOBILE_DIMS.height}px)</span></Label>
+                          <p className="text-xs text-muted-foreground">Redimensionada automaticamente.</p>
                           <Input
                             type="file"
                             accept="image/*"
@@ -815,6 +818,7 @@ export default function AdminBanners() {
                                 e.target.files?.[0] ?? null,
                                 (path) => setEditForm((p) => ({ ...p, image_mobile_path: path })),
                                 (localUrl) => updateLocalPreview(setEditLocalPreview, "image_mobile_path", localUrl),
+                                BANNER_MOBILE_DIMS,
                               )
                             }
                           />

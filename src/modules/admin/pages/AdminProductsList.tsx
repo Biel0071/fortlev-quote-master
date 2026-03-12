@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
-import { Copy, Pencil, Power, Trash2 } from "lucide-react";
+import { Copy, Download, Pencil, Power, Trash2 } from "lucide-react";
 
 type Row = {
   id: string;

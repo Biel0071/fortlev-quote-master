@@ -11,13 +11,16 @@ import {
   searchGoogleProductImages,
   importGoogleProductImages,
   type GoogleImageResult,
+  type ImageSearchSource,
 } from "@/services/googleImages";
 import {
   ImageIcon, Search, ArrowLeft, Trash2, X, CheckSquare, RefreshCw,
   Zap, StopCircle, Play, Clock, CheckCircle2, XCircle, BarChart3,
+  RotateCcw, AlertTriangle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+/* ───── Types ───── */
 type ProductRow = {
   id: string;
   name: string;
@@ -32,6 +35,7 @@ type AutoImportStats = {
   imagesApproved: number;
   imagesRejected: number;
   errors: number;
+  retries: number;
   currentProduct: string;
 };
 
@@ -40,15 +44,20 @@ type LogEntry = {
   productName: string;
   imagesFound: number;
   imagesSaved: number;
-  status: "success" | "partial" | "error" | "skipped";
+  status: "success" | "partial" | "error" | "skipped" | "retry";
   time: number;
   error?: string;
+  retryCount?: number;
 };
 
+/* ───── Constants ───── */
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const BATCH_SIZE = 10;
-const DELAY_MS = 1200;
+const BATCH_SIZE = 5;
+const DELAY_MS = 3000;
 const MAX_IMAGES_PER_PRODUCT = 6;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_429 = 60_000;
+const SOURCES_FALLBACK: ImageSearchSource[] = ["bing", "google", "mercado_livre"];
 
 function getPublicUrl(path: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`;
@@ -56,6 +65,19 @@ function getPublicUrl(path: string) {
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Extract base keyword from product name for similar-product cache lookup */
+function extractBaseKeyword(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\d+/g, "")
+    .replace(/\s*(x|mm|cm|m²|kg|lt|ml|un|pç|pc)\s*/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .slice(0, 2)
+    .join(" ");
 }
 
 export default function AdminBulkImageSearch() {
@@ -77,6 +99,9 @@ export default function AdminBulkImageSearch() {
   const [autoStats, setAutoStats] = useState<AutoImportStats | null>(null);
   const [autoLogs, setAutoLogs] = useState<LogEntry[]>([]);
   const abortRef = useRef(false);
+
+  // Local search cache (session-level) to avoid re-searching the same query
+  const localCacheRef = useRef(new Map<string, GoogleImageResult[]>());
 
   const load = async () => {
     setLoading(true);
@@ -168,10 +193,77 @@ export default function AdminBulkImageSearch() {
     } finally { setBulkDeleting(false); }
   };
 
-  // ─── AUTO IMPORT ───
-  const startAutoImport = async () => {
-    const eligible = products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT);
-    if (eligible.length === 0) {
+  /* ─── Search with retry + fallback ─── */
+  const searchWithRetryAndFallback = async (
+    query: string,
+    abortCheck: () => boolean,
+  ): Promise<{ images: GoogleImageResult[]; fromCache: boolean }> => {
+    // 1) Check local session cache
+    const cacheKey = query.toLowerCase().trim();
+    const cached = localCacheRef.current.get(cacheKey);
+    if (cached && cached.length > 0) {
+      return { images: cached, fromCache: true };
+    }
+
+    // 2) Check similar product cache (base keyword)
+    const baseKey = extractBaseKeyword(query);
+    if (baseKey.length >= 3) {
+      const similarCacheKey = `${baseKey} produto construção`.toLowerCase().trim();
+      const similarCached = localCacheRef.current.get(similarCacheKey);
+      if (similarCached && similarCached.length > 0) {
+        localCacheRef.current.set(cacheKey, similarCached);
+        return { images: similarCached, fromCache: true };
+      }
+    }
+
+    // 3) Try each source with retries
+    for (const source of SOURCES_FALLBACK) {
+      if (abortCheck()) break;
+
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        if (abortCheck()) break;
+
+        try {
+          const { images } = await searchGoogleProductImages({ query, start: 1, source });
+          if (images.length > 0) {
+            localCacheRef.current.set(cacheKey, images);
+            // Also cache under base keyword
+            if (baseKey.length >= 3) {
+              const baseKeyCache = `${baseKey} produto construção`.toLowerCase().trim();
+              if (!localCacheRef.current.has(baseKeyCache)) {
+                localCacheRef.current.set(baseKeyCache, images);
+              }
+            }
+            return { images, fromCache: false };
+          }
+          break; // No images but no error, try next source
+        } catch (e: any) {
+          const msg = e?.message || "";
+          const is429 = msg.includes("Limite diário") || msg.includes("429") || msg.includes("limit");
+
+          if (is429 && attempt < MAX_RETRIES - 1) {
+            // Wait 60s then retry
+            await sleep(RETRY_DELAY_429);
+            continue;
+          }
+
+          if (attempt < MAX_RETRIES - 1 && !is429) {
+            await sleep(5000);
+            continue;
+          }
+
+          // Last attempt failed for this source, try next
+          break;
+        }
+      }
+    }
+
+    return { images: [], fromCache: false };
+  };
+
+  /* ─── AUTO IMPORT ─── */
+  const runAutoImport = async (eligibleProducts: ProductRow[]) => {
+    if (eligibleProducts.length === 0) {
       toast({ title: "Nada a importar", description: "Todos os produtos já possuem 6+ imagens." });
       return;
     }
@@ -180,20 +272,21 @@ export default function AdminBulkImageSearch() {
     setAutoRunning(true);
     setAutoLogs([]);
     setAutoStats({
-      total: eligible.length,
+      total: eligibleProducts.length,
       processed: 0,
       imagesApproved: 0,
       imagesRejected: 0,
       errors: 0,
+      retries: 0,
       currentProduct: "",
     });
 
     const logs: LogEntry[] = [];
 
-    for (let i = 0; i < eligible.length; i++) {
+    for (let i = 0; i < eligibleProducts.length; i++) {
       if (abortRef.current) break;
 
-      const product = eligible[i];
+      const product = eligibleProducts[i];
       const neededImages = MAX_IMAGES_PER_PRODUCT - product.imageCount;
       const query = `${product.name} produto construção`;
       const startTime = Date.now();
@@ -210,23 +303,19 @@ export default function AdminBulkImageSearch() {
       };
 
       try {
-        // Search for images
-        const { images: searchResults } = await searchGoogleProductImages({
+        const { images: searchResults, fromCache } = await searchWithRetryAndFallback(
           query,
-          start: 1,
-          source: "bing",
-        });
+          () => abortRef.current,
+        );
 
         entry.imagesFound = searchResults.length;
 
         if (searchResults.length === 0) {
           entry.status = "skipped";
-          entry.error = "Nenhuma imagem encontrada";
+          entry.error = "Nenhuma imagem encontrada em nenhuma fonte";
         } else {
-          // Select top images (up to needed amount)
           const toImport = searchResults.slice(0, Math.min(neededImages, 10));
 
-          // Import them
           const result = await importGoogleProductImages({
             productId: product.id,
             images: toImport,
@@ -259,39 +348,51 @@ export default function AdminBulkImageSearch() {
 
       entry.time = Date.now() - startTime;
 
-      // Save log to database
-      try {
-        await cloud.from("image_import_logs").insert({
-          product_id: product.id,
-          images_found: entry.imagesFound,
-          images_saved: entry.imagesSaved,
-          status: entry.status,
-          processing_time: entry.time,
-          error_message: entry.error || null,
-        } as any);
-      } catch (_) { /* ignore logging errors */ }
+      // Save log to database (fire and forget)
+      cloud.from("image_import_logs").insert({
+        product_id: product.id,
+        images_found: entry.imagesFound,
+        images_saved: entry.imagesSaved,
+        status: entry.status,
+        processing_time: entry.time,
+        error_message: entry.error || null,
+      } as any).then(() => {}).catch(() => {});
 
       logs.push(entry);
       setAutoLogs([...logs]);
       setAutoStats((prev) => prev ? { ...prev, processed: i + 1 } : prev);
 
-      // Delay between products (batch breathing room)
-      if (i < eligible.length - 1 && !abortRef.current) {
+      // Delay between products
+      if (i < eligibleProducts.length - 1 && !abortRef.current) {
         await sleep(DELAY_MS);
       }
     }
 
     setAutoRunning(false);
     await load();
+    const successCount = logs.filter((l) => l.status === "success" || l.status === "partial").length;
     toast({
-      title: "Importação automática concluída",
-      description: `${logs.filter((l) => l.status === "success" || l.status === "partial").length} de ${logs.length} produtos processados com sucesso.`,
+      title: "Importação concluída",
+      description: `${successCount} de ${logs.length} produtos processados com sucesso.`,
     });
   };
 
-  const stopAutoImport = () => {
-    abortRef.current = true;
+  const startAutoImport = () => {
+    const eligible = products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT);
+    runAutoImport(eligible);
   };
+
+  const reprocessErrors = () => {
+    const errorIds = new Set(autoLogs.filter((l) => l.status === "error" || l.status === "retry").map((l) => l.productId));
+    const eligible = products.filter((p) => errorIds.has(p.id) && p.imageCount < MAX_IMAGES_PER_PRODUCT);
+    if (eligible.length === 0) {
+      toast({ title: "Sem erros", description: "Nenhum produto com erro para reprocessar." });
+      return;
+    }
+    runAutoImport(eligible);
+  };
+
+  const stopAutoImport = () => { abortRef.current = true; };
 
   // ─── DETAIL VIEW ───
   if (detailProduct) {
@@ -319,20 +420,14 @@ export default function AdminBulkImageSearch() {
             <CardTitle className="text-base sm:text-lg">Imagens do produto</CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
               {detailProduct.images.length > 0 && (
-                <Button
-                  size="sm"
-                  variant={selectionMode ? "default" : "outline"}
-                  className="h-8 text-xs sm:text-sm"
-                  onClick={() => { setSelectionMode(!selectionMode); setSelectedImages(new Set()); }}
-                >
+                <Button size="sm" variant={selectionMode ? "default" : "outline"} className="h-8 text-xs sm:text-sm" onClick={() => { setSelectionMode(!selectionMode); setSelectedImages(new Set()); }}>
                   <CheckSquare className="w-3.5 h-3.5 mr-1" />
                   {selectionMode ? "Cancelar" : "Selecionar"}
                 </Button>
               )}
               {selectionMode && selectedImages.size > 0 && (
                 <Button size="sm" variant="destructive" className="h-8 text-xs sm:text-sm" onClick={bulkDelete} disabled={bulkDeleting}>
-                  <Trash2 className="w-3.5 h-3.5 mr-1" />
-                  Excluir {selectedImages.size}
+                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Excluir {selectedImages.size}
                 </Button>
               )}
               <Button size="sm" className="h-8 text-xs sm:text-sm" onClick={() => openSearch(detailProduct)}>
@@ -361,9 +456,7 @@ export default function AdminBulkImageSearch() {
                   return (
                     <div
                       key={img.id}
-                      className={`relative group rounded-lg sm:rounded-xl border-2 overflow-hidden bg-muted/20 transition-all ${
-                        selectionMode && isSelected ? "border-primary ring-2 ring-primary/30" : "border-border"
-                      }`}
+                      className={`relative group rounded-lg sm:rounded-xl border-2 overflow-hidden bg-muted/20 transition-all ${selectionMode && isSelected ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
                       onClick={() => { if (selectionMode) toggleImageSelection(img.id); else setPreviewUrl(getPublicUrl(img.path)); }}
                     >
                       {selectionMode && (
@@ -371,24 +464,12 @@ export default function AdminBulkImageSearch() {
                           <Checkbox checked={isSelected} onCheckedChange={() => toggleImageSelection(img.id)} className="bg-background/80 h-4 w-4" />
                         </div>
                       )}
-                      <img
-                        src={getPublicUrl(img.path)}
-                        alt={`Imagem ${idx + 1}`}
-                        className="w-full aspect-square object-cover cursor-pointer"
-                        loading="lazy"
-                      />
+                      <img src={getPublicUrl(img.path)} alt={`Imagem ${idx + 1}`} className="w-full aspect-square object-cover cursor-pointer" loading="lazy" />
                       {!selectionMode && (
-                        <div className="absolute top-1 left-1 bg-background/80 backdrop-blur-sm text-[10px] font-medium px-1 py-0.5 rounded">
-                          #{idx + 1}
-                        </div>
+                        <div className="absolute top-1 left-1 bg-background/80 backdrop-blur-sm text-[10px] font-medium px-1 py-0.5 rounded">#{idx + 1}</div>
                       )}
                       {!selectionMode && (
-                        <button
-                          type="button"
-                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 sm:transition-opacity bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
-                          disabled={deletingImageId === img.id}
-                          onClick={(e) => { e.stopPropagation(); deleteImage(img.id, img.path); }}
-                        >
+                        <button type="button" className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 sm:transition-opacity bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90" disabled={deletingImageId === img.id} onClick={(e) => { e.stopPropagation(); deleteImage(img.id, img.path); }}>
                           <Trash2 className="w-3 h-3" />
                         </button>
                       )}
@@ -418,6 +499,7 @@ export default function AdminBulkImageSearch() {
 
   // ─── LIST VIEW ───
   const progressPercent = autoStats ? Math.round((autoStats.processed / Math.max(1, autoStats.total)) * 100) : 0;
+  const errorCount = autoLogs.filter((l) => l.status === "error" || l.status === "retry").length;
 
   return (
     <div className="space-y-4 px-1 sm:px-0">
@@ -431,7 +513,7 @@ export default function AdminBulkImageSearch() {
             <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Gerador de Imagens
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Busque e importe imagens para os produtos do catálogo.
+            Busque e importe imagens com cache inteligente, retry automático e fallback multi-fonte.
           </p>
         </div>
         <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => load()} disabled={loading || autoRunning}>
@@ -468,8 +550,9 @@ export default function AdminBulkImageSearch() {
           {!autoRunning && !autoStats && (
             <div className="space-y-3">
               <p className="text-xs sm:text-sm text-muted-foreground">
-                Processa automaticamente todos os produtos com menos de 6 imagens. 
-                Busca, filtra e importa as melhores imagens em lotes de {BATCH_SIZE} produtos.
+                Processa em lotes de {BATCH_SIZE} produtos com delay de {DELAY_MS / 1000}s.
+                Retry automático em erros 429 (aguarda 60s). Fallback: Bing → Google → Mercado Livre.
+                Cache inteligente reutiliza buscas de produtos similares.
               </p>
               <Button
                 onClick={startAutoImport}
@@ -509,7 +592,7 @@ export default function AdminBulkImageSearch() {
               )}
 
               {/* Stats grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
                   <div className="text-base sm:text-lg font-bold text-primary">{autoStats.processed}</div>
                   <div className="text-[10px] sm:text-xs text-muted-foreground">Processados</div>
@@ -520,15 +603,19 @@ export default function AdminBulkImageSearch() {
                 </div>
                 <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
                   <div className="text-base sm:text-lg font-bold text-green-600">{autoStats.imagesApproved}</div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Aprovadas</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Importadas</div>
                 </div>
                 <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
-                  <div className="text-base sm:text-lg font-bold text-destructive">{autoStats.imagesRejected}</div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Rejeitadas</div>
+                  <div className="text-base sm:text-lg font-bold text-destructive">{autoStats.errors}</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Erros</div>
+                </div>
+                <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
+                  <div className="text-base sm:text-lg font-bold text-orange-500">{autoStats.retries}</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Retries</div>
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {autoRunning ? (
                   <Button variant="destructive" size="sm" className="h-8 text-xs sm:text-sm" onClick={stopAutoImport}>
                     <StopCircle className="w-3.5 h-3.5 mr-1" /> Parar
@@ -538,6 +625,12 @@ export default function AdminBulkImageSearch() {
                     <Button size="sm" className="h-8 text-xs sm:text-sm" onClick={startAutoImport}>
                       <Play className="w-3.5 h-3.5 mr-1" /> Executar novamente
                     </Button>
+                    {errorCount > 0 && (
+                      <Button size="sm" variant="outline" className="h-8 text-xs sm:text-sm border-orange-500/50 text-orange-600 hover:bg-orange-50" onClick={reprocessErrors}>
+                        <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                        Reprocessar {errorCount} erro(s)
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" className="h-8 text-xs sm:text-sm" onClick={() => { setAutoStats(null); setAutoLogs([]); }}>
                       Limpar
                     </Button>
@@ -549,7 +642,7 @@ export default function AdminBulkImageSearch() {
               {autoLogs.length > 0 && (
                 <div className="space-y-1.5">
                   <h4 className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
-                    <BarChart3 className="w-3.5 h-3.5" /> Log do processo
+                    <BarChart3 className="w-3.5 h-3.5" /> Log do processo ({autoLogs.length} itens)
                   </h4>
                   <div className="max-h-[40vh] overflow-y-auto space-y-1 rounded-lg border border-border p-2 bg-muted/20">
                     {autoLogs.map((log, idx) => (
@@ -557,10 +650,12 @@ export default function AdminBulkImageSearch() {
                         {log.status === "success" && <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />}
                         {log.status === "partial" && <CheckCircle2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />}
                         {log.status === "error" && <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />}
-                        {log.status === "skipped" && <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                        {log.status === "skipped" && <AlertTriangle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                        {log.status === "retry" && <RotateCcw className="w-3.5 h-3.5 text-orange-500 shrink-0" />}
                         <span className="truncate flex-1 font-medium">{log.productName}</span>
+                        {log.error && <span className="text-destructive/70 truncate max-w-[120px] sm:max-w-[200px]" title={log.error}>{log.error}</span>}
                         <span className="text-muted-foreground shrink-0">
-                          {log.imagesSaved}/{log.imagesFound} img
+                          {log.imagesSaved}/{log.imagesFound}
                         </span>
                         <span className="text-muted-foreground shrink-0 flex items-center gap-0.5">
                           <Clock className="w-2.5 h-2.5" />
@@ -612,12 +707,7 @@ export default function AdminBulkImageSearch() {
                   onClick={() => openDetail(p)}
                 >
                   {p.imageCount > 0 && p.images[0] && (
-                    <img
-                      src={getPublicUrl(p.images[0].path)}
-                      alt=""
-                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-md object-cover shrink-0 border border-border"
-                      loading="lazy"
-                    />
+                    <img src={getPublicUrl(p.images[0].path)} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-md object-cover shrink-0 border border-border" loading="lazy" />
                   )}
                   {p.imageCount === 0 && (
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-muted/40 flex items-center justify-center shrink-0 border border-border">
@@ -635,12 +725,7 @@ export default function AdminBulkImageSearch() {
                       </Badge>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0 h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3"
-                    onClick={(e) => { e.stopPropagation(); openSearch(p); }}
-                  >
+                  <Button size="sm" variant="outline" className="shrink-0 h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3" onClick={(e) => { e.stopPropagation(); openSearch(p); }}>
                     <Search className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-0.5 sm:mr-1" />
                     <span className="hidden xs:inline">Buscar</span>
                   </Button>

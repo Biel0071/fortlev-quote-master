@@ -100,11 +100,17 @@ export default function AdminStoreSelector() {
 
   const loadStores = async () => {
     setLoading(true);
-    const { data } = await cloud
+    // Master sees ALL stores (active + inactive); others only active
+    const query = cloud
       .from("stores")
       .select("id, name, slug, active, domain, favicon_path")
-      .eq("active", true)
       .order("name");
+
+    if (!isMaster) {
+      query.eq("active", true);
+    }
+
+    const { data } = await query;
 
     let available = (data as StoreRow[]) ?? [];
 
@@ -129,23 +135,19 @@ export default function AdminStoreSelector() {
 
     const allDomains = (domains as StoreDomain[]) ?? [];
 
+    // Fetch real counts
+    const [{ count: orderCount }, { count: productCount }] = await Promise.all([
+      cloud.from("store_orders").select("*", { count: "exact", head: true }),
+      cloud.from("store_products").select("*", { count: "exact", head: true }).eq("active", true),
+    ]);
+
     const sums: StoreSummary[] = available.map((store) => ({
       store,
-      orderCount: 0,
-      productCount: 0,
+      // Assign real counts to the active "construcao" store (main store with data)
+      orderCount: store.slug === "construcao" ? (orderCount ?? 0) : 0,
+      productCount: store.slug === "construcao" ? (productCount ?? 0) : 0,
       domains: allDomains.filter((d) => d.store_id === store.id),
     }));
-
-    if (isMaster) {
-      const [{ count: orderCount }, { count: productCount }] = await Promise.all([
-        cloud.from("store_orders").select("*", { count: "exact", head: true }),
-        cloud.from("store_products").select("*", { count: "exact", head: true }).eq("active", true),
-      ]);
-      if (sums.length > 0) {
-        sums[0].orderCount = orderCount ?? 0;
-        sums[0].productCount = productCount ?? 0;
-      }
-    }
 
     setSummaries(sums);
     setLoading(false);

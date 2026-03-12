@@ -10,9 +10,18 @@ export function useIsAdmin() {
 
     async function run() {
       setLoading(true);
-      const { data } = await cloud.auth.getUser();
+      const { data, error: userError } = await cloud.auth.getUser();
       const user = data.user;
-      if (!user) {
+
+      if (userError || !user) {
+        const msg = userError?.message?.toLowerCase() ?? "";
+        const shouldResetSession =
+          Boolean(userError) && (msg.includes("jwt") || msg.includes("token") || msg.includes("claim"));
+
+        if (shouldResetSession) {
+          await cloud.auth.signOut();
+        }
+
         if (!cancelled) {
           setIsAdmin(false);
           setLoading(false);

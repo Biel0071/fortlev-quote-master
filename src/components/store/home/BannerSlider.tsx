@@ -82,7 +82,7 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
                 />
               </picture>
             ) : (
-              <div className="w-full aspect-square sm:aspect-auto sm:h-[300px] md:h-[380px] lg:h-[400px] xl:h-[420px] bg-muted" />
+              <div className="w-full aspect-[9/10] sm:aspect-auto sm:h-[300px] md:h-[380px] lg:h-[400px] xl:h-[420px] bg-muted" />
             );
 
             return (

@@ -328,7 +328,7 @@ export default function AdminStoreSelector() {
           return (
             <Card
               key={store.id}
-              className="rounded-2xl hover:shadow-lg transition-all border-2 hover:border-primary/40 group"
+              className={`rounded-2xl hover:shadow-lg transition-all border-2 hover:border-primary/40 group ${!store.active ? 'opacity-60' : ''}`}
             >
               <CardContent className="p-5 sm:p-6 space-y-4">
                 {/* Store header */}

@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
-import { MoreVertical, Pencil, Power, Trash2 } from "lucide-react";
+import { Copy, MoreVertical, Pencil, Power, Trash2 } from "lucide-react";
 
 type Row = {
   id: string;

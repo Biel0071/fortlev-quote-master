@@ -77,7 +77,7 @@ function AdminSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  onClick={() => nav("/admin/lojas")}
+                  onClick={() => nav("/admin")}
                   className="hover:bg-muted/50"
                 >
                   <Store className="mr-2 h-4 w-4" />

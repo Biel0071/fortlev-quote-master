@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConstructionProductSelector } from '@/components/ConstructionProductSelector';
+import { CompanyForm } from '@/components/CompanyForm';
 import { ConstructionItemsList } from '@/components/ConstructionItemsList';
 import { CustomerForm } from '@/components/CustomerForm';
 import { QuotationPreview } from '@/components/QuotationPreview';

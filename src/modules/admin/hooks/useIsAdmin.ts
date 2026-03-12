@@ -10,9 +10,12 @@ export function useIsAdmin() {
 
     async function run() {
       setLoading(true);
-      const { data } = await cloud.auth.getUser();
+      const { data, error: userError } = await cloud.auth.getUser();
       const user = data.user;
-      if (!user) {
+
+      if (userError || !user) {
+        // Sessão inválida/corrompida (ex: bad_jwt) deve forçar logout para recuperar o app
+        await cloud.auth.signOut();
         if (!cancelled) {
           setIsAdmin(false);
           setLoading(false);

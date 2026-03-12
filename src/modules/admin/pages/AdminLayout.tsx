@@ -138,7 +138,27 @@ export default function AdminLayout() {
   const canRender = !sessionLoading && !adminLoading;
   if (!canRender) return <div className="p-6 text-muted-foreground">Carregando...</div>;
   if (!user) return <Navigate to="/auth/login" replace />;
-  if (!isAdmin) return <div className="p-6 text-destructive">Acesso negado.</div>;
+  if (!isAdmin) {
+    return (
+      <div className="p-6 space-y-3">
+        <p className="text-destructive">Acesso negado.</p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => nav("/")}>
+            Voltar à loja
+          </Button>
+          <Button
+            size="sm"
+            onClick={async () => {
+              await cloud.auth.signOut();
+              nav("/auth/login", { replace: true });
+            }}
+          >
+            Entrar com outra conta
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Store selector page renders without sidebar
   if (isStoreSelectorPage) {

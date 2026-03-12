@@ -75,10 +75,7 @@ const App = () => (
           <Routes>
             {/* Loja Materiais (HOME/vitrine) */}
             <Route path="/" element={<StoreHome />} />
-            <Route path="/materiais" element={<StoreHome />} />
-
-            {/* Página seletora (mantida) */}
-            <Route path="/selecionar" element={<HomeSelector />} />
+            <Route path="/materiais" element={<Navigate to="/" replace />} />
 
             {/* E-commerce */}
             <Route path="/loja" element={<StoreCatalog />} />

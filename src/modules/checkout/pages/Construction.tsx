@@ -388,7 +388,6 @@ const ConstructionPage = () => {
             <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-4">
               <CompanyForm companyInfo={companyInfo} onChange={setCompanyInfo} />
             </div>
-            </div>
 
             {/* Customer Form */}
             <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">

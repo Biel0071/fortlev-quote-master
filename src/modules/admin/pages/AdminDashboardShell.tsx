@@ -4,8 +4,7 @@ import { cn } from "@/lib/utils";
 const tabs = [
   { to: "/admin/dashboard", label: "Visão geral", end: true },
   { to: "/admin/dashboard/orcamentos", label: "Orçamentos" },
-  { to: "/admin/dashboard/clientes", label: "Clientes" },
-  { to: "/admin/dashboard/analytics", label: "Analytics" },
+  { to: "/admin/clientes", label: "Clientes" },
   { to: "/admin/dashboard/tracking", label: "Tracking" },
   { to: "/admin/dashboard/inteligencia", label: "Inteligência" },
 ];

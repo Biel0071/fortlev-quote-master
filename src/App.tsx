@@ -56,7 +56,6 @@ import Construction from "@/modules/checkout/pages/Construction";
 import FortlevOverview from "./pages/dashboard/FortlevOverview";
 import ConstructionOverview from "./pages/dashboard/ConstructionOverview";
 import NotFound from "./pages/NotFound";
-import HomeSelector from "./pages/HomeSelector";
 
 const queryClient = new QueryClient();
 
@@ -76,10 +75,7 @@ const App = () => (
           <Routes>
             {/* Loja Materiais (HOME/vitrine) */}
             <Route path="/" element={<StoreHome />} />
-            <Route path="/materiais" element={<StoreHome />} />
-
-            {/* Página seletora (mantida) */}
-            <Route path="/selecionar" element={<HomeSelector />} />
+            <Route path="/materiais" element={<Navigate to="/" replace />} />
 
             {/* E-commerce */}
             <Route path="/loja" element={<StoreCatalog />} />
@@ -98,12 +94,9 @@ const App = () => (
             {/* Admin (protegido) */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminStoreSelector />} />
-              <Route path="lojas" element={<AdminStoreSelector />} />
               <Route path="dashboard" element={<AdminDashboardShell />}>
                 <Route index element={<AdminDashboardOverview />} />
                 <Route path="orcamentos" element={<AdminDashboardQuotations />} />
-                <Route path="clientes" element={<AdminCustomers />} />
-                <Route path="analytics" element={<AdminDashboardOverview />} />
                 <Route path="tracking" element={<AdminDashboardTracking />} />
                 <Route path="inteligencia" element={<AdminIntelligence />} />
               </Route>

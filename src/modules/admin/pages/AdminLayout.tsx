@@ -77,7 +77,7 @@ function AdminSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  onClick={() => nav("/admin/lojas")}
+                  onClick={() => nav("/admin")}
                   className="hover:bg-muted/50"
                 >
                   <Store className="mr-2 h-4 w-4" />
@@ -133,7 +133,7 @@ export default function AdminLayout() {
   const location = useLocation();
   const { routes, label } = useStore();
 
-  const isStoreSelectorPage = location.pathname === "/admin" || location.pathname === "/admin/lojas";
+  const isStoreSelectorPage = location.pathname === "/admin";
 
   const canRender = !sessionLoading && !adminLoading;
   if (!canRender) return <div className="p-6 text-muted-foreground">Carregando...</div>;

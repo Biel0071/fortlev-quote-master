@@ -45,6 +45,7 @@ import {
   AdminQuotations,
   AdminQuotationsOverview,
   AdminBulkImageSearch,
+  AdminStoreSelector,
 } from "@/modules/admin";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
@@ -96,7 +97,8 @@ const App = () => (
 
             {/* Admin (protegido) */}
             <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route index element={<AdminStoreSelector />} />
+              <Route path="lojas" element={<AdminStoreSelector />} />
               <Route path="dashboard" element={<AdminDashboardShell />}>
                 <Route index element={<AdminDashboardOverview />} />
                 <Route path="orcamentos" element={<AdminDashboardQuotations />} />

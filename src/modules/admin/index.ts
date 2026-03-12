@@ -27,3 +27,4 @@ export { default as AdminTheme } from "./pages/AdminTheme";
 export { default as AdminAiAnalysis } from "./pages/AdminAiAnalysis";
 export { default as AdminIntelligence } from "./pages/AdminIntelligence";
 export { default as AdminBulkImageSearch } from "./pages/AdminBulkImageSearch";
+export { default as AdminStoreSelector } from "./pages/AdminStoreSelector";

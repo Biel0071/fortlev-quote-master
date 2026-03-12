@@ -146,11 +146,19 @@ export default function AdminUsersAccess() {
   const [invRole, setInvRole] = useState<string>("operator");
   const [invStores, setInvStores] = useState<string[]>([]);
   const [invPages, setInvPages] = useState<string[]>([...ALL_PAGES]);
-  const [invDetailPerms, setInvDetailPerms] = useState<
-    Record<string, { can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean }>
-  >({});
+  const [invDetailPerms, setInvDetailPerms] = useState<PermissionMatrix>({});
   const [invPassword, setInvPassword] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Edit form state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [editRole, setEditRole] = useState<string>("operator");
+  const [editStores, setEditStores] = useState<string[]>([]);
+  const [editPages, setEditPages] = useState<string[]>([...ALL_PAGES]);
+  const [editDetailPerms, setEditDetailPerms] = useState<PermissionMatrix>({});
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const [resettingId, setResettingId] = useState<string | null>(null);
 
   const generatePassword = () => {

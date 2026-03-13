@@ -104,7 +104,7 @@ export function CustomerReviewForm({
               value={authorName}
               onChange={(e) => setAuthorName(e.target.value)}
               placeholder="Maria Silva"
-              className="h-9 text-sm"
+              className="h-9 text-sm w-full"
               maxLength={60}
             />
           </div>

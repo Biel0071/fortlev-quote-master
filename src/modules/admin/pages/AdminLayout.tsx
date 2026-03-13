@@ -244,6 +244,9 @@ export default function AdminLayout() {
             </div>
 
             <div className="flex items-center gap-2">
+              <div className="hidden md:block">
+                <StoreSwitcher className="w-[220px] bg-background" />
+              </div>
               <Button variant="outline" size="sm" className="text-xs" onClick={() => nav(routes.publicHome)}>
                 Ver loja
               </Button>

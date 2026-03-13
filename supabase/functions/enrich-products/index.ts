@@ -9,24 +9,138 @@ const corsHeaders = {
 
 /* ── AI Gateway ── */
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_MAX_CONCURRENT = 3;
+let activeAICalls = 0;
+const aiQueue: Array<{ resolve: () => void }> = [];
 
-async function callAI(apiKey: string, prompt: string, model = "google/gemini-2.5-flash"): Promise<string> {
-  const resp = await fetch(AI_GATEWAY, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 4096,
-      temperature: 0.7,
-    }),
-  });
-  if (!resp.ok) {
-    const txt = await resp.text();
-    throw new Error(`AI error ${resp.status}: ${txt.slice(0, 300)}`);
+async function acquireAISlot(): Promise<void> {
+  if (activeAICalls < AI_MAX_CONCURRENT) {
+    activeAICalls++;
+    return;
   }
-  const data = await resp.json();
-  return data?.choices?.[0]?.message?.content ?? "";
+  return new Promise<void>((resolve) => {
+    aiQueue.push({ resolve });
+  });
+}
+
+function releaseAISlot() {
+  activeAICalls--;
+  const next = aiQueue.shift();
+  if (next) {
+    activeAICalls++;
+    next.resolve();
+  }
+}
+
+/* ── Robust JSON sanitizer ── */
+function sanitizeJSON(response: string): unknown {
+  // Remove markdown code blocks
+  let cleaned = response
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
+
+  // Find JSON boundaries
+  const jsonStart = cleaned.search(/[\{\[]/);
+  if (jsonStart === -1) throw new Error("No JSON object or array found in response");
+
+  const openChar = cleaned[jsonStart];
+  const closeChar = openChar === "[" ? "]" : "}";
+  const jsonEnd = cleaned.lastIndexOf(closeChar);
+  if (jsonEnd === -1) throw new Error("Mismatched JSON structure in response");
+
+  cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+
+  // Attempt direct parse
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.warn("Direct JSON parse failed, attempting repair:", e);
+    // Fix common issues
+    cleaned = cleaned
+      .replace(/,\s*}/g, "}")
+      .replace(/,\s*]/g, "]")
+      .replace(/[\x00-\x1F\x7F]/g, "") // Remove control characters
+      .replace(/\\'/g, "'");
+
+    try {
+      return JSON.parse(cleaned);
+    } catch (repairError) {
+      console.error("JSON repair failed:", repairError);
+      throw new Error("Failed to parse and repair JSON response");
+    }
+  }
+}
+
+/* ── AI call with retry and concurrency control ── */
+async function callAIWithRetry(
+  apiKey: string,
+  prompt: string,
+  model = "google/gemini-2.5-flash",
+  maxRetries = 3,
+): Promise<unknown> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    await acquireAISlot();
+    try {
+      const resp = await fetch(AI_GATEWAY, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 4096,
+          temperature: 0.7,
+        }),
+      });
+
+      if (resp.status === 429) {
+        const txt = await resp.text();
+        releaseAISlot();
+        if (attempt < maxRetries - 1) {
+          const delay = [5000, 10000, 20000][attempt] ?? 20000;
+          console.warn(`Rate limited (429), retry ${attempt + 1} in ${delay / 1000}s...`);
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+        throw new Error(`AI rate limited after ${maxRetries} retries: ${txt.slice(0, 200)}`);
+      }
+
+      if (!resp.ok) {
+        const txt = await resp.text();
+        releaseAISlot();
+        throw new Error(`AI error ${resp.status}: ${txt.slice(0, 300)}`);
+      }
+
+      const data = await resp.json();
+      releaseAISlot();
+      const content = data?.choices?.[0]?.message?.content ?? "";
+      return sanitizeJSON(content);
+    } catch (err: any) {
+      if (activeAICalls > 0) releaseAISlot();
+      if (err.message?.includes("rate limited") || err.message?.includes("429")) {
+        if (attempt < maxRetries - 1) {
+          const delay = [5000, 10000, 20000][attempt] ?? 20000;
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+      }
+      if (attempt === maxRetries - 1) throw err;
+    }
+  }
+  throw new Error("AI call failed after maximum retries");
+}
+
+/* ── Simple hash for product name ── */
+function hashProductName(name: string): string {
+  const normalized = name.toLowerCase().trim().replace(/\s+/g, " ");
+  // Simple hash using charCode sums + length
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    const chr = normalized.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0;
+  }
+  return `h_${Math.abs(hash).toString(36)}_${normalized.length}`;
 }
 
 /* ── Enhanced prompt with layered search queries and image filters ── */
@@ -155,79 +269,128 @@ serve(async (req) => {
         });
       }
 
-      // Call AI to interpret + generate description + tech sheet + layered queries
-      const aiResponse = await callAI(LOVABLE_API_KEY, buildEnrichPrompt(productName));
+      // Check interpretation cache first
+      const nameHash = hashProductName(productName);
+      const { data: cachedInterp } = await admin
+        .from("cache_product_interpretation")
+        .select("*")
+        .eq("product_name_hash", nameHash)
+        .maybeSingle();
 
-      // Parse JSON from response (handle possible markdown wrapping)
-      let parsed: any;
-      try {
-        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("No JSON found in AI response");
-        parsed = JSON.parse(jsonMatch[0]);
-      } catch (e) {
-        console.error("AI parse error:", e, "Raw:", aiResponse.slice(0, 500));
-        return new Response(
-          JSON.stringify({ error: "ai_parse_error", raw: aiResponse.slice(0, 300) }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      let interpretation: any;
+      let searchQueriesLayered: any;
+      let imageAcceptanceTerms: string[];
+      let imageRejectionTerms: string[];
+      let aiImagePrompt: string;
+      let fullDescription: string;
+      let techSheet: any;
+
+      if (cachedInterp) {
+        console.log("Cache hit for product interpretation:", productName);
+        interpretation = cachedInterp.interpretation;
+        searchQueriesLayered = cachedInterp.search_queries_layered;
+        imageAcceptanceTerms = Array.isArray(cachedInterp.image_acceptance_terms) ? cachedInterp.image_acceptance_terms as string[] : [];
+        imageRejectionTerms = Array.isArray(cachedInterp.image_rejection_terms) ? cachedInterp.image_rejection_terms as string[] : [];
+        aiImagePrompt = cachedInterp.ai_image_prompt ?? "";
+        fullDescription = cachedInterp.description ?? "";
+        techSheet = cachedInterp.technical_sheet ?? {};
+      } else {
+        // Call AI with retry and concurrency control
+        let parsed: any;
+        try {
+          parsed = await callAIWithRetry(LOVABLE_API_KEY, buildEnrichPrompt(productName));
+        } catch (e: any) {
+          console.error("AI enrichment failed after retries:", e.message);
+          // Return partial success - pipeline continues
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: "ai_parse_error",
+              message: e.message?.slice(0, 300),
+              // Return empty but valid structure so pipeline doesn't break
+              interpretation: {},
+              searchQueries: [],
+              searchQueriesLayered: {},
+              imageAcceptanceTerms: [],
+              imageRejectionTerms: [],
+              aiImagePrompt: "",
+              description: "",
+              techSheet: {},
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const description = parsed?.description ?? "";
+        techSheet = parsed?.technical_sheet ?? {};
+        interpretation = parsed?.interpretation ?? {};
+        searchQueriesLayered = parsed?.search_queries_layered ?? {};
+        imageAcceptanceTerms = Array.isArray(parsed?.image_acceptance_terms) ? parsed.image_acceptance_terms : [];
+        imageRejectionTerms = Array.isArray(parsed?.image_rejection_terms) ? parsed.image_rejection_terms : [];
+        aiImagePrompt = parsed?.ai_image_prompt ?? "";
+
+        // Build full description with tech sheet
+        fullDescription = description;
+        if (Object.keys(techSheet).length > 0) {
+          fullDescription += "\n\n## Ficha Técnica\n\n";
+          for (const [key, val] of Object.entries(techSheet)) {
+            fullDescription += `- **${key}:** ${val}\n`;
+          }
+        }
+
+        // Save to interpretation cache (fire and forget)
+        admin
+          .from("cache_product_interpretation")
+          .upsert({
+            product_name_hash: nameHash,
+            product_name: productName,
+            interpretation,
+            search_queries_layered: searchQueriesLayered,
+            image_acceptance_terms: imageAcceptanceTerms,
+            image_rejection_terms: imageRejectionTerms,
+            ai_image_prompt: aiImagePrompt,
+            description: fullDescription,
+            technical_sheet: techSheet,
+          }, { onConflict: "product_name_hash" })
+          .then(() => console.log("Interpretation cached for:", productName))
+          .catch((err: any) => console.warn("Cache save failed:", err.message));
       }
 
-      const description = parsed?.description ?? "";
-      const techSheet = parsed?.technical_sheet ?? {};
-      const interpretation = parsed?.interpretation ?? {};
-      const searchQueriesLayered = parsed?.search_queries_layered ?? {};
-      const imageAcceptanceTerms = Array.isArray(parsed?.image_acceptance_terms) ? parsed.image_acceptance_terms : [];
-      const imageRejectionTerms = Array.isArray(parsed?.image_rejection_terms) ? parsed.image_rejection_terms : [];
-      const aiImagePrompt = parsed?.ai_image_prompt ?? "";
-
-      // Flatten layered queries for backward compatibility
+      // Flatten layered queries
       const allSearchQueries: string[] = [
-        ...(Array.isArray(searchQueriesLayered.manufacturer) ? searchQueriesLayered.manufacturer : []),
-        ...(Array.isArray(searchQueriesLayered.marketplace) ? searchQueriesLayered.marketplace : []),
-        ...(Array.isArray(searchQueriesLayered.general) ? searchQueriesLayered.general : []),
+        ...(Array.isArray(searchQueriesLayered?.manufacturer) ? searchQueriesLayered.manufacturer : []),
+        ...(Array.isArray(searchQueriesLayered?.marketplace) ? searchQueriesLayered.marketplace : []),
+        ...(Array.isArray(searchQueriesLayered?.general) ? searchQueriesLayered.general : []),
       ];
 
-      // Build full description with tech sheet appended as markdown
-      let fullDescription = description;
-      if (Object.keys(techSheet).length > 0) {
-        fullDescription += "\n\n## Ficha Técnica\n\n";
-        for (const [key, val] of Object.entries(techSheet)) {
-          fullDescription += `- **${key}:** ${val}\n`;
-        }
-      }
-
       // Update product in DB
-      const updatePayload: Record<string, any> = {
-        description: fullDescription,
-      };
+      const updatePayload: Record<string, any> = {};
+      if (fullDescription) updatePayload.description = fullDescription;
 
-      // Update category if we got a suggestion and product has no category
-      if (interpretation.categoria_sugerida && interpretation.categoria_sugerida !== "Não especificado") {
-        const { data: catRow } = await admin
-          .from("store_categories")
-          .select("id, name")
-          .ilike("name", `%${interpretation.categoria_sugerida}%`)
-          .limit(1)
-          .maybeSingle();
+      if (interpretation?.categoria_sugerida && interpretation.categoria_sugerida !== "Não especificado") {
+        try {
+          const { data: catRow } = await admin
+            .from("store_categories")
+            .select("id, name")
+            .ilike("name", `%${interpretation.categoria_sugerida}%`)
+            .limit(1)
+            .maybeSingle();
 
-        if (catRow) {
-          updatePayload.category = catRow.name;
-          updatePayload.category_id = catRow.id;
-        } else {
-          updatePayload.category = interpretation.categoria_sugerida;
-        }
+          if (catRow) {
+            updatePayload.category = catRow.name;
+            updatePayload.category_id = catRow.id;
+          } else {
+            updatePayload.category = interpretation.categoria_sugerida;
+          }
+        } catch { /* category lookup failed, skip */ }
       }
 
-      // Set status to published if it was draft
       updatePayload.status = "published";
 
-      const { error: updateErr } = await admin
-        .from("store_products")
-        .update(updatePayload)
-        .eq("id", productId);
-
-      if (updateErr) {
-        console.error("Product update error:", updateErr);
+      try {
+        await admin.from("store_products").update(updatePayload).eq("id", productId);
+      } catch (e: any) {
+        console.error("Product update error:", e.message);
       }
 
       return new Response(
@@ -260,26 +423,36 @@ serve(async (req) => {
 
       console.log("Generating AI image for product:", productId);
 
-      const imgResp = await fetch(AI_GATEWAY, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-3.1-flash-image-preview",
-          messages: [{ role: "user", content: prompt }],
-          modalities: ["image", "text"],
-        }),
-      });
+      let imgData: any;
+      await acquireAISlot();
+      try {
+        const imgResp = await fetch(AI_GATEWAY, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "google/gemini-3.1-flash-image-preview",
+            messages: [{ role: "user", content: prompt }],
+            modalities: ["image", "text"],
+          }),
+        });
 
-      if (!imgResp.ok) {
-        const txt = await imgResp.text();
-        console.error("AI image generation error:", imgResp.status, txt.slice(0, 300));
-        return new Response(
-          JSON.stringify({ error: "ai_image_generation_failed", status: imgResp.status }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        if (!imgResp.ok) {
+          const txt = await imgResp.text();
+          releaseAISlot();
+          console.error("AI image generation error:", imgResp.status, txt.slice(0, 300));
+          return new Response(
+            JSON.stringify({ error: "ai_image_generation_failed", status: imgResp.status }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        imgData = await imgResp.json();
+        releaseAISlot();
+      } catch (err: any) {
+        releaseAISlot();
+        throw err;
       }
 
-      const imgData = await imgResp.json();
       const imageB64 = imgData?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
       if (!imageB64 || !imageB64.startsWith("data:image")) {
@@ -289,7 +462,6 @@ serve(async (req) => {
         );
       }
 
-      // Extract base64 data and upload to storage
       const base64Match = imageB64.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/);
       if (!base64Match) {
         return new Response(
@@ -301,7 +473,6 @@ serve(async (req) => {
       const ext = base64Match[1] === "jpeg" ? "jpg" : base64Match[1];
       const rawB64 = base64Match[2];
 
-      // Decode base64 to Uint8Array
       const binaryStr = atob(rawB64);
       const bytes = new Uint8Array(binaryStr.length);
       for (let i = 0; i < binaryStr.length; i++) {
@@ -325,7 +496,6 @@ serve(async (req) => {
         );
       }
 
-      // Get max sort_order for this product
       const { data: maxSortRow } = await admin
         .from("store_product_images")
         .select("sort_order")

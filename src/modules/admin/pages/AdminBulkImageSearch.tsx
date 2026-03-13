@@ -75,10 +75,12 @@ type RunHistory = {
 /* ───── Constants ───── */
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const MAX_WORKERS = 15;
+const AI_MAX_CONCURRENT = 3;
 const MAX_IMAGES_PER_PRODUCT = 8;
 const MAX_RETRIES = 3;
 const RETRY_DELAY_429 = 30_000;
-const INTER_WORKER_DELAY = 200; // ms between launching workers
+const RETRY_DELAYS_AI = [5_000, 10_000, 20_000];
+const INTER_WORKER_DELAY = 200;
 const SOURCES_FALLBACK: ImageSearchSource[] = ["bing", "google", "mercado_livre"];
 
 function getPublicUrl(path: string) {
@@ -149,6 +151,9 @@ export default function AdminBulkImageSearch() {
 
   // Image cache: key → images
   const imageCacheRef = useRef(new Map<string, GoogleImageResult[]>());
+
+  // AI concurrency limiter (max 3 simultaneous AI calls even with 15 workers)
+  const aiSemRef = useRef(new Semaphore(AI_MAX_CONCURRENT));
 
   /* ─── Pagination-aware load ─── */
   const load = async () => {
@@ -336,7 +341,7 @@ export default function AdminBulkImageSearch() {
     updateStats({ activeWorkers: (statsRef.current?.activeWorkers ?? 0) + 1, processing: (statsRef.current?.processing ?? 0) + 1, pending: (statsRef.current?.pending ?? 0) - 1 });
 
     try {
-      // STEP 1: AI Enrichment with layered queries
+      // STEP 1: AI Enrichment with layered queries (concurrency limited)
       let aiSearchQueries: string[] = [];
       let layeredQueries: { manufacturer?: string[]; marketplace?: string[]; general?: string[] } = {};
       let imageRejectionTerms: string[] = [];
@@ -347,21 +352,47 @@ export default function AdminBulkImageSearch() {
       const neededImages = MAX_IMAGES_PER_PRODUCT - (product?.imageCount ?? 0);
 
       if (needsDescription || neededImages > 0) {
-        updateJob(jobIdx, { step: "🧠 IA interpretando..." });
+        updateJob(jobIdx, { step: "🧠 Aguardando slot IA..." });
+        await aiSemRef.current.acquire();
         try {
-          const { data, error } = await cloud.functions.invoke("enrich-products", {
-            body: { action: "enrich", productId: job.productId, productName: job.productName },
-          });
-          if (!error && data?.success) {
-            aiSearchQueries = data.searchQueries ?? [];
-            layeredQueries = data.searchQueriesLayered ?? {};
-            imageRejectionTerms = data.imageRejectionTerms ?? [];
-            imageAcceptanceTerms = data.imageAcceptanceTerms ?? [];
-            aiImagePrompt = data.aiImagePrompt ?? "";
-            updateJob(jobIdx, { descriptionGenerated: true, techSheetGenerated: true });
-            updateStats({ descriptionsGenerated: (statsRef.current?.descriptionsGenerated ?? 0) + 1 });
+          updateJob(jobIdx, { step: "🧠 IA interpretando..." });
+          for (let aiAttempt = 0; aiAttempt < MAX_RETRIES; aiAttempt++) {
+            try {
+              const { data, error } = await cloud.functions.invoke("enrich-products", {
+                body: { action: "enrich", productId: job.productId, productName: job.productName },
+              });
+              if (!error && data?.success) {
+                aiSearchQueries = data.searchQueries ?? [];
+                layeredQueries = data.searchQueriesLayered ?? {};
+                imageRejectionTerms = data.imageRejectionTerms ?? [];
+                imageAcceptanceTerms = data.imageAcceptanceTerms ?? [];
+                aiImagePrompt = data.aiImagePrompt ?? "";
+                updateJob(jobIdx, { descriptionGenerated: true, techSheetGenerated: true });
+                updateStats({ descriptionsGenerated: (statsRef.current?.descriptionsGenerated ?? 0) + 1 });
+              } else if (data && !data.success) {
+                // Partial failure from server - use whatever data returned
+                aiSearchQueries = data.searchQueries ?? [];
+                layeredQueries = data.searchQueriesLayered ?? {};
+                imageRejectionTerms = data.imageRejectionTerms ?? [];
+                imageAcceptanceTerms = data.imageAcceptanceTerms ?? [];
+                aiImagePrompt = data.aiImagePrompt ?? "";
+              }
+              break; // success or partial, stop retrying
+            } catch (aiErr: any) {
+              const msg = aiErr?.message || "";
+              const is429 = msg.includes("429") || msg.includes("rate") || msg.includes("limit");
+              if (is429 && aiAttempt < MAX_RETRIES - 1) {
+                updateJob(jobIdx, { step: `🧠 Rate limit, retry ${aiAttempt + 1}...` });
+                await sleep(RETRY_DELAYS_AI[aiAttempt] ?? 20_000);
+                continue;
+              }
+              console.error("AI enrichment error:", msg);
+              break; // give up on AI, continue pipeline
+            }
           }
-        } catch { /* continue even if AI fails */ }
+        } finally {
+          aiSemRef.current.release();
+        }
       }
 
       // STEP 2: Layered Image Search
@@ -449,23 +480,41 @@ export default function AdminBulkImageSearch() {
           } catch { /* partial failure */ }
         }
 
-        // STEP 4: AI Image Generation Fallback
+        // STEP 4: AI Image Generation Fallback (concurrency limited)
         const currentSaved = jobsRef.current[jobIdx]?.imagesSaved ?? 0;
         if (currentSaved === 0 && aiImagePrompt && !abortRef.current) {
-          updateJob(jobIdx, { step: "🎨 Gerando imagem com IA..." });
+          updateJob(jobIdx, { step: "🎨 Aguardando slot IA..." });
+          await aiSemRef.current.acquire();
           try {
-            const { data, error } = await cloud.functions.invoke("enrich-products", {
-              body: {
-                action: "generate-image",
-                productId: job.productId,
-                prompt: aiImagePrompt,
-              },
-            });
-            if (!error && data?.success) {
-              updateJob(jobIdx, { imagesSaved: 1, imagesFound: 1 });
-              updateStats({ imagesApproved: (statsRef.current?.imagesApproved ?? 0) + 1 });
+            updateJob(jobIdx, { step: "🎨 Gerando imagem com IA..." });
+            for (let genAttempt = 0; genAttempt < MAX_RETRIES; genAttempt++) {
+              try {
+                const { data, error } = await cloud.functions.invoke("enrich-products", {
+                  body: {
+                    action: "generate-image",
+                    productId: job.productId,
+                    prompt: aiImagePrompt,
+                  },
+                });
+                if (!error && data?.success) {
+                  updateJob(jobIdx, { imagesSaved: 1, imagesFound: 1 });
+                  updateStats({ imagesApproved: (statsRef.current?.imagesApproved ?? 0) + 1 });
+                }
+                break;
+              } catch (genErr: any) {
+                const msg = genErr?.message || "";
+                const is429 = msg.includes("429") || msg.includes("rate") || msg.includes("limit");
+                if (is429 && genAttempt < MAX_RETRIES - 1) {
+                  updateJob(jobIdx, { step: `🎨 Rate limit, retry ${genAttempt + 1}...` });
+                  await sleep(RETRY_DELAYS_AI[genAttempt] ?? 20_000);
+                  continue;
+                }
+                break;
+              }
             }
-          } catch { /* AI generation failed, continue */ }
+          } finally {
+            aiSemRef.current.release();
+          }
         }
       }
 

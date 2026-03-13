@@ -466,8 +466,9 @@ serve(async (req) => {
       }
 
       if (images.length === 0) {
-        return new Response(JSON.stringify({ error: "no_images_found" }), {
-          status: 404,
+        // Return empty array instead of 404 so pipeline doesn't break
+        return new Response(JSON.stringify({ images: [], cached: false, source: sourceLabel(source) }), {
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

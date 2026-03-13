@@ -29,7 +29,17 @@ export function FloatingChat({
 
   const wasOpenRef = useRef(false);
 
-  const bottomClass = isMobile ? "bottom-[90px]" : "bottom-4";
+  const shouldHideFloating = useMemo(
+    () =>
+      location.pathname.startsWith("/produto/") ||
+      location.pathname.startsWith("/checkout") ||
+      location.pathname.startsWith("/carrinho"),
+    [location.pathname],
+  );
+
+  const bottomClass = isMobile
+    ? "bottom-[calc(env(safe-area-inset-bottom)+56px)]"
+    : "bottom-4";
 
   // (badge removido)
 

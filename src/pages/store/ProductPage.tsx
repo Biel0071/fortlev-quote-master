@@ -16,6 +16,7 @@ import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
 import { generateStandardProductDescription } from "@/utils/productDescription";
 import { trackClickEvent } from "@/utils/clickTracking";
+import { cn } from "@/lib/utils";
 
 import { ProductBadges } from "@/components/store/pdp/ProductBadges";
 import { ProductReviews } from "@/components/store/pdp/ProductReviews";

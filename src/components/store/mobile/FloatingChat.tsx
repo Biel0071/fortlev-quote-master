@@ -29,7 +29,7 @@ export function FloatingChat({
 
   const wasOpenRef = useRef(false);
 
-  const bottomClass = isMobile ? "bottom-[5.25rem]" : "bottom-4";
+  const bottomClass = isMobile ? "bottom-[90px]" : "bottom-4";
 
   // (badge removido)
 

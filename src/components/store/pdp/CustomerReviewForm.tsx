@@ -154,7 +154,7 @@ export function CustomerReviewForm({
           {submitting ? "Enviando..." : "Enviar avaliação"}
         </Button>
 
-        <p className="text-[10px] text-muted-foreground text-center">
+        <p className="text-[10px] text-muted-foreground text-center break-words leading-relaxed px-1">
           Sua avaliação será revisada antes da publicação.
         </p>
       </CardContent>

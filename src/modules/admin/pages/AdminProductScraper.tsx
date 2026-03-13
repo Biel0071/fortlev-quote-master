@@ -346,6 +346,9 @@ export default function AdminProductScraper() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <Globe className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold">Scraper de Produtos</h1>
       </div>

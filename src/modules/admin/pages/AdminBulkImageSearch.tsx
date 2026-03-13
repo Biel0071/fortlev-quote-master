@@ -16,7 +16,8 @@ import {
 import {
   ImageIcon, Search, ArrowLeft, Trash2, X, CheckSquare, RefreshCw,
   Zap, StopCircle, Play, Clock, CheckCircle2, XCircle, BarChart3,
-  RotateCcw, AlertTriangle, FileText, Sparkles, Wand2,
+  RotateCcw, AlertTriangle, FileText, Sparkles, Wand2, Activity,
+  Gauge, Users, Timer,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -30,38 +31,54 @@ type ProductRow = {
   images: Array<{ id: string; path: string; sort_order: number }>;
 };
 
-type AutoImportStats = {
-  total: number;
-  processed: number;
-  imagesApproved: number;
-  imagesRejected: number;
-  descriptionsGenerated: number;
-  errors: number;
-  retries: number;
-  currentProduct: string;
-  currentStep: string;
-};
+type JobStatus = "pending" | "processing" | "completed" | "error" | "retry";
 
-type LogEntry = {
+type JobEntry = {
   productId: string;
   productName: string;
+  status: JobStatus;
   imagesFound: number;
   imagesSaved: number;
   descriptionGenerated: boolean;
   techSheetGenerated: boolean;
-  status: "success" | "partial" | "error" | "skipped" | "retry";
   time: number;
   error?: string;
-  retryCount?: number;
+  retryCount: number;
+  step: string;
+  workerId: number;
+};
+
+type PipelineStats = {
+  total: number;
+  pending: number;
+  processing: number;
+  completed: number;
+  errors: number;
+  retries: number;
+  imagesApproved: number;
+  descriptionsGenerated: number;
+  activeWorkers: number;
+  startTime: number;
+  avgTimePerProduct: number;
+  throughput: number; // products/min
+};
+
+type RunHistory = {
+  date: string;
+  total: number;
+  completed: number;
+  errors: number;
+  avgTime: number;
+  duration: number;
 };
 
 /* ───── Constants ───── */
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const BATCH_SIZE = 5;
-const DELAY_MS = 3000;
-const MAX_IMAGES_PER_PRODUCT = 6;
+const MAX_WORKERS = 15;
+const MAX_IMAGES_PER_PRODUCT = 8;
 const MAX_RETRIES = 3;
-const RETRY_DELAY_429 = 60_000;
+const RETRY_DELAY_429 = 30_000;
+const INTER_WORKER_DELAY = 200; // ms between launching workers
 const SOURCES_FALLBACK: ImageSearchSource[] = ["bing", "google", "mercado_livre"];
 
 function getPublicUrl(path: string) {
@@ -84,6 +101,28 @@ function extractBaseKeyword(name: string): string {
     .join(" ");
 }
 
+/* ───── Semaphore for concurrency control ───── */
+class Semaphore {
+  private queue: Array<() => void> = [];
+  private running = 0;
+  constructor(private max: number) {}
+  get active() { return this.running; }
+  async acquire(): Promise<void> {
+    if (this.running < this.max) {
+      this.running++;
+      return;
+    }
+    return new Promise<void>((resolve) => {
+      this.queue.push(() => { this.running++; resolve(); });
+    });
+  }
+  release() {
+    this.running--;
+    const next = this.queue.shift();
+    if (next) next();
+  }
+}
+
 export default function AdminBulkImageSearch() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<ProductRow[]>([]);
@@ -97,15 +136,19 @@ export default function AdminBulkImageSearch() {
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [workerCount, setWorkerCount] = useState(MAX_WORKERS);
 
-  // Auto-import state
-  const [autoRunning, setAutoRunning] = useState(false);
-  const [autoStats, setAutoStats] = useState<AutoImportStats | null>(null);
-  const [autoLogs, setAutoLogs] = useState<LogEntry[]>([]);
+  // Pipeline state
+  const [pipelineRunning, setPipelineRunning] = useState(false);
+  const [stats, setStats] = useState<PipelineStats | null>(null);
+  const [jobs, setJobs] = useState<JobEntry[]>([]);
+  const [runHistory, setRunHistory] = useState<RunHistory[]>([]);
   const abortRef = useRef(false);
+  const jobsRef = useRef<JobEntry[]>([]);
+  const statsRef = useRef<PipelineStats | null>(null);
 
-  // Local search cache
-  const localCacheRef = useRef(new Map<string, GoogleImageResult[]>());
+  // Image cache: key → images
+  const imageCacheRef = useRef(new Map<string, GoogleImageResult[]>());
 
   /* ─── Pagination-aware load ─── */
   const load = async () => {
@@ -118,7 +161,7 @@ export default function AdminBulkImageSearch() {
     while (hasMore) {
       const { data, error } = await cloud
         .from("store_products")
-        .select("id, name, description, active, store_product_images(id, path, sort_order)")
+        .select("id, name, description, active, sku, store_product_images(id, path, sort_order)")
         .order("name", { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
 
@@ -214,61 +257,54 @@ export default function AdminBulkImageSearch() {
     } finally { setBulkDeleting(false); }
   };
 
-  /* ─── Search with retry + fallback ─── */
-  const searchWithRetryAndFallback = async (
+  /* ─── Cache-aware image search with retry ─── */
+  const searchWithCache = async (
     query: string,
-    abortCheck: () => boolean,
     extraQueries?: string[],
   ): Promise<{ images: GoogleImageResult[]; fromCache: boolean }> => {
     const cacheKey = query.toLowerCase().trim();
-    const cached = localCacheRef.current.get(cacheKey);
-    if (cached && cached.length > 0) {
-      return { images: cached, fromCache: true };
-    }
+    const cached = imageCacheRef.current.get(cacheKey);
+    if (cached && cached.length > 0) return { images: cached, fromCache: true };
 
+    // Similarity cache check
     const baseKey = extractBaseKeyword(query);
     if (baseKey.length >= 3) {
-      const similarCacheKey = `${baseKey} produto construção`.toLowerCase().trim();
-      const similarCached = localCacheRef.current.get(similarCacheKey);
+      const similarKey = `${baseKey} produto construção`.toLowerCase().trim();
+      const similarCached = imageCacheRef.current.get(similarKey);
       if (similarCached && similarCached.length > 0) {
-        localCacheRef.current.set(cacheKey, similarCached);
+        imageCacheRef.current.set(cacheKey, similarCached);
         return { images: similarCached, fromCache: true };
       }
     }
 
-    // Try AI-suggested queries first, then fallback to original
     const queriesToTry = [...(extraQueries ?? []), query];
 
     for (const q of queriesToTry) {
+      if (abortRef.current) break;
       for (const source of SOURCES_FALLBACK) {
-        if (abortCheck()) break;
-
+        if (abortRef.current) break;
         for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-          if (abortCheck()) break;
-
+          if (abortRef.current) break;
           try {
             const { images } = await searchGoogleProductImages({ query: q, start: 1, source });
             if (images.length > 0) {
-              localCacheRef.current.set(cacheKey, images);
+              imageCacheRef.current.set(cacheKey, images);
               if (baseKey.length >= 3) {
-                const baseKeyCache = `${baseKey} produto construção`.toLowerCase().trim();
-                if (!localCacheRef.current.has(baseKeyCache)) {
-                  localCacheRef.current.set(baseKeyCache, images);
-                }
+                const bkc = `${baseKey} produto construção`.toLowerCase().trim();
+                if (!imageCacheRef.current.has(bkc)) imageCacheRef.current.set(bkc, images);
               }
               return { images, fromCache: false };
             }
-            break;
+            break; // no results from this source, try next
           } catch (e: any) {
             const msg = e?.message || "";
-            const is429 = msg.includes("Limite diário") || msg.includes("429") || msg.includes("limit");
-
+            const is429 = msg.includes("429") || msg.includes("limit") || msg.includes("Limite");
             if (is429 && attempt < MAX_RETRIES - 1) {
               await sleep(RETRY_DELAY_429);
               continue;
             }
-            if (attempt < MAX_RETRIES - 1 && !is429) {
-              await sleep(5000);
+            if (!is429 && attempt < MAX_RETRIES - 1) {
+              await sleep(3000);
               continue;
             }
             break;
@@ -276,213 +312,236 @@ export default function AdminBulkImageSearch() {
         }
       }
     }
-
     return { images: [], fromCache: false };
   };
 
-  /* ─── AI Enrichment (description + tech sheet) ─── */
-  const enrichProductWithAI = async (productId: string, productName: string): Promise<{
-    success: boolean;
-    searchQueries: string[];
-    description: string;
-  }> => {
+  /* ─── Update helpers (batched state updates) ─── */
+  const updateJob = (idx: number, patch: Partial<JobEntry>) => {
+    jobsRef.current = jobsRef.current.map((j, i) => i === idx ? { ...j, ...patch } : j);
+    setJobs([...jobsRef.current]);
+  };
+
+  const updateStats = (patch: Partial<PipelineStats>) => {
+    statsRef.current = statsRef.current ? { ...statsRef.current, ...patch } : null;
+    if (statsRef.current) setStats({ ...statsRef.current });
+  };
+
+  /* ─── Process a single product (worker task) ─── */
+  const processProduct = async (jobIdx: number, workerId: number): Promise<void> => {
+    const job = jobsRef.current[jobIdx];
+    if (!job || abortRef.current) return;
+
+    const startTime = Date.now();
+    updateJob(jobIdx, { status: "processing", workerId, step: "🧠 Interpretando com IA..." });
+    updateStats({ activeWorkers: (statsRef.current?.activeWorkers ?? 0) + 1, processing: (statsRef.current?.processing ?? 0) + 1, pending: (statsRef.current?.pending ?? 0) - 1 });
+
     try {
-      const { data, error } = await cloud.functions.invoke("enrich-products", {
-        body: { action: "enrich", productId, productName },
+      // STEP 1: AI Enrichment
+      let aiSearchQueries: string[] = [];
+      const product = products.find((p) => p.id === job.productId);
+      const needsDescription = !product?.description || (product.description?.trim().length ?? 0) < 20;
+      const neededImages = MAX_IMAGES_PER_PRODUCT - (product?.imageCount ?? 0);
+
+      if (needsDescription || neededImages > 0) {
+        updateJob(jobIdx, { step: "🧠 IA interpretando..." });
+        try {
+          const { data, error } = await cloud.functions.invoke("enrich-products", {
+            body: { action: "enrich", productId: job.productId, productName: job.productName },
+          });
+          if (!error && data?.success) {
+            aiSearchQueries = data.searchQueries ?? [];
+            updateJob(jobIdx, { descriptionGenerated: true, techSheetGenerated: true });
+            updateStats({ descriptionsGenerated: (statsRef.current?.descriptionsGenerated ?? 0) + 1 });
+          }
+        } catch { /* continue even if AI fails */ }
+      }
+
+      // STEP 2: Image Search
+      if (neededImages > 0 && !abortRef.current) {
+        updateJob(jobIdx, { step: "🔍 Buscando imagens..." });
+        const defaultQuery = `${job.productName} produto construção`;
+        const { images: searchResults } = await searchWithCache(defaultQuery, aiSearchQueries);
+        updateJob(jobIdx, { imagesFound: searchResults.length });
+
+        // STEP 3: Import images
+        if (searchResults.length > 0 && !abortRef.current) {
+          updateJob(jobIdx, { step: "💾 Salvando imagens..." });
+          const toImport = searchResults.slice(0, Math.min(neededImages, MAX_IMAGES_PER_PRODUCT));
+          try {
+            const result = await importGoogleProductImages({ productId: job.productId, images: toImport });
+            updateJob(jobIdx, { imagesSaved: result.imported.length });
+            updateStats({ imagesApproved: (statsRef.current?.imagesApproved ?? 0) + result.imported.length });
+          } catch { /* partial failure */ }
+        }
+      }
+
+      const elapsed = Date.now() - startTime;
+      updateJob(jobIdx, { status: "completed", time: elapsed, step: "✅ Concluído" });
+      updateStats({
+        completed: (statsRef.current?.completed ?? 0) + 1,
+        processing: Math.max(0, (statsRef.current?.processing ?? 0) - 1),
+        activeWorkers: Math.max(0, (statsRef.current?.activeWorkers ?? 0) - 1),
       });
 
-      if (error) throw error;
-
-      return {
-        success: true,
-        searchQueries: data?.searchQueries ?? [],
-        description: data?.description ?? "",
-      };
     } catch (e: any) {
-      console.error("Enrich error:", e);
-      return { success: false, searchQueries: [], description: "" };
+      const elapsed = Date.now() - startTime;
+      const retryCount = job.retryCount + 1;
+
+      if (retryCount < MAX_RETRIES) {
+        updateJob(jobIdx, { status: "retry", retryCount, error: e?.message, time: elapsed, step: `🔄 Retry ${retryCount}/${MAX_RETRIES}` });
+        updateStats({
+          retries: (statsRef.current?.retries ?? 0) + 1,
+          processing: Math.max(0, (statsRef.current?.processing ?? 0) - 1),
+          activeWorkers: Math.max(0, (statsRef.current?.activeWorkers ?? 0) - 1),
+          pending: (statsRef.current?.pending ?? 0) + 1,
+        });
+        // Re-enqueue for retry after delay
+        await sleep(5000);
+        if (!abortRef.current) await processProduct(jobIdx, workerId);
+      } else {
+        updateJob(jobIdx, { status: "error", error: e?.message, time: elapsed, step: "❌ Erro" });
+        updateStats({
+          errors: (statsRef.current?.errors ?? 0) + 1,
+          processing: Math.max(0, (statsRef.current?.processing ?? 0) - 1),
+          activeWorkers: Math.max(0, (statsRef.current?.activeWorkers ?? 0) - 1),
+        });
+      }
+    }
+
+    // Save log to DB (fire and forget)
+    const finalJob = jobsRef.current[jobIdx];
+    try {
+      await cloud.from("image_import_logs").insert({
+        product_id: finalJob.productId,
+        images_found: finalJob.imagesFound,
+        images_saved: finalJob.imagesSaved,
+        status: finalJob.status,
+        processing_time: finalJob.time,
+        error_message: finalJob.error || null,
+      } as any);
+    } catch { /* ignore */ }
+
+    // Update throughput
+    if (statsRef.current) {
+      const elapsedSec = (Date.now() - statsRef.current.startTime) / 1000;
+      const completedCount = statsRef.current.completed;
+      const avgTime = completedCount > 0 ? jobsRef.current.filter(j => j.status === "completed").reduce((s, j) => s + j.time, 0) / completedCount : 0;
+      const throughput = elapsedSec > 0 ? (completedCount / elapsedSec) * 60 : 0;
+      updateStats({ avgTimePerProduct: avgTime, throughput });
     }
   };
 
-  /* ─── AUTO IMPORT (Full Pipeline) ─── */
-  const runAutoImport = async (eligibleProducts: ProductRow[]) => {
+  /* ─── Run Pipeline with Parallel Workers ─── */
+  const runPipeline = async (eligibleProducts: ProductRow[]) => {
     if (eligibleProducts.length === 0) {
       toast({ title: "Nada a processar", description: "Todos os produtos já estão completos." });
       return;
     }
 
     abortRef.current = false;
-    setAutoRunning(true);
-    setAutoLogs([]);
-    setAutoStats({
+    setPipelineRunning(true);
+
+    const initialJobs: JobEntry[] = eligibleProducts.map((p) => ({
+      productId: p.id,
+      productName: p.name,
+      status: "pending" as JobStatus,
+      imagesFound: 0,
+      imagesSaved: 0,
+      descriptionGenerated: false,
+      techSheetGenerated: false,
+      time: 0,
+      retryCount: 0,
+      step: "⏳ Na fila",
+      workerId: -1,
+    }));
+
+    jobsRef.current = initialJobs;
+    setJobs([...initialJobs]);
+
+    const initialStats: PipelineStats = {
       total: eligibleProducts.length,
-      processed: 0,
-      imagesApproved: 0,
-      imagesRejected: 0,
-      descriptionsGenerated: 0,
+      pending: eligibleProducts.length,
+      processing: 0,
+      completed: 0,
       errors: 0,
       retries: 0,
-      currentProduct: "",
-      currentStep: "",
-    });
+      imagesApproved: 0,
+      descriptionsGenerated: 0,
+      activeWorkers: 0,
+      startTime: Date.now(),
+      avgTimePerProduct: 0,
+      throughput: 0,
+    };
+    statsRef.current = initialStats;
+    setStats({ ...initialStats });
 
-    const logs: LogEntry[] = [];
+    // Semaphore-based parallel execution
+    const sem = new Semaphore(workerCount);
+    const promises: Promise<void>[] = [];
 
-    for (let i = 0; i < eligibleProducts.length; i++) {
+    for (let i = 0; i < initialJobs.length; i++) {
       if (abortRef.current) break;
 
-      const product = eligibleProducts[i];
-      const neededImages = MAX_IMAGES_PER_PRODUCT - product.imageCount;
-      const needsDescription = !product.description || product.description.trim().length < 20;
-      const startTime = Date.now();
+      await sem.acquire();
+      if (abortRef.current) { sem.release(); break; }
 
-      setAutoStats((prev) => prev ? { ...prev, currentProduct: product.name, processed: i, currentStep: "🧠 Interpretando..." } : prev);
+      // Stagger worker launches
+      if (i > 0) await sleep(INTER_WORKER_DELAY);
 
-      let entry: LogEntry = {
-        productId: product.id,
-        productName: product.name,
-        imagesFound: 0,
-        imagesSaved: 0,
-        descriptionGenerated: false,
-        techSheetGenerated: false,
-        status: "error",
-        time: 0,
-      };
-
-      try {
-        // STEP 1: AI Enrichment (interpretation + description + tech sheet)
-        let aiSearchQueries: string[] = [];
-
-        if (needsDescription || neededImages > 0) {
-          setAutoStats((prev) => prev ? { ...prev, currentStep: "🧠 IA interpretando produto..." } : prev);
-
-          const enrichResult = await enrichProductWithAI(product.id, product.name);
-
-          if (enrichResult.success) {
-            entry.descriptionGenerated = true;
-            entry.techSheetGenerated = true;
-            aiSearchQueries = enrichResult.searchQueries;
-
-            setAutoStats((prev) => prev ? {
-              ...prev,
-              descriptionsGenerated: prev.descriptionsGenerated + 1,
-              currentStep: "🔍 Buscando imagens..."
-            } : prev);
-          }
-        }
-
-        // STEP 2: Image Search using AI-suggested queries
-        if (neededImages > 0) {
-          setAutoStats((prev) => prev ? { ...prev, currentStep: "🔍 Buscando imagens..." } : prev);
-
-          const defaultQuery = `${product.name} produto construção`;
-          const { images: searchResults } = await searchWithRetryAndFallback(
-            defaultQuery,
-            () => abortRef.current,
-            aiSearchQueries,
-          );
-
-          entry.imagesFound = searchResults.length;
-
-          if (searchResults.length === 0) {
-            if (!entry.descriptionGenerated) {
-              entry.status = "skipped";
-              entry.error = "Nenhuma imagem encontrada";
-            } else {
-              // Description was generated, partial success
-              entry.status = "partial";
-              entry.error = "Descrição gerada, mas sem imagens";
-            }
-          } else {
-            // STEP 3: Import images
-            setAutoStats((prev) => prev ? { ...prev, currentStep: "💾 Salvando imagens..." } : prev);
-
-            const toImport = searchResults.slice(0, Math.min(neededImages, 10));
-            const result = await importGoogleProductImages({
-              productId: product.id,
-              images: toImport,
-            });
-
-            entry.imagesSaved = result.imported.length;
-
-            setAutoStats((prev) =>
-              prev ? {
-                ...prev,
-                imagesApproved: prev.imagesApproved + result.imported.length,
-                imagesRejected: prev.imagesRejected + result.failed,
-              } : prev
-            );
-
-            if (result.imported.length === 0 && !entry.descriptionGenerated) {
-              entry.status = "error";
-              entry.error = "Nenhuma imagem válida para salvar";
-            } else if (result.failed > 0) {
-              entry.status = "partial";
-            } else {
-              entry.status = "success";
-            }
-          }
-        } else {
-          // Only needed description
-          entry.status = entry.descriptionGenerated ? "success" : "skipped";
-        }
-      } catch (e: any) {
-        entry.status = "error";
-        entry.error = e?.message || "Erro desconhecido";
-        setAutoStats((prev) => prev ? { ...prev, errors: prev.errors + 1 } : prev);
-      }
-
-      entry.time = Date.now() - startTime;
-
-      // Save log to DB (fire and forget)
-      try {
-        await cloud.from("image_import_logs").insert({
-          product_id: product.id,
-          images_found: entry.imagesFound,
-          images_saved: entry.imagesSaved,
-          status: entry.status,
-          processing_time: entry.time,
-          error_message: entry.error || null,
-        } as any);
-      } catch { /* ignore */ }
-
-      logs.push(entry);
-      setAutoLogs([...logs]);
-      setAutoStats((prev) => prev ? { ...prev, processed: i + 1 } : prev);
-
-      // Delay between products
-      if (i < eligibleProducts.length - 1 && !abortRef.current) {
-        await sleep(DELAY_MS);
-      }
+      const workerIdx = (i % workerCount) + 1;
+      const promise = processProduct(i, workerIdx).finally(() => sem.release());
+      promises.push(promise);
     }
 
-    setAutoRunning(false);
+    await Promise.allSettled(promises);
+
+    setPipelineRunning(false);
+
+    // Final stats
+    const finalJobs = jobsRef.current;
+    const completedCount = finalJobs.filter(j => j.status === "completed").length;
+    const errCount = finalJobs.filter(j => j.status === "error").length;
+    const totalTime = Date.now() - initialStats.startTime;
+    const avgTime = completedCount > 0 ? finalJobs.filter(j => j.status === "completed").reduce((s, j) => s + j.time, 0) / completedCount : 0;
+
+    // Save to run history
+    setRunHistory((prev) => [
+      {
+        date: new Date().toLocaleString("pt-BR"),
+        total: finalJobs.length,
+        completed: completedCount,
+        errors: errCount,
+        avgTime,
+        duration: totalTime,
+      },
+      ...prev.slice(0, 9),
+    ]);
+
     await load();
-    const successCount = logs.filter((l) => l.status === "success" || l.status === "partial").length;
     toast({
       title: "Pipeline concluído",
-      description: `${successCount} de ${logs.length} produtos enriquecidos com sucesso.`,
+      description: `${completedCount} de ${finalJobs.length} produtos enriquecidos em ${(totalTime / 1000).toFixed(0)}s.`,
     });
   };
 
-  const startAutoImport = () => {
+  const startPipeline = () => {
     const eligible = products.filter(
       (p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20
     );
-    runAutoImport(eligible);
+    runPipeline(eligible);
   };
 
   const reprocessErrors = () => {
-    const errorIds = new Set(autoLogs.filter((l) => l.status === "error" || l.status === "retry").map((l) => l.productId));
+    const errorIds = new Set(jobs.filter((l) => l.status === "error" || l.status === "retry").map((l) => l.productId));
     const eligible = products.filter((p) => errorIds.has(p.id));
     if (eligible.length === 0) {
       toast({ title: "Sem erros", description: "Nenhum produto com erro para reprocessar." });
       return;
     }
-    runAutoImport(eligible);
+    runPipeline(eligible);
   };
 
-  const stopAutoImport = () => { abortRef.current = true; };
+  const stopPipeline = () => { abortRef.current = true; };
 
   // ─── DETAIL VIEW ───
   if (detailProduct) {
@@ -576,7 +635,6 @@ export default function AdminBulkImageSearch() {
           </CardContent>
         </Card>
 
-        {/* Description preview */}
         {detailProduct.description && detailProduct.description.trim().length > 0 && (
           <Card className="rounded-xl sm:rounded-2xl">
             <CardHeader className="pb-2">
@@ -609,8 +667,8 @@ export default function AdminBulkImageSearch() {
   }
 
   // ─── LIST VIEW ───
-  const progressPercent = autoStats ? Math.round((autoStats.processed / Math.max(1, autoStats.total)) * 100) : 0;
-  const errorCount = autoLogs.filter((l) => l.status === "error" || l.status === "retry").length;
+  const progressPercent = stats ? Math.round((stats.completed / Math.max(1, stats.total)) * 100) : 0;
+  const errorCount = jobs.filter((l) => l.status === "error").length;
   const eligibleCount = products.filter(
     (p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20
   ).length;
@@ -627,89 +685,106 @@ export default function AdminBulkImageSearch() {
             <Wand2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-primary" /> Gerador de Imagens & Conteúdo IA
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Pipeline automático: IA interpreta → busca imagens → gera descrição → gera ficha técnica → completa cadastro.
+            Pipeline paralelo com {workerCount} workers simultâneos — IA interpreta → busca → importa → gera conteúdo.
           </p>
         </div>
-        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => load()} disabled={loading || autoRunning}>
+        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => load()} disabled={loading || pipelineRunning}>
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
         {[
-          { value: products.length, label: "Total", color: "" },
-          { value: noImagesCount, label: "Sem imagens", color: "text-destructive" },
-          { value: noDescriptionCount, label: "Sem descrição", color: "text-orange-500" },
-          { value: incompleteCount, label: "Img incompletas", color: "text-amber-500" },
-          { value: `${products.length > 0 ? Math.round(((products.length - noImagesCount) / products.length) * 100) : 0}%`, label: "Cobertura", color: "text-primary" },
+          { value: products.length, label: "Total", icon: BarChart3, color: "" },
+          { value: noImagesCount, label: "Sem imagens", icon: ImageIcon, color: "text-destructive" },
+          { value: noDescriptionCount, label: "Sem descrição", icon: FileText, color: "text-orange-500" },
+          { value: incompleteCount, label: "Incompletos", icon: AlertTriangle, color: "text-amber-500" },
+          { value: `${products.length > 0 ? Math.round(((products.length - noImagesCount) / products.length) * 100) : 0}%`, label: "Cobertura", icon: Activity, color: "text-primary" },
+          { value: stats?.throughput ? `${stats.throughput.toFixed(1)}/min` : "—", label: "Velocidade", icon: Gauge, color: "text-green-600" },
         ].map((stat) => (
           <Card key={stat.label} className="rounded-xl">
             <CardContent className="p-3 sm:p-4 text-center">
-              <div className={`text-xl sm:text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground">{stat.label}</div>
+              <div className={`text-lg sm:text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground flex items-center justify-center gap-1">
+                <stat.icon className="w-3 h-3" /> {stat.label}
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Auto Import Section */}
+      {/* Pipeline Control */}
       <Card className="rounded-xl sm:rounded-2xl border-primary/30 bg-primary/5">
         <CardHeader className="pb-3">
           <CardTitle className="text-base sm:text-lg flex items-center gap-2">
             <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-            Pipeline de Enriquecimento Automático
+            Pipeline de Enriquecimento Paralelo
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!autoRunning && !autoStats && (
+          {!pipelineRunning && !stats && (
             <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm text-muted-foreground">
-                <div className="flex items-start gap-2 p-2 rounded-lg bg-background/50 border border-border">
-                  <span className="text-base">🧠</span>
-                  <div>
-                    <span className="font-medium text-foreground">IA Interpreta</span>
-                    <p className="text-[10px] sm:text-xs mt-0.5">Analisa nome, extrai tipo, cor, tamanho, marca e categoria</p>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs sm:text-sm text-muted-foreground">
+                {[
+                  { emoji: "🧠", title: "IA Interpreta", desc: "Extrai tipo, cor, tamanho, marca e categoria" },
+                  { emoji: "🔍", title: "Busca Inteligente", desc: "Multi-fonte com cache e retry automático" },
+                  { emoji: "💾", title: "Importa Imagens", desc: "Até 8 imagens por produto" },
+                  { emoji: "📝", title: "Gera Conteúdo", desc: "Descrição + ficha técnica completa" },
+                ].map((step) => (
+                  <div key={step.title} className="flex items-start gap-2 p-2 rounded-lg bg-background/50 border border-border">
+                    <span className="text-base">{step.emoji}</span>
+                    <div>
+                      <span className="font-medium text-foreground">{step.title}</span>
+                      <p className="text-[10px] sm:text-xs mt-0.5">{step.desc}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-start gap-2 p-2 rounded-lg bg-background/50 border border-border">
-                  <span className="text-base">🔍</span>
-                  <div>
-                    <span className="font-medium text-foreground">Busca Inteligente</span>
-                    <p className="text-[10px] sm:text-xs mt-0.5">Multi-fonte: Bing, Google, Mercado Livre com queries otimizadas</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2 p-2 rounded-lg bg-background/50 border border-border">
-                  <span className="text-base">📝</span>
-                  <div>
-                    <span className="font-medium text-foreground">Gera Conteúdo</span>
-                    <p className="text-[10px] sm:text-xs mt-0.5">Descrição completa + ficha técnica + categorização automática</p>
+                ))}
+              </div>
+
+              {/* Worker count selector */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 text-xs sm:text-sm">
+                  <Users className="w-4 h-4 text-primary" />
+                  <span className="font-medium">Workers paralelos:</span>
+                  <div className="flex gap-1">
+                    {[5, 10, 15, 20].map((n) => (
+                      <Button
+                        key={n}
+                        size="sm"
+                        variant={workerCount === n ? "default" : "outline"}
+                        className="h-7 w-9 text-xs p-0"
+                        onClick={() => setWorkerCount(n)}
+                      >
+                        {n}
+                      </Button>
+                    ))}
                   </div>
                 </div>
               </div>
+
               <Button
-                onClick={startAutoImport}
+                onClick={startPipeline}
                 disabled={loading || eligibleCount === 0}
                 className="w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-semibold gap-2"
               >
                 <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
-                IMPORTAR IMAGENS AUTOMATICAMENTE
+                IMPORTAR IMAGENS AUTOMATICAMENTE ({eligibleCount} produtos)
               </Button>
-              {eligibleCount === 0 ? (
+              {eligibleCount === 0 && (
                 <p className="text-xs text-green-600 font-medium">✅ Todos os produtos já estão completos!</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">{eligibleCount} produto(s) serão processados.</p>
               )}
             </div>
           )}
 
           {/* Progress */}
-          {autoStats && (
+          {stats && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs sm:text-sm">
-                  <span className="font-medium">
-                    {autoRunning ? "Processando..." : "Concluído"}
+                  <span className="font-medium flex items-center gap-2">
+                    {pipelineRunning && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                    {pipelineRunning ? "Processando..." : "Concluído"}
                   </span>
                   <span className="text-muted-foreground">
                     Cobertura: {progressPercent}%
@@ -717,47 +792,54 @@ export default function AdminBulkImageSearch() {
                 </div>
                 <Progress value={progressPercent} className="h-3 sm:h-4" />
                 <div className="text-center text-xs text-muted-foreground">
-                  {autoStats.processed} / {autoStats.total} produtos
+                  {stats.completed} / {stats.total} produtos
                 </div>
               </div>
 
-              {autoRunning && autoStats.currentProduct && (
-                <div className="text-xs sm:text-sm text-muted-foreground space-y-1">
-                  <div className="flex items-center gap-2">
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
-                    <span className="truncate font-medium">{autoStats.currentProduct}</span>
-                  </div>
-                  {autoStats.currentStep && (
-                    <div className="text-[10px] sm:text-xs text-primary pl-6">{autoStats.currentStep}</div>
-                  )}
-                </div>
-              )}
-
-              {/* Stats grid */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {/* Live metrics */}
+              <div className="grid grid-cols-3 sm:grid-cols-8 gap-2">
                 {[
-                  { value: autoStats.processed, label: "Processados", color: "text-primary" },
-                  { value: autoStats.total - autoStats.processed, label: "Restantes", color: "text-muted-foreground" },
-                  { value: autoStats.imagesApproved, label: "Imagens", color: "text-green-600" },
-                  { value: autoStats.descriptionsGenerated, label: "Descrições", color: "text-blue-600" },
-                  { value: autoStats.errors, label: "Erros", color: "text-destructive" },
-                  { value: autoStats.retries, label: "Retries", color: "text-orange-500" },
+                  { value: stats.activeWorkers, label: "Workers ativos", color: "text-blue-600", icon: Users },
+                  { value: stats.completed, label: "Processados", color: "text-primary", icon: CheckCircle2 },
+                  { value: stats.pending, label: "Na fila", color: "text-muted-foreground", icon: Clock },
+                  { value: stats.processing, label: "Em execução", color: "text-blue-500", icon: Activity },
+                  { value: stats.imagesApproved, label: "Imagens", color: "text-green-600", icon: ImageIcon },
+                  { value: stats.descriptionsGenerated, label: "Descrições", color: "text-indigo-600", icon: FileText },
+                  { value: stats.errors, label: "Erros", color: "text-destructive", icon: XCircle },
+                  { value: stats.avgTimePerProduct > 0 ? `${(stats.avgTimePerProduct / 1000).toFixed(1)}s` : "—", label: "Tempo médio", color: "text-amber-600", icon: Timer },
                 ].map((s) => (
-                  <div key={s.label} className="rounded-lg border border-border p-2 sm:p-3 text-center">
-                    <div className={`text-base sm:text-lg font-bold ${s.color}`}>{s.value}</div>
-                    <div className="text-[10px] sm:text-xs text-muted-foreground">{s.label}</div>
+                  <div key={s.label} className="rounded-lg border border-border p-2 text-center">
+                    <div className={`text-sm sm:text-base font-bold ${s.color}`}>{s.value}</div>
+                    <div className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center justify-center gap-0.5">
+                      <s.icon className="w-2.5 h-2.5" /> {s.label}
+                    </div>
                   </div>
                 ))}
               </div>
 
+              {/* Throughput indicator */}
+              {stats.throughput > 0 && (
+                <div className="flex items-center gap-2 text-xs sm:text-sm bg-green-500/10 border border-green-500/30 rounded-lg p-2">
+                  <Gauge className="w-4 h-4 text-green-600" />
+                  <span className="font-medium text-green-700">
+                    Velocidade: {stats.throughput.toFixed(1)} produtos/min
+                  </span>
+                  {stats.total > stats.completed && (
+                    <span className="text-green-600/70 text-[10px] sm:text-xs">
+                      — ETA: {stats.throughput > 0 ? `${Math.ceil((stats.total - stats.completed) / stats.throughput)} min` : "calculando..."}
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-2 flex-wrap">
-                {autoRunning ? (
-                  <Button variant="destructive" size="sm" className="h-8 text-xs sm:text-sm" onClick={stopAutoImport}>
+                {pipelineRunning ? (
+                  <Button variant="destructive" size="sm" className="h-8 text-xs sm:text-sm" onClick={stopPipeline}>
                     <StopCircle className="w-3.5 h-3.5 mr-1" /> Parar
                   </Button>
                 ) : (
                   <>
-                    <Button size="sm" className="h-8 text-xs sm:text-sm" onClick={startAutoImport}>
+                    <Button size="sm" className="h-8 text-xs sm:text-sm" onClick={startPipeline}>
                       <Play className="w-3.5 h-3.5 mr-1" /> Executar novamente
                     </Button>
                     {errorCount > 0 && (
@@ -766,44 +848,42 @@ export default function AdminBulkImageSearch() {
                         Reprocessar {errorCount} erro(s)
                       </Button>
                     )}
-                    <Button variant="outline" size="sm" className="h-8 text-xs sm:text-sm" onClick={() => { setAutoStats(null); setAutoLogs([]); }}>
+                    <Button variant="outline" size="sm" className="h-8 text-xs sm:text-sm" onClick={() => { setStats(null); setJobs([]); }}>
                       Limpar
                     </Button>
                   </>
                 )}
               </div>
 
-              {/* Logs */}
-              {autoLogs.length > 0 && (
+              {/* Job Log */}
+              {jobs.length > 0 && (
                 <div className="space-y-1.5">
                   <h4 className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
-                    <BarChart3 className="w-3.5 h-3.5" /> Log do processo ({autoLogs.length} itens)
+                    <BarChart3 className="w-3.5 h-3.5" /> Log do pipeline ({jobs.filter(j => j.status !== "pending").length}/{jobs.length})
                   </h4>
                   <div className="max-h-[40vh] overflow-y-auto space-y-1 rounded-lg border border-border p-2 bg-muted/20">
-                    {autoLogs.map((log, idx) => (
+                    {jobs.filter(j => j.status !== "pending").map((job, idx) => (
                       <div key={idx} className="flex items-center gap-2 text-[10px] sm:text-xs py-1 border-b border-border/50 last:border-0">
-                        {log.status === "success" && <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />}
-                        {log.status === "partial" && <CheckCircle2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />}
-                        {log.status === "error" && <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />}
-                        {log.status === "skipped" && <AlertTriangle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                        {log.status === "retry" && <RotateCcw className="w-3.5 h-3.5 text-orange-500 shrink-0" />}
-                        <span className="truncate flex-1 font-medium">{log.productName}</span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {log.descriptionGenerated && (
-                            <Badge variant="outline" className="text-[8px] sm:text-[10px] px-1 py-0 border-blue-500/50 text-blue-600">📝</Badge>
-                          )}
-                          {log.techSheetGenerated && (
-                            <Badge variant="outline" className="text-[8px] sm:text-[10px] px-1 py-0 border-green-500/50 text-green-600">📋</Badge>
-                          )}
+                        {job.status === "completed" && <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />}
+                        {job.status === "processing" && <RefreshCw className="w-3.5 h-3.5 text-blue-500 animate-spin shrink-0" />}
+                        {job.status === "error" && <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                        {job.status === "retry" && <RotateCcw className="w-3.5 h-3.5 text-orange-500 shrink-0" />}
+                        {job.status === "pending" && <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                        <span className="text-[9px] text-muted-foreground shrink-0">W{job.workerId}</span>
+                        <span className="truncate flex-1 font-medium">{job.productName}</span>
+                        <span className="text-[9px] sm:text-[10px] text-muted-foreground shrink-0">{job.step}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {job.descriptionGenerated && <Badge variant="outline" className="text-[8px] px-1 py-0 border-blue-500/50 text-blue-600">📝</Badge>}
+                          {job.techSheetGenerated && <Badge variant="outline" className="text-[8px] px-1 py-0 border-green-500/50 text-green-600">📋</Badge>}
                         </div>
-                        {log.error && <span className="text-destructive/70 truncate max-w-[100px] sm:max-w-[180px]" title={log.error}>{log.error}</span>}
-                        <span className="text-muted-foreground shrink-0">
-                          {log.imagesSaved}/{log.imagesFound}
-                        </span>
-                        <span className="text-muted-foreground shrink-0 flex items-center gap-0.5">
-                          <Clock className="w-2.5 h-2.5" />
-                          {(log.time / 1000).toFixed(1)}s
-                        </span>
+                        {job.error && <span className="text-destructive/70 truncate max-w-[80px] sm:max-w-[150px]" title={job.error}>{job.error}</span>}
+                        <span className="text-muted-foreground shrink-0">{job.imagesSaved}/{job.imagesFound}</span>
+                        {job.time > 0 && (
+                          <span className="text-muted-foreground shrink-0 flex items-center gap-0.5">
+                            <Clock className="w-2.5 h-2.5" />
+                            {(job.time / 1000).toFixed(1)}s
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -813,6 +893,30 @@ export default function AdminBulkImageSearch() {
           )}
         </CardContent>
       </Card>
+
+      {/* Run History */}
+      {runHistory.length > 0 && (
+        <Card className="rounded-xl sm:rounded-2xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+              <Timer className="w-4 h-4" /> Histórico de execuções
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              {runHistory.map((run, idx) => (
+                <div key={idx} className="flex items-center gap-3 text-[10px] sm:text-xs py-1.5 border-b border-border/50 last:border-0">
+                  <span className="text-muted-foreground shrink-0">{run.date}</span>
+                  <span className="font-medium">{run.completed}/{run.total} produtos</span>
+                  {run.errors > 0 && <span className="text-destructive">{run.errors} erros</span>}
+                  <span className="text-muted-foreground">Média: {(run.avgTime / 1000).toFixed(1)}s</span>
+                  <span className="text-muted-foreground">Duração: {(run.duration / 1000).toFixed(0)}s</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filter */}
       <div className="flex gap-1.5 sm:gap-2 flex-wrap">
@@ -831,7 +935,7 @@ export default function AdminBulkImageSearch() {
       <Card className="rounded-xl sm:rounded-2xl">
         <CardHeader className="pb-2 sm:pb-3">
           <CardTitle className="text-base sm:text-lg">
-            {filter === "no-images" ? "Produtos sem imagens" : filter === "incomplete" ? "Produtos com menos de 6 imagens" : "Todos os produtos"}
+            {filter === "no-images" ? "Produtos sem imagens" : filter === "incomplete" ? "Produtos com menos de 8 imagens" : "Todos os produtos"}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">

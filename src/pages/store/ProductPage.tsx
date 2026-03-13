@@ -25,6 +25,22 @@ import { ShippingCalculator } from "@/components/store/pdp/ShippingCalculator";
 import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
 import { cloud } from "@/lib/cloud";
 
+function parseInlineBold(text: string) {
+  const parts = text.split(/\*\*(.*?)\*\*/g);
+  if (parts.length === 1) return <>{text}</>;
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <span key={i} className="font-semibold text-foreground">{part}</span>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 function ProductDescription({ markdown }: { markdown: string }) {
   const lines = useMemo(() => markdown.split(/\r?\n/), [markdown]);
 
@@ -44,39 +60,50 @@ function ProductDescription({ markdown }: { markdown: string }) {
         continue;
       }
 
-      const kv = line.match(/^([^:]+):\s*(.*)$/);
+      // Strip leading "- " for list items
+      const cleaned = line.replace(/^-\s+/, "").trim();
+
+      // Match "**Key:** Value" or "**Key** Value" patterns
+      const boldKv = cleaned.match(/^\*\*(.+?)\*\*:?\s*(.*)$/);
+      if (boldKv) {
+        out.push({ kind: "kv", key: boldKv[1].trim(), value: (boldKv[2] ?? "-").trim() || "-" });
+        continue;
+      }
+
+      // Match "Key: Value" patterns
+      const kv = cleaned.match(/^([^:]{2,30}):\s+(.+)$/);
       if (kv) {
         out.push({ kind: "kv", key: kv[1].trim(), value: (kv[2] ?? "-").trim() || "-" });
         continue;
       }
 
-      out.push({ kind: "p", text: line.trim() });
+      out.push({ kind: "p", text: cleaned });
     }
 
     return out;
   }, [lines]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5 overflow-hidden break-words">
       {blocks.map((b, idx) => {
         if (b.kind === "h2") {
           return (
-            <h2 key={idx} className="text-sm font-semibold tracking-tight text-foreground">
+            <h2 key={idx} className="text-sm font-semibold tracking-tight text-foreground pt-1 first:pt-0">
               {b.text}
             </h2>
           );
         }
         if (b.kind === "kv") {
           return (
-            <div key={idx} className="text-xs">
-              <span className="text-muted-foreground">{b.key}: </span>
-              <span className="font-medium text-foreground">{b.value || "-"}</span>
+            <div key={idx} className="flex flex-wrap gap-x-1 text-xs leading-relaxed">
+              <span className="text-muted-foreground">{b.key}:</span>
+              <span className="font-medium text-foreground break-all">{b.value}</span>
             </div>
           );
         }
         return (
-          <p key={idx} className="text-xs text-muted-foreground leading-relaxed">
-            {b.text}
+          <p key={idx} className="text-xs text-muted-foreground leading-relaxed break-words">
+            {parseInlineBold(b.text)}
           </p>
         );
       })}

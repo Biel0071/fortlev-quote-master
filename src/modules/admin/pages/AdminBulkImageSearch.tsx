@@ -480,23 +480,41 @@ export default function AdminBulkImageSearch() {
           } catch { /* partial failure */ }
         }
 
-        // STEP 4: AI Image Generation Fallback
+        // STEP 4: AI Image Generation Fallback (concurrency limited)
         const currentSaved = jobsRef.current[jobIdx]?.imagesSaved ?? 0;
         if (currentSaved === 0 && aiImagePrompt && !abortRef.current) {
-          updateJob(jobIdx, { step: "🎨 Gerando imagem com IA..." });
+          updateJob(jobIdx, { step: "🎨 Aguardando slot IA..." });
+          await aiSemRef.current.acquire();
           try {
-            const { data, error } = await cloud.functions.invoke("enrich-products", {
-              body: {
-                action: "generate-image",
-                productId: job.productId,
-                prompt: aiImagePrompt,
-              },
-            });
-            if (!error && data?.success) {
-              updateJob(jobIdx, { imagesSaved: 1, imagesFound: 1 });
-              updateStats({ imagesApproved: (statsRef.current?.imagesApproved ?? 0) + 1 });
+            updateJob(jobIdx, { step: "🎨 Gerando imagem com IA..." });
+            for (let genAttempt = 0; genAttempt < MAX_RETRIES; genAttempt++) {
+              try {
+                const { data, error } = await cloud.functions.invoke("enrich-products", {
+                  body: {
+                    action: "generate-image",
+                    productId: job.productId,
+                    prompt: aiImagePrompt,
+                  },
+                });
+                if (!error && data?.success) {
+                  updateJob(jobIdx, { imagesSaved: 1, imagesFound: 1 });
+                  updateStats({ imagesApproved: (statsRef.current?.imagesApproved ?? 0) + 1 });
+                }
+                break;
+              } catch (genErr: any) {
+                const msg = genErr?.message || "";
+                const is429 = msg.includes("429") || msg.includes("rate") || msg.includes("limit");
+                if (is429 && genAttempt < MAX_RETRIES - 1) {
+                  updateJob(jobIdx, { step: `🎨 Rate limit, retry ${genAttempt + 1}...` });
+                  await sleep(RETRY_DELAYS_AI[genAttempt] ?? 20_000);
+                  continue;
+                }
+                break;
+              }
             }
-          } catch { /* AI generation failed, continue */ }
+          } finally {
+            aiSemRef.current.release();
+          }
         }
       }
 

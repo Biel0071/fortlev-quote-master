@@ -20,29 +20,29 @@ export function ShippingCalculator({ subtotal }: { subtotal: number }) {
   return (
     <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
       <div className="p-3 sm:p-5 space-y-3 sm:space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="h-10 w-10 rounded-2xl bg-secondary/40 flex items-center justify-center">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-10 w-10 rounded-2xl bg-secondary/40 flex items-center justify-center shrink-0">
             <Truck className="h-5 w-5 text-primary" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="font-semibold leading-tight">Calcule o frete</div>
-            <div className="text-sm text-muted-foreground">Usando a regra atual por valor do pedido.</div>
+            <div className="text-sm text-muted-foreground break-words">Usando a regra atual por valor do pedido.</div>
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 min-w-0">
           <Input
             value={cep}
             onChange={(e) => setCep(formatCep(e.target.value))}
             placeholder="00000-000"
             inputMode="numeric"
             aria-label="Digite seu CEP"
-            className="h-12 rounded-2xl"
+            className="h-12 rounded-2xl min-w-0"
           />
           <Button
             type="button"
             variant="outline"
-            className="h-12 rounded-2xl"
+            className="h-12 rounded-2xl shrink-0 px-4"
             onClick={() => setDidCalc(true)}
           >
             Calcular

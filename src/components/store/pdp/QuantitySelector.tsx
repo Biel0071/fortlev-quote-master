@@ -24,7 +24,7 @@ export function QuantitySelector({
       <Button
         type="button"
         variant="ghost"
-        className="h-10 w-10 rounded-xl"
+        className="h-10 w-10 rounded-xl shrink-0"
         onClick={() => onChange(value + 1)}
         aria-label="Aumentar quantidade"
       >

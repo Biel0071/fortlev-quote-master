@@ -402,16 +402,16 @@ export default function ProductPage() {
 
               {/* Description */}
               {descriptionParts.general ? (
-                <Card className="rounded-2xl border-border bg-card shadow-sm">
-                  <CardContent className="p-3 sm:p-5">
+                <Card className="rounded-2xl border-border bg-card shadow-sm w-full min-w-0 overflow-hidden">
+                  <CardContent className="p-3 sm:p-5 min-w-0">
                     <ProductDescription markdown={descriptionParts.general} />
                   </CardContent>
                 </Card>
               ) : null}
 
               {descriptionParts.tech ? (
-                <Card className="rounded-2xl border-border bg-card shadow-sm">
-                  <CardContent className="p-3 sm:p-5">
+                <Card className="rounded-2xl border-border bg-card shadow-sm w-full min-w-0 overflow-hidden">
+                  <CardContent className="p-3 sm:p-5 min-w-0">
                     <ProductDescription markdown={descriptionParts.tech} />
                   </CardContent>
                 </Card>

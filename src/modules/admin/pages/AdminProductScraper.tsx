@@ -469,36 +469,71 @@ export default function AdminProductScraper() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {history.map((h) => (
-                <div key={h.id} className="flex items-center gap-3 text-sm border rounded-md px-3 py-2">
-                  <span className="text-xs text-muted-foreground min-w-[120px]">
-                    {new Date(h.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  <Badge variant="secondary" className="text-xs">{h.total_urls} URLs</Badge>
-                  <Badge variant="outline" className="text-xs">{h.total_pages} pág</Badge>
-                  <Badge variant="outline" className="text-xs">{h.total_products} prod</Badge>
-                  <span className="text-xs text-muted-foreground font-mono">{formatDuration(h.execution_time_seconds)}</span>
-                  {h.domains?.length > 0 && (
-                    <span className="text-xs text-muted-foreground truncate max-w-[150px]">{h.domains.join(", ")}</span>
-                  )}
-                  <div className="ml-auto flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 gap-1 text-xs"
-                      onClick={() => setViewingHistory(h)}
-                      disabled={!hasHistoryProducts(h)}
-                    >
-                      <Eye className="h-3 w-3" />
-                      {hasHistoryProducts(h) ? "Ver" : "Sem itens"}
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteHistory(h.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+            <div className="space-y-3">
+              {history.map((h) => {
+                const hasProducts = hasHistoryProducts(h);
+                return (
+                  <div key={h.id} className="rounded-xl border border-border p-4 space-y-3 hover:bg-muted/20 transition">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-sm font-medium">
+                        {new Date(h.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {hasProducts && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1 text-xs"
+                            onClick={() => exportProducts(resolveHistoryProducts(h), `_${h.id.slice(0,8)}`)}
+                          >
+                            <Download className="h-3 w-3" />
+                            Baixar resultados
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1 text-xs"
+                          onClick={() => setViewingHistory(h)}
+                          disabled={!hasProducts}
+                        >
+                          <Eye className="h-3 w-3" />
+                          {hasProducts ? "Ver" : "Sem itens"}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteHistory(h.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
+                      <div className="rounded-lg bg-muted/40 px-3 py-2">
+                        <div className="text-muted-foreground">Domínio</div>
+                        <div className="font-medium truncate">{h.domains?.join(", ") || "—"}</div>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 px-3 py-2">
+                        <div className="text-muted-foreground">URLs</div>
+                        <div className="font-medium">{h.total_urls}</div>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 px-3 py-2">
+                        <div className="text-muted-foreground">Páginas</div>
+                        <div className="font-medium">{h.total_pages}</div>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 px-3 py-2">
+                        <div className="text-muted-foreground">Produtos</div>
+                        <div className="font-medium">{h.total_products}</div>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 px-3 py-2">
+                        <div className="text-muted-foreground">Tempo</div>
+                        <div className="font-medium">{formatDuration(h.execution_time_seconds)}</div>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 px-3 py-2">
+                        <div className="text-muted-foreground">Exportação</div>
+                        <div className="font-medium truncate">{hasProducts ? `scrape_${h.id.slice(0,8)}.xlsx` : "—"}</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

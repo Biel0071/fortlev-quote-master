@@ -76,14 +76,14 @@ export function StoreTopbar({
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-40 border-b border-border bg-background/95 backdrop-blur-md w-full overflow-x-hidden">
-        <div className="mx-auto max-w-6xl px-3 sm:px-6 pb-3 pt-3 sm:pb-4 sm:pt-4">
-          <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="mx-auto max-w-6xl px-3 sm:px-6 pb-2 pt-2 sm:pb-3 sm:pt-3">
+          <div className="flex flex-col gap-1.5 sm:gap-2">
             <div className="flex items-center justify-center">
               <Link to="/materiais" className="flex items-center justify-center" aria-label={brandLabel}>
                 <img
                   src={storeLogo}
                   alt={`${brandLabel} - logo`}
-                  className="h-[108px] w-[108px] sm:h-[126px] sm:w-[126px] object-contain"
+                  className="h-[80px] w-[80px] sm:h-[100px] sm:w-[100px] object-contain"
                   loading="eager"
                 />
               </Link>
@@ -92,12 +92,12 @@ export function StoreTopbar({
             <div className="flex items-center gap-2">
               <div className="min-w-0 flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
-                    placeholder="Buscar produtos..."
-                    className="h-12 w-full rounded-2xl pl-11"
+                    placeholder="Buscar..."
+                    className="h-10 w-full rounded-2xl pl-10 text-sm"
                     aria-label="Buscar produtos"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") submitSearch();

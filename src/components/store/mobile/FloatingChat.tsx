@@ -67,6 +67,8 @@ export function FloatingChat({
   }, [shouldHideFloating]);
 
   useEffect(() => {
+    if (shouldHideFloating) return;
+
     if (open) {
       wasOpenRef.current = true;
       setAttention(false);

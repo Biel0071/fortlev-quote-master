@@ -168,6 +168,10 @@ export default function AdminAiAnalysis() {
   const [rawJson, setRawJson] = useState<string>("");
   const [reportObj, setReportObj] = useState<FullReport | null>(null);
 
+  const [includeHtml, setIncludeHtml] = useState(false);
+  const [htmlProgress, setHtmlProgress] = useState(0);
+  const [htmlCapturing, setHtmlCapturing] = useState(false);
+
   const scopeLabel = useMemo(() => SCOPE_OPTIONS.find((x) => x.value === scope)?.label || scope, [scope]);
 
   const run = async () => {

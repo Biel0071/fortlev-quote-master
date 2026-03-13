@@ -140,6 +140,7 @@ export default function AdminProductsList() {
   }, [q, rows, filterActive, filterCategory]);
 
   const activeCount = rows.filter(r => r.active).length;
+  const inactiveCount = rows.length - activeCount;
   const activeIds = useMemo(() => rows.filter(r => r.active).map(r => r.id), [rows]);
 
   const toggleSelect = (id: string) => {
@@ -356,7 +357,7 @@ export default function AdminProductsList() {
                 className="text-xs"
                 onClick={() => setFilterActive(f)}
               >
-                {f === "all" ? "Todos" : f === "active" ? "Ativos" : "Inativos"}
+                {f === "all" ? `Todos (${rows.length})` : f === "active" ? `Ativos (${activeCount})` : `Inativos (${inactiveCount})`}
               </Button>
             ))}
             <Button variant="outline" size="icon" className="h-9 w-9" onClick={load} disabled={loading || batchRunning}>

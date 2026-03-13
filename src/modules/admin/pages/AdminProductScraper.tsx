@@ -169,7 +169,7 @@ export default function AdminProductScraper() {
     return <Clock className="h-4 w-4 text-muted-foreground" />;
   };
 
-  const urlCount = urlsInput.split(/[\n\r]+/).map(u => u.trim()).filter(u => u.startsWith("http")).length;
+  const urlCount = (urlsInput.match(/https?:\/\/[^\s]+/g) || []).length;
 
   return (
     <div className="space-y-6 p-6">

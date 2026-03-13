@@ -8,8 +8,15 @@ const corsHeaders = {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+const USER_AGENTS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+];
+
+function randomUA(): string {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
 
 // -------- pagination --------
 function buildPageUrls(baseUrl: string, page: number): string[] {
@@ -36,15 +43,12 @@ function buildPageUrls(baseUrl: string, page: number): string[] {
   return variants;
 }
 
-// -------- selectors (ordered by specificity) --------
+// -------- selectors --------
 const CARD_SELECTORS = [
-  // CNR / Convertiez
   ".item-product",
   "div.li .item-product",
-  // Magento
   ".product-item-info",
   ".product-item",
-  // Generic
   ".container-product",
   ".product-card",
   "[data-product]",
@@ -53,7 +57,6 @@ const CARD_SELECTORS = [
   ".shelf-item",
   ".vitrine-produto",
   ".card-product",
-  // Broad fallbacks
   "li.product",
   ".product",
   ".produto",
@@ -65,49 +68,28 @@ const CARD_SELECTORS = [
 ];
 
 const TITLE_SELECTORS = [
-  // CNR
-  "h2.title a",
-  "h2.title",
-  // Magento
-  "a.product-item-link",
-  ".product-item-link",
-  // Generic
-  ".product-title a",
-  ".product-title",
-  ".product-name a",
-  ".product-name",
-  ".produto-nome a",
-  ".produto-nome",
-  ".name a",
-  ".name",
-  "h2 a",
-  "h3 a",
-  "h2",
-  "h3",
+  "h2.title a", "h2.title",
+  "a.product-item-link", ".product-item-link",
+  ".product-title a", ".product-title",
+  ".product-name a", ".product-name",
+  ".produto-nome a", ".produto-nome",
+  ".name a", ".name",
+  "h2 a", "h3 a", "h2", "h3",
   "a[title]",
 ];
 
 const PRICE_SELECTORS = [
-  // CNR specific
   ".sale-price strong.total-m2",
   ".sale-price-pix-money span",
   ".sale-price strong",
   ".sale-price",
-  // Magento
   ".price-final_price .price",
   ".price-box .price",
   ".special-price .price",
   ".price-final .price",
-  // Generic
-  ".price-new",
-  ".price",
-  ".product-price",
-  ".preco",
-  ".best-price",
-  ".price__current",
-  "[data-price-amount]",
-  "span.price",
-  ".valor",
+  ".price-new", ".price", ".product-price",
+  ".preco", ".best-price", ".price__current",
+  "[data-price-amount]", "span.price", ".valor",
 ];
 
 interface ScrapedProduct {
@@ -129,7 +111,6 @@ function normalizePrice(raw: string): { display: string; num: number | null } {
     .replace(/por\s*/gi, "")
     .replace(/à vista.*/gi, "")
     .trim();
-  // Brazilian format: 1.234,56 → 1234.56
   cleaned = cleaned.replace(/\./g, "").replace(",", ".");
   const num = parseFloat(cleaned);
   return { display: raw.trim(), num: isNaN(num) ? null : Math.round(num * 100) / 100 };
@@ -140,20 +121,18 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
   if (!doc) return [];
 
   let cards: any[] = [];
-  let usedSelector = "";
 
   for (const sel of CARD_SELECTORS) {
     try {
       const found = doc.querySelectorAll(sel);
       if (found && found.length > 0) {
         cards = Array.from(found);
-        usedSelector = sel;
         break;
       }
     } catch { /* skip */ }
   }
 
-  // Fallback: all links with product-like hrefs
+  // Fallback: product-like links
   if (cards.length === 0) {
     const allLinks = Array.from(doc.querySelectorAll("a[href]")) as any[];
     const seen = new Set<string>();
@@ -163,16 +142,14 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
       if (
         text.length > 10 &&
         !seen.has(text.toLowerCase()) &&
-        (href.includes("/p") || href.includes("produto") || href.includes("product"))
+        (href.includes("/p") || href.includes("produto") || href.includes("product") || href.match(/\/[a-z0-9-]+$/))
       ) {
         seen.add(text.toLowerCase());
-        // Wrap in a virtual container
         const parent = a.parentElement;
         if (parent) cards.push(parent);
         else cards.push(a);
       }
     }
-    usedSelector = "fallback-links";
   }
 
   const products: ScrapedProduct[] = [];
@@ -192,24 +169,12 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
       } catch { /* skip */ }
     }
 
-    // Check image alt/title as fallback
     if (!bestTitle || bestTitle.length < 3) {
       try {
         const img = card.querySelector("img[alt]");
         if (img) {
           const alt = img.getAttribute("alt")?.trim() || "";
           if (alt.length > bestTitle.length) bestTitle = alt;
-        }
-      } catch { /* skip */ }
-    }
-
-    // Check link title attribute
-    if (!bestTitle || bestTitle.length < 3) {
-      try {
-        const a = card.querySelector("a[title]");
-        if (a) {
-          const t = a.getAttribute("title")?.trim() || "";
-          if (t.length > bestTitle.length) bestTitle = t;
         }
       } catch { /* skip */ }
     }
@@ -243,7 +208,6 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
       } catch { /* skip */ }
     }
 
-    // Try data-price-amount attribute
     if (!preco) {
       try {
         const priceEl = card.querySelector("[data-price-amount]");
@@ -263,39 +227,68 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
   return products;
 }
 
-async function fetchWithRetry(url: string, retries = 3): Promise<Response | null> {
+async function fetchPage(url: string, retries = 3): Promise<{ html: string | null; status: number | null; error: string | null }> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
       const res = await fetch(url, {
         headers: {
-          "User-Agent": USER_AGENT,
-          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "User-Agent": randomUA(),
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+          "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+          "Accept-Encoding": "gzip, deflate, br",
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+          "Sec-Fetch-Dest": "document",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-Site": "none",
+          "Sec-Fetch-User": "?1",
+          "Upgrade-Insecure-Requests": "1",
+          "Referer": new URL(url).origin + "/",
         },
         redirect: "follow",
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       if (res.status === 429) {
         await res.text();
-        const wait = attempt * 3000;
-        await sleep(wait);
+        await sleep(attempt * 3000);
         continue;
+      }
+
+      if (res.status === 403 || res.status === 503) {
+        const body = await res.text();
+        // Some sites return a challenge page, try again
+        if (attempt < retries) {
+          await sleep(attempt * 2000);
+          continue;
+        }
+        return { html: null, status: res.status, error: `HTTP ${res.status}` };
       }
 
       if (!res.ok) {
         await res.text();
-        return null;
+        return { html: null, status: res.status, error: `HTTP ${res.status}` };
       }
 
-      return res;
-    } catch {
-      if (attempt < retries) await sleep(2000);
+      const html = await res.text();
+      return { html, status: res.status, error: null };
+    } catch (e: any) {
+      if (attempt < retries) {
+        await sleep(2000);
+        continue;
+      }
+      return { html: null, status: null, error: e.message || "fetch failed" };
     }
   }
-  return null;
+  return { html: null, status: null, error: "max retries" };
 }
 
-// -------- main: processes a SINGLE URL with pagination --------
+// -------- main --------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -326,14 +319,15 @@ Deno.serve(async (req) => {
     while (page <= maxPages) {
       const urlsToTry = page === 1 ? [baseUrl] : buildPageUrls(baseUrl, page);
       let html: string | null = null;
-      let fetchedUrl = "";
 
       for (const tryUrl of urlsToTry) {
-        const res = await fetchWithRetry(tryUrl);
-        if (res) {
-          html = await res.text();
-          fetchedUrl = tryUrl;
+        const result = await fetchPage(tryUrl);
+        if (result.html) {
+          html = result.html;
           break;
+        }
+        if (page === 1 && result.error) {
+          logs.push(`⚠️ ${dominio} P${page}: ${result.error} (tentando próximo padrão...)`);
         }
       }
 
@@ -342,7 +336,10 @@ Deno.serve(async (req) => {
         break;
       }
 
-      // Detect duplicate content (site returns page 1 for invalid pages)
+      // Log HTML size for debugging
+      logs.push(`📥 ${dominio} P${page}: ${(html.length / 1024).toFixed(0)}KB recebido`);
+
+      // Detect duplicate content
       if (page > 1) {
         const snippet = html.slice(0, 1000);
         const lastSnippet = lastHtml.slice(0, 1000);

@@ -30,3 +30,4 @@ export { default as AdminBulkImageSearch } from "./pages/AdminBulkImageSearch";
 export { default as AdminStoreSelector } from "./pages/AdminStoreSelector";
 export { default as AdminProductsImport } from "./pages/AdminProductsImport";
 export { default as AdminProductScraper } from "./pages/AdminProductScraper";
+export { default as AdminReviews } from "./pages/AdminReviews";

@@ -1248,6 +1248,112 @@ export type Database = {
           },
         ]
       }
+      product_rating_summary: {
+        Row: {
+          average_rating: number
+          product_id: string
+          rating_1: number
+          rating_2: number
+          rating_3: number
+          rating_4: number
+          rating_5: number
+          total_reviews: number
+          updated_at: string
+        }
+        Insert: {
+          average_rating?: number
+          product_id: string
+          rating_1?: number
+          rating_2?: number
+          rating_3?: number
+          rating_4?: number
+          rating_5?: number
+          total_reviews?: number
+          updated_at?: string
+        }
+        Update: {
+          average_rating?: number
+          product_id?: string
+          rating_1?: number
+          rating_2?: number
+          rating_3?: number
+          rating_4?: number
+          rating_5?: number
+          total_reviews?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_rating_summary_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_reviews: {
+        Row: {
+          approved: boolean
+          author_location: string | null
+          author_name: string
+          cons: string | null
+          content: string
+          created_at: string
+          helpful_count: number
+          id: string
+          origin: string
+          product_id: string
+          pros: string | null
+          rating: number
+          title: string | null
+          updated_at: string
+          verified_purchase: boolean
+        }
+        Insert: {
+          approved?: boolean
+          author_location?: string | null
+          author_name?: string
+          cons?: string | null
+          content?: string
+          created_at?: string
+          helpful_count?: number
+          id?: string
+          origin?: string
+          product_id: string
+          pros?: string | null
+          rating?: number
+          title?: string | null
+          updated_at?: string
+          verified_purchase?: boolean
+        }
+        Update: {
+          approved?: boolean
+          author_location?: string | null
+          author_name?: string
+          cons?: string | null
+          content?: string
+          created_at?: string
+          helpful_count?: number
+          id?: string
+          origin?: string
+          product_id?: string
+          pros?: string | null
+          rating?: number
+          title?: string | null
+          updated_at?: string
+          verified_purchase?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limit_events: {
         Row: {
           created_at: string
@@ -1268,6 +1374,38 @@ export type Database = {
           key?: string
         }
         Relationships: []
+      }
+      review_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          review_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          review_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          review_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_images_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "product_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sales_records: {
         Row: {
@@ -2593,6 +2731,10 @@ export type Database = {
         Returns: boolean
       }
       is_master: { Args: { _user_id: string }; Returns: boolean }
+      recalculate_rating_summary: {
+        Args: { _product_id: string }
+        Returns: undefined
+      }
       upsert_checkout_session: {
         Args: {
           _cart_items: Json

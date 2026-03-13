@@ -133,7 +133,7 @@ export default function CartPage() {
 
                   <div className="border-t border-border/70 pt-3 flex items-center justify-between">
                     <span className="text-base font-semibold">Total</span>
-                    <span className="text-2xl font-extrabold tracking-tight">{formatCurrency(total)}</span>
+                    <span className="text-xl sm:text-2xl font-semibold tracking-tight">{formatCurrency(total)}</span>
                   </div>
 
                   <Button

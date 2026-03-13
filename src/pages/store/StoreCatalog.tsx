@@ -99,7 +99,7 @@ export default function StoreCatalog() {
           </header>
         </section>
 
-        <section className="flex gap-2 overflow-x-auto pb-1">
+        <section className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:-mx-0 sm:px-0">
           {categories.map((c) => {
             const active = c.slug === selectedSlug;
             return (

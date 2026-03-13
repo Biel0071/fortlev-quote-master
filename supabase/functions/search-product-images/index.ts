@@ -175,22 +175,29 @@ function filterCandidate(item: SearchResult, rejectionTerms?: string[], acceptan
   return true;
 }
 
-function dedupeAndLimit(items: SearchResult[], limit = 40): SearchResult[] {
+function dedupeAndLimit(items: SearchResult[], limit = 40, rejectionTerms?: string[], acceptanceTerms?: string[]): SearchResult[] {
   const seen = new Set<string>();
-  const out: SearchResult[] = [];
+  const productImages: SearchResult[] = [];
+  const otherImages: SearchResult[] = [];
 
   for (const item of items) {
     const key = item.imageUrl;
     if (seen.has(key)) continue;
     seen.add(key);
 
-    if (!filterCandidate(item)) continue;
+    if (!filterCandidate(item, rejectionTerms, acceptanceTerms)) continue;
 
-    out.push(item);
-    if (out.length >= limit) break;
+    // Prioritize images with product-specific terms in title
+    if (isProductImage(item.title, acceptanceTerms)) {
+      productImages.push(item);
+    } else {
+      otherImages.push(item);
+    }
   }
 
-  return out;
+  // Product images first, then others
+  const combined = [...productImages, ...otherImages];
+  return combined.slice(0, limit);
 }
 
 function sourceScopedQuery(source: ImageSource, query: string) {

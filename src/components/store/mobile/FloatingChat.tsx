@@ -111,6 +111,8 @@ export function FloatingChat({
     return () => window.clearTimeout(t);
   }, [open, shouldHideFloating]);
 
+  if (shouldHideFloating) return null;
+
   return (
     <>
       <div className={cn("fixed right-4 z-50", bottomClass, className)}>

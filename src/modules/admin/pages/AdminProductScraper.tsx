@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { cloud } from "@/lib/cloud";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ interface ScrapedProduct {
 
 interface QueueItem {
   url: string;
-  status: string;
+  status: "pending" | "running" | "done" | "failed";
   pages: number;
   products: number;
 }
@@ -35,43 +35,106 @@ export default function AdminProductScraper() {
   const [logs, setLogs] = useState<string[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [stats, setStats] = useState<{ totalUrls: number; totalPages: number; totalProducts: number } | null>(null);
+  const cancelRef = useRef(false);
+
+  const addLog = (msg: string) => setLogs(prev => [...prev, msg]);
 
   const handleScrape = async () => {
-    const urls = urlsInput.split(/[\n\r]+/).map(u => u.trim()).filter(u => u.startsWith("http"));
+    // Parse URLs properly: split by newline, trim, filter valid
+    const urls = urlsInput
+      .split(/[\n\r]+/)
+      .map(u => u.trim())
+      .filter(u => u.startsWith("http"));
+
     if (urls.length === 0) {
       toast({ title: "Informe pelo menos uma URL válida", variant: "destructive" });
       return;
     }
 
+    cancelRef.current = false;
     setLoading(true);
     setProducts([]);
-    setLogs([`🔍 Iniciando scraping de ${urls.length} URL(s)...`]);
     setStats(null);
-    setQueue(urls.map(u => ({ url: u, status: "pending", pages: 0, products: 0 })));
 
-    try {
-      const { data, error } = await cloud.functions.invoke("scrape-products", {
-        body: { urls, maxPages },
-      });
+    const initialQueue: QueueItem[] = urls.map(u => ({ url: u, status: "pending" as const, pages: 0, products: 0 }));
+    setQueue(initialQueue);
+    setLogs([`📋 Fila: ${urls.length} URL(s) para processar`]);
 
-      if (error) throw new Error(error.message);
-      if (!data?.success) throw new Error(data?.error || "Erro desconhecido");
+    let allProducts: ScrapedProduct[] = [];
+    let totalPages = 0;
 
-      setProducts(data.products || []);
-      setLogs(data.logs || []);
-      setQueue(data.queue || []);
-      setStats({ totalUrls: data.totalUrls, totalPages: data.totalPages, totalProducts: data.totalProducts });
+    for (let i = 0; i < urls.length; i++) {
+      if (cancelRef.current) {
+        addLog(`⛔ Scraping cancelado pelo usuário`);
+        break;
+      }
 
-      toast({
-        title: "Scraping concluído",
-        description: `${data.totalProducts} produtos em ${data.totalPages} páginas de ${data.totalUrls} URLs`,
-      });
-    } catch (e: any) {
-      toast({ title: "Erro no scraping", description: e.message, variant: "destructive" });
-      setLogs(prev => [...prev, `❌ Erro: ${e.message}`]);
-    } finally {
-      setLoading(false);
+      const url = urls[i];
+      const dominio = new URL(url).hostname.replace("www.", "");
+
+      // Update queue: mark current as running
+      setQueue(prev => prev.map((q, idx) => idx === i ? { ...q, status: "running" } : q));
+      addLog(`\n🔄 [${i + 1}/${urls.length}] ${dominio}`);
+
+      try {
+        const { data, error } = await cloud.functions.invoke("scrape-products", {
+          body: { url, maxPages },
+        });
+
+        if (error) throw new Error(error.message);
+        if (!data?.success) throw new Error(data?.error || "Erro desconhecido");
+
+        const urlProducts = data.products || [];
+        allProducts = [...allProducts, ...urlProducts];
+        totalPages += data.totalPages || 0;
+
+        // Append logs from edge function
+        (data.logs || []).forEach((l: string) => addLog(l));
+
+        // Update queue item
+        setQueue(prev => prev.map((q, idx) =>
+          idx === i ? { ...q, status: "done", pages: data.totalPages || 0, products: urlProducts.length } : q
+        ));
+
+        // Update products in real-time
+        setProducts(prev => [...prev, ...urlProducts]);
+      } catch (e: any) {
+        addLog(`❌ Erro em ${dominio}: ${e.message}`);
+        setQueue(prev => prev.map((q, idx) =>
+          idx === i ? { ...q, status: "failed" } : q
+        ));
+      }
+
+      // Rate limit between URLs
+      if (i < urls.length - 1 && !cancelRef.current) {
+        await new Promise(r => setTimeout(r, 1500));
+      }
     }
+
+    // Deduplicate all products
+    const seen = new Set<string>();
+    const unique = allProducts.filter(p => {
+      const key = p.produto.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    setProducts(unique);
+    setStats({ totalUrls: urls.length, totalPages, totalProducts: unique.length });
+    addLog(`\n🏁 Concluído: ${unique.length} produtos únicos de ${totalPages} páginas`);
+
+    toast({
+      title: "Scraping concluído",
+      description: `${unique.length} produtos em ${totalPages} páginas de ${urls.length} URLs`,
+    });
+
+    setLoading(false);
+  };
+
+  const handleCancel = () => {
+    cancelRef.current = true;
+    setLoading(false);
   };
 
   const handleExportExcel = () => {
@@ -79,11 +142,11 @@ export default function AdminProductScraper() {
     const rows = products.map((p, i) => ({
       SKU: `SCRP-${String(i + 1).padStart(5, "0")}`,
       Produto: p.produto,
-      Preço: p.precoNum ?? "",
+      "Preço": p.precoNum ?? "",
       Categoria: "",
       URL: p.url || "",
-      Domínio: p.dominio || "",
-      Página: p.pagina,
+      "Domínio": p.dominio || "",
+      "Página": p.pagina,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     ws["!cols"] = [{ wch: 14 }, { wch: 50 }, { wch: 14 }, { wch: 20 }, { wch: 60 }, { wch: 25 }, { wch: 8 }];
@@ -96,8 +159,11 @@ export default function AdminProductScraper() {
   const statusIcon = (s: string) => {
     if (s === "done") return <CheckCircle2 className="h-4 w-4 text-primary" />;
     if (s === "failed") return <XCircle className="h-4 w-4 text-destructive" />;
+    if (s === "running") return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
     return <Clock className="h-4 w-4 text-muted-foreground" />;
   };
+
+  const urlCount = urlsInput.split(/[\n\r]+/).map(u => u.trim()).filter(u => u.startsWith("http")).length;
 
   return (
     <div className="space-y-6 p-6">
@@ -110,28 +176,39 @@ export default function AdminProductScraper() {
         <CardHeader><CardTitle className="text-base">Configuração</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <Textarea
-            placeholder={"Cole uma ou mais URLs de categorias (uma por linha):\nhttps://www.site.com/pisos/\nhttps://www.site.com/tintas/"}
+            placeholder={"Cole uma ou mais URLs de categorias (uma por linha):\nhttps://www.cnr.com.br/pisos-e-revestimentos/\nhttps://www.cnr.com.br/banheiro/\nhttps://www.cnr.com.br/material-hidraulico/"}
             value={urlsInput}
             onChange={(e) => setUrlsInput(e.target.value)}
-            rows={4}
+            rows={5}
             disabled={loading}
             className="font-mono text-sm"
           />
+          {urlCount > 0 && (
+            <p className="text-xs text-muted-foreground">{urlCount} URL(s) detectada(s)</p>
+          )}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Input
-              type="number"
-              min={1}
-              max={50}
-              value={maxPages}
-              onChange={(e) => setMaxPages(Number(e.target.value) || 10)}
-              className="w-40"
-              placeholder="Máx páginas"
-              disabled={loading}
-            />
-            <Button onClick={handleScrape} disabled={loading} className="gap-2">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              {loading ? "Processando..." : "Iniciar Scraping"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Máx páginas:</span>
+              <Input
+                type="number"
+                min={1}
+                max={50}
+                value={maxPages}
+                onChange={(e) => setMaxPages(Number(e.target.value) || 10)}
+                className="w-24"
+                disabled={loading}
+              />
+            </div>
+            {loading ? (
+              <Button variant="destructive" onClick={handleCancel} className="gap-2">
+                Cancelar
+              </Button>
+            ) : (
+              <Button onClick={handleScrape} className="gap-2">
+                <Search className="h-4 w-4" />
+                Iniciar Scraping
+              </Button>
+            )}
           </div>
           {loading && <Progress value={undefined} className="h-1" />}
         </CardContent>
@@ -140,15 +217,23 @@ export default function AdminProductScraper() {
       {/* Queue */}
       {queue.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Fila de URLs ({queue.length})</CardTitle></CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">
+              Fila de URLs ({queue.filter(q => q.status === "done").length}/{queue.length} concluídas)
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {queue.map((q, i) => (
                 <div key={i} className="flex items-center gap-3 text-sm border rounded-md px-3 py-2">
                   {statusIcon(q.status)}
                   <span className="flex-1 font-mono text-xs truncate">{q.url}</span>
-                  <Badge variant="secondary" className="text-xs">{q.pages}p</Badge>
-                  <Badge variant="outline" className="text-xs">{q.products} prod</Badge>
+                  {q.status !== "pending" && (
+                    <>
+                      <Badge variant="secondary" className="text-xs">{q.pages}p</Badge>
+                      <Badge variant="outline" className="text-xs">{q.products} prod</Badge>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -161,7 +246,7 @@ export default function AdminProductScraper() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Logs</CardTitle></CardHeader>
           <CardContent>
-            <ScrollArea className="h-48 rounded-md border bg-muted/30 p-3">
+            <ScrollArea className="h-56 rounded-md border bg-muted/30 p-3">
               <div className="space-y-1 font-mono text-xs">
                 {logs.map((log, i) => (
                   <div key={i} className="text-muted-foreground">{log}</div>

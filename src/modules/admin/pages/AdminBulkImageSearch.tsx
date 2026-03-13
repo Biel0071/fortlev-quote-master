@@ -75,10 +75,12 @@ type RunHistory = {
 /* ───── Constants ───── */
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const MAX_WORKERS = 15;
+const AI_MAX_CONCURRENT = 3;
 const MAX_IMAGES_PER_PRODUCT = 8;
 const MAX_RETRIES = 3;
 const RETRY_DELAY_429 = 30_000;
-const INTER_WORKER_DELAY = 200; // ms between launching workers
+const RETRY_DELAYS_AI = [5_000, 10_000, 20_000];
+const INTER_WORKER_DELAY = 200;
 const SOURCES_FALLBACK: ImageSearchSource[] = ["bing", "google", "mercado_livre"];
 
 function getPublicUrl(path: string) {

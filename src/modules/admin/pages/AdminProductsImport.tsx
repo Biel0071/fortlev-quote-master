@@ -120,18 +120,6 @@ export default function AdminProductsImport() {
     setLoading(false);
   };
 
-  const loadPreBuilt = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/data/produtos_construcao_padronizado_2500.xlsx");
-      const buf = await res.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      processWorkbook(wb);
-    } catch (err) {
-      toast({ title: "Erro", description: String(err), variant: "destructive" });
-    }
-    setLoading(false);
-  };
 
   const startImport = async () => {
     if (parsed.length === 0) return;
@@ -195,16 +183,11 @@ export default function AdminProductsImport() {
         </CardHeader>
         <CardContent className="space-y-4">
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.txt" className="hidden" onChange={handleFile} />
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={loading} className="flex-1 h-20 border-dashed flex-col gap-1">
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
-              <span className="text-xs">Selecionar arquivo XLSX / CSV</span>
-            </Button>
-            <Button variant="outline" onClick={loadPreBuilt} disabled={loading} className="flex-1 h-20 border-dashed flex-col gap-1">
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileSpreadsheet className="h-5 w-5" />}
-              <span className="text-xs">Carregar planilha pré-carregada (2500 itens)</span>
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={loading} className="w-full h-24 border-dashed flex-col gap-2">
+            {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
+            <span className="text-sm font-medium">Selecionar arquivo XLSX / CSV</span>
+            <span className="text-xs text-muted-foreground">Arraste ou clique para selecionar</span>
+          </Button>
         </CardContent>
       </Card>
 

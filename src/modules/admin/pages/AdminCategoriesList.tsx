@@ -124,7 +124,7 @@ export default function AdminCategoriesList() {
           <span className="font-medium text-foreground">{activeCount}</span> ativas
         </div>
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5">
-          <Star className="h-3.5 w-3.5 text-amber-500" />
+          <Star className="h-3.5 w-3.5 text-accent" />
           <span className="font-medium text-foreground">{featuredCount}</span> destaques
         </div>
       </div>

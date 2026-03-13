@@ -103,6 +103,8 @@ export function FloatingChat({
   }, [open, shouldHideFloating]);
 
   useEffect(() => {
+    if (shouldHideFloating) return;
+
     const t = window.setTimeout(() => {
       if (!open) setAttention(true);
     }, 20000);

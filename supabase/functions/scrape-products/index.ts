@@ -18,12 +18,11 @@ function randomUA(): string {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
-// -------- pagination: build candidate URLs for page N --------
 function buildPageUrls(baseUrl: string, page: number): string[] {
   const variants: string[] = [];
   const u = new URL(baseUrl);
 
-  // Magento / Convertiez ?p=N (priority for CNR)
+  // Magento / Convertiez ?p=N (CNR uses this)
   const u1 = new URL(baseUrl);
   u1.searchParams.set("p", String(page));
   variants.push(u1.toString());
@@ -43,7 +42,6 @@ function buildPageUrls(baseUrl: string, page: number): string[] {
   return variants;
 }
 
-// -------- selectors --------
 const CARD_SELECTORS = [
   ".item-product",
   "div.li .item-product",
@@ -181,7 +179,6 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
 
     if (!bestTitle || bestTitle.length < 3) continue;
 
-    // URL
     let productUrl: string | null = null;
     const link = card.tagName === "A" ? card : card.querySelector("a[href]");
     if (link) {
@@ -190,7 +187,6 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
       else if (href.startsWith("/")) productUrl = new URL(href, origin).toString();
     }
 
-    // Price
     let preco: string | null = null;
     let precoNum: number | null = null;
     for (const sel of PRICE_SELECTORS) {
@@ -227,7 +223,6 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
   return products;
 }
 
-// Detect next page link in HTML (for sites with non-standard pagination)
 function detectNextPageUrl(html: string, origin: string): string | null {
   const doc = new DOMParser().parseFromString(html, "text/html");
   if (!doc) return null;
@@ -237,6 +232,7 @@ function detectNextPageUrl(html: string, origin: string): string | null {
     ".pages-item-next a", "a[rel='next']",
     ".pagination li.active + li a",
     "a.action.next",
+    ".page-next a", ".pager .next a",
   ];
 
   for (const sel of nextSelectors) {
@@ -315,7 +311,11 @@ async function fetchPage(url: string, retries = 3): Promise<{ html: string | nul
   return { html: null, status: null, error: "max retries" };
 }
 
-// -------- main: processes a SINGLE URL with UNLIMITED pagination --------
+// Generate a fingerprint from product names to detect true duplicate pages
+function productFingerprint(products: ScrapedProduct[]): string {
+  return products.map(p => p.produto.toLowerCase().trim()).sort().join("|");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -332,7 +332,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // maxPages=0 or absent means unlimited (safety cap at 200)
     const rawMax = Number(body.maxPages);
     const maxPages = rawMax > 0 ? Math.min(rawMax, 200) : 200;
 
@@ -342,20 +341,24 @@ Deno.serve(async (req) => {
     const allProducts: ScrapedProduct[] = [];
     const seenProductKeys = new Set<string>();
     let page = 1;
-    let lastHtmlHash = "";
-    let paginationMethod: "params" | "detected" | null = null;
+    let lastProductFingerprint = "";
+    let consecutiveEmpty = 0;
+    let paginationWorking: string | null = null; // track which pagination pattern works
     let detectedNextUrl: string | null = null;
 
     logs.push(`🌐 ${dominio} — ${baseUrl}`);
 
     while (page <= maxPages) {
-      // Determine URL for this page
       let urlsToTry: string[];
 
       if (page === 1) {
         urlsToTry = [baseUrl];
-      } else if (paginationMethod === "detected" && detectedNextUrl) {
-        urlsToTry = [detectedNextUrl];
+      } else if (detectedNextUrl) {
+        // If we detected a "next" link, use it first, with fallbacks
+        urlsToTry = [detectedNextUrl, ...buildPageUrls(baseUrl, page)];
+      } else if (paginationWorking) {
+        // If we know which pagination pattern works, use only that one
+        urlsToTry = [paginationWorking.replace(/__PAGE__/g, String(page))];
       } else {
         urlsToTry = buildPageUrls(baseUrl, page);
       }
@@ -370,8 +373,8 @@ Deno.serve(async (req) => {
           fetchedUrl = tryUrl;
           break;
         }
-        if (page === 1 && result.error) {
-          logs.push(`⚠️ ${result.error}`);
+        if (page <= 2 && result.error) {
+          logs.push(`⚠️ ${result.error} → ${tryUrl}`);
         }
       }
 
@@ -382,18 +385,20 @@ Deno.serve(async (req) => {
 
       logs.push(`📥 ${dominio} P${page}: ${(html.length / 1024).toFixed(0)}KB`);
 
-      // Hash-based duplicate detection (more reliable than substring)
-      const htmlHash = simpleHash(html);
-      if (page > 1 && htmlHash === lastHtmlHash) {
-        logs.push(`ℹ️ ${dominio} P${page}: conteúdo duplicado — parando`);
-        break;
-      }
-      lastHtmlHash = htmlHash;
-
-      // Extract products
+      // Extract products from this page
       const pageProducts = extractProducts(html, page, origin, dominio);
 
-      // Deduplicate against all previously found products
+      // Duplicate detection: compare PRODUCTS, not HTML
+      const currentFingerprint = productFingerprint(pageProducts);
+      if (page > 1 && currentFingerprint === lastProductFingerprint) {
+        logs.push(`ℹ️ ${dominio} P${page}: mesmos produtos da página anterior — parando`);
+        break;
+      }
+      if (pageProducts.length > 0) {
+        lastProductFingerprint = currentFingerprint;
+      }
+
+      // Deduplicate against global set
       const newProducts: ScrapedProduct[] = [];
       for (const p of pageProducts) {
         const key = (p.produto + "|" + (p.url || "")).toLowerCase();
@@ -406,23 +411,38 @@ Deno.serve(async (req) => {
       logs.push(`✅ ${dominio} → P${page}: ${pageProducts.length} encontrados, ${newProducts.length} novos`);
       allProducts.push(...newProducts);
 
-      // Stop conditions
+      // Stop if no products at all
       if (pageProducts.length === 0) {
-        logs.push(`ℹ️ ${dominio} P${page}: sem produtos — parando`);
-        break;
+        consecutiveEmpty++;
+        if (consecutiveEmpty >= 2) {
+          logs.push(`ℹ️ ${dominio} P${page}: sem produtos — parando`);
+          break;
+        }
+      } else {
+        consecutiveEmpty = 0;
+
+        // If page > 1 and we got products, remember which pagination URL worked
+        if (page >= 2 && !paginationWorking && fetchedUrl) {
+          // Store the pattern by replacing page number with placeholder
+          const pattern = fetchedUrl.replace(
+            new RegExp(`([?&]p=|[?&]page=|/page/)${page}`, "i"),
+            (match, prefix) => `${prefix}__PAGE__`
+          );
+          if (pattern.includes("__PAGE__")) {
+            paginationWorking = pattern;
+            logs.push(`🔗 Padrão de paginação: ${fetchedUrl.replace(String(page), "N")}`);
+          }
+        }
       }
 
-      if (newProducts.length === 0 && page > 1) {
+      // Stop if all products on this page are duplicates
+      if (newProducts.length === 0 && pageProducts.length > 0 && page > 1) {
         logs.push(`ℹ️ ${dominio} P${page}: todos duplicados — parando`);
         break;
       }
 
-      // Try to detect next page link
+      // Try to detect next page link for next iteration
       detectedNextUrl = detectNextPageUrl(html, origin);
-      if (detectedNextUrl && paginationMethod !== "detected") {
-        paginationMethod = "detected";
-        logs.push(`🔗 Paginação detectada via link`);
-      }
 
       page++;
       if (page <= maxPages) await sleep(800);
@@ -448,15 +468,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-// Simple string hash for duplicate detection
-function simpleHash(str: string): string {
-  let hash = 0;
-  const sample = str.length > 5000 ? str.slice(0, 2500) + str.slice(-2500) : str;
-  for (let i = 0; i < sample.length; i++) {
-    const char = sample.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return String(hash);
-}

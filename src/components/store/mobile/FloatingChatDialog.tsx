@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import vanessaAvatar from "@/assets/vanessa-avatar.jpg";
 import { cloud } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -58,7 +58,7 @@ export function FloatingChat({
     }, 8000);
 
     return () => window.clearTimeout(t);
-  }, [location.pathname, open]);
+  }, [location.pathname, open, shouldHideFloating]);
 
   useEffect(() => {
     if (open) {

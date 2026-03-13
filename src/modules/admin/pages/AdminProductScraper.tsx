@@ -39,7 +39,7 @@ interface ScrapeHistoryItem {
   total_products: number;
   execution_time_seconds: number;
   domains: string[];
-  products_json: ScrapedProduct[];
+  products_json: unknown;
 }
 
 function formatDuration(seconds: number): string {
@@ -47,6 +47,28 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.round(seconds % 60);
   return `${m}m${s.toString().padStart(2, "0")}s`;
+}
+
+function sanitizeHistoryProducts(items: ScrapedProduct[]): ScrapedProduct[] {
+  return items.map((p) => ({
+    produto: p.produto ?? "",
+    url: p.url ?? null,
+    preco: p.preco ?? null,
+    precoNum: typeof p.precoNum === "number" ? p.precoNum : null,
+    pagina: Number.isFinite(p.pagina) ? p.pagina : 0,
+    dominio: p.dominio ?? "",
+  }));
+}
+
+function readLocalHistoryProducts(id: string): ScrapedProduct[] {
+  try {
+    const raw = localStorage.getItem(`scrape_history_items:${id}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as ScrapedProduct[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 function exportProducts(products: ScrapedProduct[], suffix = "") {
@@ -245,17 +267,32 @@ export default function AdminProductScraper() {
     setStats({ totalUrls: urls.length, totalPages, totalProducts: unique.length, executionTime });
     addLog(`\n🏁 Concluído: ${unique.length} produtos únicos de ${totalPages} páginas em ${formatDuration(executionTime)}`);
 
+    const safeProducts = sanitizeHistoryProducts(unique);
+
     try {
-      await supabase.from("scrape_history").insert({
-        total_urls: urls.length,
-        total_pages: totalPages,
-        total_products: unique.length,
-        execution_time_seconds: Math.round(executionTime),
-        domains: Array.from(domains),
-        products_json: unique as any,
-      });
+      const { data: inserted, error: historyError } = await supabase
+        .from("scrape_history")
+        .insert({
+          total_urls: urls.length,
+          total_pages: totalPages,
+          total_products: safeProducts.length,
+          execution_time_seconds: Math.round(executionTime),
+          domains: Array.from(domains),
+          products_json: safeProducts as any,
+        })
+        .select("id")
+        .single();
+
+      if (historyError) {
+        addLog(`⚠️ Histórico não salvo com itens: ${historyError.message}`);
+      } else if (inserted?.id) {
+        localStorage.setItem(`scrape_history_items:${inserted.id}`, JSON.stringify(safeProducts));
+      }
+
       await loadHistory();
-    } catch { /* ignore */ }
+    } catch (e: any) {
+      addLog(`⚠️ Histórico não salvo com itens: ${e?.message || "erro desconhecido"}`);
+    }
 
     toast({
       title: "Scraping concluído",
@@ -268,6 +305,7 @@ export default function AdminProductScraper() {
 
   const handleDeleteHistory = async (id: string) => {
     await supabase.from("scrape_history").delete().eq("id", id);
+    localStorage.removeItem(`scrape_history_items:${id}`);
     await loadHistory();
   };
 
@@ -278,9 +316,32 @@ export default function AdminProductScraper() {
     return <Clock className="h-4 w-4 text-muted-foreground" />;
   };
 
+  const resolveHistoryProducts = (item: ScrapeHistoryItem | null): ScrapedProduct[] => {
+    if (!item) return [];
+
+    const dbProducts = Array.isArray(item.products_json) ? (item.products_json as ScrapedProduct[]) : [];
+    if (dbProducts.length > 0) return dbProducts;
+
+    const cachedProducts = readLocalHistoryProducts(item.id);
+    if (cachedProducts.length > 0) return cachedProducts;
+
+    if (
+      stats &&
+      products.length > 0 &&
+      stats.totalProducts === item.total_products &&
+      stats.totalPages === item.total_pages
+    ) {
+      return products;
+    }
+
+    return [];
+  };
+
+  const hasHistoryProducts = (item: ScrapeHistoryItem): boolean => resolveHistoryProducts(item).length > 0;
+
   const urlCount = parseUrls(urlsInput).length;
 
-  const historyProducts = viewingHistory?.products_json || [];
+  const historyProducts = resolveHistoryProducts(viewingHistory);
 
   return (
     <div className="space-y-6 p-6">
@@ -419,9 +480,15 @@ export default function AdminProductScraper() {
                     <span className="text-xs text-muted-foreground truncate max-w-[150px]">{h.domains.join(", ")}</span>
                   )}
                   <div className="ml-auto flex items-center gap-1">
-                    <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => setViewingHistory(h)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                      onClick={() => setViewingHistory(h)}
+                      disabled={!hasHistoryProducts(h)}
+                    >
                       <Eye className="h-3 w-3" />
-                      Ver
+                      {hasHistoryProducts(h) ? "Ver" : "Sem itens"}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteHistory(h.id)}>
                       <Trash2 className="h-3 w-3" />
@@ -469,7 +536,7 @@ export default function AdminProductScraper() {
                   <ProductsTable products={historyProducts} />
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    Dados dos produtos não disponíveis para este registro.
+                    Este registro antigo não salvou os itens; execute um novo scraping para visualizar e exportar os produtos aqui.
                   </p>
                 )}
               </div>

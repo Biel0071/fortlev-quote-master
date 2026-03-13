@@ -84,7 +84,7 @@ function ProductDescription({ markdown }: { markdown: string }) {
   }, [lines]);
 
   return (
-    <div className="space-y-1.5 overflow-hidden break-words">
+    <div className="w-full min-w-0 space-y-1.5 overflow-hidden break-words">
       {blocks.map((b, idx) => {
         if (b.kind === "h2") {
           return (
@@ -95,9 +95,9 @@ function ProductDescription({ markdown }: { markdown: string }) {
         }
         if (b.kind === "kv") {
           return (
-            <div key={idx} className="flex flex-wrap gap-x-1 text-xs leading-relaxed">
-              <span className="text-muted-foreground">{b.key}:</span>
-              <span className="font-medium text-foreground break-all">{b.value}</span>
+            <div key={idx} className="text-xs leading-relaxed break-words">
+              <span className="font-semibold text-foreground">{b.key}: </span>
+              <span className="text-muted-foreground">{b.value}</span>
             </div>
           );
         }

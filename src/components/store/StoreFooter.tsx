@@ -66,6 +66,7 @@ export function StoreFooter({
   const gridSpanAll = hasSocial ? "md:col-span-12" : "md:col-span-10";
 
   return (
+    <>
     <footer className="border-t border-border bg-background w-full overflow-x-hidden">
       <div
         className={`max-w-6xl mx-auto px-3 sm:px-6 pt-8 sm:pt-10 pb-4 grid grid-cols-1 ${hasSocial ? "md:grid-cols-12" : "md:grid-cols-10"} gap-6 sm:gap-8 min-w-0`}
@@ -224,5 +225,8 @@ export function StoreFooter({
         </div>
       </div>
     </footer>
+    {/* Spacer for fixed mobile bottom nav */}
+    <div className="h-16 md:h-0 w-full shrink-0" aria-hidden="true" />
+    </>
   );
 }

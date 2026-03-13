@@ -405,12 +405,21 @@ export default function AdminAiAnalysis() {
         </CardContent>
       </Card>
 
+      {htmlCapturing && (
+        <Card className="rounded-2xl">
+          <CardContent className="pt-6 space-y-2">
+            <p className="text-sm font-medium">Capturando telas do sistema… {htmlProgress}%</p>
+            <Progress value={htmlProgress} className="h-2" />
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="rounded-2xl">
         <CardHeader>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle>Relatório completo (JSON)</CardTitle>
-            <Button variant="outline" onClick={downloadReport} disabled={!rawJson}>
-              Baixar relatório completo (.zip)
+            <Button variant="outline" onClick={downloadReport} disabled={!rawJson || htmlCapturing}>
+              {htmlCapturing ? "Capturando telas..." : "Baixar relatório completo (.zip)"}
             </Button>
           </div>
         </CardHeader>

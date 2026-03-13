@@ -6,25 +6,24 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Rate-limit: 1 req/sec
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-// -------- pagination helpers --------
-function buildPageUrl(baseUrl: string, page: number): string[] {
-  const u = new URL(baseUrl);
+// -------- pagination --------
+function buildPageUrls(baseUrl: string, page: number): string[] {
   const variants: string[] = [];
+  const u = new URL(baseUrl);
 
-  // ?page=N
+  // Magento-style ?p=N (prioritized)
   const u1 = new URL(baseUrl);
-  u1.searchParams.set("page", String(page));
+  u1.searchParams.set("p", String(page));
   variants.push(u1.toString());
 
-  // ?p=N
+  // ?page=N
   const u2 = new URL(baseUrl);
-  u2.searchParams.set("p", String(page));
+  u2.searchParams.set("page", String(page));
   variants.push(u2.toString());
 
   // /page/N
@@ -37,10 +36,12 @@ function buildPageUrl(baseUrl: string, page: number): string[] {
   return variants;
 }
 
-// -------- product extraction --------
+// -------- selectors --------
 const CARD_SELECTORS = [
-  ".product-card",
+  ".container-product",
+  ".product-item-info",
   ".product-item",
+  ".product-card",
   "[data-product]",
   ".product",
   ".produto",
@@ -50,13 +51,20 @@ const CARD_SELECTORS = [
   ".vitrine-produto",
   ".product-grid-item",
   "article.product",
+  ".products-grid .item",
+  ".category-products .item",
+  "ol.products li",
+  "ul.products li",
 ];
 
 const TITLE_SELECTORS = [
-  ".product-title",
+  "a.product-item-link",
   ".product-item-link",
+  ".product-title",
+  ".product-name a",
   ".product-name",
   ".produto-nome",
+  ".name a",
   ".name",
   "h2 a",
   "h3 a",
@@ -66,13 +74,18 @@ const TITLE_SELECTORS = [
 ];
 
 const PRICE_SELECTORS = [
+  ".price-final_price .price",
+  ".price-box .price",
+  ".special-price .price",
+  ".price-final .price",
+  ".price-new",
   ".price",
   ".product-price",
   ".preco",
   ".best-price",
   ".sale-price",
   ".price__current",
-  "[data-price]",
+  "[data-price-amount]",
   "span.price",
   ".valor",
 ];
@@ -81,33 +94,48 @@ interface ScrapedProduct {
   produto: string;
   url: string | null;
   preco: string | null;
+  precoNum: number | null;
   pagina: number;
+  dominio: string;
 }
 
-function extractProducts(html: string, pageNum: number, origin: string): ScrapedProduct[] {
+function normalizePrice(raw: string): { display: string; num: number | null } {
+  if (!raw) return { display: "", num: null };
+  // Remove "R$", "/m²", "un", etc.
+  let cleaned = raw.replace(/R\$\s*/gi, "").replace(/\/[a-zA-Z²³]+/g, "").trim();
+  // Handle Brazilian format: 1.234,56 → 1234.56
+  cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+  const num = parseFloat(cleaned);
+  return { display: raw.trim(), num: isNaN(num) ? null : Math.round(num * 100) / 100 };
+}
+
+function extractProducts(html: string, pageNum: number, origin: string, dominio: string): ScrapedProduct[] {
   const doc = new DOMParser().parseFromString(html, "text/html");
   if (!doc) return [];
 
-  // Find the best card selector
   let cards: any[] = [];
+  let usedSelector = "";
   for (const sel of CARD_SELECTORS) {
-    const found = doc.querySelectorAll(sel);
-    if (found && found.length > 0) {
-      cards = Array.from(found);
-      break;
-    }
+    try {
+      const found = doc.querySelectorAll(sel);
+      if (found && found.length > 0) {
+        cards = Array.from(found);
+        usedSelector = sel;
+        break;
+      }
+    } catch { /* skip */ }
   }
 
-  // Fallback: try any element containing links with product-like paths
+  // Fallback: find all links with product-like paths
   if (cards.length === 0) {
-    const allLinks = Array.from(doc.querySelectorAll('a[href*="produto"], a[href*="product"], a[href*="/p/"]'));
-    // Group by closest parent li / div
+    const allLinks = Array.from(doc.querySelectorAll("a[href]"));
     const seen = new Set<string>();
-    for (const a of allLinks) {
-      const parent = (a as any).parentElement;
-      if (parent && !seen.has(parent.innerHTML?.slice(0, 60))) {
-        seen.add(parent.innerHTML?.slice(0, 60));
-        cards.push(parent);
+    for (const a of allLinks as any[]) {
+      const href = a.getAttribute("href") || "";
+      const text = (a.textContent || "").trim();
+      if (text.length > 10 && !seen.has(text.toLowerCase()) && (href.includes("/p/") || href.includes("produto") || href.includes("product") || href.length > 20)) {
+        seen.add(text.toLowerCase());
+        cards.push(a);
       }
     }
   }
@@ -115,27 +143,32 @@ function extractProducts(html: string, pageNum: number, origin: string): Scraped
   const products: ScrapedProduct[] = [];
 
   for (const card of cards) {
-    // Title
     let bestTitle = "";
     for (const sel of TITLE_SELECTORS) {
-      const el = card.querySelector(sel);
-      if (el) {
-        const txt = (el.textContent || "").trim();
-        if (txt.length > bestTitle.length) bestTitle = txt;
-      }
+      try {
+        const el = card.querySelector(sel);
+        if (el) {
+          const txt = (el.textContent || "").trim();
+          if (txt.length > bestTitle.length) bestTitle = txt;
+          // Also check title attribute
+          const titleAttr = el.getAttribute?.("title")?.trim() || "";
+          if (titleAttr.length > bestTitle.length) bestTitle = titleAttr;
+        }
+      } catch { /* skip */ }
     }
-    // Also check title attr
-    const titleAttr = card.querySelector("a[title]");
-    if (titleAttr) {
-      const t = titleAttr.getAttribute("title")?.trim() || "";
-      if (t.length > bestTitle.length) bestTitle = t;
+    // Check card itself if it's a link
+    if (!bestTitle || bestTitle.length < 3) {
+      const titleAttr = card.getAttribute?.("title")?.trim() || "";
+      if (titleAttr.length > bestTitle.length) bestTitle = titleAttr;
+      const cardText = (card.textContent || "").trim();
+      if (cardText.length > 3 && cardText.length < 200 && bestTitle.length < 3) bestTitle = cardText.split("\n")[0].trim();
     }
 
     if (!bestTitle || bestTitle.length < 3) continue;
 
     // URL
     let productUrl: string | null = null;
-    const link = card.querySelector("a[href]");
+    const link = card.tagName === "A" ? card : card.querySelector("a[href]");
     if (link) {
       const href = link.getAttribute("href") || "";
       if (href.startsWith("http")) productUrl = href;
@@ -144,15 +177,36 @@ function extractProducts(html: string, pageNum: number, origin: string): Scraped
 
     // Price
     let preco: string | null = null;
+    let precoNum: number | null = null;
     for (const sel of PRICE_SELECTORS) {
-      const el = card.querySelector(sel);
-      if (el) {
-        preco = (el.textContent || "").trim().replace(/\s+/g, " ");
-        if (preco) break;
-      }
+      try {
+        const el = card.querySelector(sel);
+        if (el) {
+          const raw = (el.textContent || "").trim().replace(/\s+/g, " ");
+          if (raw) {
+            const { display, num } = normalizePrice(raw);
+            preco = display;
+            precoNum = num;
+            break;
+          }
+        }
+      } catch { /* skip */ }
+    }
+    // Try data-price-amount attribute
+    if (!preco) {
+      try {
+        const priceEl = card.querySelector("[data-price-amount]");
+        if (priceEl) {
+          const amt = priceEl.getAttribute("data-price-amount");
+          if (amt) {
+            precoNum = parseFloat(amt);
+            preco = `R$ ${precoNum.toFixed(2).replace(".", ",")}`;
+          }
+        }
+      } catch { /* skip */ }
     }
 
-    products.push({ produto: bestTitle, url: productUrl, preco, pagina: pageNum });
+    products.push({ produto: bestTitle, url: productUrl, preco, precoNum, pagina: pageNum, dominio });
   }
 
   return products;
@@ -162,23 +216,117 @@ function hasNextPage(html: string, currentPage: number): boolean {
   const doc = new DOMParser().parseFromString(html, "text/html");
   if (!doc) return false;
 
-  // Common pagination selectors
   const nextSelectors = [
     'a[rel="next"]',
     ".pagination .next a",
     ".pagination li.active + li a",
     'a[aria-label="Next"]',
     'a[title="Próxima"]',
+    'a[title="Next"]',
     ".pager .next a",
-    `a[href*="page=${currentPage + 1}"]`,
+    ".pages .next",
     `a[href*="p=${currentPage + 1}"]`,
+    `a[href*="page=${currentPage + 1}"]`,
   ];
   for (const sel of nextSelectors) {
     try {
       if (doc.querySelector(sel)) return true;
-    } catch { /* selector might fail */ }
+    } catch { /* skip */ }
   }
   return false;
+}
+
+async function fetchPage(url: string, logs: string[], page: number): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      },
+      redirect: "follow",
+    });
+
+    if (res.status === 429) {
+      logs.push(`⚠️ P${page}: 429 — retry em 5s...`);
+      await sleep(5000);
+      const retry = await fetch(url, {
+        headers: { "User-Agent": USER_AGENT, Accept: "text/html" },
+        redirect: "follow",
+      });
+      if (retry.ok) return await retry.text();
+      await retry.text();
+      return null;
+    }
+
+    if (!res.ok) {
+      await res.text();
+      return null;
+    }
+
+    return await res.text();
+  } catch (e) {
+    logs.push(`❌ Erro: ${(e as Error).message}`);
+    return null;
+  }
+}
+
+async function scrapeUrl(baseUrl: string, maxPages: number, logs: string[]): Promise<{ products: ScrapedProduct[]; pagesScraped: number }> {
+  const origin = new URL(baseUrl).origin;
+  const dominio = new URL(baseUrl).hostname.replace("www.", "");
+  const allProducts: ScrapedProduct[] = [];
+  let page = 1;
+  let lastHtml = "";
+  const startTime = Date.now();
+
+  logs.push(`🌐 Iniciando: ${dominio} — ${baseUrl}`);
+
+  while (page <= maxPages) {
+    const urls = page === 1 ? [baseUrl] : buildPageUrls(baseUrl, page);
+    let html: string | null = null;
+    let fetchedUrl = "";
+
+    for (const tryUrl of urls) {
+      html = await fetchPage(tryUrl, logs, page);
+      if (html) {
+        fetchedUrl = tryUrl;
+        break;
+      }
+    }
+
+    if (!html) {
+      logs.push(`⛔ ${dominio} P${page}: sem resposta`);
+      break;
+    }
+
+    // Detect duplicate page content
+    if (page > 1 && html.length === lastHtml.length && html.slice(0, 500) === lastHtml.slice(0, 500)) {
+      logs.push(`ℹ️ ${dominio} P${page}: conteúdo duplicado — parando`);
+      break;
+    }
+    lastHtml = html;
+
+    const products = extractProducts(html, page, origin, dominio);
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    logs.push(`✅ ${dominio} → P${page}: ${products.length} produtos (${elapsed}s) — ${fetchedUrl}`);
+    allProducts.push(...products);
+
+    if (products.length === 0 && page > 1) {
+      logs.push(`ℹ️ ${dominio} P${page}: sem produtos — parando`);
+      break;
+    }
+
+    // Even if no "next page" link is found, try next page for Magento sites
+    if (page > 1 && products.length === 0) break;
+
+    page++;
+    if (page <= maxPages) await sleep(1200);
+  }
+
+  const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+  logs.push(`📊 ${dominio}: ${allProducts.length} produtos em ${page - 1} páginas (${totalTime}s)`);
+
+  return { products: allProducts, pagesScraped: page - 1 };
 }
 
 // -------- main handler --------
@@ -188,99 +336,47 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { url, maxPages = 10 } = await req.json();
-    if (!url || typeof url !== "string") {
-      return new Response(JSON.stringify({ success: false, error: "URL obrigatória" }), {
+    const body = await req.json();
+    // Support single url or array of urls
+    let urls: string[] = [];
+    if (body.urls && Array.isArray(body.urls)) {
+      urls = body.urls.map((u: string) => u.trim()).filter(Boolean);
+    } else if (body.url && typeof body.url === "string") {
+      // Support multiline input
+      urls = body.url.split(/[\n\r]+/).map((u: string) => u.trim()).filter((u: string) => u.startsWith("http"));
+    }
+
+    if (urls.length === 0) {
+      return new Response(JSON.stringify({ success: false, error: "URL(s) obrigatória(s)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const limit = Math.min(Math.max(1, Number(maxPages) || 10), 50);
-    const baseUrl = url.trim();
-    const origin = new URL(baseUrl).origin;
-
-    const allProducts: ScrapedProduct[] = [];
+    const maxPages = Math.min(Math.max(1, Number(body.maxPages) || 10), 50);
     const logs: string[] = [];
-    let page = 1;
-    let lastHtml = "";
+    const allProducts: ScrapedProduct[] = [];
+    let totalPages = 0;
+    const queueResults: { url: string; status: string; pages: number; products: number }[] = [];
 
-    while (page <= limit) {
-      const urls = page === 1 ? [baseUrl] : buildPageUrl(baseUrl, page);
-      let html = "";
-      let fetchedUrl = "";
-      let fetched = false;
+    logs.push(`📋 Fila: ${urls.length} URL(s) para processar`);
 
-      for (const tryUrl of urls) {
-        try {
-          const res = await fetch(tryUrl, {
-            headers: {
-              "User-Agent": USER_AGENT,
-              Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-              "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-            },
-            redirect: "follow",
-          });
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      logs.push(`\n🔄 [${i + 1}/${urls.length}] Processando...`);
 
-          if (res.status === 429) {
-            logs.push(`⚠️ Página ${page}: bloqueio 429 — aguardando retry...`);
-            await sleep(5000);
-            const retry = await fetch(tryUrl, {
-              headers: { "User-Agent": USER_AGENT },
-              redirect: "follow",
-            });
-            if (retry.ok) {
-              html = await retry.text();
-              fetchedUrl = tryUrl;
-              fetched = true;
-              break;
-            }
-            logs.push(`❌ Página ${page}: bloqueio mantido após retry`);
-            continue;
-          }
-
-          if (!res.ok) {
-            await res.text(); // consume body
-            continue;
-          }
-
-          html = await res.text();
-          fetchedUrl = tryUrl;
-          fetched = true;
-          break;
-        } catch (e) {
-          logs.push(`❌ Página ${page}: erro ao acessar ${tryUrl} — ${(e as Error).message}`);
-        }
+      try {
+        const { products, pagesScraped } = await scrapeUrl(url, maxPages, logs);
+        allProducts.push(...products);
+        totalPages += pagesScraped;
+        queueResults.push({ url, status: "done", pages: pagesScraped, products: products.length });
+      } catch (e) {
+        logs.push(`❌ Erro em ${url}: ${(e as Error).message}`);
+        queueResults.push({ url, status: "failed", pages: 0, products: 0 });
       }
 
-      if (!fetched || !html) {
-        logs.push(`⛔ Página ${page}: nenhuma variante de URL funcionou`);
-        break;
-      }
-
-      // Detect if page is identical to the last (some sites return page 1 for invalid pages)
-      if (page > 1 && html.length === lastHtml.length && html.slice(0, 500) === lastHtml.slice(0, 500)) {
-        logs.push(`ℹ️ Página ${page}: conteúdo idêntico à anterior — parando`);
-        break;
-      }
-      lastHtml = html;
-
-      const products = extractProducts(html, page, origin);
-      logs.push(`✅ Página ${page}: ${products.length} produtos encontrados — ${fetchedUrl}`);
-      allProducts.push(...products);
-
-      if (products.length === 0 && page > 1) {
-        logs.push(`ℹ️ Página ${page}: sem produtos — parando`);
-        break;
-      }
-
-      if (!hasNextPage(html, page) && page > 1) {
-        logs.push(`ℹ️ Sem link de próxima página após página ${page}`);
-        break;
-      }
-
-      page++;
-      if (page <= limit) await sleep(1200); // rate limit
+      // Rate limit between URLs
+      if (i < urls.length - 1) await sleep(2000);
     }
 
     // Deduplicate by name
@@ -292,12 +388,16 @@ Deno.serve(async (req) => {
       return true;
     });
 
+    logs.push(`\n🏁 Concluído: ${unique.length} produtos únicos de ${totalPages} páginas em ${urls.length} URLs`);
+
     return new Response(
       JSON.stringify({
         success: true,
-        totalPages: page - 1,
+        totalUrls: urls.length,
+        totalPages,
         totalProducts: unique.length,
         products: unique,
+        queue: queueResults,
         logs,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

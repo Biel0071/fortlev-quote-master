@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "@/hooks/use-toast";
 import {
   Globe, Loader2, Search, FileSpreadsheet, CheckCircle2, XCircle, Clock,
-  Timer, History, Trash2, Eye,
+  Timer, History, Trash2, Eye, ArrowLeft, Download,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 

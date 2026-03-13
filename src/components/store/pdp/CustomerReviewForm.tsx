@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Star, Send, CheckCircle } from "lucide-react";
+import { Star, Send, CheckCircle, ImagePlus, X } from "lucide-react";
 import { cloud } from "@/lib/cloud";
 import { toast } from "@/hooks/use-toast";
+
+const MAX_IMAGES = 3;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export function CustomerReviewForm({
   productId,
@@ -20,16 +23,56 @@ export function CustomerReviewForm({
   const [authorLocation, setAuthorLocation] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isValid = rating > 0 && authorName.trim().length >= 2 && content.trim().length >= 10;
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const remaining = MAX_IMAGES - imageFiles.length;
+    const validFiles = files
+      .filter((f) => {
+        if (f.size > MAX_IMAGE_SIZE) {
+          toast({ title: "Arquivo muito grande", description: `${f.name} excede 5MB`, variant: "destructive" });
+          return false;
+        }
+        if (!f.type.startsWith("image/")) {
+          toast({ title: "Formato inválido", description: "Apenas imagens são aceitas", variant: "destructive" });
+          return false;
+        }
+        return true;
+      })
+      .slice(0, remaining);
+
+    if (validFiles.length === 0) return;
+
+    setImageFiles((prev) => [...prev, ...validFiles]);
+
+    for (const file of validFiles) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setImagePreviews((prev) => [...prev, ev.target?.result as string]);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeImage = (idx: number) => {
+    setImageFiles((prev) => prev.filter((_, i) => i !== idx));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   const handleSubmit = async () => {
     if (!isValid || submitting) return;
     setSubmitting(true);
     try {
-      const { error } = await cloud.from("product_reviews").insert({
+      const { data: reviewData, error } = await cloud.from("product_reviews").insert({
         product_id: productId,
         author_name: authorName.trim(),
         author_location: authorLocation.trim() || null,
@@ -39,8 +82,33 @@ export function CustomerReviewForm({
         approved: false,
         origin: "customer",
         verified_purchase: false,
-      });
+      }).select("id").single();
+
       if (error) throw error;
+
+      // Upload images if any
+      if (imageFiles.length > 0 && reviewData) {
+        const reviewId = (reviewData as any).id;
+        for (let i = 0; i < imageFiles.length; i++) {
+          const file = imageFiles[i];
+          const ext = file.name.split(".").pop() ?? "jpg";
+          const path = `reviews/${reviewId}/${i}.${ext}`;
+
+          const { error: uploadError } = await cloud.storage
+            .from("product-images")
+            .upload(path, file, { contentType: file.type, upsert: true });
+
+          if (!uploadError) {
+            const { data: urlData } = cloud.storage.from("product-images").getPublicUrl(path);
+            await cloud.from("review_images").insert({
+              review_id: reviewId,
+              image_url: urlData.publicUrl,
+              sort_order: i,
+            });
+          }
+        }
+      }
+
       setSubmitted(true);
       toast({ title: "Avaliação enviada!", description: "Sua avaliação será analisada e publicada em breve." });
     } catch (e: any) {
@@ -143,6 +211,45 @@ export function CustomerReviewForm({
             maxLength={500}
           />
           <p className="text-[10px] text-muted-foreground mt-1 text-right">{content.length}/500</p>
+        </div>
+
+        {/* Image upload */}
+        <div>
+          <label className="text-xs text-muted-foreground mb-1.5 block">Fotos (opcional)</label>
+          <div className="flex flex-wrap gap-2">
+            {imagePreviews.map((src, idx) => (
+              <div key={idx} className="relative h-16 w-16 rounded-lg overflow-hidden border border-border">
+                <img src={src} alt={`Foto ${idx + 1}`} className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeImage(idx)}
+                  className="absolute top-0 right-0 bg-black/60 text-white rounded-bl-lg p-0.5"
+                  aria-label="Remover foto"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+            {imageFiles.length < MAX_IMAGES && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="h-16 w-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+                aria-label="Adicionar foto"
+              >
+                <ImagePlus className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">Até {MAX_IMAGES} fotos, máx. 5MB cada</p>
         </div>
 
         <Button

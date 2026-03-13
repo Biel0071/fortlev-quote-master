@@ -254,7 +254,7 @@ export default function ProductPage() {
         ) : !product ? (
           <div className="text-muted-foreground text-sm">Produto não encontrado.</div>
         ) : (
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-12">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-12 min-w-0 overflow-hidden">
             {/* Gallery */}
             <div className="lg:col-span-7">
               <Card className="rounded-2xl sm:rounded-3xl overflow-hidden border-border bg-card shadow-sm">

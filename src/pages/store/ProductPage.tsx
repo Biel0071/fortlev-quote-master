@@ -361,6 +361,9 @@ export default function ProductPage() {
                   </CardContent>
                 </Card>
               ) : null}
+
+              {/* Reviews */}
+              <ProductReviews productId={(product as any).id} />
             </div>
           </div>
         )}

@@ -87,27 +87,27 @@ export function ProductReviews({ productId }: { productId: string }) {
   ] : [];
 
   return (
-    <Card className="rounded-2xl border-border bg-card shadow-sm">
-      <CardContent className="p-4 sm:p-5 space-y-4">
-        <h3 className="text-sm font-semibold">Avaliações de clientes</h3>
+    <Card className="rounded-2xl border-border bg-card shadow-sm min-w-0 max-w-full overflow-hidden">
+      <CardContent className="p-4 sm:p-5 space-y-4 min-w-0">
+        <h3 className="text-sm font-semibold break-words [overflow-wrap:anywhere]">Avaliações de clientes</h3>
 
         {/* Summary */}
         {summary && summary.total_reviews > 0 && (
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-            <div className="flex flex-row sm:flex-col items-center gap-2 sm:gap-1">
-              <div className="text-3xl sm:text-4xl font-bold">{Number(summary.average_rating).toFixed(1)}</div>
-              <div className="flex flex-col items-center gap-0.5">
+          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:gap-6">
+            <div className="flex flex-row sm:flex-col items-center gap-2 sm:gap-1 min-w-0">
+              <div className="text-3xl sm:text-4xl font-bold shrink-0">{Number(summary.average_rating).toFixed(1)}</div>
+              <div className="flex flex-col items-center gap-0.5 min-w-0">
                 <Stars count={Math.round(Number(summary.average_rating))} size="h-4 w-4" />
-                <div className="text-[10px] text-muted-foreground">{summary.total_reviews} avaliações</div>
+                <div className="text-[10px] text-muted-foreground break-words [overflow-wrap:anywhere]">{summary.total_reviews} avaliações</div>
               </div>
             </div>
-            <div className="flex-1 space-y-1">
+            <div className="flex-1 space-y-1 min-w-0">
               {ratingBars.map((bar) => (
-                <div key={bar.label} className="flex items-center gap-1.5">
-                  <span className="text-[10px] w-2.5 text-right text-muted-foreground">{bar.label}</span>
-                  <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
-                  <Progress value={bar.pct} className="h-1.5 flex-1" />
-                  <span className="text-[10px] w-5 text-muted-foreground">{bar.count}</span>
+                <div key={bar.label} className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[10px] w-2.5 text-right text-muted-foreground shrink-0">{bar.label}</span>
+                  <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400 shrink-0" />
+                  <Progress value={bar.pct} className="h-1.5 flex-1 min-w-0" />
+                  <span className="text-[10px] w-5 text-muted-foreground shrink-0">{bar.count}</span>
                 </div>
               ))}
             </div>
@@ -115,10 +115,10 @@ export function ProductReviews({ productId }: { productId: string }) {
         )}
 
         {/* Reviews list */}
-        <div className="space-y-3">
+        <div className="space-y-3 min-w-0">
           {reviews.map((r) => (
-            <div key={r.id} className="border-t border-border pt-3 first:border-0 first:pt-0">
-              <div className="flex items-center gap-2 mb-1">
+            <div key={r.id} className="border-t border-border pt-3 first:border-0 first:pt-0 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1 min-w-0">
                 <Stars count={r.rating} />
                 {r.verified_purchase && (
                   <span className="flex items-center gap-0.5 text-[10px] text-green-600 font-medium">
@@ -126,19 +126,19 @@ export function ProductReviews({ productId }: { productId: string }) {
                   </span>
                 )}
               </div>
-              {r.title && <p className="text-xs font-medium">{r.title}</p>}
-              <p className="text-xs text-muted-foreground leading-relaxed">{r.content}</p>
+              {r.title && <p className="text-xs font-medium break-words [overflow-wrap:anywhere]">{r.title}</p>}
+              <p className="text-xs text-muted-foreground leading-relaxed break-words [overflow-wrap:anywhere]">{r.content}</p>
               {(r.pros || r.cons) && (
-                <div className="flex flex-wrap gap-3 mt-1.5 text-[10px]">
-                  {r.pros && <span className="text-green-600">👍 {r.pros}</span>}
-                  {r.cons && <span className="text-red-500">👎 {r.cons}</span>}
+                <div className="flex flex-wrap gap-3 mt-1.5 text-[10px] min-w-0">
+                  {r.pros && <span className="text-green-600 break-words [overflow-wrap:anywhere]">👍 {r.pros}</span>}
+                  {r.cons && <span className="text-red-500 break-words [overflow-wrap:anywhere]">👎 {r.cons}</span>}
                 </div>
               )}
-              <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
-                <span className="font-medium text-foreground">{r.author_name}</span>
+              <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-muted-foreground min-w-0">
+                <span className="font-medium text-foreground break-words [overflow-wrap:anywhere]">{r.author_name}</span>
                 {r.author_location && (
-                  <span className="flex items-center gap-0.5">
-                    <MapPin className="h-2.5 w-2.5" /> {r.author_location}
+                  <span className="flex items-center gap-0.5 break-words [overflow-wrap:anywhere]">
+                    <MapPin className="h-2.5 w-2.5 shrink-0" /> {r.author_location}
                   </span>
                 )}
                 <span>• {timeAgo(r.created_at)}</span>

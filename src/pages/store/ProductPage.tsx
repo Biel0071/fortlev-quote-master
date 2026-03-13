@@ -95,14 +95,14 @@ function ProductDescription({ markdown }: { markdown: string }) {
         }
         if (b.kind === "kv") {
           return (
-            <div key={idx} className="text-xs leading-relaxed break-words">
-              <span className="font-semibold text-foreground">{b.key}: </span>
-              <span className="text-muted-foreground">{b.value}</span>
+            <div key={idx} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1 text-xs leading-relaxed min-w-0">
+              <span className="font-semibold text-foreground shrink-0">{b.key}:</span>
+              <span className="text-muted-foreground break-words [overflow-wrap:anywhere]">{b.value}</span>
             </div>
           );
         }
         return (
-          <p key={idx} className="text-xs text-muted-foreground leading-relaxed break-words">
+          <p key={idx} className="text-xs text-muted-foreground leading-relaxed break-words [overflow-wrap:anywhere]">
             {parseInlineBold(b.text)}
           </p>
         );
@@ -239,12 +239,12 @@ export default function ProductPage() {
   }, [images]);
 
   return (
-    <div className="flex flex-col bg-background w-full overflow-x-hidden">
+    <div className="flex min-w-0 w-full flex-col bg-background overflow-x-clip">
       <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-20 md:pb-8 space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
+      <main className="mx-auto w-full max-w-6xl min-w-0 overflow-x-clip px-3 py-4 pb-20 sm:px-6 sm:py-8 md:pb-8 space-y-4 sm:space-y-6">
         <Button asChild variant="ghost" className="h-9 sm:h-11 rounded-2xl w-fit text-sm">
           <Link to="/loja">← Voltar</Link>
         </Button>
@@ -254,9 +254,9 @@ export default function ProductPage() {
         ) : !product ? (
           <div className="text-muted-foreground text-sm">Produto não encontrado.</div>
         ) : (
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-12 min-w-0 overflow-hidden">
+          <div className="grid min-w-0 max-w-full gap-4 overflow-x-clip sm:gap-6 lg:grid-cols-12">
             {/* Gallery */}
-            <div className="lg:col-span-7">
+            <div className="min-w-0 max-w-full overflow-hidden lg:col-span-7">
               <Card className="rounded-2xl sm:rounded-3xl overflow-hidden border-border bg-card shadow-sm">
                 <div className="aspect-[4/3] bg-muted/20">
                   {activeImg ? (
@@ -266,8 +266,8 @@ export default function ProductPage() {
                   )}
                 </div>
                 {images.length > 1 ? (
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex gap-1.5 sm:gap-2 overflow-x-auto">
+                  <CardContent className="min-w-0 p-3 sm:p-4">
+                    <div className="flex w-full min-w-0 gap-1.5 overflow-x-auto sm:gap-2">
                       {images.slice(0, 8).map((im: any, idx: number) => {
                         const url = publicImageUrl("product-images", im.path);
                         const active = url && url === activeImg;
@@ -292,18 +292,18 @@ export default function ProductPage() {
             </div>
 
             {/* Product info */}
-            <div className="lg:col-span-5 space-y-3 sm:space-y-4 min-w-0 overflow-hidden">
+            <div className="lg:col-span-5 space-y-3 sm:space-y-4 min-w-0 max-w-full overflow-hidden">
               <ProductBadges featured={Boolean((product as any).featured)} basePrice={basePrice} promoPrice={promoPrice} />
 
-              <div>
-                <h1 className="text-xl sm:text-[28px] font-bold tracking-tight leading-tight">{product.name}</h1>
+              <div className="min-w-0 max-w-full">
+                <h1 className="text-xl sm:text-[28px] font-bold tracking-tight leading-tight break-words [overflow-wrap:anywhere]">{product.name}</h1>
 
                 {/* Rating badge */}
                 <div className="mt-1.5">
                   <ProductRatingBadge productId={(product as any).id} />
                 </div>
 
-                <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
+                <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground break-words [overflow-wrap:anywhere]">
                   {Number((product as any).stock ?? 0) <= Number((product as any).min_stock ?? 0) ? (
                     <span>Últimas unidades disponíveis</span>
                   ) : (
@@ -362,39 +362,39 @@ export default function ProductPage() {
               <ShippingCalculator subtotal={totalDynamic} />
 
               {/* Info cards */}
-              <Card className="rounded-2xl border-border bg-card shadow-sm">
-                <CardContent className="p-3 sm:p-5">
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                    <div className="rounded-xl border border-border bg-secondary/30 p-3">
+              <Card className="rounded-2xl border-border bg-card shadow-sm min-w-0 max-w-full overflow-hidden">
+                <CardContent className="p-3 sm:p-5 min-w-0">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3 min-w-0">
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3 min-w-0">
                       <div className="text-[10px] sm:text-xs text-muted-foreground">Unidade</div>
-                      <div className="text-sm font-medium">{(product as any).unit ?? "un"}</div>
+                      <div className="text-sm font-medium break-words [overflow-wrap:anywhere]">{(product as any).unit ?? "un"}</div>
                     </div>
 
-                    <div className="rounded-xl border border-border bg-secondary/30 p-3">
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3 min-w-0">
                       <div className="text-[10px] sm:text-xs text-muted-foreground">Prazo</div>
-                      <div className="text-sm font-medium">3 a 7 dias úteis</div>
+                      <div className="text-sm font-medium break-words [overflow-wrap:anywhere]">3 a 7 dias úteis</div>
                     </div>
 
-                    <div className="rounded-xl border border-border bg-secondary/30 p-3 col-span-2">
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3 col-span-2 min-w-0">
                       <div className="text-[10px] sm:text-xs text-muted-foreground">Pagamento</div>
-                      <div className="text-sm font-medium">Cartão • Boleto • Pix</div>
+                      <div className="text-sm font-medium break-words [overflow-wrap:anywhere]">Cartão • Boleto • Pix</div>
                       <PaymentLogosReal />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 min-w-0">
                 {[
                   { icon: Truck, label: "Entrega" },
                   { icon: CreditCard, label: "Parcelamento" },
                   { icon: ShieldCheck, label: "Segurança" },
                   { icon: BadgeCheck, label: "Garantia" },
                 ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="rounded-xl border border-border bg-card p-3">
-                    <div className="flex items-center gap-2">
+                  <div key={label} className="rounded-xl border border-border bg-card p-3 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       <Icon className="h-4 w-4 text-primary shrink-0" />
-                      <span className="text-sm font-medium">{label}</span>
+                      <span className="text-sm font-medium truncate">{label}</span>
                     </div>
                   </div>
                 ))}

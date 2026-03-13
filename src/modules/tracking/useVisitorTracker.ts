@@ -8,6 +8,17 @@ import type { TrackingCollectorEvent } from "./eventCollector";
 const TOKEN_KEY_PERSIST = "tracking_session_token_v1";
 const TOKEN_KEY_TEMP = "tracking_session_token_temp_v1";
 
+const startedSessions = new Set<string>();
+const trackedPageViews = new Set<string>();
+
+let trackerRuntime = {
+  sessionToken: "",
+  consentOk: false,
+};
+
+let scrollListenerInitialized = false;
+let productVisitListenerInitialized = false;
+
 function ensureToken(persist: boolean) {
   const key = persist ? TOKEN_KEY_PERSIST : TOKEN_KEY_TEMP;
   const store = persist ? localStorage : sessionStorage;

@@ -313,20 +313,20 @@ export default function ProductPage() {
               </div>
 
               {/* Price */}
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 {hasPromo ? (
-                  <div className="text-xs sm:text-sm text-muted-foreground line-through">De {formatCurrency(basePrice)}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground line-through break-words">De {formatCurrency(basePrice)}</div>
                 ) : null}
-                <div className="text-2xl sm:text-4xl font-extrabold tracking-tight">{formatCurrency(effectivePrice)}</div>
-                {installments ? <div className="text-xs sm:text-sm text-muted-foreground">{installments}</div> : null}
+                <div className="text-2xl sm:text-4xl font-semibold tracking-tight break-words">{formatCurrency(effectivePrice)}</div>
+                {installments ? <div className="text-xs sm:text-sm text-muted-foreground break-words">{installments}</div> : null}
               </div>
 
               {/* PIX */}
               {pixPrice ? (
-                <Card className="rounded-2xl border-border bg-card shadow-sm">
-                  <CardContent className="p-3 sm:p-5">
+                <Card className="rounded-2xl border-border bg-card shadow-sm w-full min-w-0 overflow-hidden">
+                  <CardContent className="p-3 sm:p-5 min-w-0">
                     <div className="text-xs sm:text-sm font-medium text-foreground">7% de desconto no PIX</div>
-                    <div className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
+                    <div className="mt-0.5 text-xs sm:text-sm text-muted-foreground break-words">
                       No PIX: <span className="font-medium text-foreground">{formatCurrency(pixPrice)}</span>
                     </div>
                   </CardContent>
@@ -334,9 +334,9 @@ export default function ProductPage() {
               ) : null}
 
               {/* Total */}
-              <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 px-3 sm:px-4 py-2.5 sm:py-3">
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-muted/20 px-3 sm:px-4 py-2.5 sm:py-3 min-w-0">
                 <span className="text-xs sm:text-sm text-muted-foreground">Total</span>
-                <span className="text-base sm:text-lg font-bold">{formatCurrency(totalDynamic)}</span>
+                <span className="text-base sm:text-lg font-semibold text-right break-words">{formatCurrency(totalDynamic)}</span>
               </div>
 
               <QuantitySelector value={qty} onChange={setQty} />

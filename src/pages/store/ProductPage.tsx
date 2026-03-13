@@ -244,7 +244,7 @@ export default function ProductPage() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-20 md:pb-8 space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
+      <main className="mx-auto w-full max-w-6xl min-w-0 max-w-full overflow-x-clip px-3 py-4 pb-20 sm:px-6 sm:py-8 md:pb-8 space-y-4 sm:space-y-6">
         <Button asChild variant="ghost" className="h-9 sm:h-11 rounded-2xl w-fit text-sm">
           <Link to="/loja">← Voltar</Link>
         </Button>
@@ -254,9 +254,9 @@ export default function ProductPage() {
         ) : !product ? (
           <div className="text-muted-foreground text-sm">Produto não encontrado.</div>
         ) : (
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-12 min-w-0 overflow-hidden">
+          <div className="grid min-w-0 max-w-full gap-4 overflow-x-clip sm:gap-6 lg:grid-cols-12">
             {/* Gallery */}
-            <div className="lg:col-span-7">
+            <div className="min-w-0 max-w-full overflow-hidden lg:col-span-7">
               <Card className="rounded-2xl sm:rounded-3xl overflow-hidden border-border bg-card shadow-sm">
                 <div className="aspect-[4/3] bg-muted/20">
                   {activeImg ? (
@@ -266,8 +266,8 @@ export default function ProductPage() {
                   )}
                 </div>
                 {images.length > 1 ? (
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex gap-1.5 sm:gap-2 overflow-x-auto">
+                  <CardContent className="min-w-0 p-3 sm:p-4">
+                    <div className="flex w-full min-w-0 gap-1.5 overflow-x-auto sm:gap-2">
                       {images.slice(0, 8).map((im: any, idx: number) => {
                         const url = publicImageUrl("product-images", im.path);
                         const active = url && url === activeImg;
@@ -292,18 +292,18 @@ export default function ProductPage() {
             </div>
 
             {/* Product info */}
-            <div className="lg:col-span-5 space-y-3 sm:space-y-4 min-w-0 overflow-hidden">
+            <div className="lg:col-span-5 space-y-3 sm:space-y-4 min-w-0 max-w-full overflow-hidden">
               <ProductBadges featured={Boolean((product as any).featured)} basePrice={basePrice} promoPrice={promoPrice} />
 
-              <div>
-                <h1 className="text-xl sm:text-[28px] font-bold tracking-tight leading-tight">{product.name}</h1>
+              <div className="min-w-0 max-w-full">
+                <h1 className="text-xl sm:text-[28px] font-bold tracking-tight leading-tight break-words [overflow-wrap:anywhere]">{product.name}</h1>
 
                 {/* Rating badge */}
                 <div className="mt-1.5">
                   <ProductRatingBadge productId={(product as any).id} />
                 </div>
 
-                <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
+                <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground break-words [overflow-wrap:anywhere]">
                   {Number((product as any).stock ?? 0) <= Number((product as any).min_stock ?? 0) ? (
                     <span>Últimas unidades disponíveis</span>
                   ) : (

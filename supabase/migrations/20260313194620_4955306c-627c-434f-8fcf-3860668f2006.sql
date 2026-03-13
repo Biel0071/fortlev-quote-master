@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS store_products_sku_unique ON public.store_products (sku) WHERE sku IS NOT NULL AND sku != '';

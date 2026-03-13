@@ -97,6 +97,24 @@ function normalizeUrl(raw: string, baseUrl: string) {
   }
 }
 
+/* ── Environment/decoration rejection terms ── */
+const DEFAULT_REJECTION_TERMS = [
+  "kitchen", "bathroom", "living room", "bedroom", "dining room",
+  "interior design", "room design", "home decor", "decoration",
+  "showroom", "ambiente", "cozinha decorada", "banheiro decorado",
+  "sala decorada", "quarto decorado", "ambiente decorado",
+  "projeto de interiores", "inspiração", "inspiration",
+  "before and after", "antes e depois", "renovation",
+  "reforma completa", "tour", "house tour",
+];
+
+const DEFAULT_ACCEPTANCE_TERMS = [
+  "tile sample", "ceramic tile", "porcelain tile", "tile texture",
+  "product isolated", "white background", "produto isolado",
+  "fundo branco", "amostra", "peça", "textura", "sample",
+  "close up", "closeup", "detail", "detalhe",
+];
+
 function isBlockedHost(url: string) {
   try {
     const host = new URL(url).hostname.toLowerCase();
@@ -104,7 +122,10 @@ function isBlockedHost(url: string) {
       host.includes("r.bing.com") ||
       host.includes("bing.com") ||
       host.includes("duckduckgo.com") ||
-      host.includes("gstatic.com")
+      host.includes("gstatic.com") ||
+      host.includes("pinterest.com") ||
+      host.includes("instagram.com") ||
+      host.includes("facebook.com")
     );
   } catch {
     return true;
@@ -123,12 +144,32 @@ function isLikelyRealImage(url: string) {
   return true;
 }
 
-function filterCandidate(item: SearchResult) {
+function isEnvironmentImage(title: string, rejectionTerms?: string[]): boolean {
+  const lower = title.toLowerCase();
+  const terms = rejectionTerms && rejectionTerms.length > 0 ? rejectionTerms : DEFAULT_REJECTION_TERMS;
+  return terms.some(term => lower.includes(term.toLowerCase()));
+}
+
+function isProductImage(title: string, acceptanceTerms?: string[]): boolean {
+  const lower = title.toLowerCase();
+  const terms = acceptanceTerms && acceptanceTerms.length > 0 ? acceptanceTerms : DEFAULT_ACCEPTANCE_TERMS;
+  return terms.some(term => lower.includes(term.toLowerCase()));
+}
+
+function filterCandidate(item: SearchResult, rejectionTerms?: string[], acceptanceTerms?: string[]) {
   if (!isLikelyRealImage(item.imageUrl)) return false;
   if (item.thumbnail && !isLikelyRealImage(item.thumbnail)) return false;
 
   if (item.width && item.height) {
     if (item.width < 300 || item.height < 300) return false;
+  }
+
+  // Reject environment/decoration images based on title
+  if (isEnvironmentImage(item.title, rejectionTerms)) {
+    // But accept if it also has product-specific terms
+    if (!isProductImage(item.title, acceptanceTerms)) {
+      return false;
+    }
   }
 
   return true;

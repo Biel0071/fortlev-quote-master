@@ -341,7 +341,7 @@ export default function AdminBulkImageSearch() {
     updateStats({ activeWorkers: (statsRef.current?.activeWorkers ?? 0) + 1, processing: (statsRef.current?.processing ?? 0) + 1, pending: (statsRef.current?.pending ?? 0) - 1 });
 
     try {
-      // STEP 1: AI Enrichment with layered queries
+      // STEP 1: AI Enrichment with layered queries (concurrency limited)
       let aiSearchQueries: string[] = [];
       let layeredQueries: { manufacturer?: string[]; marketplace?: string[]; general?: string[] } = {};
       let imageRejectionTerms: string[] = [];
@@ -352,21 +352,47 @@ export default function AdminBulkImageSearch() {
       const neededImages = MAX_IMAGES_PER_PRODUCT - (product?.imageCount ?? 0);
 
       if (needsDescription || neededImages > 0) {
-        updateJob(jobIdx, { step: "🧠 IA interpretando..." });
+        updateJob(jobIdx, { step: "🧠 Aguardando slot IA..." });
+        await aiSemRef.current.acquire();
         try {
-          const { data, error } = await cloud.functions.invoke("enrich-products", {
-            body: { action: "enrich", productId: job.productId, productName: job.productName },
-          });
-          if (!error && data?.success) {
-            aiSearchQueries = data.searchQueries ?? [];
-            layeredQueries = data.searchQueriesLayered ?? {};
-            imageRejectionTerms = data.imageRejectionTerms ?? [];
-            imageAcceptanceTerms = data.imageAcceptanceTerms ?? [];
-            aiImagePrompt = data.aiImagePrompt ?? "";
-            updateJob(jobIdx, { descriptionGenerated: true, techSheetGenerated: true });
-            updateStats({ descriptionsGenerated: (statsRef.current?.descriptionsGenerated ?? 0) + 1 });
+          updateJob(jobIdx, { step: "🧠 IA interpretando..." });
+          for (let aiAttempt = 0; aiAttempt < MAX_RETRIES; aiAttempt++) {
+            try {
+              const { data, error } = await cloud.functions.invoke("enrich-products", {
+                body: { action: "enrich", productId: job.productId, productName: job.productName },
+              });
+              if (!error && data?.success) {
+                aiSearchQueries = data.searchQueries ?? [];
+                layeredQueries = data.searchQueriesLayered ?? {};
+                imageRejectionTerms = data.imageRejectionTerms ?? [];
+                imageAcceptanceTerms = data.imageAcceptanceTerms ?? [];
+                aiImagePrompt = data.aiImagePrompt ?? "";
+                updateJob(jobIdx, { descriptionGenerated: true, techSheetGenerated: true });
+                updateStats({ descriptionsGenerated: (statsRef.current?.descriptionsGenerated ?? 0) + 1 });
+              } else if (data && !data.success) {
+                // Partial failure from server - use whatever data returned
+                aiSearchQueries = data.searchQueries ?? [];
+                layeredQueries = data.searchQueriesLayered ?? {};
+                imageRejectionTerms = data.imageRejectionTerms ?? [];
+                imageAcceptanceTerms = data.imageAcceptanceTerms ?? [];
+                aiImagePrompt = data.aiImagePrompt ?? "";
+              }
+              break; // success or partial, stop retrying
+            } catch (aiErr: any) {
+              const msg = aiErr?.message || "";
+              const is429 = msg.includes("429") || msg.includes("rate") || msg.includes("limit");
+              if (is429 && aiAttempt < MAX_RETRIES - 1) {
+                updateJob(jobIdx, { step: `🧠 Rate limit, retry ${aiAttempt + 1}...` });
+                await sleep(RETRY_DELAYS_AI[aiAttempt] ?? 20_000);
+                continue;
+              }
+              console.error("AI enrichment error:", msg);
+              break; // give up on AI, continue pipeline
+            }
           }
-        } catch { /* continue even if AI fails */ }
+        } finally {
+          aiSemRef.current.release();
+        }
       }
 
       // STEP 2: Layered Image Search

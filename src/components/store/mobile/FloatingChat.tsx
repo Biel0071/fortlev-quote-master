@@ -45,6 +45,7 @@ export function FloatingChat({
 
   // Abre automaticamente na Home após 8s (uma única vez), e não reabre após fechamento manual.
   useEffect(() => {
+    if (shouldHideFloating) return;
     if (location.pathname !== "/") return;
     if (open) return;
 

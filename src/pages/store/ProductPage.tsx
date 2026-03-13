@@ -66,14 +66,14 @@ function ProductDescription({ markdown }: { markdown: string }) {
       // Match "**Key:** Value" or "**Key** Value" patterns
       const boldKv = cleaned.match(/^\*\*(.+?)\*\*:?\s*(.*)$/);
       if (boldKv) {
-        out.push({ kind: "kv", key: boldKv[1].trim(), value: (boldKv[2] ?? "-").trim() || "-" });
+        out.push({ kind: "kv", key: boldKv[1].trim(), value: (boldKv[2] ?? "").trim() });
         continue;
       }
 
       // Match "Key: Value" patterns
-      const kv = cleaned.match(/^([^:]{2,30}):\s+(.+)$/);
+      const kv = cleaned.match(/^([^:]{2,30}):\s*(.*)$/);
       if (kv) {
-        out.push({ kind: "kv", key: kv[1].trim(), value: (kv[2] ?? "-").trim() || "-" });
+        out.push({ kind: "kv", key: kv[1].trim(), value: (kv[2] ?? "").trim() });
         continue;
       }
 

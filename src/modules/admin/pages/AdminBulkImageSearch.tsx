@@ -821,9 +821,9 @@ export default function AdminBulkImageSearch() {
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs sm:text-sm text-muted-foreground">
                 {[
-                  { emoji: "🧠", title: "IA Interpreta", desc: "Extrai tipo, cor, tamanho, marca e categoria" },
-                  { emoji: "🔍", title: "Busca Inteligente", desc: "Multi-fonte com cache e retry automático" },
-                  { emoji: "💾", title: "Importa Imagens", desc: "Até 8 imagens por produto" },
+                  { emoji: "🧠", title: "IA Interpreta", desc: "Extrai tipo, marca, cor, tamanho e gera queries em camadas" },
+                  { emoji: "🏭", title: "Fabricante → 🛒 Marketplace → 🔍 Geral", desc: "Busca em 3 camadas com filtro anti-ambiente" },
+                  { emoji: "🎨", title: "Fallback IA", desc: "Gera imagem realista se nenhuma foto encontrada" },
                   { emoji: "📝", title: "Gera Conteúdo", desc: "Descrição + ficha técnica completa" },
                 ].map((step) => (
                   <div key={step.title} className="flex items-start gap-2 p-2 rounded-lg bg-background/50 border border-border">

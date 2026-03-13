@@ -125,15 +125,6 @@ function AdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {showStoreSwitcher && (
-          <SidebarGroup className="border-b border-border pb-2">
-            <SidebarGroupContent>
-              <div className={collapsed ? "px-1" : "px-2"}>
-                <StoreSwitcher className={collapsed ? "h-9 px-1" : "h-9"} />
-              </div>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
 
         {/* Grouped menu sections */}
         {SIDEBAR_SECTIONS.map((section) => {

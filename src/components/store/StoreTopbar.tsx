@@ -250,7 +250,7 @@ export function StoreTopbar({
       </header>
 
       {/* Spacer to offset fixed header */}
-      <div className="h-[170px] sm:h-[190px] w-full shrink-0" aria-hidden="true" />
+      <div className="h-[130px] sm:h-[150px] w-full shrink-0" aria-hidden="true" />
 
       <FloatingChat phoneDigits={contact.phoneDigits} />
     </>

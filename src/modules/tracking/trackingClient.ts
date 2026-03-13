@@ -53,6 +53,10 @@ export async function setVisitorConsent({
   return data as any;
 }
 
+// Simple client-side throttle: max 1 event per 2s
+let _lastTrackTime = 0;
+const THROTTLE_MS = 2000;
+
 export async function trackVisitorEvent({
   sessionToken,
   consentGiven,
@@ -63,23 +67,33 @@ export async function trackVisitorEvent({
   event: TrackEventInput;
 }) {
   if (!sessionToken) return { skipped: true };
-  const { data, error } = await cloud.functions.invoke("track-event", {
-    body: {
-      action: "track_event",
-      session_token: sessionToken,
-      consent_given: consentGiven,
-      event: {
-        type: event.type,
-        path: event.path,
-        product_id: event.productId ?? null,
-        category_id: event.categoryId ?? null,
-        duration: event.duration ?? null,
-        metadata: event.metadata ?? {},
+
+  const now = Date.now();
+  if (now - _lastTrackTime < THROTTLE_MS) return { skipped: true, reason: "throttled" };
+  _lastTrackTime = now;
+
+  try {
+    const { data, error } = await cloud.functions.invoke("track-event", {
+      body: {
+        action: "track_event",
+        session_token: sessionToken,
+        consent_given: consentGiven,
+        event: {
+          type: event.type,
+          path: event.path,
+          product_id: event.productId ?? null,
+          category_id: event.categoryId ?? null,
+          duration: event.duration ?? null,
+          metadata: event.metadata ?? {},
+        },
       },
-    },
-  });
-  if (error) throw error;
-  return data as any;
+    });
+    if (error) console.warn("[tracking] event error:", error);
+    return data as any;
+  } catch (err) {
+    console.warn("[tracking] event failed:", err);
+    return { skipped: true, reason: "error" };
+  }
 }
 
 export async function createChatSession({

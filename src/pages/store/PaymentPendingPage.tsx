@@ -11,7 +11,7 @@ export default function PaymentPendingPage() {
   const state = (location.state ?? {}) as { orderId?: string };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col bg-background">
       <StoreTopbar cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 

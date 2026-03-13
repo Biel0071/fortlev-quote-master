@@ -413,7 +413,7 @@ export default function CheckoutPage() {
       <StoreTopbar cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="mx-auto w-full max-w-4xl px-3 sm:px-6 py-6 sm:py-8 pb-28 md:pb-10 min-w-0">
+      <main className="mx-auto w-full max-w-4xl px-3 sm:px-6 py-6 sm:py-8 pb-20 md:pb-8 min-w-0">
         <nav aria-label="breadcrumb" className="mb-4 text-sm text-muted-foreground">
           Carrinho <span className="mx-1">/</span> <span className="font-medium text-foreground">Finalizar sua compra</span>
         </nav>

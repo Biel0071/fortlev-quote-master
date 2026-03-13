@@ -46,16 +46,30 @@ export default function AdminProductsList() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await cloud
-      .from("store_products")
-      .select("id, name, price, promo_price, stock, active, category")
-      .order("name", { ascending: true });
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      setRows([]);
-    } else {
-      setRows((data ?? []) as any);
+    const PAGE_SIZE = 1000;
+    let allRows: Row[] = [];
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await cloud
+        .from("store_products")
+        .select("id, name, price, promo_price, stock, active, category")
+        .order("name", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) {
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        break;
+      }
+
+      const batch = (data ?? []) as Row[];
+      allRows = [...allRows, ...batch];
+      hasMore = batch.length === PAGE_SIZE;
+      from += PAGE_SIZE;
     }
+
+    setRows(allRows);
     setLoading(false);
   };
 

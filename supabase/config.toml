@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.scrape-products]
 verify_jwt = false
+
+[functions.enrich-products]
+verify_jwt = false

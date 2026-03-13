@@ -16,7 +16,7 @@ import {
 import {
   ImageIcon, Search, ArrowLeft, Trash2, X, CheckSquare, RefreshCw,
   Zap, StopCircle, Play, Clock, CheckCircle2, XCircle, BarChart3,
-  RotateCcw, AlertTriangle,
+  RotateCcw, AlertTriangle, FileText, Sparkles, Wand2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -24,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 type ProductRow = {
   id: string;
   name: string;
+  description: string | null;
   active: boolean;
   imageCount: number;
   images: Array<{ id: string; path: string; sort_order: number }>;
@@ -34,9 +35,11 @@ type AutoImportStats = {
   processed: number;
   imagesApproved: number;
   imagesRejected: number;
+  descriptionsGenerated: number;
   errors: number;
   retries: number;
   currentProduct: string;
+  currentStep: string;
 };
 
 type LogEntry = {
@@ -44,6 +47,8 @@ type LogEntry = {
   productName: string;
   imagesFound: number;
   imagesSaved: number;
+  descriptionGenerated: boolean;
+  techSheetGenerated: boolean;
   status: "success" | "partial" | "error" | "skipped" | "retry";
   time: number;
   error?: string;
@@ -67,7 +72,6 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** Extract base keyword from product name for similar-product cache lookup */
 function extractBaseKeyword(name: string): string {
   return name
     .toLowerCase()
@@ -100,36 +104,52 @@ export default function AdminBulkImageSearch() {
   const [autoLogs, setAutoLogs] = useState<LogEntry[]>([]);
   const abortRef = useRef(false);
 
-  // Local search cache (session-level) to avoid re-searching the same query
+  // Local search cache
   const localCacheRef = useRef(new Map<string, GoogleImageResult[]>());
 
+  /* ─── Pagination-aware load ─── */
   const load = async () => {
     setLoading(true);
-    const { data, error } = await cloud
-      .from("store_products")
-      .select("id, name, active, store_product_images(id, path, sort_order)")
-      .order("name", { ascending: true })
-      .limit(1000);
+    const PAGE_SIZE = 1000;
+    let allData: any[] = [];
+    let from = 0;
+    let hasMore = true;
 
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      setProducts([]);
-    } else {
-      const mapped = (data ?? []).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        active: p.active,
-        imageCount: Array.isArray(p.store_product_images) ? p.store_product_images.length : 0,
-        images: Array.isArray(p.store_product_images)
-          ? (p.store_product_images as any[]).sort((a: any, b: any) => a.sort_order - b.sort_order)
-          : [],
-      }));
-      setProducts(mapped);
+    while (hasMore) {
+      const { data, error } = await cloud
+        .from("store_products")
+        .select("id, name, description, active, store_product_images(id, path, sort_order)")
+        .order("name", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
 
-      if (detailProduct) {
-        const updated = mapped.find((p) => p.id === detailProduct.id);
-        if (updated) setDetailProduct(updated);
+      if (error) {
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        setProducts([]);
+        setLoading(false);
+        return;
       }
+
+      const batch = data ?? [];
+      allData = [...allData, ...batch];
+      hasMore = batch.length === PAGE_SIZE;
+      from += PAGE_SIZE;
+    }
+
+    const mapped = allData.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      active: p.active,
+      imageCount: Array.isArray(p.store_product_images) ? p.store_product_images.length : 0,
+      images: Array.isArray(p.store_product_images)
+        ? (p.store_product_images as any[]).sort((a: any, b: any) => a.sort_order - b.sort_order)
+        : [],
+    }));
+    setProducts(mapped);
+
+    if (detailProduct) {
+      const updated = mapped.find((p) => p.id === detailProduct.id);
+      if (updated) setDetailProduct(updated);
     }
     setLoading(false);
   };
@@ -145,6 +165,7 @@ export default function AdminBulkImageSearch() {
   const filtered = getFilteredProducts();
   const noImagesCount = products.filter((p) => p.imageCount === 0).length;
   const incompleteCount = products.filter((p) => p.imageCount > 0 && p.imageCount < MAX_IMAGES_PER_PRODUCT).length;
+  const noDescriptionCount = products.filter((p) => !p.description || p.description.trim().length < 20).length;
 
   const openSearch = (product: ProductRow) => { setSelectedProduct(product); setSearchOpen(true); };
   const openDetail = (product: ProductRow) => { setDetailProduct(product); setSelectedImages(new Set()); setSelectionMode(false); };
@@ -197,15 +218,14 @@ export default function AdminBulkImageSearch() {
   const searchWithRetryAndFallback = async (
     query: string,
     abortCheck: () => boolean,
+    extraQueries?: string[],
   ): Promise<{ images: GoogleImageResult[]; fromCache: boolean }> => {
-    // 1) Check local session cache
     const cacheKey = query.toLowerCase().trim();
     const cached = localCacheRef.current.get(cacheKey);
     if (cached && cached.length > 0) {
       return { images: cached, fromCache: true };
     }
 
-    // 2) Check similar product cache (base keyword)
     const baseKey = extractBaseKeyword(query);
     if (baseKey.length >= 3) {
       const similarCacheKey = `${baseKey} produto construção`.toLowerCase().trim();
@@ -216,44 +236,43 @@ export default function AdminBulkImageSearch() {
       }
     }
 
-    // 3) Try each source with retries
-    for (const source of SOURCES_FALLBACK) {
-      if (abortCheck()) break;
+    // Try AI-suggested queries first, then fallback to original
+    const queriesToTry = [...(extraQueries ?? []), query];
 
-      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    for (const q of queriesToTry) {
+      for (const source of SOURCES_FALLBACK) {
         if (abortCheck()) break;
 
-        try {
-          const { images } = await searchGoogleProductImages({ query, start: 1, source });
-          if (images.length > 0) {
-            localCacheRef.current.set(cacheKey, images);
-            // Also cache under base keyword
-            if (baseKey.length >= 3) {
-              const baseKeyCache = `${baseKey} produto construção`.toLowerCase().trim();
-              if (!localCacheRef.current.has(baseKeyCache)) {
-                localCacheRef.current.set(baseKeyCache, images);
+        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+          if (abortCheck()) break;
+
+          try {
+            const { images } = await searchGoogleProductImages({ query: q, start: 1, source });
+            if (images.length > 0) {
+              localCacheRef.current.set(cacheKey, images);
+              if (baseKey.length >= 3) {
+                const baseKeyCache = `${baseKey} produto construção`.toLowerCase().trim();
+                if (!localCacheRef.current.has(baseKeyCache)) {
+                  localCacheRef.current.set(baseKeyCache, images);
+                }
               }
+              return { images, fromCache: false };
             }
-            return { images, fromCache: false };
-          }
-          break; // No images but no error, try next source
-        } catch (e: any) {
-          const msg = e?.message || "";
-          const is429 = msg.includes("Limite diário") || msg.includes("429") || msg.includes("limit");
+            break;
+          } catch (e: any) {
+            const msg = e?.message || "";
+            const is429 = msg.includes("Limite diário") || msg.includes("429") || msg.includes("limit");
 
-          if (is429 && attempt < MAX_RETRIES - 1) {
-            // Wait 60s then retry
-            await sleep(RETRY_DELAY_429);
-            continue;
+            if (is429 && attempt < MAX_RETRIES - 1) {
+              await sleep(RETRY_DELAY_429);
+              continue;
+            }
+            if (attempt < MAX_RETRIES - 1 && !is429) {
+              await sleep(5000);
+              continue;
+            }
+            break;
           }
-
-          if (attempt < MAX_RETRIES - 1 && !is429) {
-            await sleep(5000);
-            continue;
-          }
-
-          // Last attempt failed for this source, try next
-          break;
         }
       }
     }
@@ -261,10 +280,34 @@ export default function AdminBulkImageSearch() {
     return { images: [], fromCache: false };
   };
 
-  /* ─── AUTO IMPORT ─── */
+  /* ─── AI Enrichment (description + tech sheet) ─── */
+  const enrichProductWithAI = async (productId: string, productName: string): Promise<{
+    success: boolean;
+    searchQueries: string[];
+    description: string;
+  }> => {
+    try {
+      const { data, error } = await cloud.functions.invoke("enrich-products", {
+        body: { action: "enrich", productId, productName },
+      });
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        searchQueries: data?.searchQueries ?? [],
+        description: data?.description ?? "",
+      };
+    } catch (e: any) {
+      console.error("Enrich error:", e);
+      return { success: false, searchQueries: [], description: "" };
+    }
+  };
+
+  /* ─── AUTO IMPORT (Full Pipeline) ─── */
   const runAutoImport = async (eligibleProducts: ProductRow[]) => {
     if (eligibleProducts.length === 0) {
-      toast({ title: "Nada a importar", description: "Todos os produtos já possuem 6+ imagens." });
+      toast({ title: "Nada a processar", description: "Todos os produtos já estão completos." });
       return;
     }
 
@@ -276,9 +319,11 @@ export default function AdminBulkImageSearch() {
       processed: 0,
       imagesApproved: 0,
       imagesRejected: 0,
+      descriptionsGenerated: 0,
       errors: 0,
       retries: 0,
       currentProduct: "",
+      currentStep: "",
     });
 
     const logs: LogEntry[] = [];
@@ -288,57 +333,98 @@ export default function AdminBulkImageSearch() {
 
       const product = eligibleProducts[i];
       const neededImages = MAX_IMAGES_PER_PRODUCT - product.imageCount;
-      const query = `${product.name} produto construção`;
+      const needsDescription = !product.description || product.description.trim().length < 20;
       const startTime = Date.now();
 
-      setAutoStats((prev) => prev ? { ...prev, currentProduct: product.name, processed: i } : prev);
+      setAutoStats((prev) => prev ? { ...prev, currentProduct: product.name, processed: i, currentStep: "🧠 Interpretando..." } : prev);
 
       let entry: LogEntry = {
         productId: product.id,
         productName: product.name,
         imagesFound: 0,
         imagesSaved: 0,
+        descriptionGenerated: false,
+        techSheetGenerated: false,
         status: "error",
         time: 0,
       };
 
       try {
-        const { images: searchResults, fromCache } = await searchWithRetryAndFallback(
-          query,
-          () => abortRef.current,
-        );
+        // STEP 1: AI Enrichment (interpretation + description + tech sheet)
+        let aiSearchQueries: string[] = [];
 
-        entry.imagesFound = searchResults.length;
+        if (needsDescription || neededImages > 0) {
+          setAutoStats((prev) => prev ? { ...prev, currentStep: "🧠 IA interpretando produto..." } : prev);
 
-        if (searchResults.length === 0) {
-          entry.status = "skipped";
-          entry.error = "Nenhuma imagem encontrada em nenhuma fonte";
-        } else {
-          const toImport = searchResults.slice(0, Math.min(neededImages, 10));
+          const enrichResult = await enrichProductWithAI(product.id, product.name);
 
-          const result = await importGoogleProductImages({
-            productId: product.id,
-            images: toImport,
-          });
+          if (enrichResult.success) {
+            entry.descriptionGenerated = true;
+            entry.techSheetGenerated = true;
+            aiSearchQueries = enrichResult.searchQueries;
 
-          entry.imagesSaved = result.imported.length;
-
-          setAutoStats((prev) =>
-            prev ? {
+            setAutoStats((prev) => prev ? {
               ...prev,
-              imagesApproved: prev.imagesApproved + result.imported.length,
-              imagesRejected: prev.imagesRejected + result.failed,
-            } : prev
+              descriptionsGenerated: prev.descriptionsGenerated + 1,
+              currentStep: "🔍 Buscando imagens..."
+            } : prev);
+          }
+        }
+
+        // STEP 2: Image Search using AI-suggested queries
+        if (neededImages > 0) {
+          setAutoStats((prev) => prev ? { ...prev, currentStep: "🔍 Buscando imagens..." } : prev);
+
+          const defaultQuery = `${product.name} produto construção`;
+          const { images: searchResults } = await searchWithRetryAndFallback(
+            defaultQuery,
+            () => abortRef.current,
+            aiSearchQueries,
           );
 
-          if (result.imported.length === 0) {
-            entry.status = "error";
-            entry.error = "Nenhuma imagem válida para salvar";
-          } else if (result.failed > 0) {
-            entry.status = "partial";
+          entry.imagesFound = searchResults.length;
+
+          if (searchResults.length === 0) {
+            if (!entry.descriptionGenerated) {
+              entry.status = "skipped";
+              entry.error = "Nenhuma imagem encontrada";
+            } else {
+              // Description was generated, partial success
+              entry.status = "partial";
+              entry.error = "Descrição gerada, mas sem imagens";
+            }
           } else {
-            entry.status = "success";
+            // STEP 3: Import images
+            setAutoStats((prev) => prev ? { ...prev, currentStep: "💾 Salvando imagens..." } : prev);
+
+            const toImport = searchResults.slice(0, Math.min(neededImages, 10));
+            const result = await importGoogleProductImages({
+              productId: product.id,
+              images: toImport,
+            });
+
+            entry.imagesSaved = result.imported.length;
+
+            setAutoStats((prev) =>
+              prev ? {
+                ...prev,
+                imagesApproved: prev.imagesApproved + result.imported.length,
+                imagesRejected: prev.imagesRejected + result.failed,
+              } : prev
+            );
+
+            if (result.imported.length === 0 && !entry.descriptionGenerated) {
+              entry.status = "error";
+              entry.error = "Nenhuma imagem válida para salvar";
+            } else if (result.failed > 0) {
+              entry.status = "partial";
+            } else {
+              entry.status = "success";
+            }
           }
+        } else {
+          // Only needed description
+          entry.status = entry.descriptionGenerated ? "success" : "skipped";
         }
       } catch (e: any) {
         entry.status = "error";
@@ -348,7 +434,7 @@ export default function AdminBulkImageSearch() {
 
       entry.time = Date.now() - startTime;
 
-      // Save log to database (fire and forget)
+      // Save log to DB (fire and forget)
       try {
         await cloud.from("image_import_logs").insert({
           product_id: product.id,
@@ -374,19 +460,21 @@ export default function AdminBulkImageSearch() {
     await load();
     const successCount = logs.filter((l) => l.status === "success" || l.status === "partial").length;
     toast({
-      title: "Importação concluída",
-      description: `${successCount} de ${logs.length} produtos processados com sucesso.`,
+      title: "Pipeline concluído",
+      description: `${successCount} de ${logs.length} produtos enriquecidos com sucesso.`,
     });
   };
 
   const startAutoImport = () => {
-    const eligible = products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT);
+    const eligible = products.filter(
+      (p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20
+    );
     runAutoImport(eligible);
   };
 
   const reprocessErrors = () => {
     const errorIds = new Set(autoLogs.filter((l) => l.status === "error" || l.status === "retry").map((l) => l.productId));
-    const eligible = products.filter((p) => errorIds.has(p.id) && p.imageCount < MAX_IMAGES_PER_PRODUCT);
+    const eligible = products.filter((p) => errorIds.has(p.id));
     if (eligible.length === 0) {
       toast({ title: "Sem erros", description: "Nenhum produto com erro para reprocessar." });
       return;
@@ -413,6 +501,11 @@ export default function AdminBulkImageSearch() {
               <Badge variant={detailProduct.imageCount > 0 ? "default" : "secondary"} className="text-[10px] sm:text-xs">
                 {detailProduct.imageCount} imagem(ns)
               </Badge>
+              {detailProduct.description && detailProduct.description.trim().length >= 20 && (
+                <Badge variant="outline" className="text-[10px] sm:text-xs border-green-500/50 text-green-600">
+                  <FileText className="w-2.5 h-2.5 mr-0.5" /> Com descrição
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -483,6 +576,22 @@ export default function AdminBulkImageSearch() {
           </CardContent>
         </Card>
 
+        {/* Description preview */}
+        {detailProduct.description && detailProduct.description.trim().length > 0 && (
+          <Card className="rounded-xl sm:rounded-2xl">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <FileText className="w-4 h-4" /> Descrição gerada
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap text-xs sm:text-sm leading-relaxed">
+                {detailProduct.description}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {selectedProduct && (
           <ProductImageSearchModal open={searchOpen} onOpenChange={setSearchOpen} productId={selectedProduct.id} initialQuery={selectedProduct.name} onImported={load} />
         )}
@@ -502,6 +611,9 @@ export default function AdminBulkImageSearch() {
   // ─── LIST VIEW ───
   const progressPercent = autoStats ? Math.round((autoStats.processed / Math.max(1, autoStats.total)) * 100) : 0;
   const errorCount = autoLogs.filter((l) => l.status === "error" || l.status === "retry").length;
+  const eligibleCount = products.filter(
+    (p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20
+  ).length;
 
   return (
     <div className="space-y-4 px-1 sm:px-0">
@@ -512,10 +624,10 @@ export default function AdminBulkImageSearch() {
         </Button>
         <div className="min-w-0 flex-1">
           <h1 className="text-lg sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Gerador de Imagens
+            <Wand2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-primary" /> Gerador de Imagens & Conteúdo IA
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Busque e importe imagens com cache inteligente, retry automático e fallback multi-fonte.
+            Pipeline automático: IA interpreta → busca imagens → gera descrição → gera ficha técnica → completa cadastro.
           </p>
         </div>
         <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => load()} disabled={loading || autoRunning}>
@@ -524,12 +636,13 @@ export default function AdminBulkImageSearch() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
         {[
           { value: products.length, label: "Total", color: "" },
           { value: noImagesCount, label: "Sem imagens", color: "text-destructive" },
-          { value: incompleteCount, label: "Incompletos (<6)", color: "text-orange-500" },
-          { value: `${products.length > 0 ? Math.round(((products.length - noImagesCount) / products.length) * 100) : 0}%`, label: "Cobertura", color: "" },
+          { value: noDescriptionCount, label: "Sem descrição", color: "text-orange-500" },
+          { value: incompleteCount, label: "Img incompletas", color: "text-amber-500" },
+          { value: `${products.length > 0 ? Math.round(((products.length - noImagesCount) / products.length) * 100) : 0}%`, label: "Cobertura", color: "text-primary" },
         ].map((stat) => (
           <Card key={stat.label} className="rounded-xl">
             <CardContent className="p-3 sm:p-4 text-center">
@@ -544,28 +657,48 @@ export default function AdminBulkImageSearch() {
       <Card className="rounded-xl sm:rounded-2xl border-primary/30 bg-primary/5">
         <CardHeader className="pb-3">
           <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-            <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-            Importação Automática
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            Pipeline de Enriquecimento Automático
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {!autoRunning && !autoStats && (
             <div className="space-y-3">
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                Processa em lotes de {BATCH_SIZE} produtos com delay de {DELAY_MS / 1000}s.
-                Retry automático em erros 429 (aguarda 60s). Fallback: Bing → Google → Mercado Livre.
-                Cache inteligente reutiliza buscas de produtos similares.
-              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm text-muted-foreground">
+                <div className="flex items-start gap-2 p-2 rounded-lg bg-background/50 border border-border">
+                  <span className="text-base">🧠</span>
+                  <div>
+                    <span className="font-medium text-foreground">IA Interpreta</span>
+                    <p className="text-[10px] sm:text-xs mt-0.5">Analisa nome, extrai tipo, cor, tamanho, marca e categoria</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 p-2 rounded-lg bg-background/50 border border-border">
+                  <span className="text-base">🔍</span>
+                  <div>
+                    <span className="font-medium text-foreground">Busca Inteligente</span>
+                    <p className="text-[10px] sm:text-xs mt-0.5">Multi-fonte: Bing, Google, Mercado Livre com queries otimizadas</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 p-2 rounded-lg bg-background/50 border border-border">
+                  <span className="text-base">📝</span>
+                  <div>
+                    <span className="font-medium text-foreground">Gera Conteúdo</span>
+                    <p className="text-[10px] sm:text-xs mt-0.5">Descrição completa + ficha técnica + categorização automática</p>
+                  </div>
+                </div>
+              </div>
               <Button
                 onClick={startAutoImport}
-                disabled={loading || noImagesCount + incompleteCount === 0}
-                className="w-full sm:w-auto h-10 sm:h-11 text-sm sm:text-base font-semibold gap-2"
+                disabled={loading || eligibleCount === 0}
+                className="w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-semibold gap-2"
               >
-                <Play className="w-4 h-4" />
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
                 IMPORTAR IMAGENS AUTOMATICAMENTE
               </Button>
-              {noImagesCount + incompleteCount === 0 && (
-                <p className="text-xs text-muted-foreground">✅ Todos os produtos já possuem 6+ imagens.</p>
+              {eligibleCount === 0 ? (
+                <p className="text-xs text-green-600 font-medium">✅ Todos os produtos já estão completos!</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">{eligibleCount} produto(s) serão processados.</p>
               )}
             </div>
           )}
@@ -579,42 +712,42 @@ export default function AdminBulkImageSearch() {
                     {autoRunning ? "Processando..." : "Concluído"}
                   </span>
                   <span className="text-muted-foreground">
-                    {autoStats.processed} / {autoStats.total} produtos
+                    Cobertura: {progressPercent}%
                   </span>
                 </div>
                 <Progress value={progressPercent} className="h-3 sm:h-4" />
-                <div className="text-[10px] sm:text-xs text-muted-foreground text-center">{progressPercent}%</div>
+                <div className="text-center text-xs text-muted-foreground">
+                  {autoStats.processed} / {autoStats.total} produtos
+                </div>
               </div>
 
               {autoRunning && autoStats.currentProduct && (
-                <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
-                  <span className="truncate">{autoStats.currentProduct}</span>
+                <div className="text-xs sm:text-sm text-muted-foreground space-y-1">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
+                    <span className="truncate font-medium">{autoStats.currentProduct}</span>
+                  </div>
+                  {autoStats.currentStep && (
+                    <div className="text-[10px] sm:text-xs text-primary pl-6">{autoStats.currentStep}</div>
+                  )}
                 </div>
               )}
 
               {/* Stats grid */}
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
-                  <div className="text-base sm:text-lg font-bold text-primary">{autoStats.processed}</div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Processados</div>
-                </div>
-                <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
-                  <div className="text-base sm:text-lg font-bold text-muted-foreground">{autoStats.total - autoStats.processed}</div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Restantes</div>
-                </div>
-                <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
-                  <div className="text-base sm:text-lg font-bold text-green-600">{autoStats.imagesApproved}</div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Importadas</div>
-                </div>
-                <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
-                  <div className="text-base sm:text-lg font-bold text-destructive">{autoStats.errors}</div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Erros</div>
-                </div>
-                <div className="rounded-lg border border-border p-2 sm:p-3 text-center">
-                  <div className="text-base sm:text-lg font-bold text-orange-500">{autoStats.retries}</div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Retries</div>
-                </div>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                {[
+                  { value: autoStats.processed, label: "Processados", color: "text-primary" },
+                  { value: autoStats.total - autoStats.processed, label: "Restantes", color: "text-muted-foreground" },
+                  { value: autoStats.imagesApproved, label: "Imagens", color: "text-green-600" },
+                  { value: autoStats.descriptionsGenerated, label: "Descrições", color: "text-blue-600" },
+                  { value: autoStats.errors, label: "Erros", color: "text-destructive" },
+                  { value: autoStats.retries, label: "Retries", color: "text-orange-500" },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-lg border border-border p-2 sm:p-3 text-center">
+                    <div className={`text-base sm:text-lg font-bold ${s.color}`}>{s.value}</div>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">{s.label}</div>
+                  </div>
+                ))}
               </div>
 
               <div className="flex gap-2 flex-wrap">
@@ -655,7 +788,15 @@ export default function AdminBulkImageSearch() {
                         {log.status === "skipped" && <AlertTriangle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                         {log.status === "retry" && <RotateCcw className="w-3.5 h-3.5 text-orange-500 shrink-0" />}
                         <span className="truncate flex-1 font-medium">{log.productName}</span>
-                        {log.error && <span className="text-destructive/70 truncate max-w-[120px] sm:max-w-[200px]" title={log.error}>{log.error}</span>}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {log.descriptionGenerated && (
+                            <Badge variant="outline" className="text-[8px] sm:text-[10px] px-1 py-0 border-blue-500/50 text-blue-600">📝</Badge>
+                          )}
+                          {log.techSheetGenerated && (
+                            <Badge variant="outline" className="text-[8px] sm:text-[10px] px-1 py-0 border-green-500/50 text-green-600">📋</Badge>
+                          )}
+                        </div>
+                        {log.error && <span className="text-destructive/70 truncate max-w-[100px] sm:max-w-[180px]" title={log.error}>{log.error}</span>}
                         <span className="text-muted-foreground shrink-0">
                           {log.imagesSaved}/{log.imagesFound}
                         </span>
@@ -718,13 +859,15 @@ export default function AdminBulkImageSearch() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-xs sm:text-sm truncate">{p.name}</div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       <Badge variant={p.imageCount >= MAX_IMAGES_PER_PRODUCT ? "default" : p.imageCount > 0 ? "outline" : "secondary"} className="text-[10px] sm:text-xs px-1.5 py-0">
                         {p.imageCount} img
                       </Badge>
-                      <Badge variant={p.active ? "outline" : "secondary"} className="text-[10px] sm:text-xs px-1.5 py-0">
-                        {p.active ? "Ativo" : "Inativo"}
-                      </Badge>
+                      {p.description && p.description.trim().length >= 20 ? (
+                        <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0 border-green-500/50 text-green-600">📝</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">Sem desc</Badge>
+                      )}
                     </div>
                   </div>
                   <Button size="sm" variant="outline" className="shrink-0 h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3" onClick={(e) => { e.stopPropagation(); openSearch(p); }}>

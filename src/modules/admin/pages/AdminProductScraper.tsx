@@ -94,7 +94,7 @@ export default function AdminProductScraper() {
   };
 
   const statusIcon = (s: string) => {
-    if (s === "done") return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+    if (s === "done") return <CheckCircle2 className="h-4 w-4 text-primary" />;
     if (s === "failed") return <XCircle className="h-4 w-4 text-destructive" />;
     return <Clock className="h-4 w-4 text-muted-foreground" />;
   };

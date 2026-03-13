@@ -82,18 +82,18 @@ export default function StoreCatalog() {
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
       <main className="max-w-6xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pb-24 md:pb-10 space-y-4 sm:space-y-6 min-w-0">
-        <section className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
-          <div className="absolute inset-0 pointer-events-none">
+        <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-border bg-card shadow-sm">
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <div className="absolute inset-0 opacity-20 fortlev-gradient" />
             <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-muted/40 blur-3xl" />
           </div>
 
-          <header className="relative p-6 sm:p-8 flex items-end justify-between gap-3 flex-wrap">
-            <div>
-              <h1 className="text-[28px] font-bold tracking-tight">Catálogo</h1>
-              <p className="text-sm text-muted-foreground">Navegue por categorias e encontre seus produtos.</p>
+          <header className="relative p-4 sm:p-6 flex items-end justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-[28px] font-semibold tracking-tight">Catálogo</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">Navegue por categorias e encontre seus produtos.</p>
             </div>
-            <Button asChild variant="outline" className="h-12 rounded-2xl">
+            <Button asChild variant="outline" className="h-10 sm:h-12 rounded-2xl text-sm shrink-0">
               <Link to="/carrinho">Ir ao carrinho</Link>
             </Button>
           </header>

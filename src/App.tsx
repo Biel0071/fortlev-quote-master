@@ -47,6 +47,7 @@ import {
   AdminBulkImageSearch,
   AdminStoreSelector,
   AdminProductsImport,
+  AdminProductScraper,
 } from "@/modules/admin";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
@@ -114,6 +115,7 @@ const App = () => (
               <Route path="produtos/editar/:id" element={<AdminProductForm />} />
               <Route path="produtos/imagens" element={<AdminBulkImageSearch />} />
               <Route path="produtos/importar" element={<AdminProductsImport />} />
+              <Route path="produtos/scraper" element={<AdminProductScraper />} />
 
               <Route path="categorias" element={<AdminCategoriesList />} />
               <Route path="categorias/nova" element={<AdminCategoryForm />} />

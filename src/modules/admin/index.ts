@@ -29,3 +29,4 @@ export { default as AdminIntelligence } from "./pages/AdminIntelligence";
 export { default as AdminBulkImageSearch } from "./pages/AdminBulkImageSearch";
 export { default as AdminStoreSelector } from "./pages/AdminStoreSelector";
 export { default as AdminProductsImport } from "./pages/AdminProductsImport";
+export { default as AdminProductScraper } from "./pages/AdminProductScraper";

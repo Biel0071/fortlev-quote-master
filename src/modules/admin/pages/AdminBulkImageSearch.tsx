@@ -779,7 +779,7 @@ export default function AdminBulkImageSearch() {
             <Wand2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-primary" /> Gerador de Imagens & Conteúdo IA
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Pipeline paralelo com {workerCount} workers simultâneos — IA interpreta → busca → importa → gera conteúdo.
+            Pipeline paralelo com {workerCount} workers — IA interpreta → busca em camadas (fabricante → marketplace → geral) → filtro anti-ambiente → fallback IA.
           </p>
         </div>
         <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => load()} disabled={loading || pipelineRunning}>

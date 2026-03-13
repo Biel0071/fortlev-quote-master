@@ -267,25 +267,7 @@ export default function ProductPage() {
                 </div>
                 {images.length > 1 ? (
                   <CardContent className="min-w-0 p-3 sm:p-4">
-                    <div className="flex w-full min-w-0 gap-1.5 overflow-x-auto sm:gap-2">
-                      {images.slice(0, 8).map((im: any, idx: number) => {
-                        const url = publicImageUrl("product-images", im.path);
-                        const active = url && url === activeImg;
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => setActiveImg(url)}
-                            className={`shrink-0 h-14 w-14 sm:h-16 sm:w-16 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-colors ${
-                              active ? "border-primary" : "border-border"
-                            }`}
-                            aria-label={`Ver imagem ${idx + 1}`}
-                          >
-                            <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <ThumbStrip images={images} activeImg={activeImg} onSelect={setActiveImg} />
                   </CardContent>
                 ) : null}
               </Card>

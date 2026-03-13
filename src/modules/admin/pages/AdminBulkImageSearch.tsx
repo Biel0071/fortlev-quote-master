@@ -914,7 +914,7 @@ export default function AdminBulkImageSearch() {
                 className="w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-semibold gap-2"
               >
                 <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
-                IMPORTAR IMAGENS AUTOMATICAMENTE ({eligibleCount} produtos)
+                IMPORTAR AUTOMATICAMENTE ({eligibleCount} {filterLabel})
               </Button>
               {eligibleCount === 0 && (
                 <p className="text-xs text-green-600 font-medium">✅ Todos os produtos já estão completos!</p>

@@ -480,9 +480,15 @@ export default function AdminProductScraper() {
                     <span className="text-xs text-muted-foreground truncate max-w-[150px]">{h.domains.join(", ")}</span>
                   )}
                   <div className="ml-auto flex items-center gap-1">
-                    <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => setViewingHistory(h)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                      onClick={() => setViewingHistory(h)}
+                      disabled={!hasHistoryProducts(h)}
+                    >
                       <Eye className="h-3 w-3" />
-                      Ver
+                      {hasHistoryProducts(h) ? "Ver" : "Sem itens"}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteHistory(h.id)}>
                       <Trash2 className="h-3 w-3" />

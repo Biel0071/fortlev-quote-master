@@ -40,11 +40,17 @@ export default function AdminProductScraper() {
   const addLog = (msg: string) => setLogs(prev => [...prev, msg]);
 
   const handleScrape = async () => {
-    // Parse URLs properly: split by newline, trim, filter valid
-    const urls = urlsInput
-      .split(/[\n\r]+/)
-      .map(u => u.trim())
-      .filter(u => u.startsWith("http"));
+    // Parse URLs: split by newline, then also extract multiple URLs from single lines
+    const urls: string[] = [];
+    for (const line of urlsInput.split(/[\n\r]+/)) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      // If line contains multiple URLs separated by spaces, split them
+      const matches = trimmed.match(/https?:\/\/[^\s]+/g);
+      if (matches) {
+        urls.push(...matches.map(u => u.trim()));
+      }
+    }
 
     if (urls.length === 0) {
       toast({ title: "Informe pelo menos uma URL válida", variant: "destructive" });

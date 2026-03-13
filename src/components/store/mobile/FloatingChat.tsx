@@ -100,7 +100,7 @@ export function FloatingChat({
       setChatSessionId(null);
       setScoreSnapshot(0);
     }
-  }, [open]);
+  }, [open, shouldHideFloating]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {

@@ -109,7 +109,7 @@ export function FloatingChat({
       if (!open) setAttention(true);
     }, 20000);
     return () => window.clearTimeout(t);
-  }, [open]);
+  }, [open, shouldHideFloating]);
 
   return (
     <>

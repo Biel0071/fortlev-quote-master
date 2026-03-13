@@ -536,7 +536,7 @@ export default function AdminProductScraper() {
                   <ProductsTable products={historyProducts} />
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    Dados dos produtos não disponíveis para este registro.
+                    Este registro antigo não salvou os itens; execute um novo scraping para visualizar e exportar os produtos aqui.
                   </p>
                 )}
               </div>

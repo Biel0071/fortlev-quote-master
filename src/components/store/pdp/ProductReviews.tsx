@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { cloud } from "@/lib/cloud";
 import { Card, CardContent } from "@/components/ui/card";
-import { Star, ThumbsUp, MapPin, BadgeCheck } from "lucide-react";
+import { Star, MapPin, BadgeCheck } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 type Review = {
@@ -27,7 +27,7 @@ type RatingSummary = {
   rating_5: number;
 };
 
-function Stars({ count, size = "h-4 w-4" }: { count: number; size?: string }) {
+function Stars({ count, size = "h-3.5 w-3.5" }: { count: number; size?: string }) {
   return (
     <div className="flex gap-0.5">
       {Array.from({ length: 5 }, (_, i) => (
@@ -69,9 +69,9 @@ export function ProductReviews({ productId }: { productId: string }) {
   }, [productId]);
 
   if (loading) return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {Array.from({ length: 2 }).map((_, i) => (
-        <div key={i} className="h-24 rounded-2xl bg-muted/30 animate-pulse" />
+        <div key={i} className="h-20 rounded-2xl bg-muted/30 animate-pulse" />
       ))}
     </div>
   );
@@ -87,25 +87,27 @@ export function ProductReviews({ productId }: { productId: string }) {
   ] : [];
 
   return (
-    <Card className="rounded-3xl border-border bg-card shadow-sm">
-      <CardContent className="p-5 space-y-5">
-        <h3 className="text-lg font-bold">Avaliações de clientes</h3>
+    <Card className="rounded-2xl border-border bg-card shadow-sm">
+      <CardContent className="p-4 sm:p-5 space-y-4">
+        <h3 className="text-sm font-semibold">Avaliações de clientes</h3>
 
         {/* Summary */}
         {summary && summary.total_reviews > 0 && (
-          <div className="flex flex-col sm:flex-row gap-6">
-            <div className="flex flex-col items-center gap-1">
-              <div className="text-4xl font-bold">{Number(summary.average_rating).toFixed(1)}</div>
-              <Stars count={Math.round(Number(summary.average_rating))} size="h-5 w-5" />
-              <div className="text-xs text-muted-foreground">{summary.total_reviews} avaliações</div>
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+            <div className="flex flex-row sm:flex-col items-center gap-2 sm:gap-1">
+              <div className="text-3xl sm:text-4xl font-bold">{Number(summary.average_rating).toFixed(1)}</div>
+              <div className="flex flex-col items-center gap-0.5">
+                <Stars count={Math.round(Number(summary.average_rating))} size="h-4 w-4" />
+                <div className="text-[10px] text-muted-foreground">{summary.total_reviews} avaliações</div>
+              </div>
             </div>
-            <div className="flex-1 space-y-1.5">
+            <div className="flex-1 space-y-1">
               {ratingBars.map((bar) => (
-                <div key={bar.label} className="flex items-center gap-2">
-                  <span className="text-xs w-3 text-right text-muted-foreground">{bar.label}</span>
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  <Progress value={bar.pct} className="h-2 flex-1" />
-                  <span className="text-xs w-6 text-muted-foreground">{bar.count}</span>
+                <div key={bar.label} className="flex items-center gap-1.5">
+                  <span className="text-[10px] w-2.5 text-right text-muted-foreground">{bar.label}</span>
+                  <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
+                  <Progress value={bar.pct} className="h-1.5 flex-1" />
+                  <span className="text-[10px] w-5 text-muted-foreground">{bar.count}</span>
                 </div>
               ))}
             </div>
@@ -113,30 +115,30 @@ export function ProductReviews({ productId }: { productId: string }) {
         )}
 
         {/* Reviews list */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {reviews.map((r) => (
-            <div key={r.id} className="border-t border-border pt-4 first:border-0 first:pt-0">
-              <div className="flex items-center gap-2 mb-1.5">
+            <div key={r.id} className="border-t border-border pt-3 first:border-0 first:pt-0">
+              <div className="flex items-center gap-2 mb-1">
                 <Stars count={r.rating} />
                 {r.verified_purchase && (
-                  <span className="flex items-center gap-1 text-[10px] text-green-600 font-medium">
-                    <BadgeCheck className="h-3 w-3" /> Compra verificada
+                  <span className="flex items-center gap-0.5 text-[10px] text-green-600 font-medium">
+                    <BadgeCheck className="h-3 w-3" /> Verificada
                   </span>
                 )}
               </div>
-              {r.title && <p className="font-semibold text-sm">{r.title}</p>}
-              <p className="text-sm text-muted-foreground leading-relaxed">{r.content}</p>
+              {r.title && <p className="text-xs font-medium">{r.title}</p>}
+              <p className="text-xs text-muted-foreground leading-relaxed">{r.content}</p>
               {(r.pros || r.cons) && (
-                <div className="flex flex-wrap gap-4 mt-2 text-xs">
+                <div className="flex flex-wrap gap-3 mt-1.5 text-[10px]">
                   {r.pros && <span className="text-green-600">👍 {r.pros}</span>}
                   {r.cons && <span className="text-red-500">👎 {r.cons}</span>}
                 </div>
               )}
-              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
                 <span className="font-medium text-foreground">{r.author_name}</span>
                 {r.author_location && (
                   <span className="flex items-center gap-0.5">
-                    <MapPin className="h-3 w-3" /> {r.author_location}
+                    <MapPin className="h-2.5 w-2.5" /> {r.author_location}
                   </span>
                 )}
                 <span>• {timeAgo(r.created_at)}</span>

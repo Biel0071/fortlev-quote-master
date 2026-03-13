@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Truck, CreditCard, ShieldCheck, BadgeCheck } from "lucide-react";
+import { Truck, CreditCard, ShieldCheck, BadgeCheck, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
@@ -19,9 +19,11 @@ import { trackClickEvent } from "@/utils/clickTracking";
 
 import { ProductBadges } from "@/components/store/pdp/ProductBadges";
 import { ProductReviews } from "@/components/store/pdp/ProductReviews";
+import { CustomerReviewForm } from "@/components/store/pdp/CustomerReviewForm";
 import { QuantitySelector } from "@/components/store/pdp/QuantitySelector";
 import { ShippingCalculator } from "@/components/store/pdp/ShippingCalculator";
 import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
+import { cloud } from "@/lib/cloud";
 
 function ProductDescription({ markdown }: { markdown: string }) {
   const lines = useMemo(() => markdown.split(/\r?\n/), [markdown]);
@@ -55,25 +57,25 @@ function ProductDescription({ markdown }: { markdown: string }) {
   }, [lines]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {blocks.map((b, idx) => {
         if (b.kind === "h2") {
           return (
-            <h2 key={idx} className="text-base font-semibold tracking-tight">
+            <h2 key={idx} className="text-sm font-semibold tracking-tight text-foreground">
               {b.text}
             </h2>
           );
         }
         if (b.kind === "kv") {
           return (
-            <div key={idx} className="text-sm">
+            <div key={idx} className="text-xs">
               <span className="text-muted-foreground">{b.key}: </span>
               <span className="font-medium text-foreground">{b.value || "-"}</span>
             </div>
           );
         }
         return (
-          <p key={idx} className="text-sm text-muted-foreground leading-relaxed">
+          <p key={idx} className="text-xs text-muted-foreground leading-relaxed">
             {b.text}
           </p>
         );
@@ -101,6 +103,40 @@ function splitDescription(markdown: string) {
   const general = md.slice(startGeneral, startTech).trim();
   const tech = md.slice(startTech).trim();
   return { general, tech };
+}
+
+function ProductRatingBadge({ productId }: { productId: string }) {
+  const [summary, setSummary] = useState<{ average_rating: number; total_reviews: number } | null>(null);
+
+  useEffect(() => {
+    if (!productId) return;
+    cloud
+      .from("product_rating_summary")
+      .select("average_rating, total_reviews")
+      .eq("product_id", productId)
+      .single()
+      .then(({ data }) => {
+        if (data && (data as any).total_reviews > 0) setSummary(data as any);
+      });
+  }, [productId]);
+
+  if (!summary) return null;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex gap-0.5">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Star
+            key={i}
+            className={`h-3.5 w-3.5 ${i < Math.round(summary.average_rating) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"}`}
+          />
+        ))}
+      </div>
+      <span className="text-xs text-muted-foreground">
+        {Number(summary.average_rating).toFixed(1)} ({summary.total_reviews})
+      </span>
+    </div>
+  );
 }
 
 export default function ProductPage() {
@@ -181,19 +217,20 @@ export default function ProductPage() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
-        <Button asChild variant="ghost" className="h-11 rounded-2xl w-fit">
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-10 space-y-4 sm:space-y-6">
+        <Button asChild variant="ghost" className="h-9 sm:h-11 rounded-2xl w-fit text-sm">
           <Link to="/loja">← Voltar</Link>
         </Button>
 
         {loading ? (
-          <div className="text-muted-foreground">Carregando...</div>
+          <div className="text-muted-foreground text-sm">Carregando...</div>
         ) : !product ? (
-          <div className="text-muted-foreground">Produto não encontrado.</div>
+          <div className="text-muted-foreground text-sm">Produto não encontrado.</div>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-12">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-12">
+            {/* Gallery */}
             <div className="lg:col-span-7">
-              <Card className="rounded-3xl overflow-hidden border-border bg-card shadow-sm">
+              <Card className="rounded-2xl sm:rounded-3xl overflow-hidden border-border bg-card shadow-sm">
                 <div className="aspect-[4/3] bg-muted/20">
                   {activeImg ? (
                     <img src={activeImg} alt={product.name} className="h-full w-full object-cover" loading="eager" />
@@ -202,8 +239,8 @@ export default function ProductPage() {
                   )}
                 </div>
                 {images.length > 1 ? (
-                  <CardContent className="p-4">
-                    <div className="flex gap-2 overflow-x-auto">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex gap-1.5 sm:gap-2 overflow-x-auto">
                       {images.slice(0, 8).map((im: any, idx: number) => {
                         const url = publicImageUrl("product-images", im.path);
                         const active = url && url === activeImg;
@@ -212,17 +249,12 @@ export default function ProductPage() {
                             key={idx}
                             type="button"
                             onClick={() => setActiveImg(url)}
-                            className={`shrink-0 h-16 w-16 rounded-xl overflow-hidden border ${
-                              active ? "border-ring" : "border-border"
+                            className={`shrink-0 h-14 w-14 sm:h-16 sm:w-16 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-colors ${
+                              active ? "border-primary" : "border-border"
                             }`}
-                            aria-label={`Ver imagem ${idx + 1} de ${product.name}`}
+                            aria-label={`Ver imagem ${idx + 1}`}
                           >
-                            <img
-                              src={url}
-                              alt={`${product.name} - imagem ${idx + 1}`}
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                            />
+                            <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
                           </button>
                         );
                       })}
@@ -232,53 +264,58 @@ export default function ProductPage() {
               </Card>
             </div>
 
-            <div className="lg:col-span-5 space-y-4">
+            {/* Product info */}
+            <div className="lg:col-span-5 space-y-3 sm:space-y-4">
               <ProductBadges featured={Boolean((product as any).featured)} basePrice={basePrice} promoPrice={promoPrice} />
 
               <div>
-                <h1 className="text-[28px] font-bold tracking-tight leading-tight">{product.name}</h1>
+                <h1 className="text-xl sm:text-[28px] font-bold tracking-tight leading-tight">{product.name}</h1>
 
-                <div className="mt-2 text-sm">
+                {/* Rating badge */}
+                <div className="mt-1.5">
+                  <ProductRatingBadge productId={(product as any).id} />
+                </div>
+
+                <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
                   {Number((product as any).stock ?? 0) <= Number((product as any).min_stock ?? 0) ? (
-                    <span className="text-muted-foreground">
-                      <span className="font-semibold">Últimas unidades disponíveis</span>
-                    </span>
+                    <span>Últimas unidades disponíveis</span>
                   ) : (
-                    <span className="text-muted-foreground">
-                      <span className="font-semibold">Disponível</span> para envio imediato
-                    </span>
+                    <span>Disponível para envio imediato</span>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-2">
+              {/* Price */}
+              <div className="space-y-1">
                 {hasPromo ? (
-                  <div className="text-sm text-muted-foreground line-through">De {formatCurrency(basePrice)}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground line-through">De {formatCurrency(basePrice)}</div>
                 ) : null}
-                <div className="text-4xl font-extrabold tracking-tight">{formatCurrency(effectivePrice)}</div>
-                {installments ? <div className="text-sm text-muted-foreground">{installments}</div> : null}
+                <div className="text-2xl sm:text-4xl font-extrabold tracking-tight">{formatCurrency(effectivePrice)}</div>
+                {installments ? <div className="text-xs sm:text-sm text-muted-foreground">{installments}</div> : null}
               </div>
 
+              {/* PIX */}
               {pixPrice ? (
-                <Card className="rounded-3xl border-border bg-card shadow-sm">
-                  <CardContent className="p-5">
-                    <div className="text-sm font-semibold text-foreground">7% de desconto no PIX</div>
-                    <div className="mt-1 text-sm text-muted-foreground">
-                      No PIX: <span className="font-semibold text-foreground">{formatCurrency(pixPrice)}</span>
+                <Card className="rounded-2xl border-border bg-card shadow-sm">
+                  <CardContent className="p-3 sm:p-5">
+                    <div className="text-xs sm:text-sm font-medium text-foreground">7% de desconto no PIX</div>
+                    <div className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
+                      No PIX: <span className="font-medium text-foreground">{formatCurrency(pixPrice)}</span>
                     </div>
                   </CardContent>
                 </Card>
               ) : null}
 
-              <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 px-4 py-3">
-                <span className="text-sm text-muted-foreground">Total</span>
-                <span className="text-lg font-bold">{formatCurrency(totalDynamic)}</span>
+              {/* Total */}
+              <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 px-3 sm:px-4 py-2.5 sm:py-3">
+                <span className="text-xs sm:text-sm text-muted-foreground">Total</span>
+                <span className="text-base sm:text-lg font-bold">{formatCurrency(totalDynamic)}</span>
               </div>
 
               <QuantitySelector value={qty} onChange={setQty} />
 
               <Button
-                className="h-14 rounded-2xl w-full shadow-sm transition-transform active:scale-[0.99]"
+                className="h-12 sm:h-14 rounded-2xl w-full shadow-sm transition-transform active:scale-[0.99] text-sm sm:text-base"
                 onClick={() => {
                   trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: (product as any).id });
                   tracker.track({ type: "add_cart", productId: (product as any).id, categoryId: (product as any).category_id ?? null });
@@ -297,66 +334,57 @@ export default function ProductPage() {
 
               <ShippingCalculator subtotal={totalDynamic} />
 
-              <Card className="rounded-3xl border-border bg-card shadow-sm">
-                <CardContent className="p-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-border bg-secondary/30 p-4">
-                      <div className="text-xs text-muted-foreground">Unidade</div>
-                      <div className="font-semibold">{(product as any).unit ?? "un"}</div>
+              {/* Info cards */}
+              <Card className="rounded-2xl border-border bg-card shadow-sm">
+                <CardContent className="p-3 sm:p-5">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3">
+                      <div className="text-[10px] sm:text-xs text-muted-foreground">Unidade</div>
+                      <div className="text-sm font-medium">{(product as any).unit ?? "un"}</div>
                     </div>
 
-                    <div className="rounded-2xl border border-border bg-secondary/30 p-4">
-                      <div className="text-xs text-muted-foreground">Prazo</div>
-                      <div className="font-semibold">3 a 7 dias úteis</div>
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3">
+                      <div className="text-[10px] sm:text-xs text-muted-foreground">Prazo</div>
+                      <div className="text-sm font-medium">3 a 7 dias úteis</div>
                     </div>
 
-                    <div className="rounded-2xl border border-border bg-secondary/30 p-4 sm:col-span-2">
-                      <div className="text-xs text-muted-foreground">Pagamento</div>
-                      <div className="font-semibold">Cartão • Boleto • Pix</div>
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3 col-span-2">
+                      <div className="text-[10px] sm:text-xs text-muted-foreground">Pagamento</div>
+                      <div className="text-sm font-medium">Cartão • Boleto • Pix</div>
                       <PaymentLogosReal />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-border bg-card p-4">
-                  <div className="flex items-center gap-3">
-                    <Truck className="h-5 w-5 text-primary" />
-                    <div className="font-semibold">Entrega</div>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                {[
+                  { icon: Truck, label: "Entrega" },
+                  { icon: CreditCard, label: "Parcelamento" },
+                  { icon: ShieldCheck, label: "Segurança" },
+                  { icon: BadgeCheck, label: "Garantia" },
+                ].map(({ icon: Icon, label }) => (
+                  <div key={label} className="rounded-xl border border-border bg-card p-3">
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-sm font-medium">{label}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="rounded-2xl border border-border bg-card p-4">
-                  <div className="flex items-center gap-3">
-                    <CreditCard className="h-5 w-5 text-primary" />
-                    <div className="font-semibold">Parcelamento</div>
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-border bg-card p-4">
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className="h-5 w-5 text-primary" />
-                    <div className="font-semibold">Segurança</div>
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-border bg-card p-4">
-                  <div className="flex items-center gap-3">
-                    <BadgeCheck className="h-5 w-5 text-primary" />
-                    <div className="font-semibold">Garantia</div>
-                  </div>
-                </div>
+                ))}
               </div>
 
+              {/* Description */}
               {descriptionParts.general ? (
-                <Card className="rounded-3xl border-border bg-card shadow-sm">
-                  <CardContent className="p-5">
+                <Card className="rounded-2xl border-border bg-card shadow-sm">
+                  <CardContent className="p-3 sm:p-5">
                     <ProductDescription markdown={descriptionParts.general} />
                   </CardContent>
                 </Card>
               ) : null}
 
               {descriptionParts.tech ? (
-                <Card className="rounded-3xl border-border bg-card shadow-sm">
-                  <CardContent className="p-5">
+                <Card className="rounded-2xl border-border bg-card shadow-sm">
+                  <CardContent className="p-3 sm:p-5">
                     <ProductDescription markdown={descriptionParts.tech} />
                   </CardContent>
                 </Card>
@@ -364,6 +392,9 @@ export default function ProductPage() {
 
               {/* Reviews */}
               <ProductReviews productId={(product as any).id} />
+
+              {/* Customer review form */}
+              <CustomerReviewForm productId={(product as any).id} productName={product.name} />
             </div>
           </div>
         )}
@@ -373,4 +404,3 @@ export default function ProductPage() {
     </div>
   );
 }
-

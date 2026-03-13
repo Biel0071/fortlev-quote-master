@@ -120,18 +120,6 @@ export default function AdminProductsImport() {
     setLoading(false);
   };
 
-  const loadPreBuilt = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/data/produtos_construcao_padronizado_2500.xlsx");
-      const buf = await res.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      processWorkbook(wb);
-    } catch (err) {
-      toast({ title: "Erro", description: String(err), variant: "destructive" });
-    }
-    setLoading(false);
-  };
 
   const startImport = async () => {
     if (parsed.length === 0) return;

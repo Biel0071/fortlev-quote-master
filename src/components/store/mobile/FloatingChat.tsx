@@ -31,7 +31,6 @@ export function FloatingChat({
 
   const shouldHideFloating = useMemo(
     () =>
-      location.pathname.startsWith("/produto/") ||
       location.pathname.startsWith("/checkout") ||
       location.pathname.startsWith("/carrinho"),
     [location.pathname],

@@ -19,11 +19,11 @@ export default function CartPage() {
   const total = subtotal;
 
   return (
-    <div className="min-h-screen bg-background w-full max-w-[100vw] overflow-x-hidden">
+    <div className="flex flex-col bg-background w-full overflow-x-hidden">
       <StoreTopbar cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pb-28 md:pb-10 space-y-4 sm:space-y-6 min-w-0">
+      <main className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pb-20 md:pb-8 space-y-4 sm:space-y-6 min-w-0">
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-3xl font-semibold tracking-tight">Carrinho</h1>

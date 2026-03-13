@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import JSZip from "jszip";
 import { cloud } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 
 type Mode = "quick" | "deep";
 
@@ -32,6 +34,81 @@ const SCOPE_OPTIONS = [
 ] as const;
 
 const ROOT_EXPORT_FILES = new Set(["package.json", "tsconfig.json", "vite.config.ts", ".env.example"]);
+
+const SYSTEM_SCREENS = [
+  { path: "/", label: "Home (Vitrine)" },
+  { path: "/loja", label: "Catálogo" },
+  { path: "/carrinho", label: "Carrinho" },
+  { path: "/checkout", label: "Checkout" },
+  { path: "/conta", label: "Área do Cliente" },
+  { path: "/pedidos", label: "Pedidos do Cliente" },
+  { path: "/auth/login", label: "Login" },
+  { path: "/auth/signup", label: "Cadastro" },
+  { path: "/admin", label: "Admin - Seletor de Loja" },
+  { path: "/admin/dashboard", label: "Admin - Dashboard" },
+  { path: "/admin/dashboard/tracking", label: "Admin - Tracking" },
+  { path: "/admin/dashboard/inteligencia", label: "Admin - Inteligência" },
+  { path: "/admin/home", label: "Admin - Home Builder" },
+  { path: "/admin/orcamentos", label: "Admin - Orçamentos" },
+  { path: "/admin/produtos", label: "Admin - Produtos" },
+  { path: "/admin/produtos/novo", label: "Admin - Novo Produto" },
+  { path: "/admin/produtos/imagens", label: "Admin - Busca de Imagens" },
+  { path: "/admin/produtos/importar", label: "Admin - Importar Produtos" },
+  { path: "/admin/categorias", label: "Admin - Categorias" },
+  { path: "/admin/pedidos", label: "Admin - Pedidos" },
+  { path: "/admin/paginas", label: "Admin - Páginas" },
+  { path: "/admin/clientes", label: "Admin - Clientes" },
+  { path: "/admin/cupons", label: "Admin - Cupons" },
+  { path: "/admin/banners", label: "Admin - Banners" },
+  { path: "/admin/tema", label: "Admin - Tema" },
+  { path: "/admin/configuracoes", label: "Admin - Configurações" },
+  { path: "/admin/configuracoes/usuarios", label: "Admin - Usuários" },
+  { path: "/admin/configuracoes/frete", label: "Admin - Frete" },
+  { path: "/admin/configuracoes/pagamentos", label: "Admin - Pagamentos" },
+  { path: "/admin/configuracoes/identidade", label: "Admin - Identidade" },
+  { path: "/admin/configuracoes/integracoes", label: "Admin - Integrações" },
+  { path: "/construcao", label: "Orçamento Construção" },
+  { path: "/orcamentos", label: "Orçamentos Fortlev" },
+];
+
+function captureScreenHTML(screenPath: string, timeoutMs = 8000): Promise<string> {
+  return new Promise((resolve) => {
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:1440px;height:900px;border:none;opacity:0;pointer-events:none;";
+    document.body.appendChild(iframe);
+
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve(`<!-- timeout loading ${screenPath} -->`);
+    }, timeoutMs);
+
+    function cleanup() {
+      clearTimeout(timer);
+      try { document.body.removeChild(iframe); } catch {}
+    }
+
+    iframe.onload = () => {
+      setTimeout(() => {
+        try {
+          const doc = iframe.contentDocument;
+          const html = doc?.documentElement?.outerHTML ?? "";
+          cleanup();
+          resolve(html || `<!-- empty content for ${screenPath} -->`);
+        } catch {
+          cleanup();
+          resolve(`<!-- cross-origin blocked for ${screenPath} -->`);
+        }
+      }, 3000);
+    };
+
+    iframe.onerror = () => {
+      cleanup();
+      resolve(`<!-- error loading ${screenPath} -->`);
+    };
+
+    iframe.src = `${window.location.origin}${screenPath}`;
+  });
+}
 
 const fileMap = import.meta.glob(
   [
@@ -90,6 +167,10 @@ export default function AdminAiAnalysis() {
   const [loading, setLoading] = useState(false);
   const [rawJson, setRawJson] = useState<string>("");
   const [reportObj, setReportObj] = useState<FullReport | null>(null);
+
+  const [includeHtml, setIncludeHtml] = useState(false);
+  const [htmlProgress, setHtmlProgress] = useState(0);
+  const [htmlCapturing, setHtmlCapturing] = useState(false);
 
   const scopeLabel = useMemo(() => SCOPE_OPTIONS.find((x) => x.value === scope)?.label || scope, [scope]);
 
@@ -212,6 +293,33 @@ export default function AdminAiAnalysis() {
     zip.file("resumo-executivo.md", summary);
     zip.file("arquivos-analisados.txt", (reportObj.analyzed_paths ?? []).join("\n"));
 
+    // Captura HTML de todas as telas do sistema
+    if (includeHtml) {
+      setHtmlCapturing(true);
+      setHtmlProgress(0);
+      const htmlFolder = zip.folder("telas-html")!;
+      const indexLines: string[] = ["# Índice de Telas do Sistema\n"];
+
+      for (let i = 0; i < SYSTEM_SCREENS.length; i++) {
+        const screen = SYSTEM_SCREENS[i];
+        setHtmlProgress(Math.round(((i + 1) / SYSTEM_SCREENS.length) * 100));
+
+        try {
+          const html = await captureScreenHTML(screen.path);
+          const fileName = screen.path.replace(/\//g, "_").replace(/^_/, "") || "home";
+          const fullName = `${fileName}.html`;
+          const wrappedHtml = `<!DOCTYPE html>\n<!-- Tela: ${screen.label} | Rota: ${screen.path} | Capturado em: ${new Date().toISOString()} -->\n${html}`;
+          htmlFolder.file(fullName, wrappedHtml);
+          indexLines.push(`- **${screen.label}** → \`${screen.path}\` → \`${fullName}\``);
+        } catch {
+          indexLines.push(`- **${screen.label}** → \`${screen.path}\` → ⚠️ falha na captura`);
+        }
+      }
+
+      htmlFolder.file("_INDICE.md", indexLines.join("\n"));
+      setHtmlCapturing(false);
+    }
+
     const blob = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -275,6 +383,13 @@ export default function AdminAiAnalysis() {
           <div className="md:col-span-3 text-xs text-muted-foreground">
             Nota: o modo rápido analisa uma amostra; o modo profundo analisa mais arquivos e pode demorar mais.
           </div>
+
+          <div className="md:col-span-3 flex items-center gap-3">
+            <Switch checked={includeHtml} onCheckedChange={setIncludeHtml} id="html-toggle" />
+            <Label htmlFor="html-toggle" className="text-sm cursor-pointer">
+              Incluir HTML renderizado de todas as telas ({SYSTEM_SCREENS.length} telas)
+            </Label>
+          </div>
         </CardContent>
       </Card>
 
@@ -290,12 +405,21 @@ export default function AdminAiAnalysis() {
         </CardContent>
       </Card>
 
+      {htmlCapturing && (
+        <Card className="rounded-2xl">
+          <CardContent className="pt-6 space-y-2">
+            <p className="text-sm font-medium">Capturando telas do sistema… {htmlProgress}%</p>
+            <Progress value={htmlProgress} className="h-2" />
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="rounded-2xl">
         <CardHeader>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle>Relatório completo (JSON)</CardTitle>
-            <Button variant="outline" onClick={downloadReport} disabled={!rawJson}>
-              Baixar relatório completo (.zip)
+            <Button variant="outline" onClick={downloadReport} disabled={!rawJson || htmlCapturing}>
+              {htmlCapturing ? "Capturando telas..." : "Baixar relatório completo (.zip)"}
             </Button>
           </div>
         </CardHeader>

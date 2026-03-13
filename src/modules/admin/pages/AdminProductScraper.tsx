@@ -1,14 +1,17 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { cloud } from "@/lib/cloud";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
-import { Globe, Loader2, Search, FileSpreadsheet, CheckCircle2, XCircle, Clock } from "lucide-react";
+import {
+  Globe, Loader2, Search, FileSpreadsheet, CheckCircle2, XCircle, Clock,
+  Timer, History, Trash2,
+} from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface ScrapedProduct {
@@ -27,30 +30,80 @@ interface QueueItem {
   products: number;
 }
 
+interface ScrapeHistoryItem {
+  id: string;
+  created_at: string;
+  total_urls: number;
+  total_pages: number;
+  total_products: number;
+  execution_time_seconds: number;
+  domains: string[];
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}m${s.toString().padStart(2, "0")}s`;
+}
+
 export default function AdminProductScraper() {
   const [urlsInput, setUrlsInput] = useState("");
-  const [maxPages, setMaxPages] = useState(10);
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<ScrapedProduct[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [stats, setStats] = useState<{ totalUrls: number; totalPages: number; totalProducts: number } | null>(null);
+  const [stats, setStats] = useState<{
+    totalUrls: number; totalPages: number; totalProducts: number; executionTime: number;
+  } | null>(null);
+  const [history, setHistory] = useState<ScrapeHistoryItem[]>([]);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const cancelRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef(0);
+
+  // Load history on mount
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  // Timer effect
+  useEffect(() => {
+    if (loading) {
+      startTimeRef.current = Date.now();
+      timerRef.current = setInterval(() => {
+        setElapsedTime((Date.now() - startTimeRef.current) / 1000);
+      }, 500);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [loading]);
+
+  const loadHistory = async () => {
+    const { data } = await supabase
+      .from("scrape_history")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (data) setHistory(data as unknown as ScrapeHistoryItem[]);
+  };
 
   const addLog = (msg: string) => setLogs(prev => [...prev, msg]);
 
-  const handleScrape = async () => {
-    // Parse URLs: split by newline, then also extract multiple URLs from single lines
+  const parseUrls = (input: string): string[] => {
     const urls: string[] = [];
-    for (const line of urlsInput.split(/[\n\r]+/)) {
+    for (const line of input.split(/[\n\r]+/)) {
       const trimmed = line.trim();
       if (!trimmed) continue;
-      // If line contains multiple URLs separated by spaces, split them
       const matches = trimmed.match(/https?:\/\/[^\s]+/g);
-      if (matches) {
-        urls.push(...matches.map(u => u.trim()));
-      }
+      if (matches) urls.push(...matches.map(u => u.trim()));
     }
+    return urls;
+  };
+
+  const handleScrape = async () => {
+    const urls = parseUrls(urlsInput);
 
     if (urls.length === 0) {
       toast({ title: "Informe pelo menos uma URL válida", variant: "destructive" });
@@ -61,13 +114,17 @@ export default function AdminProductScraper() {
     setLoading(true);
     setProducts([]);
     setStats(null);
+    setElapsedTime(0);
 
-    const initialQueue: QueueItem[] = urls.map(u => ({ url: u, status: "pending" as const, pages: 0, products: 0 }));
+    const initialQueue: QueueItem[] = urls.map(u => ({
+      url: u, status: "pending" as const, pages: 0, products: 0,
+    }));
     setQueue(initialQueue);
     setLogs([`📋 Fila: ${urls.length} URL(s) para processar`]);
 
     let allProducts: ScrapedProduct[] = [];
     let totalPages = 0;
+    const domains = new Set<string>();
 
     for (let i = 0; i < urls.length; i++) {
       if (cancelRef.current) {
@@ -76,34 +133,48 @@ export default function AdminProductScraper() {
       }
 
       const url = urls[i];
-      const dominio = new URL(url).hostname.replace("www.", "");
+      let dominio: string;
+      try {
+        dominio = new URL(url).hostname.replace("www.", "");
+      } catch {
+        addLog(`❌ URL inválida: ${url}`);
+        setQueue(prev => prev.map((q, idx) => idx === i ? { ...q, status: "failed" } : q));
+        continue;
+      }
 
-      // Update queue: mark current as running
+      domains.add(dominio);
       setQueue(prev => prev.map((q, idx) => idx === i ? { ...q, status: "running" } : q));
       addLog(`\n🔄 [${i + 1}/${urls.length}] ${dominio}`);
 
       try {
         const { data, error } = await cloud.functions.invoke("scrape-products", {
-          body: { url, maxPages },
+          body: { url, maxPages: 0 }, // 0 = unlimited
         });
 
         if (error) throw new Error(error.message);
         if (!data?.success) throw new Error(data?.error || "Erro desconhecido");
 
-        const urlProducts = data.products || [];
+        const urlProducts: ScrapedProduct[] = data.products || [];
         allProducts = [...allProducts, ...urlProducts];
         totalPages += data.totalPages || 0;
 
-        // Append logs from edge function
         (data.logs || []).forEach((l: string) => addLog(l));
 
-        // Update queue item
         setQueue(prev => prev.map((q, idx) =>
           idx === i ? { ...q, status: "done", pages: data.totalPages || 0, products: urlProducts.length } : q
         ));
 
-        // Update products in real-time
-        setProducts(prev => [...prev, ...urlProducts]);
+        setProducts(prev => {
+          const combined = [...prev, ...urlProducts];
+          // Deduplicate
+          const seen = new Set<string>();
+          return combined.filter(p => {
+            const key = (p.produto + "|" + (p.url || "")).toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        });
       } catch (e: any) {
         addLog(`❌ Erro em ${dominio}: ${e.message}`);
         setQueue(prev => prev.map((q, idx) =>
@@ -111,28 +182,41 @@ export default function AdminProductScraper() {
         ));
       }
 
-      // Rate limit between URLs
       if (i < urls.length - 1 && !cancelRef.current) {
         await new Promise(r => setTimeout(r, 1500));
       }
     }
 
-    // Deduplicate all products
+    // Final deduplication
     const seen = new Set<string>();
     const unique = allProducts.filter(p => {
-      const key = p.produto.toLowerCase();
+      const key = (p.produto + "|" + (p.url || "")).toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
+    const executionTime = (Date.now() - startTimeRef.current) / 1000;
+
     setProducts(unique);
-    setStats({ totalUrls: urls.length, totalPages, totalProducts: unique.length });
-    addLog(`\n🏁 Concluído: ${unique.length} produtos únicos de ${totalPages} páginas`);
+    setStats({ totalUrls: urls.length, totalPages, totalProducts: unique.length, executionTime });
+    addLog(`\n🏁 Concluído: ${unique.length} produtos únicos de ${totalPages} páginas em ${formatDuration(executionTime)}`);
+
+    // Save history
+    try {
+      await supabase.from("scrape_history").insert({
+        total_urls: urls.length,
+        total_pages: totalPages,
+        total_products: unique.length,
+        execution_time_seconds: Math.round(executionTime),
+        domains: Array.from(domains),
+      });
+      await loadHistory();
+    } catch { /* ignore */ }
 
     toast({
       title: "Scraping concluído",
-      description: `${unique.length} produtos em ${totalPages} páginas de ${urls.length} URLs`,
+      description: `${unique.length} produtos em ${totalPages} páginas (${formatDuration(executionTime)})`,
     });
 
     setLoading(false);
@@ -145,6 +229,7 @@ export default function AdminProductScraper() {
 
   const handleExportExcel = () => {
     if (products.length === 0) return;
+    const ts = new Date().toISOString().slice(0, 16).replace(/[:-]/g, "");
     const rows = products.map((p, i) => ({
       SKU: `SCRP-${String(i + 1).padStart(5, "0")}`,
       Produto: p.produto,
@@ -158,8 +243,13 @@ export default function AdminProductScraper() {
     ws["!cols"] = [{ wch: 14 }, { wch: 50 }, { wch: 14 }, { wch: 20 }, { wch: 60 }, { wch: 25 }, { wch: 8 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Produtos");
-    XLSX.writeFile(wb, "produtos_scrape.xlsx");
-    toast({ title: "Excel exportado", description: "produtos_scrape.xlsx" });
+    XLSX.writeFile(wb, `produtos_scrape_${ts}.xlsx`);
+    toast({ title: "Excel exportado" });
+  };
+
+  const handleDeleteHistory = async (id: string) => {
+    await supabase.from("scrape_history").delete().eq("id", id);
+    await loadHistory();
   };
 
   const statusIcon = (s: string) => {
@@ -169,7 +259,7 @@ export default function AdminProductScraper() {
     return <Clock className="h-4 w-4 text-muted-foreground" />;
   };
 
-  const urlCount = (urlsInput.match(/https?:\/\/[^\s]+/g) || []).length;
+  const urlCount = parseUrls(urlsInput).length;
 
   return (
     <div className="space-y-6 p-6">
@@ -178,6 +268,7 @@ export default function AdminProductScraper() {
         <h1 className="text-2xl font-bold">Scraper de Produtos</h1>
       </div>
 
+      {/* Config */}
       <Card>
         <CardHeader><CardTitle className="text-base">Configuração</CardTitle></CardHeader>
         <CardContent className="space-y-4">
@@ -190,25 +281,19 @@ export default function AdminProductScraper() {
             className="font-mono text-sm"
           />
           {urlCount > 0 && (
-            <p className="text-xs text-muted-foreground">{urlCount} URL(s) detectada(s)</p>
+            <p className="text-xs text-muted-foreground">{urlCount} URL(s) detectada(s) • Paginação ilimitada</p>
           )}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">Máx páginas:</span>
-              <Input
-                type="number"
-                min={1}
-                max={50}
-                value={maxPages}
-                onChange={(e) => setMaxPages(Number(e.target.value) || 10)}
-                className="w-24"
-                disabled={loading}
-              />
-            </div>
+          <div className="flex flex-col sm:flex-row gap-3 items-center">
             {loading ? (
-              <Button variant="destructive" onClick={handleCancel} className="gap-2">
-                Cancelar
-              </Button>
+              <>
+                <Button variant="destructive" onClick={handleCancel} className="gap-2">
+                  Cancelar
+                </Button>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Timer className="h-4 w-4 animate-pulse" />
+                  <span className="font-mono">{formatDuration(elapsedTime)}</span>
+                </div>
+              </>
             ) : (
               <Button onClick={handleScrape} className="gap-2">
                 <Search className="h-4 w-4" />
@@ -225,11 +310,11 @@ export default function AdminProductScraper() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              Fila de URLs ({queue.filter(q => q.status === "done").length}/{queue.length} concluídas)
+              Fila ({queue.filter(q => q.status === "done").length}/{queue.length} concluídas)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-60 overflow-y-auto">
               {queue.map((q, i) => (
                 <div key={i} className="flex items-center gap-3 text-sm border rounded-md px-3 py-2">
                   {statusIcon(q.status)}
@@ -269,6 +354,7 @@ export default function AdminProductScraper() {
           <Badge variant="outline" className="text-sm px-3 py-1">🌐 {stats.totalUrls} URLs</Badge>
           <Badge variant="outline" className="text-sm px-3 py-1">📄 {stats.totalPages} páginas</Badge>
           <Badge variant="outline" className="text-sm px-3 py-1">📦 {stats.totalProducts} produtos</Badge>
+          <Badge variant="outline" className="text-sm px-3 py-1">⏱️ {formatDuration(stats.executionTime)}</Badge>
           {products.length > 0 && (
             <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-2">
               <FileSpreadsheet className="h-4 w-4" />
@@ -319,6 +405,39 @@ export default function AdminProductScraper() {
                 </tbody>
               </table>
             </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* History */}
+      {history.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Histórico de Scraping
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {history.map((h) => (
+                <div key={h.id} className="flex items-center gap-3 text-sm border rounded-md px-3 py-2">
+                  <span className="text-xs text-muted-foreground min-w-[120px]">
+                    {new Date(h.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <Badge variant="secondary" className="text-xs">{h.total_urls} URLs</Badge>
+                  <Badge variant="outline" className="text-xs">{h.total_pages} pág</Badge>
+                  <Badge variant="outline" className="text-xs">{h.total_products} prod</Badge>
+                  <span className="text-xs text-muted-foreground font-mono">{formatDuration(h.execution_time_seconds)}</span>
+                  {h.domains?.length > 0 && (
+                    <span className="text-xs text-muted-foreground truncate max-w-[150px]">{h.domains.join(", ")}</span>
+                  )}
+                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => handleDeleteHistory(h.id)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

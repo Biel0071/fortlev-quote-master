@@ -140,6 +140,7 @@ export default function AdminProductsList() {
   }, [q, rows, filterActive, filterCategory]);
 
   const activeCount = rows.filter(r => r.active).length;
+  const inactiveCount = rows.length - activeCount;
   const activeIds = useMemo(() => rows.filter(r => r.active).map(r => r.id), [rows]);
 
   const toggleSelect = (id: string) => {

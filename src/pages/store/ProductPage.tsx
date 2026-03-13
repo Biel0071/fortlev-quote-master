@@ -239,7 +239,7 @@ export default function ProductPage() {
   }, [images]);
 
   return (
-    <div className="flex flex-col bg-background w-full overflow-x-hidden">
+    <div className="flex min-w-0 w-full flex-col bg-background overflow-x-clip">
       <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />

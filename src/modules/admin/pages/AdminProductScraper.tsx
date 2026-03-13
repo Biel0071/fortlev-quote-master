@@ -267,17 +267,32 @@ export default function AdminProductScraper() {
     setStats({ totalUrls: urls.length, totalPages, totalProducts: unique.length, executionTime });
     addLog(`\n🏁 Concluído: ${unique.length} produtos únicos de ${totalPages} páginas em ${formatDuration(executionTime)}`);
 
+    const safeProducts = sanitizeHistoryProducts(unique);
+
     try {
-      await supabase.from("scrape_history").insert({
-        total_urls: urls.length,
-        total_pages: totalPages,
-        total_products: unique.length,
-        execution_time_seconds: Math.round(executionTime),
-        domains: Array.from(domains),
-        products_json: unique as any,
-      });
+      const { data: inserted, error: historyError } = await supabase
+        .from("scrape_history")
+        .insert({
+          total_urls: urls.length,
+          total_pages: totalPages,
+          total_products: safeProducts.length,
+          execution_time_seconds: Math.round(executionTime),
+          domains: Array.from(domains),
+          products_json: safeProducts as any,
+        })
+        .select("id")
+        .single();
+
+      if (historyError) {
+        addLog(`⚠️ Histórico não salvo com itens: ${historyError.message}`);
+      } else if (inserted?.id) {
+        localStorage.setItem(`scrape_history_items:${inserted.id}`, JSON.stringify(safeProducts));
+      }
+
       await loadHistory();
-    } catch { /* ignore */ }
+    } catch (e: any) {
+      addLog(`⚠️ Histórico não salvo com itens: ${e?.message || "erro desconhecido"}`);
+    }
 
     toast({
       title: "Scraping concluído",
@@ -290,6 +305,7 @@ export default function AdminProductScraper() {
 
   const handleDeleteHistory = async (id: string) => {
     await supabase.from("scrape_history").delete().eq("id", id);
+    localStorage.removeItem(`scrape_history_items:${id}`);
     await loadHistory();
   };
 
@@ -300,9 +316,32 @@ export default function AdminProductScraper() {
     return <Clock className="h-4 w-4 text-muted-foreground" />;
   };
 
+  const resolveHistoryProducts = (item: ScrapeHistoryItem | null): ScrapedProduct[] => {
+    if (!item) return [];
+
+    const dbProducts = Array.isArray(item.products_json) ? (item.products_json as ScrapedProduct[]) : [];
+    if (dbProducts.length > 0) return dbProducts;
+
+    const cachedProducts = readLocalHistoryProducts(item.id);
+    if (cachedProducts.length > 0) return cachedProducts;
+
+    if (
+      stats &&
+      products.length > 0 &&
+      stats.totalProducts === item.total_products &&
+      stats.totalPages === item.total_pages
+    ) {
+      return products;
+    }
+
+    return [];
+  };
+
+  const hasHistoryProducts = (item: ScrapeHistoryItem): boolean => resolveHistoryProducts(item).length > 0;
+
   const urlCount = parseUrls(urlsInput).length;
 
-  const historyProducts = viewingHistory?.products_json || [];
+  const historyProducts = resolveHistoryProducts(viewingHistory);
 
   return (
     <div className="space-y-6 p-6">

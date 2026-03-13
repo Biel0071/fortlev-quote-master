@@ -244,7 +244,7 @@ export default function ProductPage() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-20 md:pb-8 space-y-4 sm:space-y-6 min-w-0">
+      <main className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-20 md:pb-8 space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
         <Button asChild variant="ghost" className="h-9 sm:h-11 rounded-2xl w-fit text-sm">
           <Link to="/loja">← Voltar</Link>
         </Button>
@@ -254,7 +254,7 @@ export default function ProductPage() {
         ) : !product ? (
           <div className="text-muted-foreground text-sm">Produto não encontrado.</div>
         ) : (
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-12">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-12 min-w-0 overflow-hidden">
             {/* Gallery */}
             <div className="lg:col-span-7">
               <Card className="rounded-2xl sm:rounded-3xl overflow-hidden border-border bg-card shadow-sm">
@@ -292,7 +292,7 @@ export default function ProductPage() {
             </div>
 
             {/* Product info */}
-            <div className="lg:col-span-5 space-y-3 sm:space-y-4 min-w-0">
+            <div className="lg:col-span-5 space-y-3 sm:space-y-4 min-w-0 overflow-hidden">
               <ProductBadges featured={Boolean((product as any).featured)} basePrice={basePrice} promoPrice={promoPrice} />
 
               <div>

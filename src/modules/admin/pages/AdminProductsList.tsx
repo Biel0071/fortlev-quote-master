@@ -211,6 +211,9 @@ export default function AdminProductsList() {
           <Button variant="outline" onClick={() => nav("/admin/produtos/importar")}>
             📥 Importar Planilha
           </Button>
+          <Button variant="outline" onClick={() => nav("/admin/produtos/scraper")}>
+            🌐 Scraper
+          </Button>
           <Button onClick={() => nav("/admin/produtos/novo")}>Novo produto</Button>
         </div>
       </div>

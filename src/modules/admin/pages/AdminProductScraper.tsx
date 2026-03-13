@@ -39,7 +39,7 @@ interface ScrapeHistoryItem {
   total_products: number;
   execution_time_seconds: number;
   domains: string[];
-  products_json: ScrapedProduct[];
+  products_json: unknown;
 }
 
 function formatDuration(seconds: number): string {
@@ -47,6 +47,28 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.round(seconds % 60);
   return `${m}m${s.toString().padStart(2, "0")}s`;
+}
+
+function sanitizeHistoryProducts(items: ScrapedProduct[]): ScrapedProduct[] {
+  return items.map((p) => ({
+    produto: p.produto ?? "",
+    url: p.url ?? null,
+    preco: p.preco ?? null,
+    precoNum: typeof p.precoNum === "number" ? p.precoNum : null,
+    pagina: Number.isFinite(p.pagina) ? p.pagina : 0,
+    dominio: p.dominio ?? "",
+  }));
+}
+
+function readLocalHistoryProducts(id: string): ScrapedProduct[] {
+  try {
+    const raw = localStorage.getItem(`scrape_history_items:${id}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as ScrapedProduct[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 function exportProducts(products: ScrapedProduct[], suffix = "") {

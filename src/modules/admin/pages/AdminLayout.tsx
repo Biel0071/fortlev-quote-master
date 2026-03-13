@@ -101,7 +101,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
 function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const { canViewPage, isMaster, storeAccess } = useAdminPermissions();
+  const { canViewPage } = useAdminPermissions();
   const { label } = useStore();
   const nav = useNavigate();
   const location = useLocation();

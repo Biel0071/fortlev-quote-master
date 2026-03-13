@@ -111,6 +111,108 @@ function ProductDescription({ markdown }: { markdown: string }) {
   );
 }
 
+function ThumbStrip({
+  images,
+  activeImg,
+  onSelect,
+}: {
+  images: any[];
+  activeImg: string | null;
+  onSelect: (url: string) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState(false);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
+  const checkScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 2);
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    return () => el.removeEventListener("scroll", checkScroll);
+  }, [images]);
+
+  const scroll = (dir: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === "left" ? -140 : 140, behavior: "smooth" });
+  };
+
+  return (
+    <div
+      className="relative min-w-0"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Left arrow */}
+      {canLeft && (
+        <button
+          type="button"
+          onClick={() => scroll("left")}
+          className={cn(
+            "absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/70 backdrop-blur-sm border border-border/50 flex items-center justify-center shadow-sm transition-opacity duration-200",
+            hovered ? "opacity-100" : "opacity-0 pointer-events-none sm:opacity-0 sm:pointer-events-none",
+          )}
+          style={{ opacity: hovered ? 1 : undefined }}
+          aria-label="Anterior"
+        >
+          <ChevronLeft className="h-4 w-4 text-foreground/60" />
+        </button>
+      )}
+
+      {/* Right arrow */}
+      {canRight && (
+        <button
+          type="button"
+          onClick={() => scroll("right")}
+          className={cn(
+            "absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/70 backdrop-blur-sm border border-border/50 flex items-center justify-center shadow-sm transition-opacity duration-200",
+            hovered ? "opacity-100" : "opacity-0 pointer-events-none sm:opacity-0 sm:pointer-events-none",
+          )}
+          style={{ opacity: hovered ? 1 : undefined }}
+          aria-label="Próximo"
+        >
+          <ChevronRight className="h-4 w-4 text-foreground/60" />
+        </button>
+      )}
+
+      <div
+        ref={scrollRef}
+        className="flex w-full min-w-0 gap-1.5 overflow-x-auto sm:gap-2 scrollbar-none"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        onTouchStart={() => setHovered(true)}
+        onTouchEnd={() => setTimeout(() => setHovered(false), 1500)}
+      >
+        {images.slice(0, 8).map((im: any, idx: number) => {
+          const url = publicImageUrl("product-images", im.path);
+          const active = url && url === activeImg;
+          return (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => onSelect(url)}
+              className={`shrink-0 h-14 w-14 sm:h-16 sm:w-16 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-colors ${
+                active ? "border-primary" : "border-border"
+              }`}
+              aria-label={`Ver imagem ${idx + 1}`}
+            >
+              <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function splitDescription(markdown: string) {
   const md = (markdown ?? "").trim();
   if (!md) return { general: "", tech: "" };

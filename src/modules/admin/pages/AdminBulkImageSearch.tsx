@@ -336,8 +336,12 @@ export default function AdminBulkImageSearch() {
     updateStats({ activeWorkers: (statsRef.current?.activeWorkers ?? 0) + 1, processing: (statsRef.current?.processing ?? 0) + 1, pending: (statsRef.current?.pending ?? 0) - 1 });
 
     try {
-      // STEP 1: AI Enrichment
+      // STEP 1: AI Enrichment with layered queries
       let aiSearchQueries: string[] = [];
+      let layeredQueries: { manufacturer?: string[]; marketplace?: string[]; general?: string[] } = {};
+      let imageRejectionTerms: string[] = [];
+      let imageAcceptanceTerms: string[] = [];
+      let aiImagePrompt = "";
       const product = products.find((p) => p.id === job.productId);
       const needsDescription = !product?.description || (product.description?.trim().length ?? 0) < 20;
       const neededImages = MAX_IMAGES_PER_PRODUCT - (product?.imageCount ?? 0);
@@ -350,28 +354,118 @@ export default function AdminBulkImageSearch() {
           });
           if (!error && data?.success) {
             aiSearchQueries = data.searchQueries ?? [];
+            layeredQueries = data.searchQueriesLayered ?? {};
+            imageRejectionTerms = data.imageRejectionTerms ?? [];
+            imageAcceptanceTerms = data.imageAcceptanceTerms ?? [];
+            aiImagePrompt = data.aiImagePrompt ?? "";
             updateJob(jobIdx, { descriptionGenerated: true, techSheetGenerated: true });
             updateStats({ descriptionsGenerated: (statsRef.current?.descriptionsGenerated ?? 0) + 1 });
           }
         } catch { /* continue even if AI fails */ }
       }
 
-      // STEP 2: Image Search
+      // STEP 2: Layered Image Search
       if (neededImages > 0 && !abortRef.current) {
-        updateJob(jobIdx, { step: "🔍 Buscando imagens..." });
-        const defaultQuery = `${job.productName} produto construção`;
-        const { images: searchResults } = await searchWithCache(defaultQuery, aiSearchQueries);
-        updateJob(jobIdx, { imagesFound: searchResults.length });
+        let allFoundImages: GoogleImageResult[] = [];
+
+        // Layer 1: Manufacturer queries
+        if (layeredQueries.manufacturer && layeredQueries.manufacturer.length > 0 && !abortRef.current) {
+          updateJob(jobIdx, { step: "🏭 Buscando no fabricante..." });
+          for (const q of layeredQueries.manufacturer) {
+            if (abortRef.current || allFoundImages.length >= MAX_IMAGES_PER_PRODUCT) break;
+            const { images } = await searchWithCache(q);
+            // Filter using AI-provided terms
+            const filtered = images.filter((img) => {
+              const title = (img.title || "").toLowerCase();
+              const hasRejection = imageRejectionTerms.some((t) => title.includes(t.toLowerCase()));
+              const hasAcceptance = imageAcceptanceTerms.some((t) => title.includes(t.toLowerCase()));
+              if (hasRejection && !hasAcceptance) return false;
+              return true;
+            });
+            allFoundImages.push(...filtered);
+          }
+        }
+
+        // Layer 2: Marketplace queries
+        if (allFoundImages.length < neededImages && layeredQueries.marketplace && !abortRef.current) {
+          updateJob(jobIdx, { step: "🛒 Buscando em marketplaces..." });
+          for (const q of layeredQueries.marketplace) {
+            if (abortRef.current || allFoundImages.length >= MAX_IMAGES_PER_PRODUCT) break;
+            const { images } = await searchWithCache(q);
+            const filtered = images.filter((img) => {
+              const title = (img.title || "").toLowerCase();
+              const hasRejection = imageRejectionTerms.some((t) => title.includes(t.toLowerCase()));
+              const hasAcceptance = imageAcceptanceTerms.some((t) => title.includes(t.toLowerCase()));
+              if (hasRejection && !hasAcceptance) return false;
+              return true;
+            });
+            allFoundImages.push(...filtered);
+          }
+        }
+
+        // Layer 3: General queries
+        if (allFoundImages.length < neededImages && layeredQueries.general && !abortRef.current) {
+          updateJob(jobIdx, { step: "🔍 Busca geral..." });
+          for (const q of layeredQueries.general) {
+            if (abortRef.current || allFoundImages.length >= MAX_IMAGES_PER_PRODUCT) break;
+            const { images } = await searchWithCache(q);
+            const filtered = images.filter((img) => {
+              const title = (img.title || "").toLowerCase();
+              const hasRejection = imageRejectionTerms.some((t) => title.includes(t.toLowerCase()));
+              const hasAcceptance = imageAcceptanceTerms.some((t) => title.includes(t.toLowerCase()));
+              if (hasRejection && !hasAcceptance) return false;
+              return true;
+            });
+            allFoundImages.push(...filtered);
+          }
+        }
+
+        // Fallback: original query if no layered queries
+        if (allFoundImages.length === 0 && aiSearchQueries.length === 0 && !abortRef.current) {
+          updateJob(jobIdx, { step: "🔍 Buscando imagens..." });
+          const defaultQuery = `${job.productName} produto construção`;
+          const { images } = await searchWithCache(defaultQuery);
+          allFoundImages.push(...images);
+        }
+
+        // Deduplicate by URL
+        const seen = new Set<string>();
+        const uniqueImages = allFoundImages.filter((img) => {
+          if (seen.has(img.imageUrl)) return false;
+          seen.add(img.imageUrl);
+          return true;
+        });
+
+        updateJob(jobIdx, { imagesFound: uniqueImages.length });
 
         // STEP 3: Import images
-        if (searchResults.length > 0 && !abortRef.current) {
+        if (uniqueImages.length > 0 && !abortRef.current) {
           updateJob(jobIdx, { step: "💾 Salvando imagens..." });
-          const toImport = searchResults.slice(0, Math.min(neededImages, MAX_IMAGES_PER_PRODUCT));
+          const toImport = uniqueImages.slice(0, Math.min(neededImages, MAX_IMAGES_PER_PRODUCT));
           try {
             const result = await importGoogleProductImages({ productId: job.productId, images: toImport });
             updateJob(jobIdx, { imagesSaved: result.imported.length });
             updateStats({ imagesApproved: (statsRef.current?.imagesApproved ?? 0) + result.imported.length });
           } catch { /* partial failure */ }
+        }
+
+        // STEP 4: AI Image Generation Fallback
+        const currentSaved = jobsRef.current[jobIdx]?.imagesSaved ?? 0;
+        if (currentSaved === 0 && aiImagePrompt && !abortRef.current) {
+          updateJob(jobIdx, { step: "🎨 Gerando imagem com IA..." });
+          try {
+            const { data, error } = await cloud.functions.invoke("enrich-products", {
+              body: {
+                action: "generate-image",
+                productId: job.productId,
+                prompt: aiImagePrompt,
+              },
+            });
+            if (!error && data?.success) {
+              updateJob(jobIdx, { imagesSaved: 1, imagesFound: 1 });
+              updateStats({ imagesApproved: (statsRef.current?.imagesApproved ?? 0) + 1 });
+            }
+          } catch { /* AI generation failed, continue */ }
         }
       }
 
@@ -685,7 +779,7 @@ export default function AdminBulkImageSearch() {
             <Wand2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-primary" /> Gerador de Imagens & Conteúdo IA
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Pipeline paralelo com {workerCount} workers simultâneos — IA interpreta → busca → importa → gera conteúdo.
+            Pipeline paralelo com {workerCount} workers — IA interpreta → busca em camadas (fabricante → marketplace → geral) → filtro anti-ambiente → fallback IA.
           </p>
         </div>
         <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => load()} disabled={loading || pipelineRunning}>
@@ -727,9 +821,9 @@ export default function AdminBulkImageSearch() {
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs sm:text-sm text-muted-foreground">
                 {[
-                  { emoji: "🧠", title: "IA Interpreta", desc: "Extrai tipo, cor, tamanho, marca e categoria" },
-                  { emoji: "🔍", title: "Busca Inteligente", desc: "Multi-fonte com cache e retry automático" },
-                  { emoji: "💾", title: "Importa Imagens", desc: "Até 8 imagens por produto" },
+                  { emoji: "🧠", title: "IA Interpreta", desc: "Extrai tipo, marca, cor, tamanho e gera queries em camadas" },
+                  { emoji: "🏭", title: "Fabricante → 🛒 Marketplace → 🔍 Geral", desc: "Busca em 3 camadas com filtro anti-ambiente" },
+                  { emoji: "🎨", title: "Fallback IA", desc: "Gera imagem realista se nenhuma foto encontrada" },
                   { emoji: "📝", title: "Gera Conteúdo", desc: "Descrição + ficha técnica completa" },
                 ].map((step) => (
                   <div key={step.title} className="flex items-start gap-2 p-2 rounded-lg bg-background/50 border border-border">

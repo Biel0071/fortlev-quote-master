@@ -152,6 +152,9 @@ export default function AdminBulkImageSearch() {
   // Image cache: key → images
   const imageCacheRef = useRef(new Map<string, GoogleImageResult[]>());
 
+  // AI concurrency limiter (max 3 simultaneous AI calls even with 15 workers)
+  const aiSemRef = useRef(new Semaphore(AI_MAX_CONCURRENT));
+
   /* ─── Pagination-aware load ─── */
   const load = async () => {
     setLoading(true);

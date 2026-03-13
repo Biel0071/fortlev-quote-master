@@ -2465,6 +2465,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bulk_import_products: { Args: { _data: Json }; Returns: number }
       check_rate_limit: {
         Args: {
           _event_type: string

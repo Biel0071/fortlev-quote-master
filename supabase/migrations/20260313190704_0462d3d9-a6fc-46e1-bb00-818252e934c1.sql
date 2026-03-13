@@ -1,0 +1,1 @@
+ALTER TABLE public.scrape_history ADD COLUMN products_json jsonb NOT NULL DEFAULT '[]'::jsonb;

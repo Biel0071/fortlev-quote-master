@@ -18,8 +18,8 @@ export function ShippingCalculator({ subtotal }: { subtotal: number }) {
   const shipping = useMemo(() => calcShipping(Math.max(0, subtotal)), [subtotal]);
 
   return (
-    <div className="rounded-3xl border border-border bg-card shadow-sm">
-      <div className="p-5 space-y-4">
+    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="p-3 sm:p-5 space-y-3 sm:space-y-4">
         <div className="flex items-center gap-2">
           <div className="h-10 w-10 rounded-2xl bg-secondary/40 flex items-center justify-center">
             <Truck className="h-5 w-5 text-primary" />

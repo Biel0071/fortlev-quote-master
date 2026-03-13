@@ -139,7 +139,7 @@ export default function AdminProductsImport() {
     setProgress(0);
     setResult(null);
 
-    const batchSize = 500;
+    const batchSize = 200;
     let totalInserted = 0;
     let totalErrors = 0;
 
@@ -163,6 +163,11 @@ export default function AdminProductsImport() {
       }
 
       setProgress(Math.min(100, Math.round(((i + batch.length) / parsed.length) * 100)));
+
+      // Small delay between batches to avoid overwhelming the server
+      if (i + batchSize < parsed.length) {
+        await new Promise((r) => setTimeout(r, 300));
+      }
     }
 
     setResult({ inserted: totalInserted, errors: totalErrors });

@@ -26,21 +26,34 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
     if (!opts?.silent) setLoading(true);
     setError(null);
 
-    const { data, error } = await cloud
-      .from("store_products")
-      .select(
-        "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, store_product_images(id, product_id, path, sort_order)",
-      )
-      .order("name", { ascending: true });
+    const PAGE_SIZE = 1000;
+    let allData: any[] = [];
+    let from = 0;
+    let hasMore = true;
 
-    if (error) {
-      setError(error.message);
-      setProducts([]);
-      setLoading(false);
-      return;
+    while (hasMore) {
+      const { data, error: fetchError } = await cloud
+        .from("store_products")
+        .select(
+          "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, store_product_images(id, product_id, path, sort_order)",
+        )
+        .order("name", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (fetchError) {
+        setError(fetchError.message);
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+
+      const batch = data ?? [];
+      allData = [...allData, ...batch];
+      hasMore = batch.length === PAGE_SIZE;
+      from += PAGE_SIZE;
     }
 
-    const mapped: ProductWithImages[] = (data ?? [])
+    const mapped: ProductWithImages[] = allData
       .map((p: any) => ({
         ...p,
         id: String(p?.id ?? "").trim(),

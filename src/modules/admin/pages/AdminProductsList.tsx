@@ -46,16 +46,30 @@ export default function AdminProductsList() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await cloud
-      .from("store_products")
-      .select("id, name, price, promo_price, stock, active, category")
-      .order("name", { ascending: true });
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      setRows([]);
-    } else {
-      setRows((data ?? []) as any);
+    const PAGE_SIZE = 1000;
+    let allRows: Row[] = [];
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await cloud
+        .from("store_products")
+        .select("id, name, price, promo_price, stock, active, category")
+        .order("name", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) {
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        break;
+      }
+
+      const batch = (data ?? []) as Row[];
+      allRows = [...allRows, ...batch];
+      hasMore = batch.length === PAGE_SIZE;
+      from += PAGE_SIZE;
     }
+
+    setRows(allRows);
     setLoading(false);
   };
 
@@ -135,11 +149,24 @@ export default function AdminProductsList() {
 
   const exportExcel = async () => {
     toast({ title: "Exportando…" });
-    const { data, error } = await cloud
-      .from("store_products")
-      .select("id, name, sku, category, category_id, unit, price, promo_price, stock, min_stock, active, status, views, clicks, sales, created_at, store_categories(name)")
-      .order("name", { ascending: true });
-    if (error || !data) { toast({ title: "Erro", description: error?.message ?? "Sem dados", variant: "destructive" }); return; }
+    const PAGE_SIZE = 1000;
+    let allData: any[] = [];
+    let from = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const { data, error } = await cloud
+        .from("store_products")
+        .select("id, name, sku, category, category_id, unit, price, promo_price, stock, min_stock, active, status, views, clicks, sales, created_at, store_categories(name)")
+        .order("name", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+      const batch = data ?? [];
+      allData = [...allData, ...batch];
+      hasMore = batch.length === PAGE_SIZE;
+      from += PAGE_SIZE;
+    }
+    const data = allData;
+    if (data.length === 0) { toast({ title: "Sem dados", variant: "destructive" }); return; }
     const header = ["ID","Nome","SKU","Categoria","Unidade","Preço","Preço Promo","Estoque","Estoque Mín","Ativo","Status","Views","Clicks","Vendas","Criado em"];
     const escape = (v: unknown) => { const s = String(v ?? ""); return s.includes(";") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s; };
     const csvRows = [header.join(";")];

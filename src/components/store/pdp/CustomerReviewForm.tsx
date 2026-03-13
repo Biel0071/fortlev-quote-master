@@ -127,7 +127,7 @@ export function CustomerReviewForm({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Ótimo produto!"
-            className="h-9 text-sm"
+            className="h-9 text-sm w-full"
             maxLength={100}
           />
         </div>

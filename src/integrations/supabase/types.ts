@@ -1257,6 +1257,39 @@ export type Database = {
         }
         Relationships: []
       }
+      scrape_history: {
+        Row: {
+          created_at: string
+          domains: string[] | null
+          execution_time_seconds: number
+          id: string
+          status: string
+          total_pages: number
+          total_products: number
+          total_urls: number
+        }
+        Insert: {
+          created_at?: string
+          domains?: string[] | null
+          execution_time_seconds?: number
+          id?: string
+          status?: string
+          total_pages?: number
+          total_products?: number
+          total_urls?: number
+        }
+        Update: {
+          created_at?: string
+          domains?: string[] | null
+          execution_time_seconds?: number
+          id?: string
+          status?: string
+          total_pages?: number
+          total_products?: number
+          total_urls?: number
+        }
+        Relationships: []
+      }
       search_cache: {
         Row: {
           created_at: string

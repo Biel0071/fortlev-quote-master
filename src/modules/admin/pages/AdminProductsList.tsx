@@ -357,7 +357,7 @@ export default function AdminProductsList() {
                 className="text-xs"
                 onClick={() => setFilterActive(f)}
               >
-                {f === "all" ? "Todos" : f === "active" ? "Ativos" : "Inativos"}
+                {f === "all" ? `Todos (${rows.length})` : f === "active" ? `Ativos (${activeCount})` : `Inativos (${inactiveCount})`}
               </Button>
             ))}
             <Button variant="outline" size="icon" className="h-9 w-9" onClick={load} disabled={loading || batchRunning}>

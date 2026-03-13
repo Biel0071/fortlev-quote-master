@@ -383,6 +383,13 @@ export default function AdminAiAnalysis() {
           <div className="md:col-span-3 text-xs text-muted-foreground">
             Nota: o modo rápido analisa uma amostra; o modo profundo analisa mais arquivos e pode demorar mais.
           </div>
+
+          <div className="md:col-span-3 flex items-center gap-3">
+            <Switch checked={includeHtml} onCheckedChange={setIncludeHtml} id="html-toggle" />
+            <Label htmlFor="html-toggle" className="text-sm cursor-pointer">
+              Incluir HTML renderizado de todas as telas ({SYSTEM_SCREENS.length} telas)
+            </Label>
+          </div>
         </CardContent>
       </Card>
 

@@ -214,7 +214,7 @@ export function StoreFooter({
       </div>
 
       <div className="border-t border-border py-4 md:py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <div>
             {storeName} • {new Date().getFullYear()}
           </div>

@@ -83,7 +83,7 @@ export function StoreTopbar({
                 <img
                   src={storeLogo}
                   alt={`${brandLabel} - logo`}
-                  className="h-[84px] w-[84px] rounded-2xl shadow-md sm:h-[92px] sm:w-[92px]"
+                  className="h-[72px] w-[72px] rounded-2xl shadow-md sm:h-[84px] sm:w-[84px]"
                   loading="eager"
                 />
               </Link>

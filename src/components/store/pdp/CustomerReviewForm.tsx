@@ -139,7 +139,7 @@ export function CustomerReviewForm({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Conte sua experiência com o produto..."
-            className="text-sm min-h-[80px] resize-none"
+            className="text-sm min-h-[80px] resize-none w-full"
             maxLength={500}
           />
           <p className="text-[10px] text-muted-foreground mt-1 text-right">{content.length}/500</p>

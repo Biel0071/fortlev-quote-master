@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Truck, CreditCard, ShieldCheck, BadgeCheck, Star } from "lucide-react";
+import { Truck, CreditCard, ShieldCheck, BadgeCheck, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StoreTopbar } from "@/components/store/StoreTopbar";

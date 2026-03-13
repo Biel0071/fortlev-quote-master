@@ -208,6 +208,9 @@ export default function AdminProductsList() {
           <Button variant="outline" onClick={() => nav("/admin/produtos/imagens")}>
             🔎 Gerador de Imagens
           </Button>
+          <Button variant="outline" onClick={() => nav("/admin/produtos/importar")}>
+            📥 Importar Planilha
+          </Button>
           <Button onClick={() => nav("/admin/produtos/novo")}>Novo produto</Button>
         </div>
       </div>

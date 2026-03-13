@@ -95,14 +95,14 @@ function ProductDescription({ markdown }: { markdown: string }) {
         }
         if (b.kind === "kv") {
           return (
-            <div key={idx} className="text-xs leading-relaxed break-words">
-              <span className="font-semibold text-foreground">{b.key}: </span>
-              <span className="text-muted-foreground">{b.value}</span>
+            <div key={idx} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1 text-xs leading-relaxed min-w-0">
+              <span className="font-semibold text-foreground shrink-0">{b.key}:</span>
+              <span className="text-muted-foreground break-words [overflow-wrap:anywhere]">{b.value}</span>
             </div>
           );
         }
         return (
-          <p key={idx} className="text-xs text-muted-foreground leading-relaxed break-words">
+          <p key={idx} className="text-xs text-muted-foreground leading-relaxed break-words [overflow-wrap:anywhere]">
             {parseInlineBold(b.text)}
           </p>
         );

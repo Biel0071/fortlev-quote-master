@@ -292,7 +292,7 @@ export default function ProductPage() {
             </div>
 
             {/* Product info */}
-            <div className="lg:col-span-5 space-y-3 sm:space-y-4">
+            <div className="lg:col-span-5 space-y-3 sm:space-y-4 min-w-0">
               <ProductBadges featured={Boolean((product as any).featured)} basePrice={basePrice} promoPrice={promoPrice} />
 
               <div>

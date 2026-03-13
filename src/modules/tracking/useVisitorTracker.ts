@@ -8,6 +8,17 @@ import type { TrackingCollectorEvent } from "./eventCollector";
 const TOKEN_KEY_PERSIST = "tracking_session_token_v1";
 const TOKEN_KEY_TEMP = "tracking_session_token_temp_v1";
 
+const startedSessions = new Set<string>();
+const trackedPageViews = new Set<string>();
+
+let trackerRuntime = {
+  sessionToken: "",
+  consentOk: false,
+};
+
+let scrollListenerInitialized = false;
+let productVisitListenerInitialized = false;
+
 function ensureToken(persist: boolean) {
   const key = persist ? TOKEN_KEY_PERSIST : TOKEN_KEY_TEMP;
   const store = persist ? localStorage : sessionStorage;
@@ -32,10 +43,26 @@ export function useVisitorTracker() {
   const sessionToken = useMemo(() => ensureToken(consentOk), [consentOk]);
 
   useEffect(() => {
-    startOrUpdateVisitorSession({ sessionToken, consentGiven: consentOk }).catch(() => {});
+    trackerRuntime = { sessionToken, consentOk };
   }, [sessionToken, consentOk]);
 
   useEffect(() => {
+    const key = `${sessionToken}:${consentOk ? "1" : "0"}`;
+    if (startedSessions.has(key)) return;
+    startedSessions.add(key);
+
+    const t = window.setTimeout(() => {
+      startOrUpdateVisitorSession({ sessionToken, consentGiven: consentOk }).catch(() => {});
+    }, 200);
+
+    return () => window.clearTimeout(t);
+  }, [sessionToken, consentOk]);
+
+  useEffect(() => {
+    const pageKey = `${sessionToken}:${location.key}`;
+    if (trackedPageViews.has(pageKey)) return;
+    trackedPageViews.add(pageKey);
+
     const path = location.pathname + location.search + location.hash;
     const started = Date.now();
 
@@ -52,15 +79,21 @@ export function useVisitorTracker() {
         consentGiven: consentOk,
         event: { type: "page_view", path, duration, metadata: { phase: "exit" } },
       }).catch(() => {});
+      trackedPageViews.delete(pageKey);
     };
-  }, [location.key, sessionToken, consentOk]);
+  }, [location.key, location.pathname, location.search, location.hash, sessionToken, consentOk]);
 
   useEffect(() => {
-    if (!consentOk) return;
+    if (scrollListenerInitialized) return;
+    scrollListenerInitialized = true;
+
     let ticking = false;
     let last = 0;
 
     const onScroll = () => {
+      const { sessionToken: token, consentOk: consent } = trackerRuntime;
+      if (!consent || !token) return;
+
       const now = Date.now();
       if (now - last < 3000) return;
       if (ticking) return;
@@ -76,31 +109,36 @@ export function useVisitorTracker() {
         const depth = Math.min(1, Math.max(0, scrollTop / height));
 
         collectAndTrackEvent({
-          sessionToken,
-          consentGiven: consentOk,
+          sessionToken: token,
+          consentGiven: consent,
           event: { type: "scroll", path: window.location.pathname, metadata: { depth } },
         }).catch(() => {});
       });
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll as any);
-  }, [consentOk, sessionToken]);
+  }, []);
 
   useEffect(() => {
+    if (productVisitListenerInitialized) return;
+    productVisitListenerInitialized = true;
+
     const handler = (e: any) => {
       const pid = e?.detail?.productId as string | undefined;
       if (!pid) return;
+
+      const { sessionToken: token, consentOk: consent } = trackerRuntime;
+      if (!token) return;
+
       collectAndTrackEvent({
-        sessionToken,
-        consentGiven: consentOk,
+        sessionToken: token,
+        consentGiven: consent,
         event: { type: "product_view", productId: pid, path: window.location.pathname },
       }).catch(() => {});
     };
 
     window.addEventListener("store:product-visit", handler as any);
-    return () => window.removeEventListener("store:product-visit", handler as any);
-  }, [sessionToken, consentOk]);
+  }, []);
 
   const api = useMemo(
     () => ({

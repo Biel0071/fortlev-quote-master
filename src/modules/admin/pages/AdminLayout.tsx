@@ -101,13 +101,10 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
 function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const { canViewPage, isMaster, storeAccess } = useAdminPermissions();
+  const { canViewPage } = useAdminPermissions();
   const { label } = useStore();
   const nav = useNavigate();
   const location = useLocation();
-
-  const showStoreSwitcher = isMaster || storeAccess.length !== 1;
-
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
       <SidebarContent className="gap-0">
@@ -125,15 +122,6 @@ function AdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {showStoreSwitcher && (
-          <SidebarGroup className="border-b border-border pb-2">
-            <SidebarGroupContent>
-              <div className={collapsed ? "px-1" : "px-2"}>
-                <StoreSwitcher className={collapsed ? "h-9 px-1" : "h-9"} />
-              </div>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
 
         {/* Grouped menu sections */}
         {SIDEBAR_SECTIONS.map((section) => {
@@ -253,6 +241,9 @@ export default function AdminLayout() {
             </div>
 
             <div className="flex items-center gap-2">
+              <div className="hidden md:block">
+                <StoreSwitcher className="w-[220px] bg-background" />
+              </div>
               <Button variant="outline" size="sm" className="text-xs" onClick={() => nav(routes.publicHome)}>
                 Ver loja
               </Button>

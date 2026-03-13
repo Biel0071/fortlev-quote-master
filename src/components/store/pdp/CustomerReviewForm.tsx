@@ -64,9 +64,9 @@ export function CustomerReviewForm({
   }
 
   return (
-    <Card className="rounded-2xl border-border bg-card shadow-sm">
-      <CardContent className="p-4 sm:p-5 space-y-4">
-        <h3 className="text-sm font-semibold">Deixe sua avaliação</h3>
+    <Card className="w-full min-w-0 overflow-hidden rounded-2xl border-border bg-card shadow-sm">
+      <CardContent className="p-4 sm:p-5 space-y-4 min-w-0">
+        <h3 className="text-sm font-semibold break-words">Deixe sua avaliação</h3>
 
         {/* Star rating */}
         <div>
@@ -154,7 +154,7 @@ export function CustomerReviewForm({
           {submitting ? "Enviando..." : "Enviar avaliação"}
         </Button>
 
-        <p className="text-[10px] text-muted-foreground text-center">
+        <p className="text-[10px] text-muted-foreground text-center break-words leading-relaxed px-1">
           Sua avaliação será revisada antes da publicação.
         </p>
       </CardContent>

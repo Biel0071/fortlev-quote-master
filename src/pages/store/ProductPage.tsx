@@ -347,7 +347,7 @@ export default function ProductPage() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="mx-auto w-full max-w-6xl min-w-0 overflow-x-clip px-3 py-4 pb-16 sm:px-6 sm:py-6 md:pb-6 space-y-4 sm:space-y-6">
+      <main className="mx-auto w-full max-w-6xl min-w-0 overflow-x-clip px-3 py-4 pb-4 sm:px-6 sm:py-6 md:pb-4 space-y-4 sm:space-y-6">
         <Button asChild variant="ghost" className="h-9 sm:h-11 rounded-2xl w-fit text-sm">
           <Link to="/loja">← Voltar</Link>
         </Button>

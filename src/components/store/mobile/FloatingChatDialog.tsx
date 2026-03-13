@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import vanessaAvatar from "@/assets/vanessa-avatar.jpg";
 import { cloud } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -186,18 +187,11 @@ const FloatingChatDialog = React.forwardRef<HTMLDivElement, FloatingChatDialogPr
 
             <div className="border-b border-border/30 bg-muted/20 p-4 flex items-start justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={cn(
-                    "h-11 w-11 rounded-full",
-                    "bg-primary/10",
-                    "border border-primary/20",
-                    "grid place-items-center",
-                    "shrink-0",
-                  )}
-                  aria-hidden="true"
-                >
-                  <span className="font-semibold text-primary/80">V</span>
-                </div>
+                <img
+                  src={vanessaAvatar}
+                  alt="Vanessa"
+                  className="h-11 w-11 rounded-full object-cover border border-primary/20 shrink-0"
+                />
 
                 <div className="min-w-0">
                   <div className="font-semibold leading-none truncate">Vanessa</div>

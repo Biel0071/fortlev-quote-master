@@ -18,6 +18,7 @@ import { generateStandardProductDescription } from "@/utils/productDescription";
 import { trackClickEvent } from "@/utils/clickTracking";
 
 import { ProductBadges } from "@/components/store/pdp/ProductBadges";
+import { ProductReviews } from "@/components/store/pdp/ProductReviews";
 import { QuantitySelector } from "@/components/store/pdp/QuantitySelector";
 import { ShippingCalculator } from "@/components/store/pdp/ShippingCalculator";
 import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";

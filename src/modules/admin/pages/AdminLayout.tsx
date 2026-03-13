@@ -1,5 +1,6 @@
 import { Outlet, Navigate, useNavigate, useLocation } from "react-router-dom";
 import {
+  ArrowLeft,
   BarChart3,
   Box,
   FileText,
@@ -241,6 +242,11 @@ export default function AdminLayout() {
           <header className="h-12 flex items-center justify-between gap-3 border-b border-border bg-background/95 backdrop-blur-sm px-3 sm:px-4 sticky top-0 z-30">
             <div className="flex items-center gap-2 min-w-0">
               <SidebarTrigger />
+              {location.pathname !== "/admin/dashboard" && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => nav(-1)} title="Voltar">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
               <div className="hidden sm:block min-w-0">
                 <div className="text-sm font-medium truncate">{label}</div>
               </div>

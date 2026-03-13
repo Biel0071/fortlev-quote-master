@@ -100,7 +100,7 @@ export default function CartPage() {
                               onIncrease={() => cart.setQty(line.productId, line.quantity + 1)}
                               onRemove={() => cart.remove(line.productId)}
                             />
-                            <div className="text-xl font-extrabold tracking-tight">{formatCurrency(line.lineTotal)}</div>
+                            <div className="text-lg sm:text-xl font-semibold tracking-tight">{formatCurrency(line.lineTotal)}</div>
                           </div>
                         </div>
                       </div>

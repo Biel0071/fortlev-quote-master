@@ -164,15 +164,27 @@ export default function AdminCategoriesList() {
               {/* Top section */}
               <div className="p-4 pb-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <FolderOpen className="h-4 w-4 text-primary" />
+                   <div
+                      className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+                      onClick={() => window.open(`/produtos?categoria=${c.slug}`, "_blank")}
+                      title="Ver produtos desta categoria"
+                    >
+                      <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-muted/40 overflow-hidden flex items-center justify-center">
+                        {c.image_path ? (
+                          <img
+                            src={c.image_path}
+                            alt={c.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <FolderOpen className="h-4 w-4 text-primary" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-sm leading-tight line-clamp-1">{c.name}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">/{c.slug}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-sm leading-tight line-clamp-1">{c.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">/{c.slug}</p>
-                    </div>
-                  </div>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

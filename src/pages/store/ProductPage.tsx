@@ -362,39 +362,39 @@ export default function ProductPage() {
               <ShippingCalculator subtotal={totalDynamic} />
 
               {/* Info cards */}
-              <Card className="rounded-2xl border-border bg-card shadow-sm">
-                <CardContent className="p-3 sm:p-5">
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                    <div className="rounded-xl border border-border bg-secondary/30 p-3">
+              <Card className="rounded-2xl border-border bg-card shadow-sm min-w-0 max-w-full overflow-hidden">
+                <CardContent className="p-3 sm:p-5 min-w-0">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3 min-w-0">
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3 min-w-0">
                       <div className="text-[10px] sm:text-xs text-muted-foreground">Unidade</div>
-                      <div className="text-sm font-medium">{(product as any).unit ?? "un"}</div>
+                      <div className="text-sm font-medium break-words [overflow-wrap:anywhere]">{(product as any).unit ?? "un"}</div>
                     </div>
 
-                    <div className="rounded-xl border border-border bg-secondary/30 p-3">
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3 min-w-0">
                       <div className="text-[10px] sm:text-xs text-muted-foreground">Prazo</div>
-                      <div className="text-sm font-medium">3 a 7 dias úteis</div>
+                      <div className="text-sm font-medium break-words [overflow-wrap:anywhere]">3 a 7 dias úteis</div>
                     </div>
 
-                    <div className="rounded-xl border border-border bg-secondary/30 p-3 col-span-2">
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3 col-span-2 min-w-0">
                       <div className="text-[10px] sm:text-xs text-muted-foreground">Pagamento</div>
-                      <div className="text-sm font-medium">Cartão • Boleto • Pix</div>
+                      <div className="text-sm font-medium break-words [overflow-wrap:anywhere]">Cartão • Boleto • Pix</div>
                       <PaymentLogosReal />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 min-w-0">
                 {[
                   { icon: Truck, label: "Entrega" },
                   { icon: CreditCard, label: "Parcelamento" },
                   { icon: ShieldCheck, label: "Segurança" },
                   { icon: BadgeCheck, label: "Garantia" },
                 ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="rounded-xl border border-border bg-card p-3">
-                    <div className="flex items-center gap-2">
+                  <div key={label} className="rounded-xl border border-border bg-card p-3 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       <Icon className="h-4 w-4 text-primary shrink-0" />
-                      <span className="text-sm font-medium">{label}</span>
+                      <span className="text-sm font-medium truncate">{label}</span>
                     </div>
                   </div>
                 ))}

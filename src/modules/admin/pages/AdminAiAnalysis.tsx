@@ -293,6 +293,33 @@ export default function AdminAiAnalysis() {
     zip.file("resumo-executivo.md", summary);
     zip.file("arquivos-analisados.txt", (reportObj.analyzed_paths ?? []).join("\n"));
 
+    // Captura HTML de todas as telas do sistema
+    if (includeHtml) {
+      setHtmlCapturing(true);
+      setHtmlProgress(0);
+      const htmlFolder = zip.folder("telas-html")!;
+      const indexLines: string[] = ["# Índice de Telas do Sistema\n"];
+
+      for (let i = 0; i < SYSTEM_SCREENS.length; i++) {
+        const screen = SYSTEM_SCREENS[i];
+        setHtmlProgress(Math.round(((i + 1) / SYSTEM_SCREENS.length) * 100));
+
+        try {
+          const html = await captureScreenHTML(screen.path);
+          const fileName = screen.path.replace(/\//g, "_").replace(/^_/, "") || "home";
+          const fullName = `${fileName}.html`;
+          const wrappedHtml = `<!DOCTYPE html>\n<!-- Tela: ${screen.label} | Rota: ${screen.path} | Capturado em: ${new Date().toISOString()} -->\n${html}`;
+          htmlFolder.file(fullName, wrappedHtml);
+          indexLines.push(`- **${screen.label}** → \`${screen.path}\` → \`${fullName}\``);
+        } catch {
+          indexLines.push(`- **${screen.label}** → \`${screen.path}\` → ⚠️ falha na captura`);
+        }
+      }
+
+      htmlFolder.file("_INDICE.md", indexLines.join("\n"));
+      setHtmlCapturing(false);
+    }
+
     const blob = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

@@ -173,7 +173,7 @@ export default function AdminCategoriesList() {
                       <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-muted/40 overflow-hidden flex items-center justify-center">
                         {c.image_path ? (
                           <img
-                            src={c.image_path.startsWith("http") ? c.image_path : `${STORAGE_URL}category-images/${c.image_path}`}
+                            src={publicImageUrl("category-images", c.image_path)}
                             alt={c.name}
                             className="h-full w-full object-cover"
                           />

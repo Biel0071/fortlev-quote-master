@@ -109,12 +109,12 @@ export default function StoreHome() {
   }, [activeProducts]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full max-w-[100vw] overflow-x-hidden">
       <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} footerStoreName={home.footer?.store_name ?? undefined} categories={activeCategories as any} />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <div className="pt-2 sm:pt-6">
+      <div className="pt-2 sm:pt-6 w-full overflow-hidden">
         <HomeHeroCarousel banners={home.banners} loading={home.loading} />
       </div>
 

@@ -409,11 +409,11 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full max-w-[100vw] overflow-x-hidden">
       <StoreTopbar cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="mx-auto w-full max-w-4xl px-4 py-8 pb-24 sm:px-6 md:pb-10">
+      <main className="mx-auto w-full max-w-4xl px-3 sm:px-6 py-6 sm:py-8 pb-28 md:pb-10 min-w-0">
         <nav aria-label="breadcrumb" className="mb-4 text-sm text-muted-foreground">
           Carrinho <span className="mx-1">/</span> <span className="font-medium text-foreground">Finalizar sua compra</span>
         </nav>

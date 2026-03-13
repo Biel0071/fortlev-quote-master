@@ -66,9 +66,9 @@ export function StoreFooter({
   const gridSpanAll = hasSocial ? "md:col-span-12" : "md:col-span-10";
 
   return (
-    <footer className="border-t border-border bg-background">
+    <footer className="border-t border-border bg-background w-full overflow-x-hidden">
       <div
-        className={`max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-4 grid grid-cols-1 ${hasSocial ? "md:grid-cols-12" : "md:grid-cols-10"} gap-8`}
+        className={`max-w-6xl mx-auto px-3 sm:px-6 pt-8 sm:pt-10 pb-4 grid grid-cols-1 ${hasSocial ? "md:grid-cols-12" : "md:grid-cols-10"} gap-6 sm:gap-8 min-w-0`}
       >
         {/* Marca */}
         <div className="md:col-span-4 space-y-4">
@@ -214,7 +214,7 @@ export function StoreFooter({
       </div>
 
       <div className="border-t border-border py-4 md:py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <div>
             {storeName} • {new Date().getFullYear()}
           </div>

@@ -224,5 +224,8 @@ export function StoreFooter({
         </div>
       </div>
     </footer>
+    {/* Spacer for fixed mobile bottom nav */}
+    <div className="h-16 md:h-0 w-full shrink-0" aria-hidden="true" />
+    </>
   );
 }

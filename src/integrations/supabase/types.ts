@@ -1263,6 +1263,7 @@ export type Database = {
           domains: string[] | null
           execution_time_seconds: number
           id: string
+          products_json: Json
           status: string
           total_pages: number
           total_products: number
@@ -1273,6 +1274,7 @@ export type Database = {
           domains?: string[] | null
           execution_time_seconds?: number
           id?: string
+          products_json?: Json
           status?: string
           total_pages?: number
           total_products?: number
@@ -1283,6 +1285,7 @@ export type Database = {
           domains?: string[] | null
           execution_time_seconds?: number
           id?: string
+          products_json?: Json
           status?: string
           total_pages?: number
           total_products?: number

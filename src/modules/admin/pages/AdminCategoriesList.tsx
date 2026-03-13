@@ -208,8 +208,8 @@ export default function AdminCategoriesList() {
                   {c.active ? "Ativa" : "Inativa"}
                 </Badge>
                 {c.featured && (
-                  <Badge variant="outline" className="text-[10px] px-2 py-0 border-amber-400/50 text-amber-600">
-                    <Star className="h-2.5 w-2.5 mr-0.5 fill-amber-400" /> Destaque
+                  <Badge variant="outline" className="text-[10px] px-2 py-0 border-accent/50 text-accent-foreground">
+                    <Star className="h-2.5 w-2.5 mr-0.5 fill-accent" /> Destaque
                   </Badge>
                 )}
                 <span className="text-[10px] text-muted-foreground ml-auto">#{c.sort_order}</span>

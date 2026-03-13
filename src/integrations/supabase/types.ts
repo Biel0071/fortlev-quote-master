@@ -263,6 +263,48 @@ export type Database = {
           },
         ]
       }
+      cache_product_interpretation: {
+        Row: {
+          ai_image_prompt: string | null
+          created_at: string
+          description: string | null
+          id: string
+          image_acceptance_terms: Json
+          image_rejection_terms: Json
+          interpretation: Json
+          product_name: string
+          product_name_hash: string
+          search_queries_layered: Json
+          technical_sheet: Json
+        }
+        Insert: {
+          ai_image_prompt?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_acceptance_terms?: Json
+          image_rejection_terms?: Json
+          interpretation?: Json
+          product_name: string
+          product_name_hash: string
+          search_queries_layered?: Json
+          technical_sheet?: Json
+        }
+        Update: {
+          ai_image_prompt?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_acceptance_terms?: Json
+          image_rejection_terms?: Json
+          interpretation?: Json
+          product_name?: string
+          product_name_hash?: string
+          search_queries_layered?: Json
+          technical_sheet?: Json
+        }
+        Relationships: []
+      }
       chat_insights: {
         Row: {
           chat_session_id: string

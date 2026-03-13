@@ -76,12 +76,12 @@ export default function StoreCatalog() {
   }, [activeProducts, q, selectedSlug, activeCategories, searchParams]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full max-w-[100vw] overflow-x-hidden">
       <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pb-24 md:pb-10 space-y-4 sm:space-y-6 min-w-0">
         <section className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute inset-0 opacity-20 fortlev-gradient" />

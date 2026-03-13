@@ -249,6 +249,9 @@ export function StoreTopbar({
         </div>
       </header>
 
+      {/* Spacer to offset fixed header */}
+      <div className="h-[170px] sm:h-[190px] w-full shrink-0" aria-hidden="true" />
+
       <FloatingChat phoneDigits={contact.phoneDigits} />
     </>
   );

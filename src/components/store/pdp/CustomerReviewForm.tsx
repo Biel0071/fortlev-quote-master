@@ -114,7 +114,7 @@ export function CustomerReviewForm({
               value={authorLocation}
               onChange={(e) => setAuthorLocation(e.target.value)}
               placeholder="São Paulo, SP"
-              className="h-9 text-sm"
+              className="h-9 text-sm w-full"
               maxLength={60}
             />
           </div>

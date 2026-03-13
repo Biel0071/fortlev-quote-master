@@ -29,12 +29,23 @@ export function FloatingChat({
 
   const wasOpenRef = useRef(false);
 
-  const bottomClass = isMobile ? "bottom-[90px]" : "bottom-4";
+  const shouldHideFloating = useMemo(
+    () =>
+      location.pathname.startsWith("/produto/") ||
+      location.pathname.startsWith("/checkout") ||
+      location.pathname.startsWith("/carrinho"),
+    [location.pathname],
+  );
+
+  const bottomClass = isMobile
+    ? "bottom-[calc(env(safe-area-inset-bottom)+56px)]"
+    : "bottom-4";
 
   // (badge removido)
 
   // Abre automaticamente na Home após 8s (uma única vez), e não reabre após fechamento manual.
   useEffect(() => {
+    if (shouldHideFloating) return;
     if (location.pathname !== "/") return;
     if (open) return;
 
@@ -47,9 +58,17 @@ export function FloatingChat({
     }, 8000);
 
     return () => window.clearTimeout(t);
-  }, [location.pathname, open]);
+  }, [location.pathname, open, shouldHideFloating]);
 
   useEffect(() => {
+    if (!shouldHideFloating) return;
+    setOpen(false);
+    setAttention(false);
+  }, [shouldHideFloating]);
+
+  useEffect(() => {
+    if (shouldHideFloating) return;
+
     if (open) {
       wasOpenRef.current = true;
       setAttention(false);
@@ -81,14 +100,18 @@ export function FloatingChat({
       setChatSessionId(null);
       setScoreSnapshot(0);
     }
-  }, [open]);
+  }, [open, shouldHideFloating]);
 
   useEffect(() => {
+    if (shouldHideFloating) return;
+
     const t = window.setTimeout(() => {
       if (!open) setAttention(true);
     }, 20000);
     return () => window.clearTimeout(t);
-  }, [open]);
+  }, [open, shouldHideFloating]);
+
+  if (shouldHideFloating) return null;
 
   return (
     <>

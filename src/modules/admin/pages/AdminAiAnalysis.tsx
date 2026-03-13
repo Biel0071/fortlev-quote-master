@@ -35,6 +35,81 @@ const SCOPE_OPTIONS = [
 
 const ROOT_EXPORT_FILES = new Set(["package.json", "tsconfig.json", "vite.config.ts", ".env.example"]);
 
+const SYSTEM_SCREENS = [
+  { path: "/", label: "Home (Vitrine)" },
+  { path: "/loja", label: "Catálogo" },
+  { path: "/carrinho", label: "Carrinho" },
+  { path: "/checkout", label: "Checkout" },
+  { path: "/conta", label: "Área do Cliente" },
+  { path: "/pedidos", label: "Pedidos do Cliente" },
+  { path: "/auth/login", label: "Login" },
+  { path: "/auth/signup", label: "Cadastro" },
+  { path: "/admin", label: "Admin - Seletor de Loja" },
+  { path: "/admin/dashboard", label: "Admin - Dashboard" },
+  { path: "/admin/dashboard/tracking", label: "Admin - Tracking" },
+  { path: "/admin/dashboard/inteligencia", label: "Admin - Inteligência" },
+  { path: "/admin/home", label: "Admin - Home Builder" },
+  { path: "/admin/orcamentos", label: "Admin - Orçamentos" },
+  { path: "/admin/produtos", label: "Admin - Produtos" },
+  { path: "/admin/produtos/novo", label: "Admin - Novo Produto" },
+  { path: "/admin/produtos/imagens", label: "Admin - Busca de Imagens" },
+  { path: "/admin/produtos/importar", label: "Admin - Importar Produtos" },
+  { path: "/admin/categorias", label: "Admin - Categorias" },
+  { path: "/admin/pedidos", label: "Admin - Pedidos" },
+  { path: "/admin/paginas", label: "Admin - Páginas" },
+  { path: "/admin/clientes", label: "Admin - Clientes" },
+  { path: "/admin/cupons", label: "Admin - Cupons" },
+  { path: "/admin/banners", label: "Admin - Banners" },
+  { path: "/admin/tema", label: "Admin - Tema" },
+  { path: "/admin/configuracoes", label: "Admin - Configurações" },
+  { path: "/admin/configuracoes/usuarios", label: "Admin - Usuários" },
+  { path: "/admin/configuracoes/frete", label: "Admin - Frete" },
+  { path: "/admin/configuracoes/pagamentos", label: "Admin - Pagamentos" },
+  { path: "/admin/configuracoes/identidade", label: "Admin - Identidade" },
+  { path: "/admin/configuracoes/integracoes", label: "Admin - Integrações" },
+  { path: "/construcao", label: "Orçamento Construção" },
+  { path: "/orcamentos", label: "Orçamentos Fortlev" },
+];
+
+function captureScreenHTML(screenPath: string, timeoutMs = 8000): Promise<string> {
+  return new Promise((resolve) => {
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:1440px;height:900px;border:none;opacity:0;pointer-events:none;";
+    document.body.appendChild(iframe);
+
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve(`<!-- timeout loading ${screenPath} -->`);
+    }, timeoutMs);
+
+    function cleanup() {
+      clearTimeout(timer);
+      try { document.body.removeChild(iframe); } catch {}
+    }
+
+    iframe.onload = () => {
+      setTimeout(() => {
+        try {
+          const doc = iframe.contentDocument;
+          const html = doc?.documentElement?.outerHTML ?? "";
+          cleanup();
+          resolve(html || `<!-- empty content for ${screenPath} -->`);
+        } catch {
+          cleanup();
+          resolve(`<!-- cross-origin blocked for ${screenPath} -->`);
+        }
+      }, 3000);
+    };
+
+    iframe.onerror = () => {
+      cleanup();
+      resolve(`<!-- error loading ${screenPath} -->`);
+    };
+
+    iframe.src = `${window.location.origin}${screenPath}`;
+  });
+}
+
 const fileMap = import.meta.glob(
   [
     "../../../../**/*.{ts,tsx,css,json,md}",

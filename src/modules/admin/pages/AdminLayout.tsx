@@ -105,9 +105,6 @@ function AdminSidebar() {
   const { label } = useStore();
   const nav = useNavigate();
   const location = useLocation();
-
-  const showStoreSwitcher = isMaster || storeAccess.length !== 1;
-
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
       <SidebarContent className="gap-0">

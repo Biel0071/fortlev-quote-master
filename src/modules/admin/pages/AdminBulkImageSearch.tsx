@@ -1069,8 +1069,11 @@ export default function AdminBulkImageSearch() {
         <Button variant={filter === "no-images" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("no-images")}>
           Sem imagens ({noImagesCount})
         </Button>
+        <Button variant={filter === "no-description" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("no-description")}>
+          Sem descrição ({noDescriptionCount})
+        </Button>
         <Button variant={filter === "incomplete" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("incomplete")}>
-          Incompletos ({incompleteCount + noImagesCount})
+          Incompletos ({products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20).length})
         </Button>
         <Button variant={filter === "all" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("all")}>
           Todos ({products.length})

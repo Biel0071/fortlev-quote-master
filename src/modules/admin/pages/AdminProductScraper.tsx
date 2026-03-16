@@ -355,14 +355,29 @@ function PreviewImportPanel({
             <CheckCircle2 className="h-3 w-3" /> OK ({okCount})
           </Button>
           <Button
+            variant={filter === "corrected" ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => setFilter("corrected")}
+          >
+            <DollarSign className="h-3 w-3" /> Corrigidos ({correctedCount})
+          </Button>
+          <Button
             variant={filter === "errors" ? "default" : "outline"}
             size="sm"
             className="h-7 text-xs gap-1"
             onClick={() => setFilter("errors")}
           >
-            <AlertTriangle className="h-3 w-3" /> Com erros ({errCount})
+            <AlertTriangle className="h-3 w-3" /> Preço inválido ({errCount})
           </Button>
-
+          <Button
+            variant={filter === "review_queue" ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => setFilter("review_queue")}
+          >
+            <ShieldAlert className="h-3 w-3" /> Fila revisão ({reviewQueueCount})
+          </Button>
           <div className="ml-auto flex items-center gap-2">
             <Checkbox
               checked={filtered.every(p => selectedIds.has(p._idx))}

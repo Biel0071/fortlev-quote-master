@@ -118,6 +118,7 @@ const App = () => (
               <Route path="produtos/imagens" element={<AdminBulkImageSearch />} />
               <Route path="produtos/importar" element={<AdminProductsImport />} />
               <Route path="produtos/scraper" element={<AdminProductScraper />} />
+              <Route path="produtos/inteligencia-preco" element={<AdminPriceIntelligence />} />
 
               <Route path="categorias" element={<AdminCategoriesList />} />
               <Route path="categorias/nova" element={<AdminCategoryForm />} />

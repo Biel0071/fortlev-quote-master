@@ -25,7 +25,27 @@ function delay(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
 
 /* ---------- Image helpers ---------- */
 
-async function getProductImages(supa: any, supabaseUrl: string, productId: string): Promise<{ id: string; url: string; usage_count: number }[]> {
+/** Get images from review_image_pool (real usage photos) first, then fallback to store_product_images */
+async function getReviewPoolImages(supa: any, productId: string): Promise<{ id: string; url: string; usage_count: number; source: "pool" | "product" }[]> {
+  // Priority 1: review_image_pool (real usage/installation photos)
+  const { data: poolImages } = await supa
+    .from("review_image_pool")
+    .select("id, image_url, usage_count")
+    .eq("product_id", productId)
+    .order("usage_count", { ascending: true })
+    .limit(50);
+
+  const pool = (poolImages ?? []).map((img: any) => ({
+    id: img.id,
+    url: img.image_url as string,
+    usage_count: img.usage_count ?? 0,
+    source: "pool" as const,
+  }));
+
+  return pool;
+}
+
+async function getProductImages(supa: any, supabaseUrl: string, productId: string): Promise<{ id: string; url: string; usage_count: number; source: "pool" | "product" }[]> {
   const { data: storedImages } = await supa
     .from("store_product_images")
     .select("id, path, usage_count")
@@ -38,7 +58,7 @@ async function getProductImages(supa: any, supabaseUrl: string, productId: strin
   return storedImages.map((img: any) => {
     const p = img.path as string;
     const url = p.startsWith("http") ? p : `${supabaseUrl}/storage/v1/object/public/product-images/${p}`;
-    return { id: img.id, url, usage_count: img.usage_count ?? 0 };
+    return { id: img.id, url, usage_count: img.usage_count ?? 0, source: "product" as const };
   });
 }
 
@@ -58,12 +78,17 @@ async function getAlreadyUsedImageUrls(supa: any, productId: string): Promise<Se
   return new Set((usedImgs ?? []).map((i: any) => i.image_url as string));
 }
 
-async function incrementImageUsage(supa: any, imageId: string) {
+async function incrementPoolUsage(supa: any, imageId: string, source: "pool" | "product") {
   try {
-    // Read current count and update
-    const { data } = await supa.from("store_product_images").select("usage_count").eq("id", imageId).single();
-    const current = (data?.usage_count ?? 0) as number;
-    await supa.from("store_product_images").update({ usage_count: current + 1 }).eq("id", imageId);
+    if (source === "pool") {
+      const { data } = await supa.from("review_image_pool").select("usage_count").eq("id", imageId).single();
+      const current = (data?.usage_count ?? 0) as number;
+      await supa.from("review_image_pool").update({ usage_count: current + 1 }).eq("id", imageId);
+    } else {
+      const { data } = await supa.from("store_product_images").select("usage_count").eq("id", imageId).single();
+      const current = (data?.usage_count ?? 0) as number;
+      await supa.from("store_product_images").update({ usage_count: current + 1 }).eq("id", imageId);
+    }
   } catch { /* best-effort */ }
 }
 
@@ -100,15 +125,17 @@ async function generateReviewsForProduct(
   const remainingSlots = 250 - (existingCount ?? 0);
   const actualCount = Math.min(count, remainingSlots);
 
-  // Get available product images for reuse (if mode uses images)
-  let productImages: { id: string; url: string; usage_count: number }[] = [];
+  // Get available images: prefer review_image_pool (real photos), fallback to store_product_images
+  let allAvailableImages: { id: string; url: string; usage_count: number; source: "pool" | "product" }[] = [];
   if (mode === "image" || mode === "text_image") {
-    const allImages = await getProductImages(supa, supabaseUrl, productId);
+    const poolImages = await getReviewPoolImages(supa, productId);
+    const catalogImages = await getProductImages(supa, supabaseUrl, productId);
+    // Combine: pool first (real photos), then catalog
+    allAvailableImages = [...poolImages, ...catalogImages];
     // Filter out images already used in existing reviews to avoid repeats
     const alreadyUsed = await getAlreadyUsedImageUrls(supa, productId);
-    // Prefer unused images first, then fall back to least-used
-    const unused = allImages.filter((img) => !alreadyUsed.has(img.url));
-    productImages = unused.length > 0 ? unused : allImages;
+    const unused = allAvailableImages.filter((img) => !alreadyUsed.has(img.url));
+    allAvailableImages = unused.length > 0 ? unused : allAvailableImages;
   }
 
   const prompt = `Você é um gerador de avaliações realistas de clientes para uma loja de materiais de construção.
@@ -183,9 +210,9 @@ Retorne APENAS um JSON array sem markdown:
 
     // Determine if this review gets an image based on mode
     let shouldHaveImage = false;
-    if (mode === "image" && productImages.length > 0) {
+    if (mode === "image" && allAvailableImages.length > 0) {
       shouldHaveImage = true; // all reviews get images in "image" mode
-    } else if (mode === "text_image" && productImages.length > 0) {
+    } else if (mode === "text_image" && allAvailableImages.length > 0) {
       shouldHaveImage = Math.random() < IMAGE_CHANCE; // 30% get images
     }
 
@@ -214,13 +241,13 @@ Retorne APENAS um JSON array sem markdown:
     insertedReviewIds.push(inserted.id);
 
     // Attach image: pick next unused image via round-robin
-    if (shouldHaveImage && productImages.length > 0) {
+    if (shouldHaveImage && allAvailableImages.length > 0) {
       // Find next image not yet used in this batch
-      let img = productImages[imageRoundRobinIdx % productImages.length];
-      if (usedUrlsThisBatch.has(img.url) && productImages.length > 1) {
+      let img = allAvailableImages[imageRoundRobinIdx % allAvailableImages.length];
+      if (usedUrlsThisBatch.has(img.url) && allAvailableImages.length > 1) {
         // Try to find an unused one
-        for (let attempt = 0; attempt < productImages.length; attempt++) {
-          const candidate = productImages[(imageRoundRobinIdx + attempt) % productImages.length];
+        for (let attempt = 0; attempt < allAvailableImages.length; attempt++) {
+          const candidate = allAvailableImages[(imageRoundRobinIdx + attempt) % allAvailableImages.length];
           if (!usedUrlsThisBatch.has(candidate.url)) {
             img = candidate;
             imageRoundRobinIdx = (imageRoundRobinIdx + attempt);
@@ -230,7 +257,7 @@ Retorne APENAS um JSON array sem markdown:
         // If all used, reset tracking (allow second round)
         if (usedUrlsThisBatch.has(img.url)) {
           usedUrlsThisBatch.clear();
-          img = productImages[imageRoundRobinIdx % productImages.length];
+          img = allAvailableImages[imageRoundRobinIdx % allAvailableImages.length];
         }
       }
       
@@ -242,7 +269,7 @@ Retorne APENAS um JSON array sem markdown:
         image_url: img.url,
         sort_order: 0,
       });
-      await incrementImageUsage(supa, img.id);
+      await incrementPoolUsage(supa, img.id, img.source);
       img.usage_count++;
       imagesAttached++;
     }

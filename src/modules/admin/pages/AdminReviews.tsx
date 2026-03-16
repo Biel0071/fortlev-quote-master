@@ -12,7 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   BarChart3, CheckCircle, Clock, Loader2, MessageSquare, RefreshCw,
   Search, Sparkles, Star, TrendingUp, Trash2, XCircle, Calendar,
-  Image as ImageIcon, FileText, Eye, ChevronDown, ChevronUp, X,
+  Image as ImageIcon, FileText, Eye, ChevronDown, ChevronUp, X, Camera,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -66,15 +66,18 @@ export default function AdminReviews() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [reviewsWithImagesCount, setReviewsWithImagesCount] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
+  const [searchingImages, setSearchingImages] = useState(false);
+  const [poolStats, setPoolStats] = useState({ total_images: 0, products_with_pool: 0 });
 
   /* ---------- data loading ---------- */
   const load = useCallback(async () => {
     setLoading(true);
-    const [reviewsRes, logsRes, productsRes, imagesRes] = await Promise.all([
+    const [reviewsRes, logsRes, productsRes, imagesRes, poolStatsRes] = await Promise.all([
       cloud.from("product_reviews").select("*, store_products(name)").order("created_at", { ascending: false }).limit(1000),
       cloud.from("system_event_logs").select("*").eq("source", "review-system").order("created_at", { ascending: false }).limit(50),
       cloud.from("store_products").select("id", { count: "exact", head: true }).eq("active", true).eq("status", "published"),
       cloud.from("review_images").select("review_id, image_url"),
+      cloud.functions.invoke("search-review-images", { body: { action: "stats" } }),
     ]);
 
     if (reviewsRes.error) toast({ title: "Erro", description: reviewsRes.error.message, variant: "destructive" });
@@ -86,6 +89,14 @@ export default function AdminReviews() {
     setReviews(mapped);
     setLogs((logsRes.data ?? []) as LogEntry[]);
     setTotalProducts(productsRes.count ?? 0);
+
+    // Pool stats
+    if (poolStatsRes.data && (poolStatsRes.data as any).ok) {
+      setPoolStats({
+        total_images: (poolStatsRes.data as any).total_images ?? 0,
+        products_with_pool: (poolStatsRes.data as any).products_with_pool ?? 0,
+      });
+    }
 
     const imgMap = new Map<string, string[]>();
     for (const i of (imagesRes.data ?? []) as any[]) {
@@ -209,6 +220,25 @@ export default function AdminReviews() {
       toast({ title: "Erro na geração", description: e.message, variant: "destructive" });
     }
     setGenerating(false);
+  };
+
+  const searchReviewImagesBatch = async () => {
+    setSearchingImages(true);
+    try {
+      const { data, error } = await cloud.functions.invoke("search-review-images", {
+        body: { action: "batch", limit: 20 },
+      });
+      if (error) throw error;
+      const result = data as any;
+      toast({
+        title: "Busca concluída",
+        description: `${result.processed ?? 0} produtos processados, ${result.total_found ?? 0} imagens encontradas, ${result.total_saved ?? 0} salvas. ${result.remaining ?? 0} produtos restantes.`,
+      });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro na busca", description: e.message, variant: "destructive" });
+    }
+    setSearchingImages(false);
   };
 
   const stars = (n: number) => Array.from({ length: 5 }, (_, i) => (
@@ -350,6 +380,43 @@ export default function AdminReviews() {
             <div className="mt-4 space-y-1.5">
               <p className="text-xs text-muted-foreground animate-pulse">
                 Gerando avaliações com IA para {genProductCount} produtos ({genCount} cada)…
+              </p>
+              <Progress className="h-1.5" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ====== Search Review Images Section ====== */}
+      <Card className="rounded-2xl border-dashed border-2 border-purple-300/40 bg-purple-50/30 dark:bg-purple-950/10">
+        <CardContent className="p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-purple-100 dark:bg-purple-900/30 p-2.5">
+                <Camera className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Buscar imagens reais para reviews</p>
+                <p className="text-xs text-muted-foreground">
+                  Busca fotos de instalação, obra e aplicação para usar nos reviews.
+                  Pool atual: <strong>{poolStats.total_images}</strong> imagens em <strong>{poolStats.products_with_pool}</strong> produtos.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={searchReviewImagesBatch}
+              disabled={searchingImages}
+              variant="outline"
+              className="gap-2 ml-auto border-purple-300 text-purple-700 hover:bg-purple-100 dark:border-purple-700 dark:text-purple-300"
+            >
+              {searchingImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+              Buscar imagens (20 produtos)
+            </Button>
+          </div>
+          {searchingImages && (
+            <div className="mt-4 space-y-1.5">
+              <p className="text-xs text-muted-foreground animate-pulse">
+                Buscando imagens reais de instalação e uso para reviews…
               </p>
               <Progress className="h-1.5" />
             </div>

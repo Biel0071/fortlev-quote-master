@@ -1602,6 +1602,41 @@ export type Database = {
         }
         Relationships: []
       }
+      review_image_pool: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          product_id: string
+          source: string
+          usage_count: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          product_id: string
+          source?: string
+          usage_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          product_id?: string
+          source?: string
+          usage_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_image_pool_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       review_images: {
         Row: {
           created_at: string

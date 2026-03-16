@@ -48,26 +48,30 @@ type LogEntry = {
 /* ------------------------------------------------------------------ */
 export default function AdminReviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewImageIds, setReviewImageIds] = useState<Set<string>>(new Set());
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "approved">("pending");
+  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "with_image">("pending");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
   const [genCount, setGenCount] = useState(5);
   const [genProductCount, setGenProductCount] = useState(10);
+  const [genMode, setGenMode] = useState<"text" | "image" | "ai">("text");
   const [showLogs, setShowLogs] = useState(false);
   const [visibleCount, setVisibleCount] = useState(40);
   const [totalProducts, setTotalProducts] = useState(0);
+  const [reviewsWithImagesCount, setReviewsWithImagesCount] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
 
   /* ---------- data loading ---------- */
   const load = useCallback(async () => {
     setLoading(true);
-    const [reviewsRes, logsRes, productsRes] = await Promise.all([
+    const [reviewsRes, logsRes, productsRes, imagesRes] = await Promise.all([
       cloud.from("product_reviews").select("*, store_products(name)").order("created_at", { ascending: false }).limit(1000),
       cloud.from("system_event_logs").select("*").eq("source", "review-system").order("created_at", { ascending: false }).limit(50),
       cloud.from("store_products").select("id", { count: "exact", head: true }).eq("active", true).eq("status", "published"),
+      cloud.from("review_images").select("review_id"),
     ]);
 
     if (reviewsRes.error) toast({ title: "Erro", description: reviewsRes.error.message, variant: "destructive" });
@@ -79,6 +83,11 @@ export default function AdminReviews() {
     setReviews(mapped);
     setLogs((logsRes.data ?? []) as LogEntry[]);
     setTotalProducts(productsRes.count ?? 0);
+
+    const imgIds = new Set((imagesRes.data ?? []).map((i: any) => i.review_id as string));
+    setReviewImageIds(imgIds);
+    setReviewsWithImagesCount(imgIds.size);
+
     setSelected(new Set());
     setLoading(false);
   }, []);
@@ -90,6 +99,7 @@ export default function AdminReviews() {
     let result = reviews;
     if (filter === "pending") result = result.filter((r) => !r.approved);
     if (filter === "approved") result = result.filter((r) => r.approved);
+    if (filter === "with_image") result = result.filter((r) => reviewImageIds.has(r.id));
     const s = q.trim().toLowerCase();
     if (s) result = result.filter((r) =>
       r.content.toLowerCase().includes(s) ||
@@ -97,7 +107,7 @@ export default function AdminReviews() {
       (r.product_name ?? "").toLowerCase().includes(s)
     );
     return result;
-  }, [reviews, filter, q]);
+  }, [reviews, filter, q, reviewImageIds]);
 
   const pendingCount = reviews.filter((r) => !r.approved).length;
   const approvedCount = reviews.filter((r) => r.approved).length;
@@ -170,17 +180,18 @@ export default function AdminReviews() {
 
       const productIds = products.map((p: any) => p.id);
       const { data, error } = await cloud.functions.invoke("generate-reviews", {
-        body: { action: "generate", product_ids: productIds, count: genCount },
+        body: { action: "generate", product_ids: productIds, count: genCount, mode: genMode },
       });
 
       if (error) throw error;
       const results = (data as any)?.results ?? [];
       const total = results.reduce((sum: number, r: any) => sum + (r.reviews_created ?? 0), 0);
+      const totalImgs = results.reduce((sum: number, r: any) => sum + (r.images_attached ?? 0), 0);
       const errors = results.filter((r: any) => r.error).length;
 
       toast({
         title: "Geração concluída",
-        description: `${total} avaliações geradas para ${productIds.length} produtos${errors ? ` (${errors} erros)` : ""}.`,
+        description: `${total} avaliações (${totalImgs} com imagem) para ${productIds.length} produtos${errors ? ` (${errors} erros)` : ""}.`,
       });
       await load();
     } catch (e: any) {
@@ -206,13 +217,14 @@ export default function AdminReviews() {
       </div>
 
       {/* ====== Dashboard Metrics ====== */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         {[
           { label: "Total", value: reviews.length, icon: MessageSquare, color: "text-primary" },
           { label: "Hoje", value: todayCount, icon: Calendar, color: "text-blue-500" },
           { label: "Semana", value: weekCount, icon: TrendingUp, color: "text-emerald-500" },
           { label: "Pendentes", value: pendingCount, icon: Clock, color: "text-yellow-600" },
           { label: "Aprovadas", value: approvedCount, icon: CheckCircle, color: "text-green-600" },
+          { label: "Com imagem", value: reviewsWithImagesCount, icon: ImageIcon, color: "text-purple-500" },
           { label: "Nota média", value: avgRating, icon: Star, color: "text-yellow-500" },
         ].map((m) => (
           <Card key={m.label} className="rounded-2xl">
@@ -287,6 +299,16 @@ export default function AdminReviews() {
               </div>
             </div>
             <div className="flex items-center gap-2 ml-auto flex-wrap">
+              <Select value={genMode} onValueChange={(v) => setGenMode(v as any)}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Apenas texto</SelectItem>
+                  <SelectItem value="image">Texto + imagem real</SelectItem>
+                  <SelectItem value="ai">Apenas IA (texto)</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={String(genProductCount)} onValueChange={(v) => setGenProductCount(Number(v))}>
                 <SelectTrigger className="w-[130px]">
                   <SelectValue />
@@ -331,9 +353,10 @@ export default function AdminReviews() {
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por conteúdo, autor ou produto..." className="pl-9" />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {(["pending", "approved", "all"] as const).map((f) => (
-            <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" className="text-xs" onClick={() => { setFilter(f); setVisibleCount(40); }}>
-              {f === "pending" ? `Pendentes (${pendingCount})` : f === "approved" ? `Aprovadas (${approvedCount})` : `Todas (${reviews.length})`}
+          {(["pending", "approved", "with_image", "all"] as const).map((f) => (
+            <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" className="text-xs gap-1" onClick={() => { setFilter(f); setVisibleCount(40); }}>
+              {f === "with_image" && <ImageIcon className="h-3 w-3" />}
+              {f === "pending" ? `Pendentes (${pendingCount})` : f === "approved" ? `Aprovadas (${approvedCount})` : f === "with_image" ? `Com imagem (${reviewsWithImagesCount})` : `Todas (${reviews.length})`}
             </Button>
           ))}
           <Button variant="outline" size="icon" className="h-9 w-9" onClick={load} disabled={loading}>
@@ -397,6 +420,11 @@ export default function AdminReviews() {
                         {r.origin === "ai_generated" ? <Sparkles className="h-2.5 w-2.5" /> : <FileText className="h-2.5 w-2.5" />}
                         {r.origin === "ai_generated" ? "IA" : r.origin}
                       </Badge>
+                      {reviewImageIds.has(r.id) && (
+                        <Badge variant="outline" className="text-[10px] gap-1 border-purple-300 text-purple-600">
+                          <ImageIcon className="h-2.5 w-2.5" /> Imagem
+                        </Badge>
+                      )}
                     </div>
                     {r.title && <p className="font-semibold text-sm">{r.title}</p>}
                     <p className="text-sm text-muted-foreground line-clamp-2">{r.content}</p>

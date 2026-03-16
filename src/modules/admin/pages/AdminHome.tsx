@@ -594,10 +594,12 @@ export default function AdminHome() {
       <Tabs defaultValue="banners">
         <TabsList className="w-full justify-start flex-wrap h-auto">
           <TabsTrigger value="banners">Banners</TabsTrigger>
+          <TabsTrigger value="categorias">Categorias destaque</TabsTrigger>
+          <TabsTrigger value="destaques">Destaques ({featuredProducts.length})</TabsTrigger>
+          <TabsTrigger value="mais-vendidos">Mais vendidos</TabsTrigger>
           <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
           <TabsTrigger value="vantagens">Vantagens</TabsTrigger>
           <TabsTrigger value="ofertas">Ofertas</TabsTrigger>
-          <TabsTrigger value="categorias">Categorias destaque</TabsTrigger>
           <TabsTrigger value="sessoes">Sessões produtos</TabsTrigger>
           <TabsTrigger value="seo">SEO</TabsTrigger>
           <TabsTrigger value="politicas">Políticas</TabsTrigger>

@@ -913,34 +913,14 @@ export default function AdminBulkImageSearch() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                <div className="flex gap-1 flex-wrap">
-                  {([
-                    { key: "no-images" as const, label: "Sem imagens" },
-                    { key: "no-description" as const, label: "Sem descrição" },
-                    { key: "incomplete" as const, label: "Incompletos" },
-                    { key: "all" as const, label: "Todos" },
-                  ]).map((opt) => (
-                    <Button
-                      key={opt.key}
-                      size="sm"
-                      variant={filter === opt.key ? "default" : "outline"}
-                      className="h-7 text-xs"
-                      onClick={() => setFilter(opt.key)}
-                    >
-                      {opt.label}
-                    </Button>
-                  ))}
-                </div>
-                <Button
-                  onClick={startPipeline}
-                  disabled={loading || eligibleCount === 0}
-                  className="w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-semibold gap-2"
-                >
-                  <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
-                  IMPORTAR AUTOMATICAMENTE ({eligibleCount} elegíveis)
-                </Button>
-              </div>
+              <Button
+                onClick={startPipeline}
+                disabled={loading || eligibleCount === 0}
+                className="w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-semibold gap-2"
+              >
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
+                IMPORTAR AUTOMATICAMENTE ({eligibleCount} elegíveis)
+              </Button>
               {eligibleCount === 0 && (
                 <p className="text-xs text-green-600 font-medium">✅ Todos os produtos já estão completos!</p>
               )}

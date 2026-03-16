@@ -53,7 +53,7 @@ async function incrementImageUsage(supa: any, imageId: string) {
 
 /* ---------- Core review generation ---------- */
 
-type GenerationMode = "text" | "image" | "ai";
+type GenerationMode = "text" | "image" | "text_image";
 
 async function generateReviewsForProduct(
   supa: any,

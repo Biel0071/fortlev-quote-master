@@ -222,6 +222,25 @@ export default function AdminReviews() {
     setGenerating(false);
   };
 
+  const searchReviewImagesBatch = async () => {
+    setSearchingImages(true);
+    try {
+      const { data, error } = await cloud.functions.invoke("search-review-images", {
+        body: { action: "batch", limit: 20 },
+      });
+      if (error) throw error;
+      const result = data as any;
+      toast({
+        title: "Busca concluída",
+        description: `${result.processed ?? 0} produtos processados, ${result.total_found ?? 0} imagens encontradas, ${result.total_saved ?? 0} salvas. ${result.remaining ?? 0} produtos restantes.`,
+      });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro na busca", description: e.message, variant: "destructive" });
+    }
+    setSearchingImages(false);
+  };
+
   const stars = (n: number) => Array.from({ length: 5 }, (_, i) => (
     <Star key={i} className={`h-3.5 w-3.5 ${i < n ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} />
   ));

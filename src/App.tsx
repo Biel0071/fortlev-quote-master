@@ -52,6 +52,7 @@ import {
   AdminPriceIntelligence,
   AdminImageReview,
   AdminAiReports,
+  AdminBatchOps,
 } from "@/modules/admin";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";

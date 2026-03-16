@@ -1,4 +1,5 @@
 import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.48/deno-dom-wasm.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,14 +20,13 @@ function randomUA(): string {
 }
 
 // ──────────────────────────────────────────────
-// 1. Brazilian price parsing (locale-aware)
+// Brazilian price parsing (locale-aware)
 // ──────────────────────────────────────────────
 function parseLocalizedNumber(value: string | number | null): number | null {
   if (value === null || value === undefined || value === "") return null;
   if (typeof value === "number") return value;
 
   let cleaned = String(value).replace(/\s/g, "").replace(/[R$€]/g, "");
-  // Remove unit suffixes
   cleaned = cleaned.replace(/\/m[²2]?/gi, "").replace(/\/un\.?/gi, "").replace(/\/cx\.?/gi, "");
   cleaned = cleaned.replace(/por\s*/gi, "").replace(/à vista.*/gi, "").trim();
 
@@ -39,11 +39,9 @@ function parseLocalizedNumber(value: string | number | null): number | null {
   }
 
   if (lastComma > lastDot) {
-    // Brazilian: 7.222,00 → remove dots, comma→dot
     cleaned = cleaned.replace(/\./g, "");
     cleaned = cleaned.replace(",", ".");
   } else {
-    // US/UK: 7,222.00 → remove commas
     cleaned = cleaned.replace(/,/g, "");
   }
 
@@ -52,49 +50,200 @@ function parseLocalizedNumber(value: string | number | null): number | null {
 }
 
 // ──────────────────────────────────────────────
-// 2. Anti-absurd price validation by category
+// Category & unit detection (mirrors client-side logic)
 // ──────────────────────────────────────────────
-const PRICE_RANGES: Record<string, { min: number; max: number }> = {
-  argamassa: { min: 10, max: 200 },
-  areia: { min: 50, max: 300 },
-  tijolo: { min: 0.50, max: 5 },
-  bloco: { min: 0.50, max: 15 },
-  caixa_dagua: { min: 150, max: 4000 },
-  anel_vedacao: { min: 1, max: 30 },
-  cimento: { min: 15, max: 120 },
-  tinta: { min: 20, max: 800 },
-  telha: { min: 5, max: 200 },
-  tubo: { min: 3, max: 500 },
-  vergalhao: { min: 10, max: 300 },
-};
+function norm(s: string): string {
+  return (s ?? "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").trim();
+}
+
+const CATEGORY_KEYWORDS: Array<{ keywords: string[]; category: string }> = [
+  { keywords: ["caixa d'agua", "caixa dagua"], category: "caixa dagua" },
+  { keywords: ["caixa sifonada"], category: "caixa sifonada" },
+  { keywords: ["caixa eletrica"], category: "caixa eletrica" },
+  { keywords: ["cabo eletrico", "cabo flexivel"], category: "cabo eletrico" },
+  { keywords: ["vaso sanitario"], category: "vaso sanitario" },
+  { keywords: ["porcelanato"], category: "porcelanato" },
+  { keywords: ["revestimento"], category: "revestimento" },
+  { keywords: ["impermeabilizante"], category: "impermeabilizante" },
+  { keywords: ["argamassa"], category: "argamassa" },
+  { keywords: ["vergalhao", "vergalhão"], category: "vergalhao" },
+  { keywords: ["cimento"], category: "cimento" },
+  { keywords: ["areia"], category: "areia" },
+  { keywords: ["brita"], category: "brita" },
+  { keywords: ["bloco"], category: "bloco" },
+  { keywords: ["tijolo"], category: "tijolo" },
+  { keywords: ["telha"], category: "telha" },
+  { keywords: ["piso"], category: "piso" },
+  { keywords: ["ferro"], category: "ferro" },
+  { keywords: ["fio"], category: "fio" },
+  { keywords: ["tubo"], category: "tubo" },
+  { keywords: ["cano"], category: "cano" },
+  { keywords: ["registro"], category: "registro" },
+  { keywords: ["torneira"], category: "torneira" },
+  { keywords: ["tinta"], category: "tinta" },
+  { keywords: ["conduite"], category: "conduite" },
+  { keywords: ["gesso"], category: "gesso" },
+  { keywords: ["argila"], category: "argila" },
+  { keywords: ["porta"], category: "porta" },
+  { keywords: ["janela"], category: "janela" },
+  { keywords: ["madeira"], category: "madeira" },
+  { keywords: ["prego"], category: "prego" },
+  { keywords: ["parafuso"], category: "parafuso" },
+  { keywords: ["arame"], category: "arame" },
+  { keywords: ["manta"], category: "manta" },
+  { keywords: ["chuveiro"], category: "chuveiro" },
+  { keywords: ["ralo"], category: "ralo" },
+];
 
 function detectCategory(productName: string): string | null {
-  const hay = productName.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
-  if (hay.includes("argamassa")) return "argamassa";
-  if (hay.includes("areia")) return "areia";
-  if (hay.includes("tijolo")) return "tijolo";
-  if (hay.includes("bloco")) return "bloco";
-  if (hay.includes("caixa") && hay.includes("agua")) return "caixa_dagua";
-  if (hay.includes("anel") && hay.includes("vedac")) return "anel_vedacao";
-  if (hay.includes("cimento")) return "cimento";
-  if (hay.includes("tinta")) return "tinta";
-  if (hay.includes("telha")) return "telha";
-  if (hay.includes("tubo") || hay.includes("cano")) return "tubo";
-  if (hay.includes("vergalhao") || hay.includes("vergalhão")) return "vergalhao";
+  const hay = norm(productName);
+  for (const entry of CATEGORY_KEYWORDS) {
+    for (const kw of entry.keywords) {
+      if (hay.includes(norm(kw))) return entry.category;
+    }
+  }
   return null;
 }
 
-function validatePrice(price: number | null, productName: string): { valid: boolean; category: string | null } {
-  if (price === null || price <= 0) return { valid: false, category: null };
-  const cat = detectCategory(productName);
-  if (!cat) return { valid: true, category: null };
-  const range = PRICE_RANGES[cat];
-  if (!range) return { valid: true, category: cat };
-  return { valid: price >= range.min && price <= range.max, category: cat };
+const UNIT_RULES: Array<{ patterns: string[]; unit: string }> = [
+  { patterns: ["milheiro", "1000 unidades", "1000 un"], unit: "milheiro" },
+  { patterns: ["m²", "m2"], unit: "m2" },
+  { patterns: ["m³", "m3", "metro cubico"], unit: "m3" },
+  { patterns: ["caminhao", "caminhão"], unit: "caminhao" },
+  { patterns: ["rolo"], unit: "rolo" },
+  { patterns: ["galao", "galão"], unit: "galao" },
+  { patterns: ["litro", "lt"], unit: "litro" },
+  { patterns: ["barra", "12m", "vergalhao"], unit: "barra" },
+  { patterns: ["50kg", "20kg", "25kg", "40kg", "saco"], unit: "saco" },
+  { patterns: ["kg", "quilo"], unit: "kg" },
+  { patterns: ["metro", "ml"], unit: "metro" },
+  { patterns: ["caixa", "cx"], unit: "caixa" },
+];
+
+const CATEGORY_DEFAULT_UNITS: Record<string, string> = {
+  cimento: "saco", argamassa: "saco", areia: "m3", brita: "m3",
+  bloco: "unidade", tijolo: "unidade", piso: "m2", porcelanato: "m2",
+  revestimento: "m2", ferro: "barra", vergalhao: "barra", fio: "metro",
+  "cabo eletrico": "metro", tubo: "unidade", cano: "unidade", telha: "unidade",
+  tinta: "litro", "caixa dagua": "unidade", gesso: "saco", arame: "kg",
+  prego: "kg", parafuso: "caixa", porta: "unidade", janela: "unidade",
+  registro: "unidade", torneira: "unidade", chuveiro: "unidade",
+  "vaso sanitario": "unidade", ralo: "unidade", "caixa sifonada": "unidade",
+  impermeabilizante: "litro", manta: "rolo", conduite: "metro",
+  "caixa eletrica": "unidade", argila: "saco", madeira: "metro",
+};
+
+function detectUnit(name: string, category?: string | null): string {
+  const hay = norm(name);
+  for (const rule of UNIT_RULES) {
+    for (const pattern of rule.patterns) {
+      if (hay.includes(norm(pattern))) return rule.unit;
+    }
+  }
+  if (category && CATEGORY_DEFAULT_UNITS[category]) return CATEGORY_DEFAULT_UNITS[category];
+  return "unidade";
 }
 
 // ──────────────────────────────────────────────
-// 3. Image validation
+// Price intelligence ranges (loaded from DB or fallback)
+// ──────────────────────────────────────────────
+interface PriceRange { min: number; max: number; avg: number }
+
+// Hardcoded fallback if DB fetch fails
+const FALLBACK_RANGES: Record<string, PriceRange> = {
+  "cimento|saco": { min: 20, max: 120, avg: 38 },
+  "argamassa|saco": { min: 10, max: 200, avg: 35 },
+  "areia|m3": { min: 50, max: 300, avg: 150 },
+  "brita|m3": { min: 80, max: 350, avg: 180 },
+  "bloco|unidade": { min: 1, max: 8, avg: 3.5 },
+  "bloco|milheiro": { min: 400, max: 1500, avg: 800 },
+  "tijolo|unidade": { min: 0.5, max: 3, avg: 1.2 },
+  "tijolo|milheiro": { min: 300, max: 1200, avg: 600 },
+  "piso|m2": { min: 20, max: 300, avg: 80 },
+  "porcelanato|m2": { min: 30, max: 600, avg: 120 },
+  "ferro|barra": { min: 20, max: 300, avg: 80 },
+  "vergalhao|barra": { min: 20, max: 300, avg: 80 },
+  "fio|metro": { min: 1, max: 20, avg: 5 },
+  "fio|rolo": { min: 50, max: 800, avg: 200 },
+  "cabo eletrico|metro": { min: 2, max: 30, avg: 8 },
+  "tubo|unidade": { min: 5, max: 200, avg: 40 },
+  "cano|unidade": { min: 5, max: 200, avg: 40 },
+  "telha|unidade": { min: 2, max: 100, avg: 25 },
+  "tinta|litro": { min: 10, max: 200, avg: 50 },
+  "tinta|galao": { min: 40, max: 800, avg: 200 },
+  "caixa dagua|unidade": { min: 150, max: 5000, avg: 800 },
+  "arame|kg": { min: 10, max: 50, avg: 25 },
+  "prego|kg": { min: 10, max: 60, avg: 30 },
+  "parafuso|caixa": { min: 5, max: 200, avg: 40 },
+};
+
+async function loadPriceRanges(): Promise<Map<string, PriceRange>> {
+  const map = new Map<string, PriceRange>();
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const { data } = await supabase.from("price_intelligence").select("categoria, unidade, preco_min, preco_max, preco_medio").limit(500);
+    if (data && data.length > 0) {
+      for (const row of data) {
+        map.set(`${row.categoria}|${row.unidade}`, { min: row.preco_min, max: row.preco_max, avg: row.preco_medio });
+      }
+      return map;
+    }
+  } catch (e) {
+    console.error("Failed to load price_intelligence:", e);
+  }
+  // Fallback
+  for (const [key, range] of Object.entries(FALLBACK_RANGES)) {
+    map.set(key, range);
+  }
+  return map;
+}
+
+type ValidationError = "price_error" | "price_auto_corrected" | "image_error" | "missing_image" | "parse_error";
+
+function validatePrice(
+  price: number | null,
+  productName: string,
+  ranges: Map<string, PriceRange>
+): { valid: boolean; category: string | null; unit: string; confidence: number; correctedPrice: number | null; error: ValidationError | null } {
+  const category = detectCategory(productName);
+  const unit = detectUnit(productName, category);
+
+  if (price === null || price <= 0) {
+    return { valid: false, category, unit, confidence: 0, correctedPrice: null, error: "price_error" };
+  }
+
+  if (!category) {
+    return { valid: true, category: null, unit, confidence: 0.5, correctedPrice: null, error: null };
+  }
+
+  const key = `${category}|${unit}`;
+  const range = ranges.get(key);
+  if (!range) {
+    return { valid: true, category, unit, confidence: 0.5, correctedPrice: null, error: null };
+  }
+
+  if (price >= range.min && price <= range.max) {
+    return { valid: true, category, unit, confidence: 1.0, correctedPrice: null, error: null };
+  }
+
+  // Auto-correction: try dividing by 10, 100, 1000
+  if (price > range.max) {
+    for (const divisor of [10, 100, 1000]) {
+      const corrected = Math.round((price / divisor) * 100) / 100;
+      if (corrected >= range.min && corrected <= range.max) {
+        return { valid: true, category, unit, confidence: 0.7, correctedPrice: corrected, error: "price_auto_corrected" };
+      }
+    }
+  }
+
+  return { valid: false, category, unit, confidence: price < range.min ? 0.3 : 0.0, correctedPrice: null, error: "price_error" };
+}
+
+// ──────────────────────────────────────────────
+// Image validation
 // ──────────────────────────────────────────────
 const IMAGE_BLACKLIST_TERMS = ["logo", "icon", "sprite", "placeholder", "banner", "selo", "stamp", "badge"];
 
@@ -106,6 +255,20 @@ function isValidImageName(src: string): boolean {
 // ──────────────────────────────────────────────
 // Scraping logic
 // ──────────────────────────────────────────────
+
+interface ScrapedProduct {
+  produto: string;
+  url: string | null;
+  preco: string | null;
+  precoNum: number | null;
+  pagina: number;
+  dominio: string;
+  imagemUrl: string | null;
+  categoria: string | null;
+  unidade: string;
+  priceConfidence: number;
+  errors: ValidationError[];
+}
 
 function buildPageUrls(baseUrl: string, page: number): string[] {
   const variants: string[] = [];
@@ -158,21 +321,13 @@ const IMAGE_SELECTORS = [
   ".product-thumb img", ".produto-imagem img", "img",
 ];
 
-type ValidationError = "price_error" | "image_error" | "missing_image" | "parse_error";
-
-interface ScrapedProduct {
-  produto: string;
-  url: string | null;
-  preco: string | null;
-  precoNum: number | null;
-  pagina: number;
-  dominio: string;
-  imagemUrl: string | null;
-  categoria: string | null;
-  errors: ValidationError[];
-}
-
-function extractProducts(html: string, pageNum: number, origin: string, dominio: string): ScrapedProduct[] {
+function extractProducts(
+  html: string,
+  pageNum: number,
+  origin: string,
+  dominio: string,
+  priceRanges: Map<string, PriceRange>
+): ScrapedProduct[] {
   const doc = new DOMParser().parseFromString(html, "text/html");
   if (!doc) return [];
 
@@ -184,7 +339,6 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
     } catch { /* skip */ }
   }
 
-  // Fallback: product-like links
   if (cards.length === 0) {
     const allLinks = Array.from(doc.querySelectorAll("a[href]")) as any[];
     const seen = new Set<string>();
@@ -241,7 +395,7 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
       else if (href.startsWith("/")) productUrl = new URL(href, origin).toString();
     }
 
-    // Price (using locale-aware parser)
+    // Price
     let preco: string | null = null;
     let precoNum: number | null = null;
     for (const sel of PRICE_SELECTORS) {
@@ -271,16 +425,21 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
       } catch { /* skip */ }
     }
 
-    // Validate price
-    const priceValidation = validatePrice(precoNum, bestTitle);
-    if (precoNum !== null && !priceValidation.valid) {
+    // Validate price with intelligence
+    const priceResult = validatePrice(precoNum, bestTitle, priceRanges);
+
+    if (priceResult.error === "price_auto_corrected" && priceResult.correctedPrice !== null) {
+      precoNum = priceResult.correctedPrice;
+      errors.push("price_auto_corrected");
+    } else if (priceResult.error === "price_error") {
       errors.push("price_error");
     }
+
     if (precoNum === null && preco) {
       errors.push("parse_error");
     }
 
-    // Image extraction with validation
+    // Image extraction
     let imagemUrl: string | null = null;
     for (const sel of IMAGE_SELECTORS) {
       try {
@@ -288,17 +447,14 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
         if (img) {
           const src = img.getAttribute("data-src") || img.getAttribute("src") || "";
           if (src && src.startsWith("http") && isValidImageName(src)) {
-            imagemUrl = src;
-            break;
+            imagemUrl = src; break;
           } else if (src && src.startsWith("/") && isValidImageName(src)) {
-            imagemUrl = new URL(src, origin).toString();
-            break;
+            imagemUrl = new URL(src, origin).toString(); break;
           }
         }
       } catch { /* skip */ }
     }
 
-    // Fallback: if image invalid, try other images in card
     if (!imagemUrl) {
       try {
         const allImgs = card.querySelectorAll("img");
@@ -312,9 +468,7 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
       } catch { /* skip */ }
     }
 
-    if (!imagemUrl) {
-      errors.push("missing_image");
-    }
+    if (!imagemUrl) errors.push("missing_image");
 
     products.push({
       produto: bestTitle,
@@ -324,7 +478,9 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
       pagina: pageNum,
       dominio,
       imagemUrl,
-      categoria: priceValidation.category,
+      categoria: priceResult.category,
+      unidade: priceResult.unit,
+      priceConfidence: priceResult.confidence,
       errors,
     });
   }
@@ -436,6 +592,9 @@ Deno.serve(async (req) => {
     const rawMax = Number(body.maxPages);
     const maxPages = rawMax > 0 ? Math.min(rawMax, 200) : 200;
 
+    // Load price intelligence ranges from DB
+    const priceRanges = await loadPriceRanges();
+
     const origin = new URL(baseUrl).origin;
     const dominio = new URL(baseUrl).hostname.replace("www.", "");
     const logs: string[] = [];
@@ -449,6 +608,7 @@ Deno.serve(async (req) => {
     let detectedNextUrl: string | null = null;
 
     logs.push(`🌐 ${dominio} — ${baseUrl}`);
+    logs.push(`🧠 Inteligência de preço: ${priceRanges.size} faixas carregadas`);
 
     while (page <= maxPages) {
       let urlsToTry: string[];
@@ -485,7 +645,7 @@ Deno.serve(async (req) => {
 
       logs.push(`📥 ${dominio} P${page}: ${(html.length / 1024).toFixed(0)}KB`);
 
-      const pageProducts = extractProducts(html, page, origin, dominio);
+      const pageProducts = extractProducts(html, page, origin, dominio, priceRanges);
 
       const currentFingerprint = productFingerprint(pageProducts);
       if (page > 1 && currentFingerprint === lastProductFingerprint) {
@@ -503,10 +663,10 @@ Deno.serve(async (req) => {
           seenProductKeys.add(key);
           newProducts.push(p);
 
-          // Collect detailed error logs
           for (const err of p.errors) {
             let detail = "";
-            if (err === "price_error") detail = `Preço R$${p.precoNum} fora da faixa para ${p.categoria || "categoria"}`;
+            if (err === "price_error") detail = `Preço R$${p.precoNum} fora da faixa para ${p.categoria || "categoria"} (${p.unidade})`;
+            else if (err === "price_auto_corrected") detail = `Preço corrigido automaticamente para R$${p.precoNum} (confiança: ${p.priceConfidence})`;
             else if (err === "missing_image") detail = "Nenhuma imagem válida encontrada";
             else if (err === "parse_error") detail = `Não foi possível converter: ${p.preco}`;
             else if (err === "image_error") detail = "Imagem inconsistente com o produto";
@@ -517,7 +677,6 @@ Deno.serve(async (req) => {
 
       logs.push(`✅ ${dominio} → P${page}: ${pageProducts.length} encontrados, ${newProducts.length} novos`);
 
-      // Log error counts per page
       const pageErrors = newProducts.reduce((sum, p) => sum + p.errors.length, 0);
       if (pageErrors > 0) {
         logs.push(`⚠️ P${page}: ${pageErrors} validação(ões) com problema`);
@@ -536,7 +695,7 @@ Deno.serve(async (req) => {
         if (page >= 2 && !paginationWorking && fetchedUrl) {
           const pattern = fetchedUrl.replace(
             new RegExp(`([?&]p=|[?&]page=|/page/)${page}`, "i"),
-            (match, prefix) => `${prefix}__PAGE__`
+            (match: string, prefix: string) => `${prefix}__PAGE__`
           );
           if (pattern.includes("__PAGE__")) {
             paginationWorking = pattern;
@@ -558,13 +717,14 @@ Deno.serve(async (req) => {
     // Summary stats
     const totalWithErrors = allProducts.filter(p => p.errors.length > 0).length;
     const priceErrors = errorLogs.filter(e => e.type === "price_error").length;
+    const priceAutoCorrected = errorLogs.filter(e => e.type === "price_auto_corrected").length;
     const imageErrors = errorLogs.filter(e => e.type === "image_error").length;
     const missingImages = errorLogs.filter(e => e.type === "missing_image").length;
     const parseErrors = errorLogs.filter(e => e.type === "parse_error").length;
 
     logs.push(`📊 ${dominio}: ${allProducts.length} produtos em ${page - 1} páginas`);
     if (totalWithErrors > 0) {
-      logs.push(`🔍 Validação: ${totalWithErrors} com erros (preço: ${priceErrors}, imagem: ${imageErrors + missingImages}, parse: ${parseErrors})`);
+      logs.push(`🔍 Validação: ${totalWithErrors} com erros (preço: ${priceErrors}, corrigido: ${priceAutoCorrected}, imagem: ${imageErrors + missingImages}, parse: ${parseErrors})`);
     }
 
     return new Response(
@@ -579,6 +739,7 @@ Deno.serve(async (req) => {
         validation: {
           totalWithErrors,
           priceErrors,
+          priceAutoCorrected,
           imageErrors,
           missingImages,
           parseErrors,

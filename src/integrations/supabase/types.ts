@@ -1232,6 +1232,39 @@ export type Database = {
         }
         Relationships: []
       }
+      price_intelligence: {
+        Row: {
+          categoria: string
+          created_at: string
+          id: string
+          preco_max: number
+          preco_medio: number
+          preco_min: number
+          unidade: string
+          updated_at: string
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          id?: string
+          preco_max?: number
+          preco_medio?: number
+          preco_min?: number
+          unidade?: string
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          id?: string
+          preco_max?: number
+          preco_medio?: number
+          preco_min?: number
+          unidade?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_ai_previews: {
         Row: {
           approved: boolean

@@ -13,11 +13,11 @@ import { toast } from "@/hooks/use-toast";
 import {
   Globe, Loader2, Search, FileSpreadsheet, CheckCircle2, XCircle, Clock,
   Timer, History, Trash2, Eye, ArrowLeft, Download, AlertTriangle, ImageOff,
-  DollarSign, Filter, Import, ShieldAlert,
+  DollarSign, Filter, Import, ShieldAlert, Brain,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
-type ValidationError = "price_error" | "image_error" | "missing_image" | "parse_error";
+type ValidationError = "price_error" | "price_auto_corrected" | "image_error" | "missing_image" | "parse_error";
 
 interface ScrapedProduct {
   produto: string;
@@ -28,6 +28,8 @@ interface ScrapedProduct {
   dominio: string;
   imagemUrl?: string | null;
   categoria?: string | null;
+  unidade?: string;
+  priceConfidence?: number;
   errors?: ValidationError[];
 }
 
@@ -40,6 +42,7 @@ interface ErrorLog {
 interface ValidationSummary {
   totalWithErrors: number;
   priceErrors: number;
+  priceAutoCorrected: number;
   imageErrors: number;
   missingImages: number;
   parseErrors: number;
@@ -119,6 +122,7 @@ function exportProducts(products: ScrapedProduct[], suffix = "") {
 
 const ERROR_LABELS: Record<ValidationError, { label: string; color: string; icon: typeof AlertTriangle }> = {
   price_error: { label: "Preço", color: "text-orange-500", icon: DollarSign },
+  price_auto_corrected: { label: "Corrigido", color: "text-blue-500", icon: DollarSign },
   image_error: { label: "Imagem", color: "text-red-500", icon: ShieldAlert },
   missing_image: { label: "Sem imagem", color: "text-amber-500", icon: ImageOff },
   parse_error: { label: "Parse", color: "text-yellow-500", icon: AlertTriangle },
@@ -220,11 +224,14 @@ function PreviewImportPanel({
   onImport: (selected: ScrapedProduct[]) => void;
   onDismiss: () => void;
 }) {
-  const [filter, setFilter] = useState<"all" | "ok" | "errors">("all");
+  const [filter, setFilter] = useState<"all" | "ok" | "corrected" | "errors" | "review_queue">("all");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => {
-    // By default select only products without errors
+    // Select products without errors OR auto-corrected (review_queue = price_error only)
     const ids = new Set<number>();
-    products.forEach((p, i) => { if (!p.errors?.length) ids.add(i); });
+    products.forEach((p, i) => {
+      const hasBlockingError = p.errors?.some(e => e === "price_error");
+      if (!hasBlockingError) ids.add(i);
+    });
     return ids;
   });
 
@@ -233,7 +240,9 @@ function PreviewImportPanel({
       .map((p, i) => ({ ...p, _idx: i }))
       .filter((p) => {
         if (filter === "ok") return !p.errors?.length;
-        if (filter === "errors") return (p.errors?.length ?? 0) > 0;
+        if (filter === "corrected") return p.errors?.includes("price_auto_corrected");
+        if (filter === "errors") return p.errors?.includes("price_error");
+        if (filter === "review_queue") return p.errors?.includes("price_error") || p.errors?.includes("parse_error");
         return true;
       });
   }, [products, filter]);
@@ -258,7 +267,9 @@ function PreviewImportPanel({
   };
 
   const okCount = products.filter(p => !p.errors?.length).length;
-  const errCount = products.filter(p => (p.errors?.length ?? 0) > 0).length;
+  const correctedCount = products.filter(p => p.errors?.includes("price_auto_corrected")).length;
+  const errCount = products.filter(p => p.errors?.includes("price_error")).length;
+  const reviewQueueCount = products.filter(p => p.errors?.includes("price_error") || p.errors?.includes("parse_error")).length;
 
   return (
     <Card className="border-primary/30">
@@ -276,10 +287,15 @@ function PreviewImportPanel({
               <AlertTriangle className="h-4 w-4" />
               {validation.totalWithErrors} produto(s) com problemas detectados
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
               {validation.priceErrors > 0 && (
                 <div className="flex items-center gap-1 text-orange-600">
-                  <DollarSign className="h-3 w-3" /> {validation.priceErrors} preço(s) fora da faixa
+                  <DollarSign className="h-3 w-3" /> {validation.priceErrors} preço(s) inválido(s)
+                </div>
+              )}
+              {validation.priceAutoCorrected > 0 && (
+                <div className="flex items-center gap-1 text-blue-600">
+                  <DollarSign className="h-3 w-3" /> {validation.priceAutoCorrected} corrigido(s) auto
                 </div>
               )}
               {validation.missingImages > 0 && (
@@ -339,14 +355,29 @@ function PreviewImportPanel({
             <CheckCircle2 className="h-3 w-3" /> OK ({okCount})
           </Button>
           <Button
+            variant={filter === "corrected" ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => setFilter("corrected")}
+          >
+            <DollarSign className="h-3 w-3" /> Corrigidos ({correctedCount})
+          </Button>
+          <Button
             variant={filter === "errors" ? "default" : "outline"}
             size="sm"
             className="h-7 text-xs gap-1"
             onClick={() => setFilter("errors")}
           >
-            <AlertTriangle className="h-3 w-3" /> Com erros ({errCount})
+            <AlertTriangle className="h-3 w-3" /> Preço inválido ({errCount})
           </Button>
-
+          <Button
+            variant={filter === "review_queue" ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => setFilter("review_queue")}
+          >
+            <ShieldAlert className="h-3 w-3" /> Fila revisão ({reviewQueueCount})
+          </Button>
           <div className="ml-auto flex items-center gap-2">
             <Checkbox
               checked={filtered.every(p => selectedIds.has(p._idx))}
@@ -520,7 +551,7 @@ export default function AdminProductScraper() {
     let allErrorLogs: ErrorLog[] = [];
     let totalPages = 0;
     const domains = new Set<string>();
-    let mergedValidation: ValidationSummary = { totalWithErrors: 0, priceErrors: 0, imageErrors: 0, missingImages: 0, parseErrors: 0 };
+    let mergedValidation: ValidationSummary = { totalWithErrors: 0, priceErrors: 0, priceAutoCorrected: 0, imageErrors: 0, missingImages: 0, parseErrors: 0 };
 
     for (let i = 0; i < urls.length; i++) {
       if (cancelRef.current) { addLog(`⛔ Scraping cancelado pelo usuário`); break; }
@@ -555,6 +586,7 @@ export default function AdminProductScraper() {
           const v = data.validation as ValidationSummary;
           mergedValidation.totalWithErrors += v.totalWithErrors;
           mergedValidation.priceErrors += v.priceErrors;
+          mergedValidation.priceAutoCorrected += v.priceAutoCorrected || 0;
           mergedValidation.imageErrors += v.imageErrors;
           mergedValidation.missingImages += v.missingImages;
           mergedValidation.parseErrors += v.parseErrors;
@@ -638,10 +670,12 @@ export default function AdminProductScraper() {
       const rows = selected.map(p => ({
         name: p.produto,
         price: p.precoNum || 0,
+        unit: p.unidade || "UN",
         category: p.categoria || null,
         source_id: p.url || null,
         active: true,
         stock: 0,
+        status: p.errors?.includes("price_error") ? "draft" : "published",
       }));
 
       const { error } = await supabase.from("store_products").insert(rows as any);
@@ -688,12 +722,15 @@ export default function AdminProductScraper() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <Globe className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold">Scraper de Produtos</h1>
+        <Button variant="outline" size="sm" className="ml-auto gap-1.5 text-xs" onClick={() => window.location.href = "/admin/produtos/inteligencia-preco"}>
+          <Brain className="h-3.5 w-3.5" /> Inteligência de Preço
+        </Button>
       </div>
 
       {/* Config */}

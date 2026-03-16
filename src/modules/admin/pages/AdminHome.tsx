@@ -798,11 +798,11 @@ export default function AdminHome() {
               <CardTitle>Mais vendidos (por cliques)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">Top 20 produtos mais clicados. Clique para editar preços, imagens ou aplicar desconto.</p>
+              <p className="text-sm text-muted-foreground">Top 20 produtos por cliques. Quando o site tiver tráfego ativo, os itens serão reordenados automaticamente.</p>
               {loading ? (
                 <div className="text-muted-foreground">Carregando...</div>
               ) : topClickedProducts.length === 0 ? (
-                <div className="text-muted-foreground">Sem dados de cliques registrados ainda.</div>
+                <div className="text-muted-foreground">Nenhum produto cadastrado.</div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {topClickedProducts.map((p, idx) => (

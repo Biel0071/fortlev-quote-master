@@ -25,89 +25,35 @@ function delay(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
 
 /* ---------- Image helpers ---------- */
 
-async function getProductImages(supa: any, supabaseUrl: string, productId: string): Promise<string[]> {
-  // 1. Check store_product_images (scraper/manufacturer images)
+async function getProductImages(supa: any, supabaseUrl: string, productId: string): Promise<{ id: string; url: string; usage_count: number }[]> {
   const { data: storedImages } = await supa
     .from("store_product_images")
-    .select("path")
+    .select("id, path, usage_count")
     .eq("product_id", productId)
-    .order("sort_order", { ascending: true })
+    .order("usage_count", { ascending: true })
     .limit(10);
 
-  const urls: string[] = [];
-  if (storedImages?.length) {
-    for (const img of storedImages) {
-      const p = img.path as string;
-      if (p.startsWith("http")) {
-        urls.push(p);
-      } else {
-        // Build public URL from storage
-        urls.push(`${supabaseUrl}/storage/v1/object/public/product-images/${p}`);
-      }
-    }
-  }
+  if (!storedImages?.length) return [];
 
-  return urls;
+  return storedImages.map((img: any) => {
+    const p = img.path as string;
+    const url = p.startsWith("http") ? p : `${supabaseUrl}/storage/v1/object/public/product-images/${p}`;
+    return { id: img.id, url, usage_count: img.usage_count ?? 0 };
+  });
 }
 
-async function generateAiReviewImage(
-  lovableApiKey: string,
-  productName: string,
-  category: string,
-): Promise<string | null> {
+async function incrementImageUsage(supa: any, imageId: string) {
   try {
-    const prompt = `foto realista tirada com celular em obra no Brasil, cliente instalando ${productName}, categoria ${category}, ambiente de construção civil, iluminação natural, casual, sem texto`;
-
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3.1-flash-image-preview",
-        messages: [{ role: "user", content: prompt }],
-        modalities: ["image", "text"],
-      }),
-    });
-
-    if (!resp.ok) return null;
-
-    const data = await resp.json();
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    return imageUrl || null;
-  } catch {
-    return null;
-  }
+    // Read current count and update
+    const { data } = await supa.from("store_product_images").select("usage_count").eq("id", imageId).single();
+    const current = (data?.usage_count ?? 0) as number;
+    await supa.from("store_product_images").update({ usage_count: current + 1 }).eq("id", imageId);
+  } catch { /* best-effort */ }
 }
 
-async function uploadBase64Image(
-  supa: any,
-  supabaseUrl: string,
-  base64Data: string,
-  productId: string,
-): Promise<string | null> {
-  try {
-    // Extract raw base64
-    const match = base64Data.match(/^data:image\/(.*?);base64,(.*)$/);
-    if (!match) return null;
-    const ext = match[1] === "jpeg" ? "jpg" : match[1];
-    const raw = match[2];
-    const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+/* ---------- Core review generation ---------- */
 
-    const path = `reviews/${productId}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supa.storage
-      .from("product-images")
-      .upload(path, bytes, { contentType: `image/${match[1]}`, upsert: false });
-
-    if (error) return null;
-    return `${supabaseUrl}/storage/v1/object/public/product-images/${path}`;
-  } catch {
-    return null;
-  }
-}
-
-/* ---------- Core review generation with image support ---------- */
+type GenerationMode = "text" | "image" | "ai";
 
 async function generateReviewsForProduct(
   supa: any,
@@ -115,6 +61,7 @@ async function generateReviewsForProduct(
   lovableApiKey: string,
   productId: string,
   count: number,
+  mode: GenerationMode,
 ): Promise<{ reviews_created: number; images_attached: number; error?: string }> {
   const { data: product } = await supa
     .from("store_products")
@@ -137,9 +84,11 @@ async function generateReviewsForProduct(
   const remainingSlots = 250 - (existingCount ?? 0);
   const actualCount = Math.min(count, remainingSlots);
 
-  // Get available product images for reuse
-  const productImages = await getProductImages(supa, supabaseUrl, productId);
-  const hasRealImages = productImages.length > 0;
+  // Get available product images for reuse (only if mode allows images)
+  let productImages: { id: string; url: string; usage_count: number }[] = [];
+  if (mode === "image") {
+    productImages = await getProductImages(supa, supabaseUrl, productId);
+  }
 
   const prompt = `Você é um gerador de avaliações realistas de clientes para uma loja de materiais de construção.
 
@@ -199,11 +148,8 @@ Retorne APENAS um JSON array sem markdown:
     verified_purchase?: boolean;
   }>;
 
-  // Determine which reviews get images (~30%)
-  const IMAGE_CHANCE = 0.3;
+  const IMAGE_CHANCE = 0.3; // 30% of reviews get images when mode=image
   let imagesAttached = 0;
-  let aiImageGenerated = false; // limit to 1 AI image per product to save costs
-
   const now = Date.now();
   const insertedReviewIds: string[] = [];
 
@@ -211,6 +157,9 @@ Retorne APENAS um JSON array sem markdown:
     const daysAgo = Math.floor(Math.random() * 90);
     const hoursAgo = Math.floor(Math.random() * 24);
     const created = new Date(now - daysAgo * 86400000 - hoursAgo * 3600000);
+
+    // Determine if this review gets an image
+    const shouldHaveImage = mode === "image" && productImages.length > 0 && Math.random() < IMAGE_CHANCE;
 
     const row = {
       product_id: productId,
@@ -222,7 +171,8 @@ Retorne APENAS um JSON array sem markdown:
       pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
       cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
       verified_purchase: r.verified_purchase ?? true,
-      approved: false,
+      // Reviews with images → pending approval; text-only → auto-approved
+      approved: !shouldHaveImage,
       origin: "ai_generated",
       created_at: created.toISOString(),
     };
@@ -236,37 +186,19 @@ Retorne APENAS um JSON array sem markdown:
     if (insertErr || !inserted) continue;
     insertedReviewIds.push(inserted.id);
 
-    // Decide if this review gets an image
-    const shouldHaveImage = Math.random() < IMAGE_CHANCE;
-    if (!shouldHaveImage) continue;
-
-    let imageUrl: string | null = null;
-    let imageOrigin = "scraper";
-
-    if (hasRealImages) {
-      // Pick a random real image (distribute usage)
-      const idx = Math.floor(Math.random() * productImages.length);
-      imageUrl = productImages[idx];
-      imageOrigin = "scraper";
-    } else if (!aiImageGenerated) {
-      // Fallback: generate AI image (max 1 per product)
-      const base64 = await generateAiReviewImage(lovableApiKey, product.name, product.category || "Geral");
-      if (base64) {
-        const uploaded = await uploadBase64Image(supa, supabaseUrl, base64, productId);
-        if (uploaded) {
-          imageUrl = uploaded;
-          imageOrigin = "ai_generated";
-          aiImageGenerated = true;
-        }
-      }
-    }
-
-    if (imageUrl) {
+    // Attach image if applicable
+    if (shouldHaveImage) {
+      // Pick image with lowest usage_count
+      const img = productImages[0]; // already sorted by usage_count ASC
       await supa.from("review_images").insert({
         review_id: inserted.id,
-        image_url: imageUrl,
+        image_url: img.url,
         sort_order: 0,
       });
+      await incrementImageUsage(supa, img.id);
+      // Re-sort to distribute evenly
+      productImages.sort((a, b) => a.usage_count - b.usage_count);
+      img.usage_count++;
       imagesAttached++;
     }
   }
@@ -296,14 +228,14 @@ serve(async (req) => {
     if (action === "generate") {
       const productIds: string[] = body?.product_ids ?? [];
       const count = Math.min(Math.max(1, Number(body?.count ?? 3)), 8);
-      const isDailyJob = body?.daily_job === true;
+      const mode: GenerationMode = (["text", "image", "ai"].includes(body?.mode) ? body.mode : "text") as GenerationMode;
 
       if (!productIds.length) throw new Error("No product_ids provided");
 
-      await logEvent(supa, "info", `Geração iniciada: ${productIds.length} produtos × ${count} reviews`, {
+      await logEvent(supa, "info", `Geração iniciada: ${productIds.length} produtos × ${count} reviews (modo: ${mode})`, {
         product_count: productIds.length,
         reviews_per_product: count,
-        daily_job: isDailyJob,
+        mode,
       });
 
       const results: Array<{ product_id: string; reviews_created: number; images_attached: number; error?: string }> = [];
@@ -313,7 +245,7 @@ serve(async (req) => {
         const batch = productIds.slice(i, i + BATCH_SIZE);
 
         const batchPromises = batch.map(async (productId) => {
-          const result = await generateReviewsForProduct(supa, SUPABASE_URL, LOVABLE_API_KEY, productId, count);
+          const result = await generateReviewsForProduct(supa, SUPABASE_URL, LOVABLE_API_KEY, productId, count, mode);
           results.push({ product_id: productId, ...result });
         });
 
@@ -326,10 +258,11 @@ serve(async (req) => {
       const totalErrors = results.filter((r) => r.error).length;
 
       await logEvent(supa, totalErrors > 0 ? "warning" : "info",
-        `Geração concluída: ${totalCreated} reviews, ${totalImages} imagens, ${totalErrors} erros`, {
+        `Geração concluída: ${totalCreated} reviews, ${totalImages} imagens, ${totalErrors} erros (modo: ${mode})`, {
           total_created: totalCreated,
           total_images: totalImages,
           total_errors: totalErrors,
+          mode,
           results,
         });
 
@@ -447,7 +380,8 @@ serve(async (req) => {
         const chunk = selected.slice(i, i + CHUNK);
         for (const productId of chunk) {
           try {
-            const result = await generateReviewsForProduct(supa, SUPABASE_URL, LOVABLE_API_KEY, productId, reviewsPerProduct);
+            // Daily job uses "image" mode to attach real photos when available
+            const result = await generateReviewsForProduct(supa, SUPABASE_URL, LOVABLE_API_KEY, productId, reviewsPerProduct, "image");
             results.push({ product_id: productId, ...result });
           } catch { /* continue */ }
         }

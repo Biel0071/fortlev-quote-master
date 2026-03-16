@@ -2241,6 +2241,7 @@ export type Database = {
           path: string
           product_id: string
           sort_order: number
+          usage_count: number
         }
         Insert: {
           created_at?: string
@@ -2248,6 +2249,7 @@ export type Database = {
           path: string
           product_id: string
           sort_order?: number
+          usage_count?: number
         }
         Update: {
           created_at?: string
@@ -2255,6 +2257,7 @@ export type Database = {
           path?: string
           product_id?: string
           sort_order?: number
+          usage_count?: number
         }
         Relationships: [
           {

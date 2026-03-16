@@ -1,0 +1,1 @@
+ALTER TABLE public.store_product_images ADD COLUMN IF NOT EXISTS usage_count integer NOT NULL DEFAULT 0;

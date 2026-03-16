@@ -174,11 +174,11 @@ export default function StoreHome() {
         >
           <HomeProductsByIds
             loading={loading}
-            productIds={merch.monthlyTopSales}
+            productIds={topClickedIds}
             products={activeProducts as any}
             onAdd={onAdd}
             limit={8}
-            emptyText="Sem vendas registradas neste período."
+            emptyText="Sem dados de cliques registrados."
           />
         </HomeSection>
       ) : null}

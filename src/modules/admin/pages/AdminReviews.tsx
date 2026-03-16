@@ -224,6 +224,7 @@ export default function AdminReviews() {
           { label: "Semana", value: weekCount, icon: TrendingUp, color: "text-emerald-500" },
           { label: "Pendentes", value: pendingCount, icon: Clock, color: "text-yellow-600" },
           { label: "Aprovadas", value: approvedCount, icon: CheckCircle, color: "text-green-600" },
+          { label: "Com imagem", value: reviewsWithImagesCount, icon: ImageIcon, color: "text-purple-500" },
           { label: "Nota média", value: avgRating, icon: Star, color: "text-yellow-500" },
         ].map((m) => (
           <Card key={m.label} className="rounded-2xl">

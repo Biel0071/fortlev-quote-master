@@ -103,6 +103,7 @@ async function generateReviewsForProduct(
   productId: string,
   count: number,
   mode: GenerationMode,
+  dateSpreadYears = 0,
 ): Promise<{ reviews_created: number; images_attached: number; error?: string }> {
   const { data: product } = await supa
     .from("store_products")

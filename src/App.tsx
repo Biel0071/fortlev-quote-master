@@ -126,6 +126,7 @@ const App = () => (
               <Route path="imagens/revisao" element={<AdminImageReview />} />
               <Route path="relatorios-ia" element={<AdminAiReports />} />
               <Route path="operacoes-lote" element={<AdminBatchOps />} />
+              <Route path="produtos/recomendacoes" element={<AdminRecommendations />} />
 
               <Route path="categorias" element={<AdminCategoriesList />} />
               <Route path="categorias/nova" element={<AdminCategoryForm />} />

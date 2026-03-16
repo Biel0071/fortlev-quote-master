@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
 import {
-  Brain, ChevronDown, ChevronUp, Copy, DollarSign, Download, Globe, Grid2x2, Grid3x3,
+  ArrowUp, Brain, ChevronDown, ChevronUp, Copy, DollarSign, Download, Globe, Grid2x2, Grid3x3,
   ImagePlus, LayoutGrid, Loader2, MoreHorizontal, Package, Pencil, Play, Plus, Power,
   RefreshCw, Search, Trash2, Upload,
 } from "lucide-react";

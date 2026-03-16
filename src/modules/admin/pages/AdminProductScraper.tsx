@@ -559,6 +559,7 @@ export default function AdminProductScraper() {
           const v = data.validation as ValidationSummary;
           mergedValidation.totalWithErrors += v.totalWithErrors;
           mergedValidation.priceErrors += v.priceErrors;
+          mergedValidation.priceAutoCorrected += v.priceAutoCorrected || 0;
           mergedValidation.imageErrors += v.imageErrors;
           mergedValidation.missingImages += v.missingImages;
           mergedValidation.parseErrors += v.parseErrors;

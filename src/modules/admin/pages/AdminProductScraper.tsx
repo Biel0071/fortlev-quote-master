@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
-type ValidationError = "price_error" | "image_error" | "missing_image" | "parse_error";
+type ValidationError = "price_error" | "price_auto_corrected" | "image_error" | "missing_image" | "parse_error";
 
 interface ScrapedProduct {
   produto: string;

@@ -122,6 +122,7 @@ function exportProducts(products: ScrapedProduct[], suffix = "") {
 
 const ERROR_LABELS: Record<ValidationError, { label: string; color: string; icon: typeof AlertTriangle }> = {
   price_error: { label: "Preço", color: "text-orange-500", icon: DollarSign },
+  price_auto_corrected: { label: "Corrigido", color: "text-blue-500", icon: DollarSign },
   image_error: { label: "Imagem", color: "text-red-500", icon: ShieldAlert },
   missing_image: { label: "Sem imagem", color: "text-amber-500", icon: ImageOff },
   parse_error: { label: "Parse", color: "text-yellow-500", icon: AlertTriangle },

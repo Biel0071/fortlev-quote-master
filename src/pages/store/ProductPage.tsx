@@ -236,39 +236,7 @@ function splitDescription(markdown: string) {
   return { general, tech };
 }
 
-function ProductRatingBadge({ productId }: { productId: string }) {
-  const [summary, setSummary] = useState<{ average_rating: number; total_reviews: number } | null>(null);
-
-  useEffect(() => {
-    if (!productId) return;
-    cloud
-      .from("product_rating_summary")
-      .select("average_rating, total_reviews")
-      .eq("product_id", productId)
-      .single()
-      .then(({ data }) => {
-        if (data && (data as any).total_reviews > 0) setSummary(data as any);
-      });
-  }, [productId]);
-
-  if (!summary) return null;
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex gap-0.5">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Star
-            key={i}
-            className={`h-3.5 w-3.5 ${i < Math.round(summary.average_rating) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"}`}
-          />
-        ))}
-      </div>
-      <span className="text-xs text-muted-foreground">
-        {Number(summary.average_rating).toFixed(1)} ({summary.total_reviews})
-      </span>
-    </div>
-  );
-}
+// Rating is now rendered inside ProductBadges component
 
 export default function ProductPage() {
   const { id } = useParams();

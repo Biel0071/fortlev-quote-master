@@ -53,7 +53,7 @@ async function incrementImageUsage(supa: any, imageId: string) {
 
 /* ---------- Core review generation ---------- */
 
-type GenerationMode = "text" | "image" | "ai";
+type GenerationMode = "text" | "image" | "text_image";
 
 async function generateReviewsForProduct(
   supa: any,
@@ -84,9 +84,9 @@ async function generateReviewsForProduct(
   const remainingSlots = 250 - (existingCount ?? 0);
   const actualCount = Math.min(count, remainingSlots);
 
-  // Get available product images for reuse (only if mode allows images)
+  // Get available product images for reuse (if mode uses images)
   let productImages: { id: string; url: string; usage_count: number }[] = [];
-  if (mode === "image") {
+  if (mode === "image" || mode === "text_image") {
     productImages = await getProductImages(supa, supabaseUrl, productId);
   }
 
@@ -148,7 +148,7 @@ Retorne APENAS um JSON array sem markdown:
     verified_purchase?: boolean;
   }>;
 
-  const IMAGE_CHANCE = 0.3; // 30% of reviews get images when mode=image
+  const IMAGE_CHANCE = 0.3; // 30% of reviews get images when mode=text_image
   let imagesAttached = 0;
   const now = Date.now();
   const insertedReviewIds: string[] = [];
@@ -158,8 +158,13 @@ Retorne APENAS um JSON array sem markdown:
     const hoursAgo = Math.floor(Math.random() * 24);
     const created = new Date(now - daysAgo * 86400000 - hoursAgo * 3600000);
 
-    // Determine if this review gets an image
-    const shouldHaveImage = mode === "image" && productImages.length > 0 && Math.random() < IMAGE_CHANCE;
+    // Determine if this review gets an image based on mode
+    let shouldHaveImage = false;
+    if (mode === "image" && productImages.length > 0) {
+      shouldHaveImage = true; // all reviews get images in "image" mode
+    } else if (mode === "text_image" && productImages.length > 0) {
+      shouldHaveImage = Math.random() < IMAGE_CHANCE; // 30% get images
+    }
 
     const row = {
       product_id: productId,

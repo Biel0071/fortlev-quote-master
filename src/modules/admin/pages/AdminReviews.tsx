@@ -57,7 +57,7 @@ export default function AdminReviews() {
   const [generating, setGenerating] = useState(false);
   const [genCount, setGenCount] = useState(5);
   const [genProductCount, setGenProductCount] = useState(10);
-  const [genMode, setGenMode] = useState<"text" | "image" | "ai">("text");
+  const [genMode, setGenMode] = useState<"text" | "image" | "text_image">("text");
   const [showLogs, setShowLogs] = useState(false);
   const [visibleCount, setVisibleCount] = useState(40);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -305,8 +305,8 @@ export default function AdminReviews() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="text">Apenas texto</SelectItem>
-                  <SelectItem value="image">Texto + imagem real</SelectItem>
-                  <SelectItem value="ai">Apenas IA (texto)</SelectItem>
+                  <SelectItem value="image">Apenas imagem</SelectItem>
+                  <SelectItem value="text_image">Texto + imagem</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={String(genProductCount)} onValueChange={(v) => setGenProductCount(Number(v))}>

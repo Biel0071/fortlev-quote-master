@@ -669,11 +669,7 @@ export default function AdminBulkImageSearch() {
   };
 
   const startPipeline = () => {
-    const base = getFilteredProducts();
-    const eligible = base.filter(
-      (p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20
-    );
-    runPipeline(eligible);
+    runPipeline(filtered);
   };
 
   const reprocessErrors = () => {

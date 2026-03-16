@@ -524,7 +524,7 @@ export default function AdminProductScraper() {
     let allErrorLogs: ErrorLog[] = [];
     let totalPages = 0;
     const domains = new Set<string>();
-    let mergedValidation: ValidationSummary = { totalWithErrors: 0, priceErrors: 0, imageErrors: 0, missingImages: 0, parseErrors: 0 };
+    let mergedValidation: ValidationSummary = { totalWithErrors: 0, priceErrors: 0, priceAutoCorrected: 0, imageErrors: 0, missingImages: 0, parseErrors: 0 };
 
     for (let i = 0; i < urls.length; i++) {
       if (cancelRef.current) { addLog(`⛔ Scraping cancelado pelo usuário`); break; }

@@ -50,6 +50,8 @@ import {
   AdminProductScraper,
   AdminReviews,
   AdminPriceIntelligence,
+  AdminImageReview,
+  AdminAiReports,
 } from "@/modules/admin";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
@@ -119,6 +121,8 @@ const App = () => (
               <Route path="produtos/importar" element={<AdminProductsImport />} />
               <Route path="produtos/scraper" element={<AdminProductScraper />} />
               <Route path="produtos/inteligencia-preco" element={<AdminPriceIntelligence />} />
+              <Route path="imagens/revisao" element={<AdminImageReview />} />
+              <Route path="relatorios-ia" element={<AdminAiReports />} />
 
               <Route path="categorias" element={<AdminCategoriesList />} />
               <Route path="categorias/nova" element={<AdminCategoryForm />} />

@@ -155,6 +155,7 @@ export function StoreProductCard({
       <CardContent className="p-4 sm:p-4 flex flex-col gap-3">
         <div className="min-w-0">
           <div className="text-[15px] sm:text-sm font-semibold leading-snug line-clamp-2">{product?.name}</div>
+          <ProductCardRating productId={product?.id} />
         </div>
 
         <div className="mt-auto space-y-3">

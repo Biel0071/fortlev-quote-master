@@ -132,7 +132,7 @@ export default function AdminBulkImageSearch() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null);
   const [detailProduct, setDetailProduct] = useState<ProductRow | null>(null);
-  const [filter, setFilter] = useState<"all" | "no-images" | "incomplete">("no-images");
+  const [filter, setFilter] = useState<"all" | "no-images" | "no-description" | "incomplete">("no-images");
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());

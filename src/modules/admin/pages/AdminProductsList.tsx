@@ -284,18 +284,83 @@ export default function AdminProductsList() {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportExcel} disabled={rows.length === 0}>
-          <Download className="h-3.5 w-3.5" /> Excel
-        </Button>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => nav("/admin/produtos/imagens")}>
-          <ImagePlus className="h-3.5 w-3.5" /> Imagens
+          <Download className="h-3.5 w-3.5" /> Exportar
         </Button>
         <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => nav("/admin/produtos/importar")}>
           <Upload className="h-3.5 w-3.5" /> Importar
         </Button>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => nav("/admin/produtos/scraper")}>
-          <Globe className="h-3.5 w-3.5" /> Scraper
-        </Button>
+        <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant={toolsOpen ? "default" : "outline"} size="sm" className="gap-1.5 text-xs">
+              <Brain className="h-3.5 w-3.5" /> Ferramentas IA
+              {toolsOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+          </CollapsibleTrigger>
+        </Collapsible>
       </div>
+
+      {/* Orchestrator Panel */}
+      <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
+        <CollapsibleContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 rounded-xl border bg-card/80 backdrop-blur-sm">
+            {/* Scraper */}
+            <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav("/admin/produtos/scraper")}>
+              <CardContent className="p-4 text-center space-y-2">
+                <Globe className="h-8 w-8 mx-auto text-primary" />
+                <h4 className="font-semibold text-sm">Scraper</h4>
+                <p className="text-[10px] text-muted-foreground leading-tight">Captura produtos de sites concorrentes</p>
+              </CardContent>
+            </Card>
+
+            {/* Gerador de Imagens */}
+            <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav("/admin/produtos/imagens")}>
+              <CardContent className="p-4 text-center space-y-2">
+                <ImagePlus className="h-8 w-8 mx-auto text-primary" />
+                <h4 className="font-semibold text-sm">Imagens</h4>
+                <p className="text-[10px] text-muted-foreground leading-tight">Busca e baixa imagens automaticamente</p>
+              </CardContent>
+            </Card>
+
+            {/* Inteligência de Preço */}
+            <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav("/admin/produtos/inteligencia-preco")}>
+              <CardContent className="p-4 text-center space-y-2">
+                <DollarSign className="h-8 w-8 mx-auto text-primary" />
+                <h4 className="font-semibold text-sm">Preços</h4>
+                <p className="text-[10px] text-muted-foreground leading-tight">Valida e corrige preços por faixa de mercado</p>
+              </CardContent>
+            </Card>
+
+            {/* Validar Preços (batch) */}
+            <Card className="border-primary/10 hover:border-primary/30 transition-colors">
+              <CardContent className="p-4 text-center space-y-2">
+                <DollarSign className="h-8 w-8 mx-auto text-emerald-600" />
+                <h4 className="font-semibold text-sm">Validar Preços</h4>
+                <p className="text-[10px] text-muted-foreground leading-tight">Corrige preços em lote automaticamente</p>
+                <Button size="sm" className="w-full text-xs gap-1" disabled={batchAction !== null} onClick={() => runBatchAction("validate_prices")}>
+                  {batchAction === "validate_prices" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                  Executar
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Executar Tudo */}
+            <Card className="border-primary/10 hover:border-primary/30 transition-colors">
+              <CardContent className="p-4 text-center space-y-2">
+                <div className="flex justify-center gap-0.5">
+                  <DollarSign className="h-6 w-6 text-primary" />
+                  <ImagePlus className="h-6 w-6 text-primary" />
+                </div>
+                <h4 className="font-semibold text-sm">Executar Tudo</h4>
+                <p className="text-[10px] text-muted-foreground leading-tight">Valida preços + baixa imagens em sequência</p>
+                <Button size="sm" className="w-full text-xs gap-1" disabled={batchAction !== null} onClick={() => runBatchAction("both")}>
+                  {batchAction === "both" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                  Executar Tudo
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Stats */}
       <div className="flex flex-wrap items-center gap-3">

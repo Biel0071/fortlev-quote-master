@@ -816,7 +816,7 @@ export default function AdminBulkImageSearch() {
   const eligibleCount = getFilteredProducts().filter(
     (p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20
   ).length;
-  const filterLabel = filter === "no-images" ? "sem imagens" : filter === "incomplete" ? "incompletos" : "todos";
+  const eligibleLabel = "elegíveis";
 
   return (
     <div className="space-y-4 px-1 sm:px-0">
@@ -914,7 +914,7 @@ export default function AdminBulkImageSearch() {
                 className="w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-semibold gap-2"
               >
                 <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
-                IMPORTAR AUTOMATICAMENTE ({eligibleCount} {filterLabel})
+                IMPORTAR AUTOMATICAMENTE ({eligibleCount} {eligibleLabel})
               </Button>
               {eligibleCount === 0 && (
                 <p className="text-xs text-green-600 font-medium">✅ Todos os produtos já estão completos!</p>

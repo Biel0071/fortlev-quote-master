@@ -66,6 +66,8 @@ export default function AdminReviews() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [reviewsWithImagesCount, setReviewsWithImagesCount] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
+  const [searchingImages, setSearchingImages] = useState(false);
+  const [poolStats, setPoolStats] = useState({ total_images: 0, products_with_pool: 0 });
 
   /* ---------- data loading ---------- */
   const load = useCallback(async () => {

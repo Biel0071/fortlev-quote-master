@@ -64,6 +64,8 @@ export default function AdminProductsList() {
   const [gridSize, setGridSize] = useState<GridSize>("md");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [batchAction, setBatchAction] = useState<string | null>(null);
 
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchDone, setBatchDone] = useState(0);

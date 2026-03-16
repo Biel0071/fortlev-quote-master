@@ -7,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import {
   BarChart3, CheckCircle, Clock, Loader2, MessageSquare, RefreshCw,
   Search, Sparkles, Star, TrendingUp, Trash2, XCircle, Calendar,
-  Image as ImageIcon, FileText, Eye, ChevronDown, ChevronUp,
+  Image as ImageIcon, FileText, Eye, ChevronDown, ChevronUp, X,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */

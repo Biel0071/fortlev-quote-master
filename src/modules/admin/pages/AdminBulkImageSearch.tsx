@@ -213,8 +213,8 @@ export default function AdminBulkImageSearch() {
 
   const filtered = getFilteredProducts();
   const noImagesCount = products.filter((p) => p.imageCount === 0).length;
-  const incompleteCount = products.filter((p) => p.imageCount > 0 && p.imageCount < MAX_IMAGES_PER_PRODUCT).length;
   const noDescriptionCount = products.filter((p) => !p.description || p.description.trim().length < 20).length;
+  const incompleteAllCount = products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20).length;
 
   const openSearch = (product: ProductRow) => { setSelectedProduct(product); setSearchOpen(true); };
   const openDetail = (product: ProductRow) => { setDetailProduct(product); setSelectedImages(new Set()); setSelectionMode(false); };
@@ -845,7 +845,7 @@ export default function AdminBulkImageSearch() {
           { value: products.length, label: "Total", icon: BarChart3, color: "", filterKey: "all" as const },
           { value: noImagesCount, label: "Sem imagens", icon: ImageIcon, color: "text-destructive", filterKey: "no-images" as const },
           { value: noDescriptionCount, label: "Sem descrição", icon: FileText, color: "text-orange-500", filterKey: "no-description" as const },
-          { value: incompleteCount + noImagesCount, label: "Incompletos", icon: AlertTriangle, color: "text-amber-500", filterKey: "incomplete" as const },
+          { value: incompleteAllCount, label: "Incompletos", icon: AlertTriangle, color: "text-amber-500", filterKey: "incomplete" as const },
           { value: `${products.length > 0 ? Math.round(((products.length - noImagesCount) / products.length) * 100) : 0}%`, label: "Cobertura", icon: Activity, color: "text-primary", filterKey: null },
           { value: stats?.throughput ? `${stats.throughput.toFixed(1)}/min` : "—", label: "Velocidade", icon: Gauge, color: "text-green-600", filterKey: null },
         ].map((stat) => (
@@ -913,34 +913,14 @@ export default function AdminBulkImageSearch() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                <div className="flex gap-1 flex-wrap">
-                  {([
-                    { key: "no-images" as const, label: "Sem imagens" },
-                    { key: "no-description" as const, label: "Sem descrição" },
-                    { key: "incomplete" as const, label: "Incompletos" },
-                    { key: "all" as const, label: "Todos" },
-                  ]).map((opt) => (
-                    <Button
-                      key={opt.key}
-                      size="sm"
-                      variant={filter === opt.key ? "default" : "outline"}
-                      className="h-7 text-xs"
-                      onClick={() => setFilter(opt.key)}
-                    >
-                      {opt.label}
-                    </Button>
-                  ))}
-                </div>
-                <Button
-                  onClick={startPipeline}
-                  disabled={loading || eligibleCount === 0}
-                  className="w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-semibold gap-2"
-                >
-                  <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
-                  IMPORTAR AUTOMATICAMENTE ({eligibleCount} elegíveis)
-                </Button>
-              </div>
+              <Button
+                onClick={startPipeline}
+                disabled={loading || eligibleCount === 0}
+                className="w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-semibold gap-2"
+              >
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
+                IMPORTAR AUTOMATICAMENTE ({eligibleCount} elegíveis)
+              </Button>
               {eligibleCount === 0 && (
                 <p className="text-xs text-green-600 font-medium">✅ Todos os produtos já estão completos!</p>
               )}
@@ -1097,7 +1077,7 @@ export default function AdminBulkImageSearch() {
           Sem descrição ({noDescriptionCount})
         </Button>
         <Button variant={filter === "incomplete" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("incomplete")}>
-          Incompletos ({products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20).length})
+          Incompletos ({incompleteAllCount})
         </Button>
         <Button variant={filter === "all" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("all")}>
           Todos ({products.length})

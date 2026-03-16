@@ -392,6 +392,9 @@ async function runPipeline(
       productName, // full name
       brand ? `${productName} ${brand} embalagem` : `${productName} embalagem`,
       model ? `${brand} ${model} ${weight}`.trim() : "",
+      // Usage-context queries for realistic review photos
+      `${productName} instalado`,
+      `${productName} obra aplicação`,
     ].filter(Boolean);
 
     log.push(`Queries: ${queries.join(" | ")}`);

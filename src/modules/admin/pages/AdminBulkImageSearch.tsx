@@ -839,17 +839,21 @@ export default function AdminBulkImageSearch() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - clickable to filter */}
       <div className="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
         {[
-          { value: products.length, label: "Total", icon: BarChart3, color: "" },
-          { value: noImagesCount, label: "Sem imagens", icon: ImageIcon, color: "text-destructive" },
-          { value: noDescriptionCount, label: "Sem descrição", icon: FileText, color: "text-orange-500" },
-          { value: incompleteCount + noImagesCount, label: "Incompletos", icon: AlertTriangle, color: "text-amber-500" },
-          { value: `${products.length > 0 ? Math.round(((products.length - noImagesCount) / products.length) * 100) : 0}%`, label: "Cobertura", icon: Activity, color: "text-primary" },
-          { value: stats?.throughput ? `${stats.throughput.toFixed(1)}/min` : "—", label: "Velocidade", icon: Gauge, color: "text-green-600" },
+          { value: products.length, label: "Total", icon: BarChart3, color: "", filterKey: "all" as const },
+          { value: noImagesCount, label: "Sem imagens", icon: ImageIcon, color: "text-destructive", filterKey: "no-images" as const },
+          { value: noDescriptionCount, label: "Sem descrição", icon: FileText, color: "text-orange-500", filterKey: "no-description" as const },
+          { value: incompleteCount + noImagesCount, label: "Incompletos", icon: AlertTriangle, color: "text-amber-500", filterKey: "incomplete" as const },
+          { value: `${products.length > 0 ? Math.round(((products.length - noImagesCount) / products.length) * 100) : 0}%`, label: "Cobertura", icon: Activity, color: "text-primary", filterKey: null },
+          { value: stats?.throughput ? `${stats.throughput.toFixed(1)}/min` : "—", label: "Velocidade", icon: Gauge, color: "text-green-600", filterKey: null },
         ].map((stat) => (
-          <Card key={stat.label} className="rounded-xl">
+          <Card
+            key={stat.label}
+            className={`rounded-xl transition-all ${stat.filterKey ? "cursor-pointer hover:ring-2 hover:ring-primary/40 active:scale-[0.97]" : ""} ${stat.filterKey && filter === stat.filterKey ? "ring-2 ring-primary shadow-md" : ""}`}
+            onClick={() => stat.filterKey && setFilter(stat.filterKey)}
+          >
             <CardContent className="p-3 sm:p-4 text-center">
               <div className={`text-lg sm:text-2xl font-bold ${stat.color}`}>{stat.value}</div>
               <div className="text-[10px] sm:text-xs text-muted-foreground flex items-center justify-center gap-1">
@@ -909,14 +913,34 @@ export default function AdminBulkImageSearch() {
                 </div>
               </div>
 
-              <Button
-                onClick={startPipeline}
-                disabled={loading || eligibleCount === 0}
-                className="w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-semibold gap-2"
-              >
-                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
-                IMPORTAR AUTOMATICAMENTE ({eligibleCount} {eligibleLabel})
-              </Button>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                <div className="flex gap-1 flex-wrap">
+                  {([
+                    { key: "no-images" as const, label: "Sem imagens" },
+                    { key: "no-description" as const, label: "Sem descrição" },
+                    { key: "incomplete" as const, label: "Incompletos" },
+                    { key: "all" as const, label: "Todos" },
+                  ]).map((opt) => (
+                    <Button
+                      key={opt.key}
+                      size="sm"
+                      variant={filter === opt.key ? "default" : "outline"}
+                      className="h-7 text-xs"
+                      onClick={() => setFilter(opt.key)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  onClick={startPipeline}
+                  disabled={loading || eligibleCount === 0}
+                  className="w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-semibold gap-2"
+                >
+                  <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
+                  IMPORTAR AUTOMATICAMENTE ({eligibleCount} elegíveis)
+                </Button>
+              </div>
               {eligibleCount === 0 && (
                 <p className="text-xs text-green-600 font-medium">✅ Todos os produtos já estão completos!</p>
               )}

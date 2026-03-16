@@ -206,7 +206,8 @@ export default function AdminBulkImageSearch() {
 
   const getFilteredProducts = useCallback(() => {
     if (filter === "no-images") return products.filter((p) => p.imageCount === 0);
-    if (filter === "incomplete") return products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT);
+    if (filter === "no-description") return products.filter((p) => !p.description || p.description.trim().length < 20);
+    if (filter === "incomplete") return products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20);
     return products;
   }, [products, filter]);
 

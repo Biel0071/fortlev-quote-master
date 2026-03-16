@@ -50,6 +50,8 @@ type LogEntry = {
 export default function AdminReviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewImageIds, setReviewImageIds] = useState<Set<string>>(new Set());
+  const [reviewImageMap, setReviewImageMap] = useState<Map<string, string[]>>(new Map());
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "with_image">("pending");

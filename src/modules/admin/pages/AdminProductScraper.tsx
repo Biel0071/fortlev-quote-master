@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { cloud } from "@/lib/cloud";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,12 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import {
   Globe, Loader2, Search, FileSpreadsheet, CheckCircle2, XCircle, Clock,
-  Timer, History, Trash2, Eye, ArrowLeft, Download,
+  Timer, History, Trash2, Eye, ArrowLeft, Download, AlertTriangle, ImageOff,
+  DollarSign, Filter, Import, ShieldAlert,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+
+type ValidationError = "price_error" | "image_error" | "missing_image" | "parse_error";
 
 interface ScrapedProduct {
   produto: string;
@@ -22,6 +26,23 @@ interface ScrapedProduct {
   precoNum: number | null;
   pagina: number;
   dominio: string;
+  imagemUrl?: string | null;
+  categoria?: string | null;
+  errors?: ValidationError[];
+}
+
+interface ErrorLog {
+  type: ValidationError;
+  produto: string;
+  detail: string;
+}
+
+interface ValidationSummary {
+  totalWithErrors: number;
+  priceErrors: number;
+  imageErrors: number;
+  missingImages: number;
+  parseErrors: number;
 }
 
 interface QueueItem {
@@ -57,6 +78,9 @@ function sanitizeHistoryProducts(items: ScrapedProduct[]): ScrapedProduct[] {
     precoNum: typeof p.precoNum === "number" ? p.precoNum : null,
     pagina: Number.isFinite(p.pagina) ? p.pagina : 0,
     dominio: p.dominio ?? "",
+    imagemUrl: p.imagemUrl ?? null,
+    categoria: p.categoria ?? null,
+    errors: p.errors ?? [],
   }));
 }
 
@@ -78,55 +102,339 @@ function exportProducts(products: ScrapedProduct[], suffix = "") {
     SKU: `SCRP-${String(i + 1).padStart(5, "0")}`,
     Produto: p.produto,
     "Preço": p.precoNum ?? "",
-    Categoria: "",
+    Categoria: p.categoria || "",
+    Imagem: p.imagemUrl || "",
+    Erros: (p.errors || []).join(", ") || "OK",
     URL: p.url || "",
     "Domínio": p.dominio || "",
     "Página": p.pagina,
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws["!cols"] = [{ wch: 14 }, { wch: 50 }, { wch: 14 }, { wch: 20 }, { wch: 60 }, { wch: 25 }, { wch: 8 }];
+  ws["!cols"] = [{ wch: 14 }, { wch: 50 }, { wch: 14 }, { wch: 20 }, { wch: 50 }, { wch: 20 }, { wch: 60 }, { wch: 25 }, { wch: 8 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Produtos");
   XLSX.writeFile(wb, `produtos_scrape_${ts}${suffix}.xlsx`);
   toast({ title: "Excel exportado" });
 }
 
-function ProductsTable({ products }: { products: ScrapedProduct[] }) {
+const ERROR_LABELS: Record<ValidationError, { label: string; color: string; icon: typeof AlertTriangle }> = {
+  price_error: { label: "Preço", color: "text-orange-500", icon: DollarSign },
+  image_error: { label: "Imagem", color: "text-red-500", icon: ShieldAlert },
+  missing_image: { label: "Sem imagem", color: "text-amber-500", icon: ImageOff },
+  parse_error: { label: "Parse", color: "text-yellow-500", icon: AlertTriangle },
+};
+
+function ErrorBadge({ error }: { error: ValidationError }) {
+  const config = ERROR_LABELS[error];
+  const Icon = config.icon;
+  return (
+    <Badge variant="outline" className={`text-[10px] gap-0.5 px-1.5 py-0 ${config.color} border-current/30`}>
+      <Icon className="h-2.5 w-2.5" />
+      {config.label}
+    </Badge>
+  );
+}
+
+function ProductsTable({ products, showImage = false }: { products: ScrapedProduct[]; showImage?: boolean }) {
   return (
     <ScrollArea className="max-h-[500px]">
       <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-background border-b">
+        <thead className="sticky top-0 bg-background border-b z-10">
           <tr>
             <th className="text-left py-2 px-2 w-10">#</th>
+            {showImage && <th className="text-left py-2 px-2 w-14">Img</th>}
             <th className="text-left py-2 px-2">Produto</th>
             <th className="text-left py-2 px-2 w-28">Preço</th>
+            <th className="text-left py-2 px-2 w-24">Categoria</th>
+            <th className="text-left py-2 px-2 w-32">Status</th>
             <th className="text-left py-2 px-2 w-28">Domínio</th>
             <th className="text-left py-2 px-2 w-16">Pág</th>
-            <th className="text-left py-2 px-2 w-20">Link</th>
+            <th className="text-left py-2 px-2 w-14">Link</th>
           </tr>
         </thead>
         <tbody>
-          {products.map((p, i) => (
-            <tr key={i} className="border-b last:border-0 hover:bg-muted/40">
-              <td className="py-2 px-2 text-muted-foreground">{i + 1}</td>
-              <td className="py-2 px-2 font-medium">{p.produto}</td>
-              <td className="py-2 px-2 text-muted-foreground">
-                {p.precoNum ? `R$ ${p.precoNum.toFixed(2).replace(".", ",")}` : p.preco || "—"}
-              </td>
-              <td className="py-2 px-2 text-xs text-muted-foreground">{p.dominio}</td>
-              <td className="py-2 px-2 text-center">
-                <Badge variant="secondary" className="text-xs">{p.pagina}</Badge>
-              </td>
-              <td className="py-2 px-2">
-                {p.url ? (
-                  <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Ver</a>
-                ) : "—"}
-              </td>
-            </tr>
-          ))}
+          {products.map((p, i) => {
+            const hasErrors = (p.errors?.length ?? 0) > 0;
+            return (
+              <tr key={i} className={`border-b last:border-0 hover:bg-muted/40 ${hasErrors ? "bg-destructive/5" : ""}`}>
+                <td className="py-2 px-2 text-muted-foreground">{i + 1}</td>
+                {showImage && (
+                  <td className="py-1 px-2">
+                    {p.imagemUrl ? (
+                      <img
+                        src={p.imagemUrl}
+                        alt=""
+                        className="w-10 h-10 object-cover rounded border"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded border bg-muted/40 flex items-center justify-center">
+                        <ImageOff className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    )}
+                  </td>
+                )}
+                <td className="py-2 px-2 font-medium max-w-[200px] truncate">{p.produto}</td>
+                <td className={`py-2 px-2 ${p.errors?.includes("price_error") ? "text-orange-500 font-semibold" : "text-muted-foreground"}`}>
+                  {p.precoNum ? `R$ ${p.precoNum.toFixed(2).replace(".", ",")}` : p.preco || "—"}
+                </td>
+                <td className="py-2 px-2 text-xs text-muted-foreground">{p.categoria || "—"}</td>
+                <td className="py-2 px-2">
+                  {hasErrors ? (
+                    <div className="flex flex-wrap gap-1">
+                      {p.errors!.map((e, ei) => <ErrorBadge key={ei} error={e} />)}
+                    </div>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-0">✓ OK</Badge>
+                  )}
+                </td>
+                <td className="py-2 px-2 text-xs text-muted-foreground">{p.dominio}</td>
+                <td className="py-2 px-2 text-center">
+                  <Badge variant="secondary" className="text-xs">{p.pagina}</Badge>
+                </td>
+                <td className="py-2 px-2">
+                  {p.url ? (
+                    <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">Ver</a>
+                  ) : "—"}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </ScrollArea>
+  );
+}
+
+// ─── Preview / Import step ───
+function PreviewImportPanel({
+  products,
+  validation,
+  errorLogs,
+  onImport,
+  onDismiss,
+}: {
+  products: ScrapedProduct[];
+  validation: ValidationSummary | null;
+  errorLogs: ErrorLog[];
+  onImport: (selected: ScrapedProduct[]) => void;
+  onDismiss: () => void;
+}) {
+  const [filter, setFilter] = useState<"all" | "ok" | "errors">("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => {
+    // By default select only products without errors
+    const ids = new Set<number>();
+    products.forEach((p, i) => { if (!p.errors?.length) ids.add(i); });
+    return ids;
+  });
+
+  const filtered = useMemo(() => {
+    return products
+      .map((p, i) => ({ ...p, _idx: i }))
+      .filter((p) => {
+        if (filter === "ok") return !p.errors?.length;
+        if (filter === "errors") return (p.errors?.length ?? 0) > 0;
+        return true;
+      });
+  }, [products, filter]);
+
+  const toggleAll = (checked: boolean) => {
+    if (checked) {
+      const newSet = new Set(selectedIds);
+      filtered.forEach((p) => newSet.add(p._idx));
+      setSelectedIds(newSet);
+    } else {
+      const newSet = new Set(selectedIds);
+      filtered.forEach((p) => newSet.delete(p._idx));
+      setSelectedIds(newSet);
+    }
+  };
+
+  const toggleOne = (idx: number) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(idx)) newSet.delete(idx);
+    else newSet.add(idx);
+    setSelectedIds(newSet);
+  };
+
+  const okCount = products.filter(p => !p.errors?.length).length;
+  const errCount = products.filter(p => (p.errors?.length ?? 0) > 0).length;
+
+  return (
+    <Card className="border-primary/30">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Eye className="h-4 w-4" />
+          Preview — Revisão antes de importar ({products.length} produtos)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Validation summary */}
+        {validation && validation.totalWithErrors > 0 && (
+          <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-amber-700">
+              <AlertTriangle className="h-4 w-4" />
+              {validation.totalWithErrors} produto(s) com problemas detectados
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              {validation.priceErrors > 0 && (
+                <div className="flex items-center gap-1 text-orange-600">
+                  <DollarSign className="h-3 w-3" /> {validation.priceErrors} preço(s) fora da faixa
+                </div>
+              )}
+              {validation.missingImages > 0 && (
+                <div className="flex items-center gap-1 text-amber-600">
+                  <ImageOff className="h-3 w-3" /> {validation.missingImages} sem imagem
+                </div>
+              )}
+              {validation.imageErrors > 0 && (
+                <div className="flex items-center gap-1 text-red-600">
+                  <ShieldAlert className="h-3 w-3" /> {validation.imageErrors} imagem incoerente
+                </div>
+              )}
+              {validation.parseErrors > 0 && (
+                <div className="flex items-center gap-1 text-yellow-600">
+                  <AlertTriangle className="h-3 w-3" /> {validation.parseErrors} erro de parse
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Error logs collapsible */}
+        {errorLogs.length > 0 && (
+          <details className="text-xs">
+            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+              📋 Ver {errorLogs.length} log(s) detalhado(s) de erro
+            </summary>
+            <ScrollArea className="max-h-40 mt-2 rounded border bg-muted/30 p-2">
+              <div className="space-y-1 font-mono">
+                {errorLogs.map((e, i) => (
+                  <div key={i} className="text-muted-foreground">
+                    <span className={ERROR_LABELS[e.type]?.color || ""}>[{e.type}]</span>{" "}
+                    <span className="font-medium">{e.produto}</span> — {e.detail}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </details>
+        )}
+
+        {/* Filter tabs */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setFilter("all")}
+          >
+            Todos ({products.length})
+          </Button>
+          <Button
+            variant={filter === "ok" ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => setFilter("ok")}
+          >
+            <CheckCircle2 className="h-3 w-3" /> OK ({okCount})
+          </Button>
+          <Button
+            variant={filter === "errors" ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => setFilter("errors")}
+          >
+            <AlertTriangle className="h-3 w-3" /> Com erros ({errCount})
+          </Button>
+
+          <div className="ml-auto flex items-center gap-2">
+            <Checkbox
+              checked={filtered.every(p => selectedIds.has(p._idx))}
+              onCheckedChange={(checked) => toggleAll(!!checked)}
+            />
+            <span className="text-xs text-muted-foreground">
+              {selectedIds.size} selecionado(s)
+            </span>
+          </div>
+        </div>
+
+        {/* Product list with checkboxes */}
+        <ScrollArea className="max-h-[400px]">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-background border-b z-10">
+              <tr>
+                <th className="w-8 px-2 py-2"></th>
+                <th className="text-left py-2 px-2 w-14">Img</th>
+                <th className="text-left py-2 px-2">Produto</th>
+                <th className="text-left py-2 px-2 w-28">Preço</th>
+                <th className="text-left py-2 px-2 w-24">Categoria</th>
+                <th className="text-left py-2 px-2 w-28">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p) => {
+                const hasErrors = (p.errors?.length ?? 0) > 0;
+                return (
+                  <tr
+                    key={p._idx}
+                    className={`border-b last:border-0 hover:bg-muted/40 cursor-pointer ${hasErrors ? "bg-destructive/5" : ""}`}
+                    onClick={() => toggleOne(p._idx)}
+                  >
+                    <td className="px-2 py-2">
+                      <Checkbox checked={selectedIds.has(p._idx)} />
+                    </td>
+                    <td className="py-1 px-2">
+                      {p.imagemUrl ? (
+                        <img src={p.imagemUrl} alt="" className="w-10 h-10 object-cover rounded border"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      ) : (
+                        <div className="w-10 h-10 rounded border bg-muted/40 flex items-center justify-center">
+                          <ImageOff className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2 px-2 font-medium max-w-[200px] truncate">{p.produto}</td>
+                    <td className={`py-2 px-2 ${hasErrors && p.errors?.includes("price_error") ? "text-orange-500 font-semibold" : "text-muted-foreground"}`}>
+                      {p.precoNum ? `R$ ${p.precoNum.toFixed(2).replace(".", ",")}` : p.preco || "—"}
+                    </td>
+                    <td className="py-2 px-2 text-xs text-muted-foreground">{p.categoria || "—"}</td>
+                    <td className="py-2 px-2">
+                      {hasErrors ? (
+                        <div className="flex flex-wrap gap-1">
+                          {p.errors!.map((e, ei) => <ErrorBadge key={ei} error={e} />)}
+                        </div>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-0">✓ OK</Badge>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </ScrollArea>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-3 pt-2 border-t">
+          <Button onClick={() => {
+            const selected = products.filter((_, i) => selectedIds.has(i));
+            if (selected.length === 0) {
+              toast({ title: "Selecione pelo menos um produto", variant: "destructive" });
+              return;
+            }
+            onImport(selected);
+          }} className="gap-2">
+            <Import className="h-4 w-4" />
+            Importar {selectedIds.size} produto(s)
+          </Button>
+          <Button variant="outline" onClick={() => exportProducts(products)} className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Exportar Excel
+          </Button>
+          <Button variant="ghost" onClick={onDismiss}>Descartar</Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -135,6 +443,8 @@ export default function AdminProductScraper() {
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<ScrapedProduct[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
+  const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
+  const [validation, setValidation] = useState<ValidationSummary | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [stats, setStats] = useState<{
     totalUrls: number; totalPages: number; totalProducts: number; executionTime: number;
@@ -142,6 +452,8 @@ export default function AdminProductScraper() {
   const [history, setHistory] = useState<ScrapeHistoryItem[]>([]);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [viewingHistory, setViewingHistory] = useState<ScrapeHistoryItem | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [importing, setImporting] = useState(false);
   const cancelRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
@@ -194,6 +506,9 @@ export default function AdminProductScraper() {
     setProducts([]);
     setStats(null);
     setElapsedTime(0);
+    setErrorLogs([]);
+    setValidation(null);
+    setShowPreview(false);
 
     const initialQueue: QueueItem[] = urls.map(u => ({
       url: u, status: "pending" as const, pages: 0, products: 0,
@@ -202,8 +517,10 @@ export default function AdminProductScraper() {
     setLogs([`📋 Fila: ${urls.length} URL(s) para processar`]);
 
     let allProducts: ScrapedProduct[] = [];
+    let allErrorLogs: ErrorLog[] = [];
     let totalPages = 0;
     const domains = new Set<string>();
+    let mergedValidation: ValidationSummary = { totalWithErrors: 0, priceErrors: 0, imageErrors: 0, missingImages: 0, parseErrors: 0 };
 
     for (let i = 0; i < urls.length; i++) {
       if (cancelRef.current) { addLog(`⛔ Scraping cancelado pelo usuário`); break; }
@@ -231,6 +548,17 @@ export default function AdminProductScraper() {
         allProducts = [...allProducts, ...urlProducts];
         totalPages += data.totalPages || 0;
         (data.logs || []).forEach((l: string) => addLog(l));
+
+        // Merge error logs & validation
+        if (data.errorLogs) allErrorLogs = [...allErrorLogs, ...(data.errorLogs as ErrorLog[])];
+        if (data.validation) {
+          const v = data.validation as ValidationSummary;
+          mergedValidation.totalWithErrors += v.totalWithErrors;
+          mergedValidation.priceErrors += v.priceErrors;
+          mergedValidation.imageErrors += v.imageErrors;
+          mergedValidation.missingImages += v.missingImages;
+          mergedValidation.parseErrors += v.parseErrors;
+        }
 
         setQueue(prev => prev.map((q, idx) =>
           idx === i ? { ...q, status: "done", pages: data.totalPages || 0, products: urlProducts.length } : q
@@ -264,7 +592,10 @@ export default function AdminProductScraper() {
 
     const executionTime = (Date.now() - startTimeRef.current) / 1000;
     setProducts(unique);
+    setErrorLogs(allErrorLogs);
+    setValidation(mergedValidation);
     setStats({ totalUrls: urls.length, totalPages, totalProducts: unique.length, executionTime });
+    setShowPreview(true);
     addLog(`\n🏁 Concluído: ${unique.length} produtos únicos de ${totalPages} páginas em ${formatDuration(executionTime)}`);
 
     const safeProducts = sanitizeHistoryProducts(unique);
@@ -284,14 +615,14 @@ export default function AdminProductScraper() {
         .single();
 
       if (historyError) {
-        addLog(`⚠️ Histórico não salvo com itens: ${historyError.message}`);
+        addLog(`⚠️ Histórico não salvo: ${historyError.message}`);
       } else if (inserted?.id) {
         localStorage.setItem(`scrape_history_items:${inserted.id}`, JSON.stringify(safeProducts));
       }
 
       await loadHistory();
     } catch (e: any) {
-      addLog(`⚠️ Histórico não salvo com itens: ${e?.message || "erro desconhecido"}`);
+      addLog(`⚠️ Histórico não salvo: ${e?.message || "erro desconhecido"}`);
     }
 
     toast({
@@ -299,6 +630,30 @@ export default function AdminProductScraper() {
       description: `${unique.length} produtos em ${totalPages} páginas (${formatDuration(executionTime)})`,
     });
     setLoading(false);
+  };
+
+  const handleImport = async (selected: ScrapedProduct[]) => {
+    setImporting(true);
+    try {
+      const rows = selected.map(p => ({
+        name: p.produto,
+        price: p.precoNum || 0,
+        category: p.categoria || null,
+        source_id: p.url || null,
+        active: true,
+        stock: 0,
+      }));
+
+      const { error } = await supabase.from("store_products").insert(rows as any);
+      if (error) throw error;
+
+      toast({ title: `${selected.length} produto(s) importado(s) com sucesso!` });
+      setShowPreview(false);
+    } catch (e: any) {
+      toast({ title: "Erro ao importar", description: e.message, variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleCancel = () => { cancelRef.current = true; setLoading(false); };
@@ -318,29 +673,17 @@ export default function AdminProductScraper() {
 
   const resolveHistoryProducts = (item: ScrapeHistoryItem | null): ScrapedProduct[] => {
     if (!item) return [];
-
     const dbProducts = Array.isArray(item.products_json) ? (item.products_json as ScrapedProduct[]) : [];
     if (dbProducts.length > 0) return dbProducts;
-
     const cachedProducts = readLocalHistoryProducts(item.id);
     if (cachedProducts.length > 0) return cachedProducts;
-
-    if (
-      stats &&
-      products.length > 0 &&
-      stats.totalProducts === item.total_products &&
-      stats.totalPages === item.total_pages
-    ) {
-      return products;
-    }
-
+    if (stats && products.length > 0 && stats.totalProducts === item.total_products && stats.totalPages === item.total_pages) return products;
     return [];
   };
 
   const hasHistoryProducts = (item: ScrapeHistoryItem): boolean => resolveHistoryProducts(item).length > 0;
 
   const urlCount = parseUrls(urlsInput).length;
-
   const historyProducts = resolveHistoryProducts(viewingHistory);
 
   return (
@@ -366,7 +709,7 @@ export default function AdminProductScraper() {
             className="font-mono text-sm"
           />
           {urlCount > 0 && (
-            <p className="text-xs text-muted-foreground">{urlCount} URL(s) detectada(s) • Paginação ilimitada</p>
+            <p className="text-xs text-muted-foreground">{urlCount} URL(s) detectada(s) • Paginação ilimitada • Validação inteligente ativada</p>
           )}
           <div className="flex flex-col sm:flex-row gap-3 items-center">
             {loading ? (
@@ -378,7 +721,7 @@ export default function AdminProductScraper() {
                 </div>
               </>
             ) : (
-              <Button onClick={handleScrape} className="gap-2">
+              <Button onClick={handleScrape} className="gap-2" disabled={importing}>
                 <Search className="h-4 w-4" />
                 Iniciar Scraping
               </Button>
@@ -431,30 +774,50 @@ export default function AdminProductScraper() {
         </Card>
       )}
 
-      {/* Stats + Export */}
+      {/* Stats */}
       {stats && (
         <div className="flex flex-wrap items-center gap-4">
           <Badge variant="outline" className="text-sm px-3 py-1">🌐 {stats.totalUrls} URLs</Badge>
           <Badge variant="outline" className="text-sm px-3 py-1">📄 {stats.totalPages} páginas</Badge>
           <Badge variant="outline" className="text-sm px-3 py-1">📦 {stats.totalProducts} produtos</Badge>
           <Badge variant="outline" className="text-sm px-3 py-1">⏱️ {formatDuration(stats.executionTime)}</Badge>
-          {products.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => exportProducts(products)} className="gap-2">
-              <FileSpreadsheet className="h-4 w-4" />
-              Exportar Excel
-            </Button>
+          {validation && validation.totalWithErrors > 0 && (
+            <Badge variant="outline" className="text-sm px-3 py-1 text-amber-600 border-amber-300">
+              ⚠️ {validation.totalWithErrors} com erro
+            </Badge>
           )}
         </div>
       )}
 
-      {/* Results Table */}
-      {products.length > 0 && (
+      {/* Preview / Import Panel (step 8) */}
+      {showPreview && products.length > 0 && !loading && (
+        <PreviewImportPanel
+          products={products}
+          validation={validation}
+          errorLogs={errorLogs}
+          onImport={handleImport}
+          onDismiss={() => setShowPreview(false)}
+        />
+      )}
+
+      {/* Results Table (shown after preview dismissed or for reference) */}
+      {!showPreview && products.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Produtos encontrados ({products.length})</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Produtos encontrados ({products.length})</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowPreview(true)} className="gap-1 text-xs">
+                  <Eye className="h-3 w-3" /> Revisar e importar
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => exportProducts(products)} className="gap-1 text-xs">
+                  <FileSpreadsheet className="h-3 w-3" /> Excel
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <ProductsTable products={products} />
+            <ProductsTable products={products} showImage />
           </CardContent>
         </Card>
       )}
@@ -487,7 +850,7 @@ export default function AdminProductScraper() {
                             onClick={() => exportProducts(resolveHistoryProducts(h), `_${h.id.slice(0,8)}`)}
                           >
                             <Download className="h-3 w-3" />
-                            Baixar resultados
+                            Baixar
                           </Button>
                         )}
                         <Button
@@ -571,7 +934,7 @@ export default function AdminProductScraper() {
 
               <div className="flex-1 overflow-auto">
                 {historyProducts.length > 0 ? (
-                  <ProductsTable products={historyProducts} />
+                  <ProductsTable products={historyProducts} showImage />
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-8">
                     Este registro antigo não salvou os itens; execute um novo scraping para visualizar e exportar os produtos aqui.

@@ -18,21 +18,107 @@ function randomUA(): string {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
+// ──────────────────────────────────────────────
+// 1. Brazilian price parsing (locale-aware)
+// ──────────────────────────────────────────────
+function parseLocalizedNumber(value: string | number | null): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return value;
+
+  let cleaned = String(value).replace(/\s/g, "").replace(/[R$€]/g, "");
+  // Remove unit suffixes
+  cleaned = cleaned.replace(/\/m[²2]?/gi, "").replace(/\/un\.?/gi, "").replace(/\/cx\.?/gi, "");
+  cleaned = cleaned.replace(/por\s*/gi, "").replace(/à vista.*/gi, "").trim();
+
+  const lastDot = cleaned.lastIndexOf(".");
+  const lastComma = cleaned.lastIndexOf(",");
+
+  if (lastDot === -1 && lastComma === -1) {
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? null : parsed;
+  }
+
+  if (lastComma > lastDot) {
+    // Brazilian: 7.222,00 → remove dots, comma→dot
+    cleaned = cleaned.replace(/\./g, "");
+    cleaned = cleaned.replace(",", ".");
+  } else {
+    // US/UK: 7,222.00 → remove commas
+    cleaned = cleaned.replace(/,/g, "");
+  }
+
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : Math.round(num * 100) / 100;
+}
+
+// ──────────────────────────────────────────────
+// 2. Anti-absurd price validation by category
+// ──────────────────────────────────────────────
+const PRICE_RANGES: Record<string, { min: number; max: number }> = {
+  argamassa: { min: 10, max: 200 },
+  areia: { min: 50, max: 300 },
+  tijolo: { min: 0.50, max: 5 },
+  bloco: { min: 0.50, max: 15 },
+  caixa_dagua: { min: 150, max: 4000 },
+  anel_vedacao: { min: 1, max: 30 },
+  cimento: { min: 15, max: 120 },
+  tinta: { min: 20, max: 800 },
+  telha: { min: 5, max: 200 },
+  tubo: { min: 3, max: 500 },
+  vergalhao: { min: 10, max: 300 },
+};
+
+function detectCategory(productName: string): string | null {
+  const hay = productName.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  if (hay.includes("argamassa")) return "argamassa";
+  if (hay.includes("areia")) return "areia";
+  if (hay.includes("tijolo")) return "tijolo";
+  if (hay.includes("bloco")) return "bloco";
+  if (hay.includes("caixa") && hay.includes("agua")) return "caixa_dagua";
+  if (hay.includes("anel") && hay.includes("vedac")) return "anel_vedacao";
+  if (hay.includes("cimento")) return "cimento";
+  if (hay.includes("tinta")) return "tinta";
+  if (hay.includes("telha")) return "telha";
+  if (hay.includes("tubo") || hay.includes("cano")) return "tubo";
+  if (hay.includes("vergalhao") || hay.includes("vergalhão")) return "vergalhao";
+  return null;
+}
+
+function validatePrice(price: number | null, productName: string): { valid: boolean; category: string | null } {
+  if (price === null || price <= 0) return { valid: false, category: null };
+  const cat = detectCategory(productName);
+  if (!cat) return { valid: true, category: null };
+  const range = PRICE_RANGES[cat];
+  if (!range) return { valid: true, category: cat };
+  return { valid: price >= range.min && price <= range.max, category: cat };
+}
+
+// ──────────────────────────────────────────────
+// 3. Image validation
+// ──────────────────────────────────────────────
+const IMAGE_BLACKLIST_TERMS = ["logo", "icon", "sprite", "placeholder", "banner", "selo", "stamp", "badge"];
+
+function isValidImageName(src: string): boolean {
+  const lower = src.toLowerCase();
+  return !IMAGE_BLACKLIST_TERMS.some(term => lower.includes(term));
+}
+
+// ──────────────────────────────────────────────
+// Scraping logic
+// ──────────────────────────────────────────────
+
 function buildPageUrls(baseUrl: string, page: number): string[] {
   const variants: string[] = [];
   const u = new URL(baseUrl);
 
-  // Magento / Convertiez ?p=N (CNR uses this)
   const u1 = new URL(baseUrl);
   u1.searchParams.set("p", String(page));
   variants.push(u1.toString());
 
-  // Generic ?page=N
   const u2 = new URL(baseUrl);
   u2.searchParams.set("page", String(page));
   variants.push(u2.toString());
 
-  // Path-based /page/N
   const pathBase = u.pathname.replace(/\/page\/\d+\/?$/, "").replace(/\/$/, "");
   const u3 = new URL(baseUrl);
   u3.pathname = `${pathBase}/page/${page}`;
@@ -43,52 +129,36 @@ function buildPageUrls(baseUrl: string, page: number): string[] {
 }
 
 const CARD_SELECTORS = [
-  ".item-product",
-  "div.li .item-product",
-  ".product-item-info",
-  ".product-item",
-  ".container-product",
-  ".product-card",
-  "[data-product]",
-  ".product-grid-item",
-  "article.product",
-  ".shelf-item",
-  ".vitrine-produto",
-  ".card-product",
-  "li.product",
-  ".product",
-  ".produto",
-  ".products-grid .item",
-  ".category-products .item",
-  "ol.products li",
-  "ul.products li",
+  ".item-product", "div.li .item-product", ".product-item-info", ".product-item",
+  ".container-product", ".product-card", "[data-product]", ".product-grid-item",
+  "article.product", ".shelf-item", ".vitrine-produto", ".card-product",
+  "li.product", ".product", ".produto", ".products-grid .item",
+  ".category-products .item", "ol.products li", "ul.products li",
   "ul.list-products > div.li",
 ];
 
 const TITLE_SELECTORS = [
-  "h2.title a", "h2.title",
-  "a.product-item-link", ".product-item-link",
-  ".product-title a", ".product-title",
-  ".product-name a", ".product-name",
-  ".produto-nome a", ".produto-nome",
-  ".name a", ".name",
-  "h2 a", "h3 a", "h2", "h3",
-  "a[title]",
+  "h2.title a", "h2.title", "a.product-item-link", ".product-item-link",
+  ".product-title a", ".product-title", ".product-name a", ".product-name",
+  ".produto-nome a", ".produto-nome", ".name a", ".name",
+  "h2 a", "h3 a", "h2", "h3", "a[title]",
 ];
 
 const PRICE_SELECTORS = [
-  ".sale-price strong.total-m2",
-  ".sale-price-pix-money span",
-  ".sale-price strong",
-  ".sale-price",
-  ".price-final_price .price",
-  ".price-box .price",
-  ".special-price .price",
-  ".price-final .price",
-  ".price-new", ".price", ".product-price",
-  ".preco", ".best-price", ".price__current",
-  "[data-price-amount]", "span.price", ".valor",
+  ".sale-price strong.total-m2", ".sale-price-pix-money span",
+  ".sale-price strong", ".sale-price", ".price-final_price .price",
+  ".price-box .price", ".special-price .price", ".price-final .price",
+  ".price-new", ".price", ".product-price", ".preco", ".best-price",
+  ".price__current", "[data-price-amount]", "span.price", ".valor",
 ];
+
+const IMAGE_SELECTORS = [
+  "img.product-image-photo", "img.product-image", ".product-image img",
+  ".product-item-photo img", ".product-img img", "img[data-src]",
+  ".product-thumb img", ".produto-imagem img", "img",
+];
+
+type ValidationError = "price_error" | "image_error" | "missing_image" | "parse_error";
 
 interface ScrapedProduct {
   produto: string;
@@ -97,21 +167,9 @@ interface ScrapedProduct {
   precoNum: number | null;
   pagina: number;
   dominio: string;
-}
-
-function normalizePrice(raw: string): { display: string; num: number | null } {
-  if (!raw) return { display: "", num: null };
-  let cleaned = raw
-    .replace(/R\$\s*/gi, "")
-    .replace(/\/m[²2]?/gi, "")
-    .replace(/\/un\.?/gi, "")
-    .replace(/\/cx\.?/gi, "")
-    .replace(/por\s*/gi, "")
-    .replace(/à vista.*/gi, "")
-    .trim();
-  cleaned = cleaned.replace(/\./g, "").replace(",", ".");
-  const num = parseFloat(cleaned);
-  return { display: raw.trim(), num: isNaN(num) ? null : Math.round(num * 100) / 100 };
+  imagemUrl: string | null;
+  categoria: string | null;
+  errors: ValidationError[];
 }
 
 function extractProducts(html: string, pageNum: number, origin: string, dominio: string): ScrapedProduct[] {
@@ -119,14 +177,10 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
   if (!doc) return [];
 
   let cards: any[] = [];
-
   for (const sel of CARD_SELECTORS) {
     try {
       const found = doc.querySelectorAll(sel);
-      if (found && found.length > 0) {
-        cards = Array.from(found);
-        break;
-      }
+      if (found && found.length > 0) { cards = Array.from(found); break; }
     } catch { /* skip */ }
   }
 
@@ -138,14 +192,12 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
       const href = a.getAttribute("href") || "";
       const text = (a.textContent || "").trim();
       if (
-        text.length > 10 &&
-        !seen.has(text.toLowerCase()) &&
+        text.length > 10 && !seen.has(text.toLowerCase()) &&
         (href.includes("/p") || href.includes("produto") || href.includes("product") || href.match(/\/[a-z0-9-]+$/))
       ) {
         seen.add(text.toLowerCase());
         const parent = a.parentElement;
-        if (parent) cards.push(parent);
-        else cards.push(a);
+        cards.push(parent || a);
       }
     }
   }
@@ -153,6 +205,7 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
   const products: ScrapedProduct[] = [];
 
   for (const card of cards) {
+    const errors: ValidationError[] = [];
     let bestTitle = "";
 
     for (const sel of TITLE_SELECTORS) {
@@ -179,6 +232,7 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
 
     if (!bestTitle || bestTitle.length < 3) continue;
 
+    // URL
     let productUrl: string | null = null;
     const link = card.tagName === "A" ? card : card.querySelector("a[href]");
     if (link) {
@@ -187,6 +241,7 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
       else if (href.startsWith("/")) productUrl = new URL(href, origin).toString();
     }
 
+    // Price (using locale-aware parser)
     let preco: string | null = null;
     let precoNum: number | null = null;
     for (const sel of PRICE_SELECTORS) {
@@ -195,9 +250,8 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
         if (el) {
           const raw = (el.textContent || "").trim().replace(/\s+/g, " ");
           if (raw && /\d/.test(raw)) {
-            const { display, num } = normalizePrice(raw);
-            preco = display;
-            precoNum = num;
+            precoNum = parseLocalizedNumber(raw);
+            preco = raw;
             break;
           }
         }
@@ -217,7 +271,62 @@ function extractProducts(html: string, pageNum: number, origin: string, dominio:
       } catch { /* skip */ }
     }
 
-    products.push({ produto: bestTitle, url: productUrl, preco, precoNum, pagina: pageNum, dominio });
+    // Validate price
+    const priceValidation = validatePrice(precoNum, bestTitle);
+    if (precoNum !== null && !priceValidation.valid) {
+      errors.push("price_error");
+    }
+    if (precoNum === null && preco) {
+      errors.push("parse_error");
+    }
+
+    // Image extraction with validation
+    let imagemUrl: string | null = null;
+    for (const sel of IMAGE_SELECTORS) {
+      try {
+        const img = card.querySelector(sel);
+        if (img) {
+          const src = img.getAttribute("data-src") || img.getAttribute("src") || "";
+          if (src && src.startsWith("http") && isValidImageName(src)) {
+            imagemUrl = src;
+            break;
+          } else if (src && src.startsWith("/") && isValidImageName(src)) {
+            imagemUrl = new URL(src, origin).toString();
+            break;
+          }
+        }
+      } catch { /* skip */ }
+    }
+
+    // Fallback: if image invalid, try other images in card
+    if (!imagemUrl) {
+      try {
+        const allImgs = card.querySelectorAll("img");
+        for (const img of Array.from(allImgs) as any[]) {
+          const src = img.getAttribute("data-src") || img.getAttribute("src") || "";
+          if (src && isValidImageName(src) && (src.startsWith("http") || src.startsWith("/"))) {
+            imagemUrl = src.startsWith("http") ? src : new URL(src, origin).toString();
+            break;
+          }
+        }
+      } catch { /* skip */ }
+    }
+
+    if (!imagemUrl) {
+      errors.push("missing_image");
+    }
+
+    products.push({
+      produto: bestTitle,
+      url: productUrl,
+      preco,
+      precoNum,
+      pagina: pageNum,
+      dominio,
+      imagemUrl,
+      categoria: priceValidation.category,
+      errors,
+    });
   }
 
   return products;
@@ -230,8 +339,7 @@ function detectNextPageUrl(html: string, origin: string): string | null {
   const nextSelectors = [
     "a.next", "a.next-page", ".pagination a.next",
     ".pages-item-next a", "a[rel='next']",
-    ".pagination li.active + li a",
-    "a.action.next",
+    ".pagination li.active + li a", "a.action.next",
     ".page-next a", ".pager .next a",
   ];
 
@@ -286,10 +394,7 @@ async function fetchPage(url: string, retries = 3): Promise<{ html: string | nul
 
       if (res.status === 403 || res.status === 503) {
         await res.text();
-        if (attempt < retries) {
-          await sleep(attempt * 2000);
-          continue;
-        }
+        if (attempt < retries) { await sleep(attempt * 2000); continue; }
         return { html: null, status: res.status, error: `HTTP ${res.status}` };
       }
 
@@ -301,17 +406,13 @@ async function fetchPage(url: string, retries = 3): Promise<{ html: string | nul
       const html = await res.text();
       return { html, status: res.status, error: null };
     } catch (e: any) {
-      if (attempt < retries) {
-        await sleep(2000);
-        continue;
-      }
+      if (attempt < retries) { await sleep(2000); continue; }
       return { html: null, status: null, error: e.message || "fetch failed" };
     }
   }
   return { html: null, status: null, error: "max retries" };
 }
 
-// Generate a fingerprint from product names to detect true duplicate pages
 function productFingerprint(products: ScrapedProduct[]): string {
   return products.map(p => p.produto.toLowerCase().trim()).sort().join("|");
 }
@@ -338,12 +439,13 @@ Deno.serve(async (req) => {
     const origin = new URL(baseUrl).origin;
     const dominio = new URL(baseUrl).hostname.replace("www.", "");
     const logs: string[] = [];
+    const errorLogs: Array<{ type: ValidationError; produto: string; detail: string }> = [];
     const allProducts: ScrapedProduct[] = [];
     const seenProductKeys = new Set<string>();
     let page = 1;
     let lastProductFingerprint = "";
     let consecutiveEmpty = 0;
-    let paginationWorking: string | null = null; // track which pagination pattern works
+    let paginationWorking: string | null = null;
     let detectedNextUrl: string | null = null;
 
     logs.push(`🌐 ${dominio} — ${baseUrl}`);
@@ -354,10 +456,8 @@ Deno.serve(async (req) => {
       if (page === 1) {
         urlsToTry = [baseUrl];
       } else if (detectedNextUrl) {
-        // If we detected a "next" link, use it first, with fallbacks
         urlsToTry = [detectedNextUrl, ...buildPageUrls(baseUrl, page)];
       } else if (paginationWorking) {
-        // If we know which pagination pattern works, use only that one
         urlsToTry = [paginationWorking.replace(/__PAGE__/g, String(page))];
       } else {
         urlsToTry = buildPageUrls(baseUrl, page);
@@ -385,10 +485,8 @@ Deno.serve(async (req) => {
 
       logs.push(`📥 ${dominio} P${page}: ${(html.length / 1024).toFixed(0)}KB`);
 
-      // Extract products from this page
       const pageProducts = extractProducts(html, page, origin, dominio);
 
-      // Duplicate detection: compare PRODUCTS, not HTML
       const currentFingerprint = productFingerprint(pageProducts);
       if (page > 1 && currentFingerprint === lastProductFingerprint) {
         logs.push(`ℹ️ ${dominio} P${page}: mesmos produtos da página anterior — parando`);
@@ -398,20 +496,35 @@ Deno.serve(async (req) => {
         lastProductFingerprint = currentFingerprint;
       }
 
-      // Deduplicate against global set
       const newProducts: ScrapedProduct[] = [];
       for (const p of pageProducts) {
         const key = (p.produto + "|" + (p.url || "")).toLowerCase();
         if (!seenProductKeys.has(key)) {
           seenProductKeys.add(key);
           newProducts.push(p);
+
+          // Collect detailed error logs
+          for (const err of p.errors) {
+            let detail = "";
+            if (err === "price_error") detail = `Preço R$${p.precoNum} fora da faixa para ${p.categoria || "categoria"}`;
+            else if (err === "missing_image") detail = "Nenhuma imagem válida encontrada";
+            else if (err === "parse_error") detail = `Não foi possível converter: ${p.preco}`;
+            else if (err === "image_error") detail = "Imagem inconsistente com o produto";
+            errorLogs.push({ type: err, produto: p.produto, detail });
+          }
         }
       }
 
       logs.push(`✅ ${dominio} → P${page}: ${pageProducts.length} encontrados, ${newProducts.length} novos`);
+
+      // Log error counts per page
+      const pageErrors = newProducts.reduce((sum, p) => sum + p.errors.length, 0);
+      if (pageErrors > 0) {
+        logs.push(`⚠️ P${page}: ${pageErrors} validação(ões) com problema`);
+      }
+
       allProducts.push(...newProducts);
 
-      // Stop if no products at all
       if (pageProducts.length === 0) {
         consecutiveEmpty++;
         if (consecutiveEmpty >= 2) {
@@ -420,10 +533,7 @@ Deno.serve(async (req) => {
         }
       } else {
         consecutiveEmpty = 0;
-
-        // If page > 1 and we got products, remember which pagination URL worked
         if (page >= 2 && !paginationWorking && fetchedUrl) {
-          // Store the pattern by replacing page number with placeholder
           const pattern = fetchedUrl.replace(
             new RegExp(`([?&]p=|[?&]page=|/page/)${page}`, "i"),
             (match, prefix) => `${prefix}__PAGE__`
@@ -435,20 +545,27 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Stop if all products on this page are duplicates
       if (newProducts.length === 0 && pageProducts.length > 0 && page > 1) {
         logs.push(`ℹ️ ${dominio} P${page}: todos duplicados — parando`);
         break;
       }
 
-      // Try to detect next page link for next iteration
       detectedNextUrl = detectNextPageUrl(html, origin);
-
       page++;
       if (page <= maxPages) await sleep(800);
     }
 
+    // Summary stats
+    const totalWithErrors = allProducts.filter(p => p.errors.length > 0).length;
+    const priceErrors = errorLogs.filter(e => e.type === "price_error").length;
+    const imageErrors = errorLogs.filter(e => e.type === "image_error").length;
+    const missingImages = errorLogs.filter(e => e.type === "missing_image").length;
+    const parseErrors = errorLogs.filter(e => e.type === "parse_error").length;
+
     logs.push(`📊 ${dominio}: ${allProducts.length} produtos em ${page - 1} páginas`);
+    if (totalWithErrors > 0) {
+      logs.push(`🔍 Validação: ${totalWithErrors} com erros (preço: ${priceErrors}, imagem: ${imageErrors + missingImages}, parse: ${parseErrors})`);
+    }
 
     return new Response(
       JSON.stringify({
@@ -457,7 +574,15 @@ Deno.serve(async (req) => {
         totalProducts: allProducts.length,
         products: allProducts,
         logs,
+        errorLogs,
         dominio,
+        validation: {
+          totalWithErrors,
+          priceErrors,
+          imageErrors,
+          missingImages,
+          parseErrors,
+        },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

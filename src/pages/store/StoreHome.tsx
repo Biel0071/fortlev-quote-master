@@ -105,7 +105,35 @@ export default function StoreHome() {
   const featuredIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
     const featured = list.filter((p) => p?.featured || p?.best_seller).map((p) => p.id) as string[];
-    return featured.length > 0 ? featured : list.slice(0, 8).map((p) => p.id);
+    if (featured.length === 0) return list.slice(0, 8).map((p) => p.id);
+
+    // Priority products to appear first (from curated list)
+    const priorityIds = [
+      "38c51f55-fbf0-41c4-b223-b9993e7efb40", // LIZ CP4
+      "df447713-81f6-4326-acba-fc83645bfc7c", // LIZ CP2
+      "c85ead3d-ae2b-4823-b3a0-75de80041b7c", // Betoneira 400L
+      "fef0b373-84d1-4ba7-b341-13f03cbcef38", // Bloco 20
+      "9a4875e3-2067-4d8e-b936-56f36fe6b7e4", // Bloco 10
+      "4cb67f3a-fe47-40c9-88c6-647377e8e6b1", // Bloco 14
+      "f2ebaf40-e55b-42f4-9ae6-9a1b959b5e7d", // Brita 0
+      "79696562-7535-4891-a52f-9529095bd9c3", // Brita 1
+      "b0c6e965-941b-4091-a8cb-5e4a9f90af9f", // AC I
+      "e4b69c28-a2ae-4b20-9a31-d412faec6bde", // AC II
+      "9051155f-bc01-400f-ac59-f1c96dc4525a", // AC III
+      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3", // Caixa 3000L
+      "8b8f783f-47e3-492c-a1ba-82f7e27ace4c", // Tijolo 12 furos
+      "46742601-a3b6-48fc-8060-616cebc0e8d1", // Tijolo 9 furos
+      "beea05b0-ff59-4b5f-9f28-890418cbab8e", // Telha Precon
+      "1b4511bd-1a4f-4aec-a667-8beaeef12169", // KMR 10000L
+      "8b13a472-154d-422b-b567-fb8c726eaada", // Fortlev 5000L
+      "1f6a420a-b46b-4d75-b888-8aa6c1e4ee2a", // Fortlev 2000L
+      "31f0affc-e596-413e-b113-9c17ef3ecab2", // Fortlev 1000L
+      "a787085e-0984-481a-9644-61c08f796870", // Fortlev 10000L
+    ];
+
+    const existingPriority = priorityIds.filter((id) => featured.includes(id));
+    const rest = featured.filter((id) => !priorityIds.includes(id));
+    return [...existingPriority, ...rest];
   }, [activeProducts]);
 
   const topClickedIds = useMemo(() => {

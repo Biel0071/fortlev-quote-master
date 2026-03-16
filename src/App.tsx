@@ -50,6 +50,8 @@ import {
   AdminProductScraper,
   AdminReviews,
   AdminPriceIntelligence,
+  AdminImageReview,
+  AdminAiReports,
 } from "@/modules/admin";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";

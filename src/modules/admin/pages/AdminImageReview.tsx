@@ -32,7 +32,7 @@ export default function AdminImageReview() {
     if (error) { toast.error("Erro ao carregar fila"); setLoading(false); return; }
 
     // Fetch product names
-    const productIds = [...new Set((data || []).map((d: any) => d.product_id))];
+    const productIds = [...new Set((data || []).map((d: any) => d.product_id))] as string[];
     let products: Record<string, string> = {};
     if (productIds.length > 0) {
       const { data: prods } = await supabase.from("store_products").select("id,name").in("id", productIds);

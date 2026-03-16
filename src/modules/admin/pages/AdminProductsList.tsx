@@ -132,6 +132,26 @@ export default function AdminProductsList() {
 
   useEffect(() => { load(); loadCategories(); }, []);
 
+  const runBatchAction = async (action: "validate_prices" | "download_images" | "both") => {
+    setBatchAction(action);
+    try {
+      const { data, error } = await cloud.functions.invoke("batch-product-ops", { body: { action } });
+      if (error) throw error;
+      if (action === "validate_prices") {
+        sonnerToast.success(`Preços validados: ${data.corrected ?? 0} corrigidos`);
+      } else if (action === "download_images") {
+        sonnerToast.success(`Imagens: ${data.success ?? 0} baixadas`);
+      } else {
+        sonnerToast.success("Operações concluídas!");
+      }
+      await load();
+    } catch (e) {
+      sonnerToast.error("Erro ao executar operação");
+      console.error(e);
+    }
+    setBatchAction(null);
+  };
+
   const filtered = useMemo(() => {
     let result = rows;
     if (filterActive === "active") result = result.filter(r => r.active);

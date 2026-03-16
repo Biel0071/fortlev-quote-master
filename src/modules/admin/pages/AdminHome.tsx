@@ -770,11 +770,14 @@ export default function AdminHome() {
                           R$ {p.price.toFixed(2)}{p.promo_price > 0 && p.promo_price < p.price ? ` → R$ ${p.promo_price.toFixed(2)}` : ""}
                         </div>
                         <div className="flex items-center gap-1 mt-1.5">
-                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/${p.id}`)}>
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
                             <Pencil className="w-3 h-3" /> Editar
                           </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/admin/produtos/editar/${p.id}`, "_blank")}>
+                            <ExternalLink className="w-3 h-3" /> Nova guia
+                          </Button>
                           <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/produto/${p.id}`, "_blank")}>
-                            <ExternalLink className="w-3 h-3" /> Ver
+                            <ExternalLink className="w-3 h-3" /> Ver loja
                           </Button>
                           <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => toggleProductFeatured(p)}>
                             Remover
@@ -819,11 +822,14 @@ export default function AdminHome() {
                           {p.clicks} cliques • R$ {p.price.toFixed(2)}
                         </div>
                         <div className="flex items-center gap-1 mt-1.5">
-                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/${p.id}`)}>
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
                             <Pencil className="w-3 h-3" /> Editar
                           </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/admin/produtos/editar/${p.id}`, "_blank")}>
+                            <ExternalLink className="w-3 h-3" /> Nova guia
+                          </Button>
                           <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/produto/${p.id}`, "_blank")}>
-                            <ExternalLink className="w-3 h-3" /> Ver
+                            <ExternalLink className="w-3 h-3" /> Ver loja
                           </Button>
                         </div>
                       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
 import {
-  Brain, ChevronDown, ChevronUp, Copy, DollarSign, Download, Globe, Grid2x2, Grid3x3,
+  ArrowUp, Brain, ChevronDown, ChevronUp, Copy, DollarSign, Download, Globe, Grid2x2, Grid3x3,
   ImagePlus, LayoutGrid, Loader2, MoreHorizontal, Package, Pencil, Play, Plus, Power,
   RefreshCw, Search, Trash2, Upload,
 } from "lucide-react";
@@ -152,6 +152,24 @@ export default function AdminProductsList() {
     setBatchAction(null);
   };
 
+  const [visibleCount, setVisibleCount] = useState(60);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible count when filter changes
+  useEffect(() => { setVisibleCount(60); }, [q, filterActive, filterCategory]);
+
+  // Scroll-to-top visibility
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
   const filtered = useMemo(() => {
     let result = rows;
     if (filterActive === "active") result = result.filter(r => r.active);
@@ -163,6 +181,9 @@ export default function AdminProductsList() {
     if (s) result = result.filter(r => r.name.toLowerCase().includes(s));
     return result;
   }, [q, rows, filterActive, filterCategory]);
+
+  const visibleItems = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore = visibleCount < filtered.length;
 
   const activeCount = rows.filter(r => r.active).length;
   const inactiveCount = rows.length - activeCount;
@@ -512,13 +533,13 @@ export default function AdminProductsList() {
           <p>{q ? "Nenhum produto encontrado." : "Nenhum produto cadastrado."}</p>
         </div>
       ) : (
+        <>
         <div className={`grid ${GRID_COLS[gridSize]} gap-3`}>
-          {filtered.map(p => {
+          {visibleItems.map(p => {
             const thumb = imageMap[p.id];
             const isSelected = selected.has(p.id);
 
             return isCompact ? (
-              /* ───── Compact card (sm grid) ───── */
               <div
                 key={p.id}
                 className={`group relative rounded-xl border bg-card/80 backdrop-blur-sm transition-all hover:shadow-md cursor-pointer ${
@@ -528,26 +549,14 @@ export default function AdminProductsList() {
               >
                 <div className="aspect-square relative overflow-hidden rounded-t-xl bg-muted/20">
                   {thumb ? (
-                    <img
-                      src={getImageUrl(thumb)}
-                      alt={p.name}
-                      className="w-full h-full object-contain p-1"
-                      loading="lazy"
-                    />
+                    <img src={getImageUrl(thumb)} alt={p.name} className="w-full h-full object-contain p-1" loading="lazy" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Package className="h-8 w-8 text-muted-foreground/30" />
                     </div>
                   )}
-                  <Checkbox
-                    checked={isSelected}
-                    className="absolute top-2 left-2 h-4 w-4 bg-background/80"
-                    onClick={e => e.stopPropagation()}
-                    onCheckedChange={() => toggleSelect(p.id)}
-                  />
-                  {!p.active && (
-                    <Badge variant="secondary" className="absolute top-2 right-2 text-[9px] px-1.5 py-0">Inativo</Badge>
-                  )}
+                  <Checkbox checked={isSelected} className="absolute top-2 left-2 h-4 w-4 bg-background/80" onClick={e => e.stopPropagation()} onCheckedChange={() => toggleSelect(p.id)} />
+                  {!p.active && <Badge variant="secondary" className="absolute top-2 right-2 text-[9px] px-1.5 py-0">Inativo</Badge>}
                 </div>
                 <div className="p-2">
                   <h3 className="text-[11px] font-medium leading-tight line-clamp-2">{p.name}</h3>
@@ -555,7 +564,6 @@ export default function AdminProductsList() {
                 </div>
               </div>
             ) : (
-              /* ───── Standard card (md/lg grid) ───── */
               <div
                 key={p.id}
                 className={`group relative rounded-xl border bg-card/80 backdrop-blur-sm transition-all hover:shadow-md ${
@@ -563,39 +571,22 @@ export default function AdminProductsList() {
                 } ${isSelected ? "ring-2 ring-primary border-primary" : "hover:border-primary/20"}`}
               >
                 <div className="flex">
-                  {/* Thumbnail */}
                   <div
-                    className={`shrink-0 relative overflow-hidden rounded-l-xl bg-muted/20 flex items-center justify-center cursor-pointer ${
-                      gridSize === "lg" ? "w-32 h-32" : "w-20 h-20"
-                    }`}
+                    className={`shrink-0 relative overflow-hidden rounded-l-xl bg-muted/20 flex items-center justify-center cursor-pointer ${gridSize === "lg" ? "w-32 h-32" : "w-20 h-20"}`}
                     onClick={() => toggleSelect(p.id)}
                   >
                     {thumb ? (
-                      <img
-                        src={getImageUrl(thumb)}
-                        alt={p.name}
-                        className="w-full h-full object-contain p-1"
-                        loading="lazy"
-                      />
+                      <img src={getImageUrl(thumb)} alt={p.name} className="w-full h-full object-contain p-1" loading="lazy" />
                     ) : (
                       <Package className="h-6 w-6 text-muted-foreground/30" />
                     )}
-                    <Checkbox
-                      checked={isSelected}
-                      className="absolute top-1.5 left-1.5 h-4 w-4 bg-background/80"
-                      onClick={e => e.stopPropagation()}
-                      onCheckedChange={() => toggleSelect(p.id)}
-                    />
+                    <Checkbox checked={isSelected} className="absolute top-1.5 left-1.5 h-4 w-4 bg-background/80" onClick={e => e.stopPropagation()} onCheckedChange={() => toggleSelect(p.id)} />
                   </div>
-
-                  {/* Content */}
                   <div className="flex-1 min-w-0 p-3 cursor-pointer" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <h3 className="font-semibold text-sm leading-tight line-clamp-2">{p.name}</h3>
-                        {p.category && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.category}</p>
-                        )}
+                        {p.category && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.category}</p>}
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
@@ -604,56 +595,43 @@ export default function AdminProductsList() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
-                            <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => duplicateProduct(p)}>
-                            <Copy className="h-3.5 w-3.5 mr-2" /> Duplicar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toggleActive(p)}>
-                            <Power className="h-3.5 w-3.5 mr-2" /> {p.active ? "Desativar" : "Ativar"}
-                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => nav(`/admin/produtos/editar/${p.id}`)}><Pencil className="h-3.5 w-3.5 mr-2" /> Editar</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => duplicateProduct(p)}><Copy className="h-3.5 w-3.5 mr-2" /> Duplicar</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toggleActive(p)}><Power className="h-3.5 w-3.5 mr-2" /> {p.active ? "Desativar" : "Ativar"}</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(p)}>
-                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(p)}><Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-
                     <div className="mt-2 flex items-end justify-between">
                       <div>
                         <span className="text-base font-bold text-foreground leading-none">{displayPrice(p)}</span>
-                        {hasPromo(p) && (
-                          <span className="ml-1.5 text-xs text-muted-foreground line-through">{formatCurrency(Number(p.price))}</span>
-                        )}
+                        {hasPromo(p) && <span className="ml-1.5 text-xs text-muted-foreground line-through">{formatCurrency(Number(p.price))}</span>}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        Est: <span className="font-medium text-foreground">{p.stock}</span>
-                      </div>
+                      <div className="text-xs text-muted-foreground">Est: <span className="font-medium text-foreground">{p.stock}</span></div>
                     </div>
                   </div>
                 </div>
-
-                {/* Bottom bar */}
                 <div className="border-t border-border/40 px-3 py-1.5 flex items-center gap-1">
-                  <Badge variant={p.active ? "default" : "secondary"} className="text-[10px] px-2 py-0 mr-auto">
-                    {p.active ? "Ativo" : "Inativo"}
-                  </Badge>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
-                    <Pencil className="h-3 w-3" /> Editar
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => duplicateProduct(p)}>
-                    <Copy className="h-3 w-3" /> Duplicar
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(p)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <Badge variant={p.active ? "default" : "secondary"} className="text-[10px] px-2 py-0 mr-auto">{p.active ? "Ativo" : "Inativo"}</Badge>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}><Pencil className="h-3 w-3" /> Editar</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => duplicateProduct(p)}><Copy className="h-3 w-3" /> Duplicar</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(p)}><Trash2 className="h-3 w-3" /></Button>
                 </div>
               </div>
             );
           })}
         </div>
+        {hasMore && (
+          <div className="flex flex-col items-center gap-2 py-6">
+            <p className="text-xs text-muted-foreground">Mostrando {visibleCount} de {filtered.length} produtos</p>
+            <Button variant="outline" size="sm" onClick={() => setVisibleCount(prev => prev + 60)}>Carregar mais</Button>
+          </div>
+        )}
+        {!hasMore && filtered.length > 60 && (
+          <p className="text-center text-xs text-muted-foreground py-4">Todos os {filtered.length} produtos exibidos</p>
+        )}
+        </>
       )}
 
       {/* Delete confirmation */}
@@ -673,6 +651,17 @@ export default function AdminProductsList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Scroll to top FAB */}
+      {showScrollTop && (
+        <Button
+          onClick={scrollToTop}
+          size="icon"
+          className="fixed bottom-6 right-6 z-50 h-11 w-11 rounded-full shadow-lg"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </Button>
+      )}
     </div>
   );
 }

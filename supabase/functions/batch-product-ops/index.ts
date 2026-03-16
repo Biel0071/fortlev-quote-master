@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// ── Category detection (mirror of client-side productIntelligence.ts) ──
+// ── Category detection ──
 const CATEGORY_KEYWORDS: Array<{ keywords: string[]; category: string }> = [
   { keywords: ["caixa d'agua", "caixa dagua", "caixa d\u2019agua"], category: "caixa dagua" },
   { keywords: ["caixa sifonada"], category: "caixa sifonada" },
@@ -93,6 +93,26 @@ function detectUnit(name: string, category?: string | null): string {
   return "unidade";
 }
 
+/** Paginated fetch — loads ALL rows in pages of PAGE_SIZE */
+async function fetchAll(sb: any, table: string, columns: string, orderCol = "created_at") {
+  const PAGE_SIZE = 1000;
+  let all: any[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await sb
+      .from(table)
+      .select(columns)
+      .order(orderCol, { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) { console.error(`fetchAll ${table} error:`, error); break; }
+    const batch = data ?? [];
+    all = all.concat(batch);
+    if (batch.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -127,68 +147,70 @@ serve(async (req) => {
 
 // ── PRICE VALIDATION ──
 async function validateAllPricesInner(sb: any) {
-  // Load price intelligence ranges
-  const { data: ranges } = await sb.from("price_intelligence").select("*");
+  const ranges = await fetchAll(sb, "price_intelligence", "*", "categoria");
   const rangeMap = new Map<string, { min: number; max: number; avg: number }>();
-  (ranges || []).forEach((r: any) => {
+  ranges.forEach((r: any) => {
     rangeMap.set(`${r.categoria}|${r.unidade}`, { min: r.preco_min, max: r.preco_max, avg: r.preco_medio });
   });
 
-  // Load all products
-  const { data: products } = await sb.from("store_products").select("id,name,price,promo_price,unit,category").order("created_at", { ascending: true });
+  const products = await fetchAll(sb, "store_products", "id,name,price,promo_price,unit,category");
 
-  const results = { total: 0, validated: 0, corrected: 0, errors: 0, skipped: 0, details: [] as any[] };
-  results.total = (products || []).length;
+  const results = { total: products.length, validated: 0, corrected: 0, errors: 0, skipped: 0, details: [] as any[] };
 
-  for (const p of (products || [])) {
-    const category = detectCategory(p.name);
-    const unit = detectUnit(p.name, category);
+  // Process in batches of 200 with small delay to avoid timeouts
+  const BATCH = 200;
+  for (let i = 0; i < products.length; i += BATCH) {
+    const batch = products.slice(i, i + BATCH);
+    const updates: Array<{ id: string; price: number }> = [];
 
-    if (!category) { results.skipped++; continue; }
+    for (const p of batch) {
+      const category = detectCategory(p.name);
+      const unit = detectUnit(p.name, category);
 
-    const key = `${category}|${unit}`;
-    const range = rangeMap.get(key);
-    if (!range) { results.skipped++; continue; }
+      if (!category) { results.skipped++; continue; }
 
-    const price = p.price || 0;
+      const key = `${category}|${unit}`;
+      const range = rangeMap.get(key);
+      if (!range) { results.skipped++; continue; }
 
-    if (price >= range.min && price <= range.max) {
-      results.validated++;
-      continue;
-    }
+      const price = p.price || 0;
 
-    // Try auto-correction
-    let corrected = false;
-    if (price > range.max) {
-      for (const divisor of [10, 100, 1000]) {
-        const fixed = Math.round((price / divisor) * 100) / 100;
-        if (fixed >= range.min && fixed <= range.max) {
-          await sb.from("store_products").update({ price: fixed }).eq("id", p.id);
-          await sb.from("system_memory").insert({
-            event: "price_auto_corrected",
-            entity: "store_products",
-            entity_id: p.id,
-            impact: "medium",
-            details: { original: price, corrected: fixed, divisor, category, unit },
-          });
-          results.corrected++;
-          results.details.push({ id: p.id, name: p.name, original: price, corrected: fixed, action: "corrected" });
-          corrected = true;
-          break;
+      if (price >= range.min && price <= range.max) {
+        results.validated++;
+        continue;
+      }
+
+      let corrected = false;
+      if (price > range.max) {
+        for (const divisor of [10, 100, 1000]) {
+          const fixed = Math.round((price / divisor) * 100) / 100;
+          if (fixed >= range.min && fixed <= range.max) {
+            updates.push({ id: p.id, price: fixed });
+            results.corrected++;
+            results.details.push({ id: p.id, name: p.name, original: price, corrected: fixed, action: "corrected" });
+            corrected = true;
+            break;
+          }
+        }
+      }
+
+      if (!corrected) {
+        results.errors++;
+        // Only keep first 200 error details to avoid huge responses
+        if (results.details.length < 200) {
+          results.details.push({ id: p.id, name: p.name, price, category, unit, range, action: "error" });
         }
       }
     }
 
-    if (!corrected) {
-      results.errors++;
-      results.details.push({ id: p.id, name: p.name, price, category, unit, range, action: "error" });
-      await sb.from("system_memory").insert({
-        event: "price_error",
-        entity: "store_products",
-        entity_id: p.id,
-        impact: "high",
-        details: { price, category, unit, range_min: range.min, range_max: range.max },
-      });
+    // Apply batch updates
+    for (const u of updates) {
+      await sb.from("store_products").update({ price: u.price }).eq("id", u.id);
+    }
+
+    // Small delay between batches
+    if (i + BATCH < products.length) {
+      await new Promise((r) => setTimeout(r, 300));
     }
   }
 
@@ -204,22 +226,19 @@ async function validateAllPrices(sb: any) {
 
 // ── IMAGE DOWNLOAD ──
 async function downloadAllImagesInner(sb: any, supabaseUrl: string, anonKey: string) {
-  // Get products without images
-  const { data: allProducts } = await sb.from("store_products").select("id,name,category").order("created_at", { ascending: true });
-  const { data: allImages } = await sb.from("store_product_images").select("product_id");
+  const allProducts = await fetchAll(sb, "store_products", "id,name,category");
+  const allImages = await fetchAll(sb, "store_product_images", "product_id", "product_id");
 
-  const productsWithImages = new Set((allImages || []).map((i: any) => i.product_id));
-  const productsWithoutImages = (allProducts || []).filter((p: any) => !productsWithImages.has(p.id));
+  const productsWithImages = new Set(allImages.map((i: any) => i.product_id));
+  const productsWithoutImages = allProducts.filter((p: any) => !productsWithImages.has(p.id));
 
   const results = { total: productsWithoutImages.length, success: 0, failed: 0, details: [] as any[] };
 
-  // Process in batches of 5 to avoid overloading
   for (let i = 0; i < productsWithoutImages.length; i += 5) {
     const batch = productsWithoutImages.slice(i, i + 5);
 
     await Promise.all(batch.map(async (p: any) => {
       try {
-        // Call search-product-images to find and import images
         const searchResp = await fetch(`${supabaseUrl}/functions/v1/search-product-images`, {
           method: "POST",
           headers: {
@@ -236,10 +255,8 @@ async function downloadAllImagesInner(sb: any, supabaseUrl: string, anonKey: str
         });
 
         if (!searchResp.ok) {
-          const txt = await searchResp.text();
-          console.error(`Search failed for ${p.name}:`, txt);
           results.failed++;
-          results.details.push({ id: p.id, name: p.name, action: "search_failed" });
+          if (results.details.length < 200) results.details.push({ id: p.id, name: p.name, action: "search_failed" });
           return;
         }
 
@@ -248,11 +265,10 @@ async function downloadAllImagesInner(sb: any, supabaseUrl: string, anonKey: str
 
         if (images.length === 0) {
           results.failed++;
-          results.details.push({ id: p.id, name: p.name, action: "no_images_found" });
+          if (results.details.length < 200) results.details.push({ id: p.id, name: p.name, action: "no_images_found" });
           return;
         }
 
-        // Import the first valid image
         const importResp = await fetch(`${supabaseUrl}/functions/v1/search-product-images`, {
           method: "POST",
           headers: {
@@ -268,28 +284,17 @@ async function downloadAllImagesInner(sb: any, supabaseUrl: string, anonKey: str
 
         if (importResp.ok) {
           results.success++;
-          results.details.push({ id: p.id, name: p.name, action: "imported", count: 1 });
-          await sb.from("system_memory").insert({
-            event: "image_auto_imported",
-            entity: "store_products",
-            entity_id: p.id,
-            impact: "low",
-            details: { images_found: images.length, imported: 1 },
-          });
+          if (results.details.length < 200) results.details.push({ id: p.id, name: p.name, action: "imported", count: 1 });
         } else {
-          const txt = await importResp.text();
-          console.error(`Import failed for ${p.name}:`, txt);
           results.failed++;
-          results.details.push({ id: p.id, name: p.name, action: "import_failed" });
+          if (results.details.length < 200) results.details.push({ id: p.id, name: p.name, action: "import_failed" });
         }
       } catch (err) {
-        console.error(`Error processing ${p.name}:`, err);
         results.failed++;
-        results.details.push({ id: p.id, name: p.name, action: "error", error: String(err) });
+        if (results.details.length < 200) results.details.push({ id: p.id, name: p.name, action: "error", error: String(err) });
       }
     }));
 
-    // Small delay between batches
     if (i + 5 < productsWithoutImages.length) {
       await new Promise((r) => setTimeout(r, 1000));
     }

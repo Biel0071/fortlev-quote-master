@@ -140,3 +140,42 @@ export async function importGoogleProductImages(params: {
   return { imported, requested, failed };
 }
 
+/**
+ * Run the integrated pipeline: search → filter → heuristic score → AI validate (max 3) → save
+ * Reduces AI costs by only validating top candidates.
+ */
+export async function runImagePipeline(params: {
+  productId: string;
+  autoApprove?: boolean;
+  maxImages?: number;
+}): Promise<PipelineResult> {
+  const headers = await authHeaders();
+
+  const response = await fetch(`${getFunctionsBaseUrl()}/search-product-images`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      action: "pipeline",
+      productId: params.productId,
+      autoApprove: params.autoApprove ?? true,
+      maxImages: params.maxImages ?? 5,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as PipelineResult;
+
+  if (!response.ok || !payload.ok) {
+    const errorCode = payload?.error ?? "";
+    let friendlyMsg = "Não foi possível processar imagens.";
+
+    if (errorCode === "unauthorized") friendlyMsg = "Sessão expirada. Faça login novamente.";
+    else if (errorCode === "forbidden") friendlyMsg = "Acesso negado.";
+    else if (errorCode === "product_not_found") friendlyMsg = "Produto não encontrado.";
+    else if (payload?.error) friendlyMsg = payload.error;
+
+    throw new Error(friendlyMsg);
+  }
+
+  return payload;
+}
+

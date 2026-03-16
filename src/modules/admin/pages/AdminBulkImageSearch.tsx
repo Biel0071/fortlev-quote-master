@@ -1080,7 +1080,7 @@ export default function AdminBulkImageSearch() {
       <Card className="rounded-xl sm:rounded-2xl">
         <CardHeader className="pb-2 sm:pb-3">
           <CardTitle className="text-base sm:text-lg">
-            {filter === "no-images" ? "Produtos sem imagens" : filter === "incomplete" ? "Produtos com menos de 8 imagens" : "Todos os produtos"}
+            {filter === "no-images" ? `Produtos sem imagens (${filtered.length})` : filter === "incomplete" ? `Produtos com menos de 8 imagens (${filtered.length})` : `Todos os produtos (${filtered.length})`}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">

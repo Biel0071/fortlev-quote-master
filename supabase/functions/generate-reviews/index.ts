@@ -233,7 +233,7 @@ serve(async (req) => {
     if (action === "generate") {
       const productIds: string[] = body?.product_ids ?? [];
       const count = Math.min(Math.max(1, Number(body?.count ?? 3)), 8);
-      const mode: GenerationMode = (["text", "image", "ai"].includes(body?.mode) ? body.mode : "text") as GenerationMode;
+      const mode: GenerationMode = (["text", "image", "text_image"].includes(body?.mode) ? body.mode : "text") as GenerationMode;
 
       if (!productIds.length) throw new Error("No product_ids provided");
 

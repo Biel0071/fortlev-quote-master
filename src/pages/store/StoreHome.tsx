@@ -157,7 +157,7 @@ export default function StoreHome() {
         {!phase.featured ? (
           <SectionSkeleton rows={2} />
         ) : (
-          <HomeProductsByIds loading={loading} productIds={featuredIds} products={activeProducts as any} onAdd={onAdd} limit={8} />
+          <HomeProductsByIds loading={loading} productIds={featuredIds} products={activeProducts as any} onAdd={onAdd} limit={12} />
         )}
       </HomeSection>
 

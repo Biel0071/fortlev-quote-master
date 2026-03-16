@@ -84,9 +84,9 @@ async function generateReviewsForProduct(
   const remainingSlots = 250 - (existingCount ?? 0);
   const actualCount = Math.min(count, remainingSlots);
 
-  // Get available product images for reuse (only if mode allows images)
+  // Get available product images for reuse (if mode uses images)
   let productImages: { id: string; url: string; usage_count: number }[] = [];
-  if (mode === "image") {
+  if (mode === "image" || mode === "text_image") {
     productImages = await getProductImages(supa, supabaseUrl, productId);
   }
 

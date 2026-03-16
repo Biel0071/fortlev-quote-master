@@ -173,6 +173,8 @@ Retorne APENAS um JSON array sem markdown:
   let imagesAttached = 0;
   const now = Date.now();
   const insertedReviewIds: string[] = [];
+  let imageRoundRobinIdx = 0; // cycle through images to avoid repeats
+  const usedUrlsThisBatch = new Set<string>(); // track URLs used in this batch
 
   for (const r of reviews) {
     const daysAgo = Math.floor(Math.random() * 90);
@@ -197,7 +199,6 @@ Retorne APENAS um JSON array sem markdown:
       pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
       cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
       verified_purchase: r.verified_purchase ?? true,
-      // Reviews with images → pending approval; text-only → auto-approved
       approved: !shouldHaveImage,
       origin: "ai_generated",
       created_at: created.toISOString(),
@@ -212,18 +213,36 @@ Retorne APENAS um JSON array sem markdown:
     if (insertErr || !inserted) continue;
     insertedReviewIds.push(inserted.id);
 
-    // Attach image if applicable
-    if (shouldHaveImage) {
-      // Pick image with lowest usage_count
-      const img = productImages[0]; // already sorted by usage_count ASC
+    // Attach image: pick next unused image via round-robin
+    if (shouldHaveImage && productImages.length > 0) {
+      // Find next image not yet used in this batch
+      let img = productImages[imageRoundRobinIdx % productImages.length];
+      if (usedUrlsThisBatch.has(img.url) && productImages.length > 1) {
+        // Try to find an unused one
+        for (let attempt = 0; attempt < productImages.length; attempt++) {
+          const candidate = productImages[(imageRoundRobinIdx + attempt) % productImages.length];
+          if (!usedUrlsThisBatch.has(candidate.url)) {
+            img = candidate;
+            imageRoundRobinIdx = (imageRoundRobinIdx + attempt);
+            break;
+          }
+        }
+        // If all used, reset tracking (allow second round)
+        if (usedUrlsThisBatch.has(img.url)) {
+          usedUrlsThisBatch.clear();
+          img = productImages[imageRoundRobinIdx % productImages.length];
+        }
+      }
+      
+      usedUrlsThisBatch.add(img.url);
+      imageRoundRobinIdx++;
+
       await supa.from("review_images").insert({
         review_id: inserted.id,
         image_url: img.url,
         sort_order: 0,
       });
       await incrementImageUsage(supa, img.id);
-      // Re-sort to distribute evenly
-      productImages.sort((a, b) => a.usage_count - b.usage_count);
       img.usage_count++;
       imagesAttached++;
     }

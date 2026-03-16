@@ -24,6 +24,7 @@ import { CustomerReviewForm } from "@/components/store/pdp/CustomerReviewForm";
 import { QuantitySelector } from "@/components/store/pdp/QuantitySelector";
 import { ShippingCalculator } from "@/components/store/pdp/ShippingCalculator";
 import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
+import { SmartUpsellCrossSell } from "@/components/store/pdp/SmartUpsellCrossSell";
 import { cloud } from "@/lib/cloud";
 
 function parseInlineBold(text: string) {
@@ -445,6 +446,9 @@ export default function ProductPage() {
               </Button>
 
               <ShippingCalculator subtotal={totalDynamic} />
+
+              {/* Smart Upsell & Cross-Sell */}
+              <SmartUpsellCrossSell product={product as any} onCartOpen={() => setCartOpen(true)} />
 
               {/* Info cards */}
               <Card className="rounded-2xl border-border bg-card shadow-sm min-w-0 max-w-full overflow-hidden">

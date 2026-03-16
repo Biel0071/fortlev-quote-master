@@ -1169,6 +1169,69 @@ export type Database = {
           },
         ]
       }
+      pipeline_runs: {
+        Row: {
+          avg_time_ms: number
+          completed: number
+          created_at: string
+          descriptions_generated: number
+          duration_ms: number
+          ended_at: string | null
+          error_product_ids: Json
+          errors: number
+          filter_used: string
+          id: string
+          images_imported: number
+          pending_product_ids: Json
+          processed_product_ids: Json
+          started_at: string
+          status: string
+          total_products: number
+          updated_at: string
+          worker_count: number
+        }
+        Insert: {
+          avg_time_ms?: number
+          completed?: number
+          created_at?: string
+          descriptions_generated?: number
+          duration_ms?: number
+          ended_at?: string | null
+          error_product_ids?: Json
+          errors?: number
+          filter_used?: string
+          id?: string
+          images_imported?: number
+          pending_product_ids?: Json
+          processed_product_ids?: Json
+          started_at?: string
+          status?: string
+          total_products?: number
+          updated_at?: string
+          worker_count?: number
+        }
+        Update: {
+          avg_time_ms?: number
+          completed?: number
+          created_at?: string
+          descriptions_generated?: number
+          duration_ms?: number
+          ended_at?: string | null
+          error_product_ids?: Json
+          errors?: number
+          filter_used?: string
+          id?: string
+          images_imported?: number
+          pending_product_ids?: Json
+          processed_product_ids?: Json
+          started_at?: string
+          status?: string
+          total_products?: number
+          updated_at?: string
+          worker_count?: number
+        }
+        Relationships: []
+      }
       product_ai_previews: {
         Row: {
           approved: boolean

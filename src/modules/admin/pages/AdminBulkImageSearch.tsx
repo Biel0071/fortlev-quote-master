@@ -17,7 +17,7 @@ import {
   ImageIcon, Search, ArrowLeft, Trash2, X, CheckSquare, RefreshCw,
   Zap, StopCircle, Play, Clock, CheckCircle2, XCircle, BarChart3,
   RotateCcw, AlertTriangle, FileText, Sparkles, Wand2, Activity,
-  Gauge, Users, Timer,
+  Gauge, Users, Timer, History, PlayCircle, Database,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -60,16 +60,26 @@ type PipelineStats = {
   activeWorkers: number;
   startTime: number;
   avgTimePerProduct: number;
-  throughput: number; // products/min
+  throughput: number;
 };
 
-type RunHistory = {
-  date: string;
-  total: number;
+type PipelineRunRecord = {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  status: string;
+  filter_used: string;
+  total_products: number;
   completed: number;
   errors: number;
-  avgTime: number;
-  duration: number;
+  images_imported: number;
+  descriptions_generated: number;
+  avg_time_ms: number;
+  duration_ms: number;
+  worker_count: number;
+  processed_product_ids: string[];
+  pending_product_ids: string[];
+  error_product_ids: string[];
 };
 
 /* ───── Constants ───── */
@@ -82,6 +92,7 @@ const RETRY_DELAY_429 = 30_000;
 const RETRY_DELAYS_AI = [5_000, 10_000, 20_000];
 const INTER_WORKER_DELAY = 200;
 const SOURCES_FALLBACK: ImageSearchSource[] = ["bing", "google", "mercado_livre"];
+const SAVE_INTERVAL_MS = 10_000; // persist state every 10s
 
 function getPublicUrl(path: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`;
@@ -144,16 +155,135 @@ export default function AdminBulkImageSearch() {
   const [pipelineRunning, setPipelineRunning] = useState(false);
   const [stats, setStats] = useState<PipelineStats | null>(null);
   const [jobs, setJobs] = useState<JobEntry[]>([]);
-  const [runHistory, setRunHistory] = useState<RunHistory[]>([]);
   const abortRef = useRef(false);
   const jobsRef = useRef<JobEntry[]>([]);
   const statsRef = useRef<PipelineStats | null>(null);
+  const currentRunIdRef = useRef<string | null>(null);
+  const saveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Image cache: key → images
+  // Persistent run history from DB
+  const [dbRunHistory, setDbRunHistory] = useState<PipelineRunRecord[]>([]);
+  const [resumableRun, setResumableRun] = useState<PipelineRunRecord | null>(null);
+  const [showLogDetails, setShowLogDetails] = useState<string | null>(null);
+  const [logDetailsData, setLogDetailsData] = useState<any[]>([]);
+
+  // Image cache
   const imageCacheRef = useRef(new Map<string, GoogleImageResult[]>());
-
-  // AI concurrency limiter (max 3 simultaneous AI calls even with 15 workers)
   const aiSemRef = useRef(new Semaphore(AI_MAX_CONCURRENT));
+
+  /* ─── Load pipeline run history from DB ─── */
+  const loadRunHistory = async () => {
+    try {
+      const { data } = await cloud
+        .from("pipeline_runs")
+        .select("*")
+        .order("started_at", { ascending: false })
+        .limit(20);
+
+      if (data) {
+        const mapped = (data as any[]).map((r) => ({
+          ...r,
+          processed_product_ids: Array.isArray(r.processed_product_ids) ? r.processed_product_ids : [],
+          pending_product_ids: Array.isArray(r.pending_product_ids) ? r.pending_product_ids : [],
+          error_product_ids: Array.isArray(r.error_product_ids) ? r.error_product_ids : [],
+        })) as PipelineRunRecord[];
+        setDbRunHistory(mapped);
+
+        // Check for resumable (interrupted) runs
+        const interrupted = mapped.find((r) => r.status === "running" || r.status === "interrupted");
+        if (interrupted && interrupted.pending_product_ids.length > 0) {
+          setResumableRun(interrupted);
+        } else {
+          setResumableRun(null);
+        }
+      }
+    } catch { /* ignore */ }
+  };
+
+  /* ─── Save pipeline state to DB ─── */
+  const savePipelineState = async (status?: string) => {
+    const runId = currentRunIdRef.current;
+    if (!runId) return;
+
+    const currentJobs = jobsRef.current;
+    const completedIds = currentJobs.filter((j) => j.status === "completed").map((j) => j.productId);
+    const pendingIds = currentJobs.filter((j) => j.status === "pending" || j.status === "processing" || j.status === "retry").map((j) => j.productId);
+    const errorIds = currentJobs.filter((j) => j.status === "error").map((j) => j.productId);
+    const st = statsRef.current;
+
+    try {
+      await cloud.from("pipeline_runs").update({
+        status: status || "running",
+        completed: st?.completed ?? 0,
+        errors: st?.errors ?? 0,
+        images_imported: st?.imagesApproved ?? 0,
+        descriptions_generated: st?.descriptionsGenerated ?? 0,
+        avg_time_ms: st?.avgTimePerProduct ?? 0,
+        duration_ms: st ? Date.now() - st.startTime : 0,
+        processed_product_ids: completedIds as any,
+        pending_product_ids: pendingIds as any,
+        error_product_ids: errorIds as any,
+        ...(status === "completed" || status === "stopped" ? { ended_at: new Date().toISOString() } : {}),
+      } as any).eq("id", runId);
+    } catch { /* ignore */ }
+  };
+
+  const startPeriodicSave = () => {
+    stopPeriodicSave();
+    saveIntervalRef.current = setInterval(() => {
+      savePipelineState();
+    }, SAVE_INTERVAL_MS);
+  };
+
+  const stopPeriodicSave = () => {
+    if (saveIntervalRef.current) {
+      clearInterval(saveIntervalRef.current);
+      saveIntervalRef.current = null;
+    }
+  };
+
+  // Save state on unmount if pipeline is running
+  useEffect(() => {
+    return () => {
+      stopPeriodicSave();
+      if (currentRunIdRef.current && jobsRef.current.some((j) => j.status === "pending" || j.status === "processing")) {
+        savePipelineState("interrupted");
+      }
+    };
+  }, []);
+
+  /* ─── Load product log details for a specific run ─── */
+  const loadLogDetails = async (runId: string) => {
+    if (showLogDetails === runId) {
+      setShowLogDetails(null);
+      return;
+    }
+
+    const run = dbRunHistory.find((r) => r.id === runId);
+    if (!run) return;
+
+    const allIds = [...run.processed_product_ids, ...run.error_product_ids];
+    if (allIds.length === 0) {
+      setLogDetailsData([]);
+      setShowLogDetails(runId);
+      return;
+    }
+
+    try {
+      // Get logs for products from this run, ordered by creation
+      const { data } = await cloud
+        .from("image_import_logs")
+        .select("*")
+        .in("product_id", allIds.slice(0, 200))
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      setLogDetailsData(data ?? []);
+    } catch {
+      setLogDetailsData([]);
+    }
+    setShowLogDetails(runId);
+  };
 
   /* ─── Pagination-aware load ─── */
   const load = async () => {
@@ -202,7 +332,10 @@ export default function AdminBulkImageSearch() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    loadRunHistory();
+  }, []);
 
   const getFilteredProducts = useCallback(() => {
     if (filter === "no-images") return products.filter((p) => p.imageCount === 0);
@@ -272,7 +405,6 @@ export default function AdminBulkImageSearch() {
     const cached = imageCacheRef.current.get(cacheKey);
     if (cached && cached.length > 0) return { images: cached, fromCache: true };
 
-    // Similarity cache check
     const baseKey = extractBaseKeyword(query);
     if (baseKey.length >= 3) {
       const similarKey = `${baseKey} produto construção`.toLowerCase().trim();
@@ -301,7 +433,7 @@ export default function AdminBulkImageSearch() {
               }
               return { images, fromCache: false };
             }
-            break; // no results from this source, try next
+            break;
           } catch (e: any) {
             const msg = e?.message || "";
             const is429 = msg.includes("429") || msg.includes("limit") || msg.includes("Limite");
@@ -321,7 +453,7 @@ export default function AdminBulkImageSearch() {
     return { images: [], fromCache: false };
   };
 
-  /* ─── Update helpers (batched state updates) ─── */
+  /* ─── Update helpers ─── */
   const updateJob = (idx: number, patch: Partial<JobEntry>) => {
     jobsRef.current = jobsRef.current.map((j, i) => i === idx ? { ...j, ...patch } : j);
     setJobs([...jobsRef.current]);
@@ -332,7 +464,7 @@ export default function AdminBulkImageSearch() {
     if (statsRef.current) setStats({ ...statsRef.current });
   };
 
-  /* ─── Process a single product (worker task) ─── */
+  /* ─── Process a single product ─── */
   const processProduct = async (jobIdx: number, workerId: number): Promise<void> => {
     const job = jobsRef.current[jobIdx];
     if (!job || abortRef.current) return;
@@ -342,7 +474,7 @@ export default function AdminBulkImageSearch() {
     updateStats({ activeWorkers: (statsRef.current?.activeWorkers ?? 0) + 1, processing: (statsRef.current?.processing ?? 0) + 1, pending: (statsRef.current?.pending ?? 0) - 1 });
 
     try {
-      // STEP 1: AI Enrichment with layered queries (concurrency limited)
+      // STEP 1: AI Enrichment
       let aiSearchQueries: string[] = [];
       let layeredQueries: { manufacturer?: string[]; marketplace?: string[]; general?: string[] } = {};
       let imageRejectionTerms: string[] = [];
@@ -371,14 +503,13 @@ export default function AdminBulkImageSearch() {
                 updateJob(jobIdx, { descriptionGenerated: true, techSheetGenerated: true });
                 updateStats({ descriptionsGenerated: (statsRef.current?.descriptionsGenerated ?? 0) + 1 });
               } else if (data && !data.success) {
-                // Partial failure from server - use whatever data returned
                 aiSearchQueries = data.searchQueries ?? [];
                 layeredQueries = data.searchQueriesLayered ?? {};
                 imageRejectionTerms = data.imageRejectionTerms ?? [];
                 imageAcceptanceTerms = data.imageAcceptanceTerms ?? [];
                 aiImagePrompt = data.aiImagePrompt ?? "";
               }
-              break; // success or partial, stop retrying
+              break;
             } catch (aiErr: any) {
               const msg = aiErr?.message || "";
               const is429 = msg.includes("429") || msg.includes("rate") || msg.includes("limit");
@@ -388,7 +519,7 @@ export default function AdminBulkImageSearch() {
                 continue;
               }
               console.error("AI enrichment error:", msg);
-              break; // give up on AI, continue pipeline
+              break;
             }
           }
         } finally {
@@ -400,59 +531,58 @@ export default function AdminBulkImageSearch() {
       if (neededImages > 0 && !abortRef.current) {
         let allFoundImages: GoogleImageResult[] = [];
 
-        // Layer 1: Manufacturer queries
+        // Layer 1: Manufacturer
         if (layeredQueries.manufacturer && layeredQueries.manufacturer.length > 0 && !abortRef.current) {
           updateJob(jobIdx, { step: "🏭 Buscando no fabricante..." });
           for (const q of layeredQueries.manufacturer) {
             if (abortRef.current || allFoundImages.length >= MAX_IMAGES_PER_PRODUCT) break;
             const { images } = await searchWithCache(q);
-            // Filter using AI-provided terms
-            const filtered = images.filter((img) => {
+            const filt = images.filter((img) => {
               const title = (img.title || "").toLowerCase();
               const hasRejection = imageRejectionTerms.some((t) => title.includes(t.toLowerCase()));
               const hasAcceptance = imageAcceptanceTerms.some((t) => title.includes(t.toLowerCase()));
               if (hasRejection && !hasAcceptance) return false;
               return true;
             });
-            allFoundImages.push(...filtered);
+            allFoundImages.push(...filt);
           }
         }
 
-        // Layer 2: Marketplace queries
+        // Layer 2: Marketplace
         if (allFoundImages.length < neededImages && layeredQueries.marketplace && !abortRef.current) {
           updateJob(jobIdx, { step: "🛒 Buscando em marketplaces..." });
           for (const q of layeredQueries.marketplace) {
             if (abortRef.current || allFoundImages.length >= MAX_IMAGES_PER_PRODUCT) break;
             const { images } = await searchWithCache(q);
-            const filtered = images.filter((img) => {
+            const filt = images.filter((img) => {
               const title = (img.title || "").toLowerCase();
               const hasRejection = imageRejectionTerms.some((t) => title.includes(t.toLowerCase()));
               const hasAcceptance = imageAcceptanceTerms.some((t) => title.includes(t.toLowerCase()));
               if (hasRejection && !hasAcceptance) return false;
               return true;
             });
-            allFoundImages.push(...filtered);
+            allFoundImages.push(...filt);
           }
         }
 
-        // Layer 3: General queries
+        // Layer 3: General
         if (allFoundImages.length < neededImages && layeredQueries.general && !abortRef.current) {
           updateJob(jobIdx, { step: "🔍 Busca geral..." });
           for (const q of layeredQueries.general) {
             if (abortRef.current || allFoundImages.length >= MAX_IMAGES_PER_PRODUCT) break;
             const { images } = await searchWithCache(q);
-            const filtered = images.filter((img) => {
+            const filt = images.filter((img) => {
               const title = (img.title || "").toLowerCase();
               const hasRejection = imageRejectionTerms.some((t) => title.includes(t.toLowerCase()));
               const hasAcceptance = imageAcceptanceTerms.some((t) => title.includes(t.toLowerCase()));
               if (hasRejection && !hasAcceptance) return false;
               return true;
             });
-            allFoundImages.push(...filtered);
+            allFoundImages.push(...filt);
           }
         }
 
-        // Fallback: original query if no layered queries
+        // Fallback
         if (allFoundImages.length === 0 && aiSearchQueries.length === 0 && !abortRef.current) {
           updateJob(jobIdx, { step: "🔍 Buscando imagens..." });
           const defaultQuery = `${job.productName} produto construção`;
@@ -460,7 +590,7 @@ export default function AdminBulkImageSearch() {
           allFoundImages.push(...images);
         }
 
-        // Deduplicate by URL
+        // Deduplicate
         const seen = new Set<string>();
         const uniqueImages = allFoundImages.filter((img) => {
           if (seen.has(img.imageUrl)) return false;
@@ -470,7 +600,7 @@ export default function AdminBulkImageSearch() {
 
         updateJob(jobIdx, { imagesFound: uniqueImages.length });
 
-        // STEP 3: Import images
+        // STEP 3: Import
         if (uniqueImages.length > 0 && !abortRef.current) {
           updateJob(jobIdx, { step: "💾 Salvando imagens..." });
           const toImport = uniqueImages.slice(0, Math.min(neededImages, MAX_IMAGES_PER_PRODUCT));
@@ -481,7 +611,7 @@ export default function AdminBulkImageSearch() {
           } catch { /* partial failure */ }
         }
 
-        // STEP 4: AI Image Generation Fallback (concurrency limited)
+        // STEP 4: AI Image Generation Fallback
         const currentSaved = jobsRef.current[jobIdx]?.imagesSaved ?? 0;
         if (currentSaved === 0 && aiImagePrompt && !abortRef.current) {
           updateJob(jobIdx, { step: "🎨 Aguardando slot IA..." });
@@ -539,7 +669,6 @@ export default function AdminBulkImageSearch() {
           activeWorkers: Math.max(0, (statsRef.current?.activeWorkers ?? 0) - 1),
           pending: (statsRef.current?.pending ?? 0) + 1,
         });
-        // Re-enqueue for retry after delay
         await sleep(5000);
         if (!abortRef.current) await processProduct(jobIdx, workerId);
       } else {
@@ -552,7 +681,7 @@ export default function AdminBulkImageSearch() {
       }
     }
 
-    // Save log to DB (fire and forget)
+    // Save log to DB
     const finalJob = jobsRef.current[jobIdx];
     try {
       await cloud.from("image_import_logs").insert({
@@ -575,8 +704,8 @@ export default function AdminBulkImageSearch() {
     }
   };
 
-  /* ─── Run Pipeline with Parallel Workers ─── */
-  const runPipeline = async (eligibleProducts: ProductRow[]) => {
+  /* ─── Run Pipeline ─── */
+  const runPipeline = async (eligibleProducts: ProductRow[], resumeRunId?: string) => {
     if (eligibleProducts.length === 0) {
       toast({ title: "Nada a processar", description: "Todos os produtos já estão completos." });
       return;
@@ -584,6 +713,32 @@ export default function AdminBulkImageSearch() {
 
     abortRef.current = false;
     setPipelineRunning(true);
+    setResumableRun(null);
+
+    // Create or reuse pipeline run record
+    let runId = resumeRunId || null;
+    if (!runId) {
+      try {
+        const { data } = await cloud.from("pipeline_runs").insert({
+          status: "running",
+          filter_used: filter,
+          total_products: eligibleProducts.length,
+          worker_count: workerCount,
+          pending_product_ids: eligibleProducts.map((p) => p.id) as any,
+        } as any).select("id").single();
+        runId = data?.id || null;
+      } catch { /* ignore */ }
+    } else {
+      // Mark as running again
+      try {
+        await cloud.from("pipeline_runs").update({
+          status: "running",
+          total_products: eligibleProducts.length,
+          pending_product_ids: eligibleProducts.map((p) => p.id) as any,
+        } as any).eq("id", runId);
+      } catch { /* ignore */ }
+    }
+    currentRunIdRef.current = runId;
 
     const initialJobs: JobEntry[] = eligibleProducts.map((p) => ({
       productId: p.id,
@@ -619,6 +774,9 @@ export default function AdminBulkImageSearch() {
     statsRef.current = initialStats;
     setStats({ ...initialStats });
 
+    // Start periodic save
+    startPeriodicSave();
+
     // Semaphore-based parallel execution
     const sem = new Semaphore(workerCount);
     const promises: Promise<void>[] = [];
@@ -629,7 +787,6 @@ export default function AdminBulkImageSearch() {
       await sem.acquire();
       if (abortRef.current) { sem.release(); break; }
 
-      // Stagger worker launches
       if (i > 0) await sleep(INTER_WORKER_DELAY);
 
       const workerIdx = (i % workerCount) + 1;
@@ -639,37 +796,43 @@ export default function AdminBulkImageSearch() {
 
     await Promise.allSettled(promises);
 
+    // Stop periodic save
+    stopPeriodicSave();
+
+    // Final save
+    const finalStatus = abortRef.current ? "stopped" : "completed";
+    await savePipelineState(finalStatus);
+
     setPipelineRunning(false);
-
-    // Final stats
-    const finalJobs = jobsRef.current;
-    const completedCount = finalJobs.filter(j => j.status === "completed").length;
-    const errCount = finalJobs.filter(j => j.status === "error").length;
-    const totalTime = Date.now() - initialStats.startTime;
-    const avgTime = completedCount > 0 ? finalJobs.filter(j => j.status === "completed").reduce((s, j) => s + j.time, 0) / completedCount : 0;
-
-    // Save to run history
-    setRunHistory((prev) => [
-      {
-        date: new Date().toLocaleString("pt-BR"),
-        total: finalJobs.length,
-        completed: completedCount,
-        errors: errCount,
-        avgTime,
-        duration: totalTime,
-      },
-      ...prev.slice(0, 9),
-    ]);
+    currentRunIdRef.current = null;
 
     await load();
+    await loadRunHistory();
+
+    const finalJobs = jobsRef.current;
+    const completedCount = finalJobs.filter(j => j.status === "completed").length;
+    const totalTime = Date.now() - initialStats.startTime;
+
     toast({
-      title: "Pipeline concluído",
+      title: finalStatus === "stopped" ? "Pipeline interrompido" : "Pipeline concluído",
       description: `${completedCount} de ${finalJobs.length} produtos enriquecidos em ${(totalTime / 1000).toFixed(0)}s.`,
     });
   };
 
   const startPipeline = () => {
     runPipeline(filtered);
+  };
+
+  const resumePipeline = () => {
+    if (!resumableRun) return;
+    const pendingIds = new Set(resumableRun.pending_product_ids);
+    const eligibleProducts = products.filter((p) => pendingIds.has(p.id));
+    if (eligibleProducts.length === 0) {
+      toast({ title: "Nada a retomar", description: "Todos os produtos pendentes já foram processados." });
+      setResumableRun(null);
+      return;
+    }
+    runPipeline(eligibleProducts, resumableRun.id);
   };
 
   const reprocessErrors = () => {
@@ -824,15 +987,50 @@ export default function AdminBulkImageSearch() {
             <Wand2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-primary" /> Gerador de Imagens & Conteúdo IA
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Pipeline paralelo com {workerCount} workers — IA interpreta → busca em camadas (fabricante → marketplace → geral) → filtro anti-ambiente → fallback IA.
+            Pipeline paralelo com {workerCount} workers — IA interpreta → busca em camadas → filtro anti-ambiente → fallback IA.
           </p>
         </div>
-        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => load()} disabled={loading || pipelineRunning}>
+        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => { load(); loadRunHistory(); }} disabled={loading || pipelineRunning}>
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </div>
 
-      {/* Stats Cards - clickable to filter */}
+      {/* Resume Banner */}
+      {resumableRun && !pipelineRunning && (
+        <Card className="rounded-xl border-amber-500/50 bg-amber-500/10">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2 text-amber-700">
+                <PlayCircle className="w-5 h-5" />
+                <div>
+                  <p className="text-sm font-semibold">Pipeline interrompido detectado</p>
+                  <p className="text-xs text-amber-600">
+                    {resumableRun.pending_product_ids.length} produtos pendentes de {resumableRun.total_products} total
+                    {" · "}{resumableRun.completed} já processados
+                    {" · "}Iniciado em {new Date(resumableRun.started_at).toLocaleString("pt-BR")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 ml-auto">
+                <Button size="sm" className="h-8 text-xs sm:text-sm gap-1.5" onClick={resumePipeline}>
+                  <PlayCircle className="w-3.5 h-3.5" /> Retomar ({resumableRun.pending_product_ids.length} itens)
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs sm:text-sm" onClick={async () => {
+                  try {
+                    await cloud.from("pipeline_runs").update({ status: "cancelled", ended_at: new Date().toISOString() } as any).eq("id", resumableRun.id);
+                  } catch { /* ignore */ }
+                  setResumableRun(null);
+                  loadRunHistory();
+                }}>
+                  Descartar
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Stats Cards */}
       <div className="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
         {[
           { value: products.length, label: "Total", icon: BarChart3, color: "", filterKey: "all" as const },
@@ -960,7 +1158,7 @@ export default function AdminBulkImageSearch() {
                 ))}
               </div>
 
-              {/* Throughput indicator */}
+              {/* Throughput */}
               {stats.throughput > 0 && (
                 <div className="flex items-center gap-2 text-xs sm:text-sm bg-green-500/10 border border-green-500/30 rounded-lg p-2">
                   <Gauge className="w-4 h-4 text-green-600" />
@@ -1037,31 +1235,86 @@ export default function AdminBulkImageSearch() {
         </CardContent>
       </Card>
 
-      {/* Run History */}
-      {runHistory.length > 0 && (
+      {/* Persistent Run History from DB */}
+      {dbRunHistory.length > 0 && (
         <Card className="rounded-xl sm:rounded-2xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-              <Timer className="w-4 h-4" /> Histórico de execuções
+              <History className="w-4 h-4" /> Histórico de Execuções
+              <Badge variant="secondary" className="text-[10px]">{dbRunHistory.length}</Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              {runHistory.map((run, idx) => (
-                <div key={idx} className="flex items-center gap-3 text-[10px] sm:text-xs py-1.5 border-b border-border/50 last:border-0">
-                  <span className="text-muted-foreground shrink-0">{run.date}</span>
-                  <span className="font-medium">{run.completed}/{run.total} produtos</span>
-                  {run.errors > 0 && <span className="text-destructive">{run.errors} erros</span>}
-                  <span className="text-muted-foreground">Média: {(run.avgTime / 1000).toFixed(1)}s</span>
-                  <span className="text-muted-foreground">Duração: {(run.duration / 1000).toFixed(0)}s</span>
+          <CardContent className="space-y-0">
+            {dbRunHistory.map((run) => {
+              const isExpanded = showLogDetails === run.id;
+              const statusColor = run.status === "completed" ? "text-green-600" : run.status === "running" || run.status === "interrupted" ? "text-amber-600" : run.status === "stopped" ? "text-orange-500" : "text-muted-foreground";
+              const statusLabel = run.status === "completed" ? "Concluído" : run.status === "running" ? "Em execução" : run.status === "interrupted" ? "Interrompido" : run.status === "stopped" ? "Parado" : run.status === "cancelled" ? "Cancelado" : run.status;
+
+              return (
+                <div key={run.id} className="border-b border-border/50 last:border-0">
+                  <div
+                    className="flex items-center gap-3 text-[10px] sm:text-xs py-2.5 cursor-pointer hover:bg-muted/30 rounded px-1 transition-colors"
+                    onClick={() => loadLogDetails(run.id)}
+                  >
+                    <span className="text-muted-foreground shrink-0 w-28 sm:w-36">
+                      {new Date(run.started_at).toLocaleString("pt-BR")}
+                    </span>
+                    <Badge variant="outline" className={`text-[9px] sm:text-[10px] px-1.5 py-0 ${statusColor} border-current/30`}>
+                      {statusLabel}
+                    </Badge>
+                    <span className="font-medium">{run.completed}/{run.total_products} produtos</span>
+                    <span className="text-green-600">{run.images_imported} imgs</span>
+                    <span className="text-indigo-600">{run.descriptions_generated} desc</span>
+                    {run.errors > 0 && <span className="text-destructive">{run.errors} erros</span>}
+                    <span className="text-muted-foreground">{(run.duration_ms / 1000).toFixed(0)}s</span>
+                    <span className="text-muted-foreground ml-auto">{run.worker_count}w</span>
+                    <Database className={`w-3 h-3 shrink-0 transition-transform ${isExpanded ? "text-primary" : "text-muted-foreground"}`} />
+                  </div>
+
+                  {/* Expanded log details */}
+                  {isExpanded && (
+                    <div className="pb-3 px-1">
+                      <div className="rounded-lg border border-border bg-muted/20 p-2 max-h-[30vh] overflow-y-auto space-y-1">
+                        {logDetailsData.length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-3">Nenhum log detalhado encontrado para esta execução.</p>
+                        ) : (
+                          <>
+                            <div className="text-[10px] text-muted-foreground mb-2">
+                              {logDetailsData.length} registros de log
+                            </div>
+                            {logDetailsData.map((log: any, i: number) => (
+                              <div key={log.id || i} className="flex items-center gap-2 text-[10px] sm:text-xs py-1 border-b border-border/30 last:border-0">
+                                {log.status === "completed" ? (
+                                  <CheckCircle2 className="w-3 h-3 text-green-600 shrink-0" />
+                                ) : (
+                                  <XCircle className="w-3 h-3 text-destructive shrink-0" />
+                                )}
+                                <span className="text-muted-foreground shrink-0 w-24">
+                                  {new Date(log.created_at).toLocaleTimeString("pt-BR")}
+                                </span>
+                                <span className="truncate flex-1">{log.product_id?.slice(0, 8)}...</span>
+                                <span className="text-green-600 shrink-0">{log.images_saved}/{log.images_found} imgs</span>
+                                <span className="text-muted-foreground shrink-0">{(log.processing_time / 1000).toFixed(1)}s</span>
+                                {log.error_message && (
+                                  <span className="text-destructive/70 truncate max-w-[120px]" title={log.error_message}>
+                                    {log.error_message}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}
 
-      {/* Filter */}
+      {/* Filter tabs */}
       <div className="flex gap-1.5 sm:gap-2 flex-wrap">
         <Button variant={filter === "no-images" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("no-images")}>
           Sem imagens ({noImagesCount})

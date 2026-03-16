@@ -25,7 +25,27 @@ function delay(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
 
 /* ---------- Image helpers ---------- */
 
-async function getProductImages(supa: any, supabaseUrl: string, productId: string): Promise<{ id: string; url: string; usage_count: number }[]> {
+/** Get images from review_image_pool (real usage photos) first, then fallback to store_product_images */
+async function getReviewPoolImages(supa: any, productId: string): Promise<{ id: string; url: string; usage_count: number; source: "pool" | "product" }[]> {
+  // Priority 1: review_image_pool (real usage/installation photos)
+  const { data: poolImages } = await supa
+    .from("review_image_pool")
+    .select("id, image_url, usage_count")
+    .eq("product_id", productId)
+    .order("usage_count", { ascending: true })
+    .limit(50);
+
+  const pool = (poolImages ?? []).map((img: any) => ({
+    id: img.id,
+    url: img.image_url as string,
+    usage_count: img.usage_count ?? 0,
+    source: "pool" as const,
+  }));
+
+  return pool;
+}
+
+async function getProductImages(supa: any, supabaseUrl: string, productId: string): Promise<{ id: string; url: string; usage_count: number; source: "pool" | "product" }[]> {
   const { data: storedImages } = await supa
     .from("store_product_images")
     .select("id, path, usage_count")
@@ -38,7 +58,7 @@ async function getProductImages(supa: any, supabaseUrl: string, productId: strin
   return storedImages.map((img: any) => {
     const p = img.path as string;
     const url = p.startsWith("http") ? p : `${supabaseUrl}/storage/v1/object/public/product-images/${p}`;
-    return { id: img.id, url, usage_count: img.usage_count ?? 0 };
+    return { id: img.id, url, usage_count: img.usage_count ?? 0, source: "product" as const };
   });
 }
 
@@ -58,12 +78,17 @@ async function getAlreadyUsedImageUrls(supa: any, productId: string): Promise<Se
   return new Set((usedImgs ?? []).map((i: any) => i.image_url as string));
 }
 
-async function incrementImageUsage(supa: any, imageId: string) {
+async function incrementPoolUsage(supa: any, imageId: string, source: "pool" | "product") {
   try {
-    // Read current count and update
-    const { data } = await supa.from("store_product_images").select("usage_count").eq("id", imageId).single();
-    const current = (data?.usage_count ?? 0) as number;
-    await supa.from("store_product_images").update({ usage_count: current + 1 }).eq("id", imageId);
+    if (source === "pool") {
+      const { data } = await supa.from("review_image_pool").select("usage_count").eq("id", imageId).single();
+      const current = (data?.usage_count ?? 0) as number;
+      await supa.from("review_image_pool").update({ usage_count: current + 1 }).eq("id", imageId);
+    } else {
+      const { data } = await supa.from("store_product_images").select("usage_count").eq("id", imageId).single();
+      const current = (data?.usage_count ?? 0) as number;
+      await supa.from("store_product_images").update({ usage_count: current + 1 }).eq("id", imageId);
+    }
   } catch { /* best-effort */ }
 }
 

@@ -152,6 +152,24 @@ export default function AdminProductsList() {
     setBatchAction(null);
   };
 
+  const [visibleCount, setVisibleCount] = useState(60);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible count when filter changes
+  useEffect(() => { setVisibleCount(60); }, [q, filterActive, filterCategory]);
+
+  // Scroll-to-top visibility
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
   const filtered = useMemo(() => {
     let result = rows;
     if (filterActive === "active") result = result.filter(r => r.active);
@@ -163,6 +181,9 @@ export default function AdminProductsList() {
     if (s) result = result.filter(r => r.name.toLowerCase().includes(s));
     return result;
   }, [q, rows, filterActive, filterCategory]);
+
+  const visibleItems = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore = visibleCount < filtered.length;
 
   const activeCount = rows.filter(r => r.active).length;
   const inactiveCount = rows.length - activeCount;

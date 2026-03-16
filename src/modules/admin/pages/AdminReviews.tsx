@@ -7,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import {
   BarChart3, CheckCircle, Clock, Loader2, MessageSquare, RefreshCw,
   Search, Sparkles, Star, TrendingUp, Trash2, XCircle, Calendar,
-  Image as ImageIcon, FileText, Eye, ChevronDown, ChevronUp,
+  Image as ImageIcon, FileText, Eye, ChevronDown, ChevronUp, X,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -49,6 +50,8 @@ type LogEntry = {
 export default function AdminReviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewImageIds, setReviewImageIds] = useState<Set<string>>(new Set());
+  const [reviewImageMap, setReviewImageMap] = useState<Map<string, string[]>>(new Map());
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "with_image">("pending");
@@ -71,7 +74,7 @@ export default function AdminReviews() {
       cloud.from("product_reviews").select("*, store_products(name)").order("created_at", { ascending: false }).limit(1000),
       cloud.from("system_event_logs").select("*").eq("source", "review-system").order("created_at", { ascending: false }).limit(50),
       cloud.from("store_products").select("id", { count: "exact", head: true }).eq("active", true).eq("status", "published"),
-      cloud.from("review_images").select("review_id"),
+      cloud.from("review_images").select("review_id, image_url"),
     ]);
 
     if (reviewsRes.error) toast({ title: "Erro", description: reviewsRes.error.message, variant: "destructive" });
@@ -84,7 +87,15 @@ export default function AdminReviews() {
     setLogs((logsRes.data ?? []) as LogEntry[]);
     setTotalProducts(productsRes.count ?? 0);
 
-    const imgIds = new Set((imagesRes.data ?? []).map((i: any) => i.review_id as string));
+    const imgMap = new Map<string, string[]>();
+    for (const i of (imagesRes.data ?? []) as any[]) {
+      const rid = i.review_id as string;
+      const url = i.image_url as string;
+      if (!imgMap.has(rid)) imgMap.set(rid, []);
+      imgMap.get(rid)!.push(url);
+    }
+    setReviewImageMap(imgMap);
+    const imgIds = new Set(imgMap.keys());
     setReviewImageIds(imgIds);
     setReviewsWithImagesCount(imgIds.size);
 
@@ -428,6 +439,23 @@ export default function AdminReviews() {
                     </div>
                     {r.title && <p className="font-semibold text-sm">{r.title}</p>}
                     <p className="text-sm text-muted-foreground line-clamp-2">{r.content}</p>
+                    {/* Image thumbnails */}
+                    {reviewImageMap.has(r.id) && (
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {(reviewImageMap.get(r.id) ?? []).map((url, idx) => (
+                          <img
+                            key={idx}
+                            src={url}
+                            alt={`Review image ${idx + 1}`}
+                            className="w-[120px] h-[120px] object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLightboxUrl(url);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
                       <span className="font-medium text-foreground">{r.author_name}</span>
                       {r.author_location && <span>• {r.author_location}</span>}
@@ -484,6 +512,19 @@ export default function AdminReviews() {
           </CardContent>
         )}
       </Card>
+
+      {/* ====== Image Lightbox ====== */}
+      <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
+        <DialogContent className="max-w-3xl p-2 bg-background/95 backdrop-blur">
+          {lightboxUrl && (
+            <img
+              src={lightboxUrl}
+              alt="Review image enlarged"
+              className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

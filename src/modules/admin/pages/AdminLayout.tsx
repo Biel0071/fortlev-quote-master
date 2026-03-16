@@ -149,8 +149,8 @@ function AdminSidebar() {
                             end={item.url === "/admin/dashboard"}
                             className={`relative transition-all duration-150 rounded-lg mx-1 ${
                               isActive
-                                ? "bg-primary/10 text-primary font-semibold shadow-sm"
-                                : "hover:bg-muted/40 text-foreground/80 hover:text-foreground"
+                                ? "bg-sidebar-accent text-sidebar-primary font-semibold shadow-sm"
+                                : "hover:bg-sidebar-accent/60 text-sidebar-foreground/90 hover:text-sidebar-foreground"
                             }`}
                             activeClassName="bg-primary/10 text-primary font-semibold"
                           >

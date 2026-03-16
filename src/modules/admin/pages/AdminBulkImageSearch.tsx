@@ -132,7 +132,7 @@ export default function AdminBulkImageSearch() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null);
   const [detailProduct, setDetailProduct] = useState<ProductRow | null>(null);
-  const [filter, setFilter] = useState<"all" | "no-images" | "incomplete">("no-images");
+  const [filter, setFilter] = useState<"all" | "no-images" | "no-description" | "incomplete">("no-images");
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
@@ -206,7 +206,8 @@ export default function AdminBulkImageSearch() {
 
   const getFilteredProducts = useCallback(() => {
     if (filter === "no-images") return products.filter((p) => p.imageCount === 0);
-    if (filter === "incomplete") return products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT);
+    if (filter === "no-description") return products.filter((p) => !p.description || p.description.trim().length < 20);
+    if (filter === "incomplete") return products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20);
     return products;
   }, [products, filter]);
 
@@ -1068,8 +1069,11 @@ export default function AdminBulkImageSearch() {
         <Button variant={filter === "no-images" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("no-images")}>
           Sem imagens ({noImagesCount})
         </Button>
+        <Button variant={filter === "no-description" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("no-description")}>
+          Sem descrição ({noDescriptionCount})
+        </Button>
         <Button variant={filter === "incomplete" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("incomplete")}>
-          Incompletos ({incompleteCount + noImagesCount})
+          Incompletos ({products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20).length})
         </Button>
         <Button variant={filter === "all" ? "default" : "outline"} size="sm" className="h-8 text-xs sm:text-sm" onClick={() => setFilter("all")}>
           Todos ({products.length})
@@ -1080,7 +1084,7 @@ export default function AdminBulkImageSearch() {
       <Card className="rounded-xl sm:rounded-2xl">
         <CardHeader className="pb-2 sm:pb-3">
           <CardTitle className="text-base sm:text-lg">
-            {filter === "no-images" ? `Produtos sem imagens (${filtered.length})` : filter === "incomplete" ? `Produtos com menos de 8 imagens (${filtered.length})` : `Todos os produtos (${filtered.length})`}
+            {filter === "no-images" ? `Produtos sem imagens (${filtered.length})` : filter === "no-description" ? `Produtos sem descrição (${filtered.length})` : filter === "incomplete" ? `Produtos incompletos (${filtered.length})` : `Todos os produtos (${filtered.length})`}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">

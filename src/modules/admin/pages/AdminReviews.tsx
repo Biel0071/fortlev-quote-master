@@ -180,17 +180,18 @@ export default function AdminReviews() {
 
       const productIds = products.map((p: any) => p.id);
       const { data, error } = await cloud.functions.invoke("generate-reviews", {
-        body: { action: "generate", product_ids: productIds, count: genCount },
+        body: { action: "generate", product_ids: productIds, count: genCount, mode: genMode },
       });
 
       if (error) throw error;
       const results = (data as any)?.results ?? [];
       const total = results.reduce((sum: number, r: any) => sum + (r.reviews_created ?? 0), 0);
+      const totalImgs = results.reduce((sum: number, r: any) => sum + (r.images_attached ?? 0), 0);
       const errors = results.filter((r: any) => r.error).length;
 
       toast({
         title: "Geração concluída",
-        description: `${total} avaliações geradas para ${productIds.length} produtos${errors ? ` (${errors} erros)` : ""}.`,
+        description: `${total} avaliações (${totalImgs} com imagem) para ${productIds.length} produtos${errors ? ` (${errors} erros)` : ""}.`,
       });
       await load();
     } catch (e: any) {

@@ -72,11 +72,12 @@ export default function AdminReviews() {
   /* ---------- data loading ---------- */
   const load = useCallback(async () => {
     setLoading(true);
-    const [reviewsRes, logsRes, productsRes, imagesRes] = await Promise.all([
+    const [reviewsRes, logsRes, productsRes, imagesRes, poolStatsRes] = await Promise.all([
       cloud.from("product_reviews").select("*, store_products(name)").order("created_at", { ascending: false }).limit(1000),
       cloud.from("system_event_logs").select("*").eq("source", "review-system").order("created_at", { ascending: false }).limit(50),
       cloud.from("store_products").select("id", { count: "exact", head: true }).eq("active", true).eq("status", "published"),
       cloud.from("review_images").select("review_id, image_url"),
+      cloud.functions.invoke("search-review-images", { body: { action: "stats" } }),
     ]);
 
     if (reviewsRes.error) toast({ title: "Erro", description: reviewsRes.error.message, variant: "destructive" });
@@ -88,6 +89,14 @@ export default function AdminReviews() {
     setReviews(mapped);
     setLogs((logsRes.data ?? []) as LogEntry[]);
     setTotalProducts(productsRes.count ?? 0);
+
+    // Pool stats
+    if (poolStatsRes.data && (poolStatsRes.data as any).ok) {
+      setPoolStats({
+        total_images: (poolStatsRes.data as any).total_images ?? 0,
+        products_with_pool: (poolStatsRes.data as any).products_with_pool ?? 0,
+      });
+    }
 
     const imgMap = new Map<string, string[]>();
     for (const i of (imagesRes.data ?? []) as any[]) {

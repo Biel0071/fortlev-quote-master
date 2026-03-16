@@ -204,6 +204,27 @@ export default function AdminHome() {
     setDepartments((deps.data ?? []) as any);
     setOffers((off.data ?? []) as any);
     setSeoRow((seo.data as any) ?? null);
+
+    // Load products for Destaques / Mais Vendidos tabs
+    const { data: prodRows } = await cloud
+      .from("store_products")
+      .select("id, name, price, promo_price, featured, best_seller, clicks, active, category, category_id, store_product_images(path, sort_order)")
+      .eq("active", true)
+      .order("name", { ascending: true })
+      .limit(1000);
+
+    const prods: SimpleProduct[] = ((prodRows ?? []) as any[]).map((p: any) => ({
+      ...p,
+      price: Number(p.price ?? 0),
+      promo_price: Number(p.promo_price ?? 0),
+      clicks: Number(p.clicks ?? 0),
+      images: (p.store_product_images ?? [])
+        .filter((im: any) => !!im?.path)
+        .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .slice(0, 1),
+    }));
+    setAllProducts(prods);
+
     setLoading(false);
   };
 

@@ -28,6 +28,8 @@ interface ScrapedProduct {
   dominio: string;
   imagemUrl?: string | null;
   categoria?: string | null;
+  unidade?: string;
+  priceConfidence?: number;
   errors?: ValidationError[];
 }
 

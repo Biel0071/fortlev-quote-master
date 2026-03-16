@@ -213,8 +213,8 @@ export default function AdminBulkImageSearch() {
 
   const filtered = getFilteredProducts();
   const noImagesCount = products.filter((p) => p.imageCount === 0).length;
-  const incompleteCount = products.filter((p) => p.imageCount > 0 && p.imageCount < MAX_IMAGES_PER_PRODUCT).length;
   const noDescriptionCount = products.filter((p) => !p.description || p.description.trim().length < 20).length;
+  const incompleteAllCount = products.filter((p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20).length;
 
   const openSearch = (product: ProductRow) => { setSelectedProduct(product); setSearchOpen(true); };
   const openDetail = (product: ProductRow) => { setDetailProduct(product); setSelectedImages(new Set()); setSelectionMode(false); };

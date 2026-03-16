@@ -23,6 +23,257 @@ async function logEvent(supa: any, level: string, message: string, meta: Record<
 
 function delay(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
 
+/* ---------- Image helpers ---------- */
+
+async function getProductImages(supa: any, supabaseUrl: string, productId: string): Promise<string[]> {
+  // 1. Check store_product_images (scraper/manufacturer images)
+  const { data: storedImages } = await supa
+    .from("store_product_images")
+    .select("path")
+    .eq("product_id", productId)
+    .order("sort_order", { ascending: true })
+    .limit(10);
+
+  const urls: string[] = [];
+  if (storedImages?.length) {
+    for (const img of storedImages) {
+      const p = img.path as string;
+      if (p.startsWith("http")) {
+        urls.push(p);
+      } else {
+        // Build public URL from storage
+        urls.push(`${supabaseUrl}/storage/v1/object/public/product-images/${p}`);
+      }
+    }
+  }
+
+  return urls;
+}
+
+async function generateAiReviewImage(
+  lovableApiKey: string,
+  productName: string,
+  category: string,
+): Promise<string | null> {
+  try {
+    const prompt = `foto realista tirada com celular em obra no Brasil, cliente instalando ${productName}, categoria ${category}, ambiente de construção civil, iluminação natural, casual, sem texto`;
+
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3.1-flash-image-preview",
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
+      }),
+    });
+
+    if (!resp.ok) return null;
+
+    const data = await resp.json();
+    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    return imageUrl || null;
+  } catch {
+    return null;
+  }
+}
+
+async function uploadBase64Image(
+  supa: any,
+  supabaseUrl: string,
+  base64Data: string,
+  productId: string,
+): Promise<string | null> {
+  try {
+    // Extract raw base64
+    const match = base64Data.match(/^data:image\/(.*?);base64,(.*)$/);
+    if (!match) return null;
+    const ext = match[1] === "jpeg" ? "jpg" : match[1];
+    const raw = match[2];
+    const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+
+    const path = `reviews/${productId}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supa.storage
+      .from("product-images")
+      .upload(path, bytes, { contentType: `image/${match[1]}`, upsert: false });
+
+    if (error) return null;
+    return `${supabaseUrl}/storage/v1/object/public/product-images/${path}`;
+  } catch {
+    return null;
+  }
+}
+
+/* ---------- Core review generation with image support ---------- */
+
+async function generateReviewsForProduct(
+  supa: any,
+  supabaseUrl: string,
+  lovableApiKey: string,
+  productId: string,
+  count: number,
+): Promise<{ reviews_created: number; images_attached: number; error?: string }> {
+  const { data: product } = await supa
+    .from("store_products")
+    .select("id, name, category, description, price, unit")
+    .eq("id", productId)
+    .single();
+
+  if (!product) return { reviews_created: 0, images_attached: 0, error: "Product not found" };
+
+  // Check existing review count
+  const { count: existingCount } = await supa
+    .from("product_reviews")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId);
+
+  if ((existingCount ?? 0) >= 250) {
+    return { reviews_created: 0, images_attached: 0, error: "Max 250 reviews reached" };
+  }
+
+  const remainingSlots = 250 - (existingCount ?? 0);
+  const actualCount = Math.min(count, remainingSlots);
+
+  // Get available product images for reuse
+  const productImages = await getProductImages(supa, supabaseUrl, productId);
+  const hasRealImages = productImages.length > 0;
+
+  const prompt = `Você é um gerador de avaliações realistas de clientes para uma loja de materiais de construção.
+
+Produto: ${product.name}
+Categoria: ${product.category || "Geral"}
+Preço: R$ ${product.price}
+Unidade: ${product.unit || "un"}
+Descrição: ${(product.description || "").slice(0, 500)}
+
+Gere ${actualCount} avaliações REALISTAS de clientes brasileiros. Cada avaliação deve ser única e parecer autêntica.
+
+Regras obrigatórias:
+- Ratings: distribuição realista (60% nota 5, 25% nota 4, 10% nota 3, 5% nota 2-1)
+- Nomes brasileiros diversos (homens e mulheres, diferentes regiões)
+- Cidades brasileiras variadas de todo o Brasil
+- Perspectivas: pedreiro, mestre de obras, engenheiro, DIY, dono de obra, empreiteiro, arquiteto
+- Variar comprimento: 30% curtos (1-2 linhas), 50% médios (3-5 linhas), 20% longos (6+ linhas)
+- Mencionar aspectos técnicos reais do produto quando possível
+- Incluir prós e contras em ~40% das avaliações (o resto null)
+- Usar linguagem natural, coloquial brasileira, sem ser formal demais
+
+Retorne APENAS um JSON array sem markdown:
+[{"author_name":"Nome Sobrenome","author_location":"Cidade - UF","rating":5,"title":"Título curto","content":"Texto...","pros":"Pontos positivos ou null","cons":"Pontos negativos ou null","verified_purchase":true}]`;
+
+  const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${lovableApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!aiResp.ok) {
+    const errText = await aiResp.text();
+    return { reviews_created: 0, images_attached: 0, error: `AI error ${aiResp.status}: ${errText.slice(0, 200)}` };
+  }
+
+  const aiData = await aiResp.json();
+  const rawContent = aiData.choices?.[0]?.message?.content ?? "[]";
+  const jsonMatch = rawContent.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) {
+    return { reviews_created: 0, images_attached: 0, error: "Failed to parse AI response" };
+  }
+
+  const reviews = JSON.parse(jsonMatch[0]) as Array<{
+    author_name: string;
+    author_location?: string;
+    rating: number;
+    title?: string;
+    content: string;
+    pros?: string;
+    cons?: string;
+    verified_purchase?: boolean;
+  }>;
+
+  // Determine which reviews get images (~30%)
+  const IMAGE_CHANCE = 0.3;
+  let imagesAttached = 0;
+  let aiImageGenerated = false; // limit to 1 AI image per product to save costs
+
+  const now = Date.now();
+  const insertedReviewIds: string[] = [];
+
+  for (const r of reviews) {
+    const daysAgo = Math.floor(Math.random() * 90);
+    const hoursAgo = Math.floor(Math.random() * 24);
+    const created = new Date(now - daysAgo * 86400000 - hoursAgo * 3600000);
+
+    const row = {
+      product_id: productId,
+      author_name: String(r.author_name || "Cliente").slice(0, 100),
+      author_location: r.author_location ? String(r.author_location).slice(0, 80) : null,
+      rating: Math.max(1, Math.min(5, Math.round(Number(r.rating) || 5))),
+      title: r.title ? String(r.title).slice(0, 200) : null,
+      content: String(r.content || "").slice(0, 2000),
+      pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
+      cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
+      verified_purchase: r.verified_purchase ?? true,
+      approved: false,
+      origin: "ai_generated",
+      created_at: created.toISOString(),
+    };
+
+    const { data: inserted, error: insertErr } = await supa
+      .from("product_reviews")
+      .insert(row)
+      .select("id")
+      .single();
+
+    if (insertErr || !inserted) continue;
+    insertedReviewIds.push(inserted.id);
+
+    // Decide if this review gets an image
+    const shouldHaveImage = Math.random() < IMAGE_CHANCE;
+    if (!shouldHaveImage) continue;
+
+    let imageUrl: string | null = null;
+    let imageOrigin = "scraper";
+
+    if (hasRealImages) {
+      // Pick a random real image (distribute usage)
+      const idx = Math.floor(Math.random() * productImages.length);
+      imageUrl = productImages[idx];
+      imageOrigin = "scraper";
+    } else if (!aiImageGenerated) {
+      // Fallback: generate AI image (max 1 per product)
+      const base64 = await generateAiReviewImage(lovableApiKey, product.name, product.category || "Geral");
+      if (base64) {
+        const uploaded = await uploadBase64Image(supa, supabaseUrl, base64, productId);
+        if (uploaded) {
+          imageUrl = uploaded;
+          imageOrigin = "ai_generated";
+          aiImageGenerated = true;
+        }
+      }
+    }
+
+    if (imageUrl) {
+      await supa.from("review_images").insert({
+        review_id: inserted.id,
+        image_url: imageUrl,
+        sort_order: 0,
+      });
+      imagesAttached++;
+    }
+  }
+
+  return { reviews_created: insertedReviewIds.length, images_attached: imagesAttached };
+}
+
 /* ---------- main ---------- */
 
 serve(async (req) => {
@@ -55,155 +306,29 @@ serve(async (req) => {
         daily_job: isDailyJob,
       });
 
-      const results: Array<{ product_id: string; reviews_created: number; error?: string }> = [];
+      const results: Array<{ product_id: string; reviews_created: number; images_attached: number; error?: string }> = [];
       const BATCH_SIZE = 5;
 
       for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
         const batch = productIds.slice(i, i + BATCH_SIZE);
 
         const batchPromises = batch.map(async (productId) => {
-          try {
-            const { data: product } = await supa
-              .from("store_products")
-              .select("id, name, category, description, price, unit")
-              .eq("id", productId)
-              .single();
-
-            if (!product) {
-              results.push({ product_id: productId, reviews_created: 0, error: "Product not found" });
-              return;
-            }
-
-            // Check existing review count
-            const { count: existingCount } = await supa
-              .from("product_reviews")
-              .select("id", { count: "exact", head: true })
-              .eq("product_id", productId);
-
-            if ((existingCount ?? 0) >= 250) {
-              results.push({ product_id: productId, reviews_created: 0, error: "Max 250 reviews reached" });
-              return;
-            }
-
-            const remainingSlots = 250 - (existingCount ?? 0);
-            const actualCount = Math.min(count, remainingSlots);
-
-            const prompt = `Você é um gerador de avaliações realistas de clientes para uma loja de materiais de construção.
-
-Produto: ${product.name}
-Categoria: ${product.category || "Geral"}
-Preço: R$ ${product.price}
-Unidade: ${product.unit || "un"}
-Descrição: ${(product.description || "").slice(0, 500)}
-
-Gere ${actualCount} avaliações REALISTAS de clientes brasileiros. Cada avaliação deve ser única e parecer autêntica.
-
-Regras obrigatórias:
-- Ratings: distribuição realista (60% nota 5, 25% nota 4, 10% nota 3, 5% nota 2-1)
-- Nomes brasileiros diversos (homens e mulheres, diferentes regiões)
-- Cidades brasileiras variadas de todo o Brasil
-- Perspectivas: pedreiro, mestre de obras, engenheiro, DIY, dono de obra, empreiteiro, arquiteto
-- Variar comprimento: 30% curtos (1-2 linhas), 50% médios (3-5 linhas), 20% longos (6+ linhas)
-- Mencionar aspectos técnicos reais do produto quando possível
-- Incluir prós e contras em ~40% das avaliações (o resto null)
-- Usar linguagem natural, coloquial brasileira, sem ser formal demais
-
-Retorne APENAS um JSON array sem markdown:
-[{
-  "author_name": "Nome Sobrenome",
-  "author_location": "Cidade - UF",
-  "rating": 5,
-  "title": "Título curto da avaliação",
-  "content": "Texto da avaliação...",
-  "pros": "Pontos positivos ou null",
-  "cons": "Pontos negativos ou null",
-  "verified_purchase": true
-}]`;
-
-            const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: "google/gemini-2.5-flash",
-                messages: [{ role: "user", content: prompt }],
-              }),
-            });
-
-            if (!aiResp.ok) {
-              const errText = await aiResp.text();
-              results.push({ product_id: productId, reviews_created: 0, error: `AI error ${aiResp.status}: ${errText.slice(0, 200)}` });
-              return;
-            }
-
-            const aiData = await aiResp.json();
-            const rawContent = aiData.choices?.[0]?.message?.content ?? "[]";
-            const jsonMatch = rawContent.match(/\[[\s\S]*\]/);
-            if (!jsonMatch) {
-              results.push({ product_id: productId, reviews_created: 0, error: "Failed to parse AI response" });
-              return;
-            }
-
-            const reviews = JSON.parse(jsonMatch[0]) as Array<{
-              author_name: string;
-              author_location?: string;
-              rating: number;
-              title?: string;
-              content: string;
-              pros?: string;
-              cons?: string;
-              verified_purchase?: boolean;
-            }>;
-
-            // Randomize creation dates over last 90 days for natural appearance
-            const now = Date.now();
-            const rows = reviews.map((r) => {
-              const daysAgo = Math.floor(Math.random() * 90);
-              const hoursAgo = Math.floor(Math.random() * 24);
-              const created = new Date(now - (daysAgo * 86400000) - (hoursAgo * 3600000));
-
-              return {
-                product_id: productId,
-                author_name: String(r.author_name || "Cliente").slice(0, 100),
-                author_location: r.author_location ? String(r.author_location).slice(0, 80) : null,
-                rating: Math.max(1, Math.min(5, Math.round(Number(r.rating) || 5))),
-                title: r.title ? String(r.title).slice(0, 200) : null,
-                content: String(r.content || "").slice(0, 2000),
-                pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
-                cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
-                verified_purchase: r.verified_purchase ?? true,
-                approved: false,
-                origin: "ai_generated",
-                created_at: created.toISOString(),
-              };
-            });
-
-            const { error: insertErr } = await supa.from("product_reviews").insert(rows);
-            if (insertErr) {
-              results.push({ product_id: productId, reviews_created: 0, error: insertErr.message });
-              return;
-            }
-
-            results.push({ product_id: productId, reviews_created: rows.length });
-          } catch (e) {
-            results.push({ product_id: productId, reviews_created: 0, error: e instanceof Error ? e.message : "Unknown" });
-          }
+          const result = await generateReviewsForProduct(supa, SUPABASE_URL, LOVABLE_API_KEY, productId, count);
+          results.push({ product_id: productId, ...result });
         });
 
         await Promise.all(batchPromises);
-
-        // Rate limit between batches
         if (i + BATCH_SIZE < productIds.length) await delay(500);
       }
 
       const totalCreated = results.reduce((s, r) => s + r.reviews_created, 0);
+      const totalImages = results.reduce((s, r) => s + r.images_attached, 0);
       const totalErrors = results.filter((r) => r.error).length;
 
       await logEvent(supa, totalErrors > 0 ? "warning" : "info",
-        `Geração concluída: ${totalCreated} reviews criados, ${totalErrors} erros`, {
+        `Geração concluída: ${totalCreated} reviews, ${totalImages} imagens, ${totalErrors} erros`, {
           total_created: totalCreated,
+          total_images: totalImages,
           total_errors: totalErrors,
           results,
         });
@@ -229,7 +354,7 @@ Retorne APENAS um JSON array sem markdown:
       const { data: reviews } = await supa.from("product_reviews").select("product_id").in("id", reviewIds);
       const productIds = [...new Set((reviews ?? []).map((r: any) => r.product_id))];
       for (const pid of productIds) {
-        await supa.rpc("recalculate_rating_summary", { _product_id: pid });
+        await recalcRatingSummary(supa, pid);
       }
 
       await logEvent(supa, "info", `${reviewIds.length} reviews aprovados`, { review_ids: reviewIds.slice(0, 10) });
@@ -245,6 +370,9 @@ Retorne APENAS um JSON array sem markdown:
     if (action === "reject") {
       const reviewIds: string[] = body?.review_ids ?? [];
       if (!reviewIds.length) throw new Error("No review_ids");
+
+      // Delete associated images first
+      await supa.from("review_images").delete().in("review_id", reviewIds);
       const { error } = await supa.from("product_reviews").delete().in("id", reviewIds);
       if (error) throw error;
 
@@ -261,7 +389,6 @@ Retorne APENAS um JSON array sem markdown:
     if (action === "daily") {
       await logEvent(supa, "info", "Job diário de reviews iniciado");
 
-      // Count total active products
       const { count: totalProducts } = await supa
         .from("store_products")
         .select("id", { count: "exact", head: true })
@@ -275,16 +402,14 @@ Retorne APENAS um JSON array sem markdown:
         });
       }
 
-      // Select 2% of products that need more reviews (< 20 reviews)
       const dailyTarget = Math.max(5, Math.ceil(totalProducts * 0.02));
 
-      // Get products with fewest reviews
       const { data: candidates } = await supa
         .from("store_products")
         .select("id")
         .eq("active", true)
         .eq("status", "published")
-        .limit(dailyTarget * 3); // fetch extra to filter
+        .limit(dailyTarget * 3);
 
       if (!candidates?.length) {
         return new Response(JSON.stringify({ ok: true, message: "No candidates" }), {
@@ -292,7 +417,6 @@ Retorne APENAS um JSON array sem markdown:
         });
       }
 
-      // Check which have fewer reviews
       const productScores: { id: string; count: number }[] = [];
       for (const c of candidates) {
         const { count } = await supa
@@ -302,7 +426,6 @@ Retorne APENAS um JSON array sem markdown:
         productScores.push({ id: c.id, count: count ?? 0 });
       }
 
-      // Prioritize products with < 20 reviews
       productScores.sort((a, b) => a.count - b.count);
       const selected = productScores
         .filter((p) => p.count < 250)
@@ -316,79 +439,30 @@ Retorne APENAS um JSON array sem markdown:
         });
       }
 
-      // Generate 3-5 reviews per product
       const reviewsPerProduct = Math.min(5, Math.max(3, Math.round(Math.random() * 2 + 3)));
-
-      // Re-invoke self with generate action in batches
       const results: any[] = [];
       const CHUNK = 10;
+
       for (let i = 0; i < selected.length; i += CHUNK) {
         const chunk = selected.slice(i, i + CHUNK);
-
-        // Inline generation (same logic)
         for (const productId of chunk) {
           try {
-            const { data: product } = await supa
-              .from("store_products")
-              .select("id, name, category, description, price, unit")
-              .eq("id", productId)
-              .single();
-
-            if (!product) continue;
-
-            const prompt = `Você é um gerador de avaliações realistas de clientes para loja de materiais de construção.
-Produto: ${product.name} | Categoria: ${product.category || "Geral"} | Preço: R$ ${product.price} | Unidade: ${product.unit || "un"}
-Descrição: ${(product.description || "").slice(0, 300)}
-
-Gere ${reviewsPerProduct} avaliações REALISTAS e variadas de clientes brasileiros.
-Ratings: maioria 4-5, alguns 3. Nomes e cidades brasileiras diversas.
-Retorne APENAS JSON array: [{"author_name":"","author_location":"Cidade - UF","rating":5,"title":"","content":"","pros":null,"cons":null,"verified_purchase":true}]`;
-
-            const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-              method: "POST",
-              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ model: "google/gemini-2.5-flash", messages: [{ role: "user", content: prompt }] }),
-            });
-
-            if (!aiResp.ok) continue;
-
-            const aiData = await aiResp.json();
-            const raw = aiData.choices?.[0]?.message?.content ?? "[]";
-            const m = raw.match(/\[[\s\S]*\]/);
-            if (!m) continue;
-
-            const reviews = JSON.parse(m[0]);
-            const now = Date.now();
-            const rows = reviews.map((r: any) => ({
-              product_id: productId,
-              author_name: String(r.author_name || "Cliente").slice(0, 100),
-              author_location: r.author_location ? String(r.author_location).slice(0, 80) : null,
-              rating: Math.max(1, Math.min(5, Math.round(Number(r.rating) || 5))),
-              title: r.title ? String(r.title).slice(0, 200) : null,
-              content: String(r.content || "").slice(0, 2000),
-              pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
-              cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
-              verified_purchase: true,
-              approved: false,
-              origin: "ai_generated",
-              created_at: new Date(now - Math.floor(Math.random() * 90) * 86400000).toISOString(),
-            }));
-
-            await supa.from("product_reviews").insert(rows);
-            results.push({ product_id: productId, created: rows.length });
+            const result = await generateReviewsForProduct(supa, SUPABASE_URL, LOVABLE_API_KEY, productId, reviewsPerProduct);
+            results.push({ product_id: productId, ...result });
           } catch { /* continue */ }
         }
-
         if (i + CHUNK < selected.length) await delay(1000);
       }
 
-      const totalCreated = results.reduce((s: number, r: any) => s + (r.created ?? 0), 0);
-      await logEvent(supa, "info", `Job diário concluído: ${totalCreated} reviews para ${results.length} produtos`, {
+      const totalCreated = results.reduce((s: number, r: any) => s + (r.reviews_created ?? 0), 0);
+      const totalImages = results.reduce((s: number, r: any) => s + (r.images_attached ?? 0), 0);
+      await logEvent(supa, "info", `Job diário concluído: ${totalCreated} reviews, ${totalImages} imagens`, {
         total_created: totalCreated,
+        total_images: totalImages,
         products_processed: results.length,
       });
 
-      return new Response(JSON.stringify({ ok: true, daily: true, total_created: totalCreated, products: results.length }), {
+      return new Response(JSON.stringify({ ok: true, daily: true, total_created: totalCreated, total_images: totalImages, products: results.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -397,11 +471,12 @@ Retorne APENAS JSON array: [{"author_name":"","author_location":"Cidade - UF","r
     /*  STATS                                                        */
     /* ============================================================ */
     if (action === "stats") {
-      const [totalRes, pendingRes, approvedRes, productsRes] = await Promise.all([
+      const [totalRes, pendingRes, approvedRes, productsRes, withImagesRes] = await Promise.all([
         supa.from("product_reviews").select("id", { count: "exact", head: true }),
         supa.from("product_reviews").select("id", { count: "exact", head: true }).eq("approved", false),
         supa.from("product_reviews").select("id", { count: "exact", head: true }).eq("approved", true),
         supa.from("store_products").select("id", { count: "exact", head: true }).eq("active", true),
+        supa.from("review_images").select("id", { count: "exact", head: true }),
       ]);
 
       return new Response(JSON.stringify({
@@ -410,18 +485,58 @@ Retorne APENAS JSON array: [{"author_name":"","author_location":"Cidade - UF","r
         pending: pendingRes.count ?? 0,
         approved: approvedRes.count ?? 0,
         total_products: productsRes.count ?? 0,
+        reviews_with_images: withImagesRes.count ?? 0,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ error: "unknown_action" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    throw new Error(`Unknown action: ${action}`);
   } catch (e) {
-    console.error("generate-reviews error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    return new Response(JSON.stringify({ ok: false, error: msg }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
+
+/* ---------- Rating recalculation ---------- */
+
+async function recalcRatingSummary(supa: any, productId: string) {
+  try {
+    const { data: reviews } = await supa
+      .from("product_reviews")
+      .select("rating")
+      .eq("product_id", productId)
+      .eq("approved", true);
+
+    if (!reviews?.length) {
+      await supa.from("product_rating_summary").upsert({
+        product_id: productId,
+        average_rating: 0,
+        total_reviews: 0,
+        rating_1: 0, rating_2: 0, rating_3: 0, rating_4: 0, rating_5: 0,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "product_id" });
+      return;
+    }
+
+    const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
+    let sum = 0;
+    for (const r of reviews) {
+      const rating = Math.max(1, Math.min(5, r.rating));
+      counts[rating]++;
+      sum += rating;
+    }
+
+    await supa.from("product_rating_summary").upsert({
+      product_id: productId,
+      average_rating: +(sum / reviews.length).toFixed(2),
+      total_reviews: reviews.length,
+      rating_1: counts[1], rating_2: counts[2], rating_3: counts[3],
+      rating_4: counts[4], rating_5: counts[5],
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "product_id" });
+  } catch { /* best-effort */ }
+}

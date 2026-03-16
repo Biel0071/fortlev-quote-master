@@ -61,6 +61,8 @@ export default function AdminReviews() {
   const [genCount, setGenCount] = useState(5);
   const [genProductCount, setGenProductCount] = useState(10);
   const [genMode, setGenMode] = useState<"text" | "image" | "text_image">("text");
+  const [catalogGenerating, setCatalogGenerating] = useState(false);
+  const [catalogLimit, setCatalogLimit] = useState<number>(20);
   const [showLogs, setShowLogs] = useState(false);
   const [visibleCount, setVisibleCount] = useState(40);
   const [totalProducts, setTotalProducts] = useState(0);

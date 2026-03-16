@@ -125,7 +125,7 @@ const App = () => (
               <Route path="produtos/inteligencia-preco" element={<AdminPriceIntelligence />} />
               <Route path="imagens/revisao" element={<AdminImageReview />} />
               <Route path="relatorios-ia" element={<AdminAiReports />} />
-              <Route path="operacoes-lote" element={<AdminBatchOps />} />
+              {/* batch ops now integrated into products page */}
               <Route path="produtos/recomendacoes" element={<AdminRecommendations />} />
 
               <Route path="categorias" element={<AdminCategoriesList />} />

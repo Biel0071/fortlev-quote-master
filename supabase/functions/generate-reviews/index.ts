@@ -125,15 +125,17 @@ async function generateReviewsForProduct(
   const remainingSlots = 250 - (existingCount ?? 0);
   const actualCount = Math.min(count, remainingSlots);
 
-  // Get available product images for reuse (if mode uses images)
-  let productImages: { id: string; url: string; usage_count: number }[] = [];
+  // Get available images: prefer review_image_pool (real photos), fallback to store_product_images
+  let allAvailableImages: { id: string; url: string; usage_count: number; source: "pool" | "product" }[] = [];
   if (mode === "image" || mode === "text_image") {
-    const allImages = await getProductImages(supa, supabaseUrl, productId);
+    const poolImages = await getReviewPoolImages(supa, productId);
+    const catalogImages = await getProductImages(supa, supabaseUrl, productId);
+    // Combine: pool first (real photos), then catalog
+    allAvailableImages = [...poolImages, ...catalogImages];
     // Filter out images already used in existing reviews to avoid repeats
     const alreadyUsed = await getAlreadyUsedImageUrls(supa, productId);
-    // Prefer unused images first, then fall back to least-used
-    const unused = allImages.filter((img) => !alreadyUsed.has(img.url));
-    productImages = unused.length > 0 ? unused : allImages;
+    const unused = allAvailableImages.filter((img) => !alreadyUsed.has(img.url));
+    allAvailableImages = unused.length > 0 ? unused : allAvailableImages;
   }
 
   const prompt = `Você é um gerador de avaliações realistas de clientes para uma loja de materiais de construção.

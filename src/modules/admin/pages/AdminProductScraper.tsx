@@ -42,6 +42,7 @@ interface ErrorLog {
 interface ValidationSummary {
   totalWithErrors: number;
   priceErrors: number;
+  priceAutoCorrected: number;
   imageErrors: number;
   missingImages: number;
   parseErrors: number;

@@ -35,3 +35,4 @@ export { default as AdminPriceIntelligence } from "./pages/AdminPriceIntelligenc
 export { default as AdminImageReview } from "./pages/AdminImageReview";
 export { default as AdminAiReports } from "./pages/AdminAiReports";
 export { default as AdminBatchOps } from "./pages/AdminBatchOps";
+export { default as AdminRecommendations } from "./pages/AdminRecommendations";

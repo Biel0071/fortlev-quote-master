@@ -447,6 +447,9 @@ export default function ProductPage() {
 
               <ShippingCalculator subtotal={totalDynamic} />
 
+              {/* Smart Upsell & Cross-Sell */}
+              <SmartUpsellCrossSell product={product as any} onCartOpen={() => setCartOpen(true)} />
+
               {/* Info cards */}
               <Card className="rounded-2xl border-border bg-card shadow-sm min-w-0 max-w-full overflow-hidden">
                 <CardContent className="p-3 sm:p-5 min-w-0">

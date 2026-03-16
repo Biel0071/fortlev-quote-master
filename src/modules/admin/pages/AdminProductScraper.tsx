@@ -224,11 +224,14 @@ function PreviewImportPanel({
   onImport: (selected: ScrapedProduct[]) => void;
   onDismiss: () => void;
 }) {
-  const [filter, setFilter] = useState<"all" | "ok" | "errors">("all");
+  const [filter, setFilter] = useState<"all" | "ok" | "corrected" | "errors" | "review_queue">("all");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => {
-    // By default select only products without errors
+    // Select products without errors OR auto-corrected (review_queue = price_error only)
     const ids = new Set<number>();
-    products.forEach((p, i) => { if (!p.errors?.length) ids.add(i); });
+    products.forEach((p, i) => {
+      const hasBlockingError = p.errors?.some(e => e === "price_error");
+      if (!hasBlockingError) ids.add(i);
+    });
     return ids;
   });
 

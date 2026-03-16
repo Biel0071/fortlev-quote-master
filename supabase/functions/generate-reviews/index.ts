@@ -31,7 +31,7 @@ async function getProductImages(supa: any, supabaseUrl: string, productId: strin
     .select("id, path, usage_count")
     .eq("product_id", productId)
     .order("usage_count", { ascending: true })
-    .limit(10);
+    .limit(50);
 
   if (!storedImages?.length) return [];
 
@@ -40,6 +40,22 @@ async function getProductImages(supa: any, supabaseUrl: string, productId: strin
     const url = p.startsWith("http") ? p : `${supabaseUrl}/storage/v1/object/public/product-images/${p}`;
     return { id: img.id, url, usage_count: img.usage_count ?? 0 };
   });
+}
+
+/** Get image URLs already used in reviews for this product to avoid duplicates */
+async function getAlreadyUsedImageUrls(supa: any, productId: string): Promise<Set<string>> {
+  const { data: existingReviews } = await supa
+    .from("product_reviews")
+    .select("id")
+    .eq("product_id", productId)
+    .limit(500);
+  if (!existingReviews?.length) return new Set();
+  const reviewIds = existingReviews.map((r: any) => r.id);
+  const { data: usedImgs } = await supa
+    .from("review_images")
+    .select("image_url")
+    .in("review_id", reviewIds);
+  return new Set((usedImgs ?? []).map((i: any) => i.image_url as string));
 }
 
 async function incrementImageUsage(supa: any, imageId: string) {

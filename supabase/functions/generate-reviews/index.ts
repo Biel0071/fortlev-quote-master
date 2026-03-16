@@ -210,9 +210,9 @@ Retorne APENAS um JSON array sem markdown:
 
     // Determine if this review gets an image based on mode
     let shouldHaveImage = false;
-    if (mode === "image" && productImages.length > 0) {
+    if (mode === "image" && allAvailableImages.length > 0) {
       shouldHaveImage = true; // all reviews get images in "image" mode
-    } else if (mode === "text_image" && productImages.length > 0) {
+    } else if (mode === "text_image" && allAvailableImages.length > 0) {
       shouldHaveImage = Math.random() < IMAGE_CHANCE; // 30% get images
     }
 
@@ -241,13 +241,13 @@ Retorne APENAS um JSON array sem markdown:
     insertedReviewIds.push(inserted.id);
 
     // Attach image: pick next unused image via round-robin
-    if (shouldHaveImage && productImages.length > 0) {
+    if (shouldHaveImage && allAvailableImages.length > 0) {
       // Find next image not yet used in this batch
-      let img = productImages[imageRoundRobinIdx % productImages.length];
-      if (usedUrlsThisBatch.has(img.url) && productImages.length > 1) {
+      let img = allAvailableImages[imageRoundRobinIdx % allAvailableImages.length];
+      if (usedUrlsThisBatch.has(img.url) && allAvailableImages.length > 1) {
         // Try to find an unused one
-        for (let attempt = 0; attempt < productImages.length; attempt++) {
-          const candidate = productImages[(imageRoundRobinIdx + attempt) % productImages.length];
+        for (let attempt = 0; attempt < allAvailableImages.length; attempt++) {
+          const candidate = allAvailableImages[(imageRoundRobinIdx + attempt) % allAvailableImages.length];
           if (!usedUrlsThisBatch.has(candidate.url)) {
             img = candidate;
             imageRoundRobinIdx = (imageRoundRobinIdx + attempt);
@@ -257,7 +257,7 @@ Retorne APENAS um JSON array sem markdown:
         // If all used, reset tracking (allow second round)
         if (usedUrlsThisBatch.has(img.url)) {
           usedUrlsThisBatch.clear();
-          img = productImages[imageRoundRobinIdx % productImages.length];
+          img = allAvailableImages[imageRoundRobinIdx % allAvailableImages.length];
         }
       }
       
@@ -269,7 +269,7 @@ Retorne APENAS um JSON array sem markdown:
         image_url: img.url,
         sort_order: 0,
       });
-      await incrementImageUsage(supa, img.id);
+      await incrementPoolUsage(supa, img.id, img.source);
       img.usage_count++;
       imagesAttached++;
     }

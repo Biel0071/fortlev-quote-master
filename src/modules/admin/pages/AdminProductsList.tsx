@@ -17,10 +17,13 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
 import {
-  Copy, Download, Grid2x2, Grid3x3, Globe, ImagePlus, LayoutGrid,
-  Loader2, MoreHorizontal, Package, Pencil, Plus, Power, RefreshCw,
-  Search, Trash2, Upload,
+  Brain, ChevronDown, ChevronUp, Copy, DollarSign, Download, Globe, Grid2x2, Grid3x3,
+  ImagePlus, LayoutGrid, Loader2, MoreHorizontal, Package, Pencil, Play, Plus, Power,
+  RefreshCw, Search, Trash2, Upload,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card, CardContent } from "@/components/ui/card";
+import { toast as sonnerToast } from "sonner";
 
 type Row = {
   id: string;

@@ -353,9 +353,10 @@ export default function AdminReviews() {
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por conteúdo, autor ou produto..." className="pl-9" />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {(["pending", "approved", "all"] as const).map((f) => (
-            <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" className="text-xs" onClick={() => { setFilter(f); setVisibleCount(40); }}>
-              {f === "pending" ? `Pendentes (${pendingCount})` : f === "approved" ? `Aprovadas (${approvedCount})` : `Todas (${reviews.length})`}
+          {(["pending", "approved", "with_image", "all"] as const).map((f) => (
+            <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" className="text-xs gap-1" onClick={() => { setFilter(f); setVisibleCount(40); }}>
+              {f === "with_image" && <ImageIcon className="h-3 w-3" />}
+              {f === "pending" ? `Pendentes (${pendingCount})` : f === "approved" ? `Aprovadas (${approvedCount})` : f === "with_image" ? `Com imagem (${reviewsWithImagesCount})` : `Todas (${reviews.length})`}
             </Button>
           ))}
           <Button variant="outline" size="icon" className="h-9 w-9" onClick={load} disabled={loading}>

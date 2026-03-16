@@ -103,6 +103,7 @@ async function generateReviewsForProduct(
   productId: string,
   count: number,
   mode: GenerationMode,
+  dateSpreadYears = 0,
 ): Promise<{ reviews_created: number; images_attached: number; error?: string }> {
   const { data: product } = await supa
     .from("store_products")
@@ -204,9 +205,17 @@ Retorne APENAS um JSON array sem markdown:
   const usedUrlsThisBatch = new Set<string>(); // track URLs used in this batch
 
   for (const r of reviews) {
-    const daysAgo = Math.floor(Math.random() * 90);
-    const hoursAgo = Math.floor(Math.random() * 24);
-    const created = new Date(now - daysAgo * 86400000 - hoursAgo * 3600000);
+    // Date spread: if dateSpread provided use wide range, otherwise recent 90 days
+    let created: Date;
+    if (dateSpreadYears > 0) {
+      // Spread between (now - dateSpreadYears) and now
+      const msRange = dateSpreadYears * 365 * 86400000;
+      created = new Date(now - Math.floor(Math.random() * msRange));
+    } else {
+      const daysAgo = Math.floor(Math.random() * 90);
+      const hoursAgo = Math.floor(Math.random() * 24);
+      created = new Date(now - daysAgo * 86400000 - hoursAgo * 3600000);
+    }
 
     // Determine if this review gets an image based on mode
     let shouldHaveImage = false;
@@ -226,7 +235,7 @@ Retorne APENAS um JSON array sem markdown:
       pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
       cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
       verified_purchase: r.verified_purchase ?? true,
-      approved: !shouldHaveImage,
+      approved: mode === "text" ? true : !shouldHaveImage,
       origin: "ai_generated",
       created_at: created.toISOString(),
     };
@@ -328,6 +337,13 @@ serve(async (req) => {
       const totalCreated = results.reduce((s, r) => s + r.reviews_created, 0);
       const totalImages = results.reduce((s, r) => s + r.images_attached, 0);
       const totalErrors = results.filter((r) => r.error).length;
+
+      // Recalc rating summaries for products with new reviews
+      for (const r of results) {
+        if (r.reviews_created > 0) {
+          await recalcRatingSummary(supa, r.product_id);
+        }
+      }
 
       await logEvent(supa, totalErrors > 0 ? "warning" : "info",
         `Geração concluída: ${totalCreated} reviews, ${totalImages} imagens, ${totalErrors} erros (modo: ${mode})`, {
@@ -469,6 +485,123 @@ serve(async (req) => {
       });
 
       return new Response(JSON.stringify({ ok: true, daily: true, total_created: totalCreated, total_images: totalImages, products: results.length }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    /* ============================================================ */
+    /*  CATALOG - Generate for entire catalog                        */
+    /* ============================================================ */
+    if (action === "catalog") {
+      const limit = body?.limit ?? 0; // 0 = all
+      await logEvent(supa, "info", `Geração catálogo iniciada (limit: ${limit || "all"})`, { limit });
+
+      // Get all active published products
+      let query = supa
+        .from("store_products")
+        .select("id, featured, best_seller")
+        .eq("active", true)
+        .eq("status", "published");
+      if (limit > 0) query = query.limit(limit);
+      const { data: allProducts } = await query;
+
+      if (!allProducts?.length) {
+        return new Response(JSON.stringify({ ok: true, message: "No products", total_created: 0 }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Shuffle to randomize
+      const shuffled = allProducts.sort(() => Math.random() - 0.5);
+
+      const results: any[] = [];
+      let totalCreated = 0;
+      let totalImages = 0;
+      const CHUNK = 5;
+
+      for (let i = 0; i < shuffled.length; i += CHUNK) {
+        const chunk = shuffled.slice(i, i + CHUNK);
+
+        for (const p of chunk) {
+          try {
+            // Check existing count
+            const { count: existingCount } = await supa
+              .from("product_reviews")
+              .select("id", { count: "exact", head: true })
+              .eq("product_id", p.id);
+
+            if ((existingCount ?? 0) >= 250) {
+              results.push({ product_id: p.id, reviews_created: 0, images_attached: 0, error: "Max reached" });
+              continue;
+            }
+
+            // Featured/best_seller: 10-25 reviews, normal: 50% chance 3-8 reviews
+            let count: number;
+            if (p.featured || p.best_seller) {
+              count = Math.floor(Math.random() * 16) + 10; // 10-25
+            } else {
+              if (Math.random() < 0.5) {
+                count = Math.floor(Math.random() * 6) + 3; // 3-8
+              } else {
+                results.push({ product_id: p.id, reviews_created: 0, images_attached: 0, error: "Skipped (random)" });
+                continue;
+              }
+            }
+
+            // Cap to remaining slots
+            count = Math.min(count, 250 - (existingCount ?? 0));
+
+            // Use text mode with date spread 2020-2026 (6 years)
+            const result = await generateReviewsForProduct(
+              supa, SUPABASE_URL, LOVABLE_API_KEY, p.id, Math.min(count, 8), "text", 6
+            );
+
+            // If count > 8, do multiple rounds
+            let remaining = count - 8;
+            let created = result.reviews_created;
+            let imgs = result.images_attached;
+            while (remaining > 0 && created < count) {
+              const batch = Math.min(remaining, 8);
+              const r2 = await generateReviewsForProduct(
+                supa, SUPABASE_URL, LOVABLE_API_KEY, p.id, batch, "text", 6
+              );
+              created += r2.reviews_created;
+              imgs += r2.images_attached;
+              remaining -= batch;
+              await delay(300);
+            }
+
+            totalCreated += created;
+            totalImages += imgs;
+            results.push({ product_id: p.id, reviews_created: created, images_attached: imgs });
+          } catch (e) {
+            results.push({ product_id: p.id, reviews_created: 0, images_attached: 0, error: String(e) });
+          }
+        }
+
+        if (i + CHUNK < shuffled.length) await delay(1000);
+      }
+
+      // Recalc rating summaries for all affected products
+      for (const r of results) {
+        if (r.reviews_created > 0) {
+          await recalcRatingSummary(supa, r.product_id);
+        }
+      }
+
+      await logEvent(supa, "info", `Geração catálogo concluída: ${totalCreated} reviews para ${results.filter((r: any) => r.reviews_created > 0).length} produtos`, {
+        total_created: totalCreated,
+        total_images: totalImages,
+        products_processed: shuffled.length,
+      });
+
+      return new Response(JSON.stringify({
+        ok: true,
+        total_created: totalCreated,
+        total_images: totalImages,
+        products_processed: shuffled.length,
+        products_with_reviews: results.filter((r: any) => r.reviews_created > 0).length,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

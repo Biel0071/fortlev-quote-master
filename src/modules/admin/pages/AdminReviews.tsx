@@ -61,6 +61,8 @@ export default function AdminReviews() {
   const [genCount, setGenCount] = useState(5);
   const [genProductCount, setGenProductCount] = useState(10);
   const [genMode, setGenMode] = useState<"text" | "image" | "text_image">("text");
+  const [catalogGenerating, setCatalogGenerating] = useState(false);
+  const [catalogLimit, setCatalogLimit] = useState<number>(20);
   const [showLogs, setShowLogs] = useState(false);
   const [visibleCount, setVisibleCount] = useState(40);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -241,6 +243,25 @@ export default function AdminReviews() {
     setSearchingImages(false);
   };
 
+  const generateCatalog = async () => {
+    setCatalogGenerating(true);
+    try {
+      const { data, error } = await cloud.functions.invoke("generate-reviews", {
+        body: { action: "catalog", limit: catalogLimit === 0 ? 0 : catalogLimit },
+      });
+      if (error) throw error;
+      const result = data as any;
+      toast({
+        title: "Geração catálogo concluída",
+        description: `${result.total_created ?? 0} reviews criados para ${result.products_with_reviews ?? 0} de ${result.products_processed ?? 0} produtos. Datas distribuídas entre 2020-2026.`,
+      });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro na geração", description: e.message, variant: "destructive" });
+    }
+    setCatalogGenerating(false);
+  };
+
   const stars = (n: number) => Array.from({ length: 5 }, (_, i) => (
     <Star key={i} className={`h-3.5 w-3.5 ${i < n ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} />
   ));
@@ -417,6 +438,55 @@ export default function AdminReviews() {
             <div className="mt-4 space-y-1.5">
               <p className="text-xs text-muted-foreground animate-pulse">
                 Buscando imagens reais de instalação e uso para reviews…
+              </p>
+              <Progress className="h-1.5" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ====== Catalog Generation Section ====== */}
+      <Card className="rounded-2xl border-dashed border-2 border-emerald-300/40 bg-emerald-50/30 dark:bg-emerald-950/10">
+        <CardContent className="p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Gerar reviews para catálogo</p>
+                <p className="text-xs text-muted-foreground">
+                  Destaques: 10-25 reviews • Normais: 3-8 (50% chance) • Datas 2020-2026 • Auto-aprovado
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <Select value={String(catalogLimit)} onValueChange={(v) => setCatalogLimit(Number(v))}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="20">20 produtos</SelectItem>
+                  <SelectItem value="50">50 produtos</SelectItem>
+                  <SelectItem value="100">100 produtos</SelectItem>
+                  <SelectItem value="0">Catálogo inteiro</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={generateCatalog}
+                disabled={catalogGenerating}
+                variant="outline"
+                className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-300"
+              >
+                {catalogGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Gerar catálogo
+              </Button>
+            </div>
+          </div>
+          {catalogGenerating && (
+            <div className="mt-4 space-y-1.5">
+              <p className="text-xs text-muted-foreground animate-pulse">
+                Gerando reviews para {catalogLimit === 0 ? "todo o catálogo" : `${catalogLimit} produtos`}… Isso pode levar alguns minutos.
               </p>
               <Progress className="h-1.5" />
             </div>

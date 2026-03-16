@@ -267,7 +267,9 @@ function PreviewImportPanel({
   };
 
   const okCount = products.filter(p => !p.errors?.length).length;
-  const errCount = products.filter(p => (p.errors?.length ?? 0) > 0).length;
+  const correctedCount = products.filter(p => p.errors?.includes("price_auto_corrected")).length;
+  const errCount = products.filter(p => p.errors?.includes("price_error")).length;
+  const reviewQueueCount = products.filter(p => p.errors?.includes("price_error") || p.errors?.includes("parse_error")).length;
 
   return (
     <Card className="border-primary/30">

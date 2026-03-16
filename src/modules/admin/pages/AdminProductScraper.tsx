@@ -240,7 +240,9 @@ function PreviewImportPanel({
       .map((p, i) => ({ ...p, _idx: i }))
       .filter((p) => {
         if (filter === "ok") return !p.errors?.length;
-        if (filter === "errors") return (p.errors?.length ?? 0) > 0;
+        if (filter === "corrected") return p.errors?.includes("price_auto_corrected");
+        if (filter === "errors") return p.errors?.includes("price_error");
+        if (filter === "review_queue") return p.errors?.includes("price_error") || p.errors?.includes("parse_error");
         return true;
       });
   }, [products, filter]);

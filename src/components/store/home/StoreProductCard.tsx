@@ -93,12 +93,12 @@ export function StoreProductCard({
       className="group h-full overflow-hidden rounded-2xl bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
       aria-label={`Abrir produto ${product?.name ?? ""}`}
     >
-      <div className="relative aspect-[4/3] bg-muted/20 border-b border-border overflow-hidden">
+      <div className="relative aspect-square bg-white border-b border-border overflow-hidden flex items-center justify-center p-2">
         {imgUrl ? (
           <img
             src={imgUrl}
             alt={product?.name ?? "Produto"}
-            className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
+            className="max-h-full max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.02]"
             loading="lazy"
           />
         ) : (

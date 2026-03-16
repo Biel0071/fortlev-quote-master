@@ -347,15 +347,10 @@ export default function ProductPage() {
 
             {/* Product info */}
             <div className="lg:col-span-5 space-y-3 sm:space-y-4 min-w-0 max-w-full overflow-hidden">
-              <ProductBadges featured={Boolean((product as any).featured)} basePrice={basePrice} promoPrice={promoPrice} />
+              <ProductBadges featured={Boolean((product as any).featured)} basePrice={basePrice} promoPrice={promoPrice} productId={(product as any).id} />
 
               <div className="min-w-0 max-w-full">
                 <h1 className="text-xl sm:text-[28px] font-bold tracking-tight leading-tight break-words [overflow-wrap:anywhere]">{product.name}</h1>
-
-                {/* Rating badge */}
-                <div className="mt-1.5">
-                  <ProductRatingBadge productId={(product as any).id} />
-                </div>
 
                 <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground break-words [overflow-wrap:anywhere]">
                   {Number((product as any).stock ?? 0) <= Number((product as any).min_stock ?? 0) ? (

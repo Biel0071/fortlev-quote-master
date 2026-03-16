@@ -1,11 +1,57 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { trackClickEvent } from "@/utils/clickTracking";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
+import { cloud } from "@/lib/cloud";
+
+// Shared cache so we don't re-fetch per card
+const ratingsCache = new Map<string, { avg: number; total: number } | null>();
+const ratingsFetched = new Set<string>();
+
+function useProductRating(productId: string) {
+  const [rating, setRating] = useState<{ avg: number; total: number } | null>(
+    ratingsCache.get(productId) ?? null,
+  );
+
+  useEffect(() => {
+    if (!productId || ratingsFetched.has(productId)) return;
+    ratingsFetched.add(productId);
+    cloud
+      .from("product_rating_summary")
+      .select("average_rating, total_reviews")
+      .eq("product_id", productId)
+      .single()
+      .then(({ data }) => {
+        const d = data as any;
+        const val = d && d.total_reviews > 0 ? { avg: d.average_rating, total: d.total_reviews } : null;
+        ratingsCache.set(productId, val);
+        setRating(val);
+      });
+  }, [productId]);
+
+  return rating;
+}
+
+function MiniStars({ avg, total }: { avg: number; total: number }) {
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex gap-px">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Star
+            key={i}
+            className={`h-3 w-3 ${i < Math.round(avg) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"}`}
+          />
+        ))}
+      </div>
+      <span className="text-[10px] text-muted-foreground">({total})</span>
+    </div>
+  );
+}
 
 function QtyStepper({
   value,
@@ -40,6 +86,12 @@ function QtyStepper({
       </Button>
     </div>
   );
+}
+
+function ProductCardRating({ productId }: { productId: string }) {
+  const rating = useProductRating(productId);
+  if (!rating) return null;
+  return <MiniStars avg={rating.avg} total={rating.total} />;
 }
 
 export function StoreProductCard({
@@ -109,6 +161,7 @@ export function StoreProductCard({
       <CardContent className="p-4 sm:p-4 flex flex-col gap-3">
         <div className="min-w-0">
           <div className="text-[15px] sm:text-sm font-semibold leading-snug line-clamp-2">{product?.name}</div>
+          <ProductCardRating productId={product?.id} />
         </div>
 
         <div className="mt-auto space-y-3">

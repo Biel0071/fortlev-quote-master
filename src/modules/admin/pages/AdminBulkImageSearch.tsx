@@ -816,7 +816,7 @@ export default function AdminBulkImageSearch() {
   const eligibleCount = getFilteredProducts().filter(
     (p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20
   ).length;
-  const filterLabel = filter === "no-images" ? "sem imagens" : filter === "incomplete" ? "incompletos" : "todos";
+  const eligibleLabel = "elegíveis";
 
   return (
     <div className="space-y-4 px-1 sm:px-0">

@@ -74,7 +74,7 @@ export default function AdminReviews() {
       cloud.from("product_reviews").select("*, store_products(name)").order("created_at", { ascending: false }).limit(1000),
       cloud.from("system_event_logs").select("*").eq("source", "review-system").order("created_at", { ascending: false }).limit(50),
       cloud.from("store_products").select("id", { count: "exact", head: true }).eq("active", true).eq("status", "published"),
-      cloud.from("review_images").select("review_id"),
+      cloud.from("review_images").select("review_id, image_url"),
     ]);
 
     if (reviewsRes.error) toast({ title: "Erro", description: reviewsRes.error.message, variant: "destructive" });
@@ -87,7 +87,15 @@ export default function AdminReviews() {
     setLogs((logsRes.data ?? []) as LogEntry[]);
     setTotalProducts(productsRes.count ?? 0);
 
-    const imgIds = new Set((imagesRes.data ?? []).map((i: any) => i.review_id as string));
+    const imgMap = new Map<string, string[]>();
+    for (const i of (imagesRes.data ?? []) as any[]) {
+      const rid = i.review_id as string;
+      const url = i.image_url as string;
+      if (!imgMap.has(rid)) imgMap.set(rid, []);
+      imgMap.get(rid)!.push(url);
+    }
+    setReviewImageMap(imgMap);
+    const imgIds = new Set(imgMap.keys());
     setReviewImageIds(imgIds);
     setReviewsWithImagesCount(imgIds.size);
 

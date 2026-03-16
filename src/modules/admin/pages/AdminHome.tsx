@@ -237,10 +237,12 @@ export default function AdminHome() {
   const productImgUrl = (path?: string | null) => publicImageUrl("product-images", path);
 
   const featuredProducts = useMemo(() => allProducts.filter((p) => p.featured || p.best_seller), [allProducts]);
-  const topClickedProducts = useMemo(
-    () => [...allProducts].filter((p) => p.clicks > 0).sort((a, b) => b.clicks - a.clicks).slice(0, 20),
-    [allProducts],
-  );
+  const topClickedProducts = useMemo(() => {
+    const withClicks = [...allProducts].filter((p) => p.clicks > 0).sort((a, b) => b.clicks - a.clicks).slice(0, 20);
+    if (withClicks.length >= 5) return withClicks;
+    // Fallback: top 20 by name when no click data yet
+    return allProducts.slice(0, 20);
+  }, [allProducts]);
 
   const toggleProductFeatured = async (p: SimpleProduct) => {
     const { error } = await cloud.from("store_products").update({ featured: !p.featured } as any).eq("id", p.id);
@@ -591,7 +593,7 @@ export default function AdminHome() {
         <p className="text-sm text-muted-foreground">Edite a vitrine de vendas sem mexer no código.</p>
       </div>
 
-      <Tabs defaultValue="banners">
+      <Tabs defaultValue={sessionStorage.getItem("admin_home_tab") || "banners"} onValueChange={(v) => sessionStorage.setItem("admin_home_tab", v)}>
         <TabsList className="w-full justify-start flex-wrap h-auto">
           <TabsTrigger value="banners">Banners</TabsTrigger>
           <TabsTrigger value="categorias">Categorias destaque</TabsTrigger>
@@ -773,9 +775,6 @@ export default function AdminHome() {
                           <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
                             <Pencil className="w-3 h-3" /> Editar
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/admin/produtos/editar/${p.id}`, "_blank")}>
-                            <ExternalLink className="w-3 h-3" /> Nova guia
-                          </Button>
                           <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/produto/${p.id}`, "_blank")}>
                             <ExternalLink className="w-3 h-3" /> Ver loja
                           </Button>
@@ -799,11 +798,11 @@ export default function AdminHome() {
               <CardTitle>Mais vendidos (por cliques)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">Top 20 produtos mais clicados. Clique para editar preços, imagens ou aplicar desconto.</p>
+              <p className="text-sm text-muted-foreground">Top 20 produtos por cliques. Quando o site tiver tráfego ativo, os itens serão reordenados automaticamente.</p>
               {loading ? (
                 <div className="text-muted-foreground">Carregando...</div>
               ) : topClickedProducts.length === 0 ? (
-                <div className="text-muted-foreground">Sem dados de cliques registrados ainda.</div>
+                <div className="text-muted-foreground">Nenhum produto cadastrado.</div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {topClickedProducts.map((p, idx) => (
@@ -824,9 +823,6 @@ export default function AdminHome() {
                         <div className="flex items-center gap-1 mt-1.5">
                           <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
                             <Pencil className="w-3 h-3" /> Editar
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/admin/produtos/editar/${p.id}`, "_blank")}>
-                            <ExternalLink className="w-3 h-3" /> Nova guia
                           </Button>
                           <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/produto/${p.id}`, "_blank")}>
                             <ExternalLink className="w-3 h-3" /> Ver loja

@@ -243,6 +243,25 @@ export default function AdminReviews() {
     setSearchingImages(false);
   };
 
+  const generateCatalog = async () => {
+    setCatalogGenerating(true);
+    try {
+      const { data, error } = await cloud.functions.invoke("generate-reviews", {
+        body: { action: "catalog", limit: catalogLimit === 0 ? 0 : catalogLimit },
+      });
+      if (error) throw error;
+      const result = data as any;
+      toast({
+        title: "Geração catálogo concluída",
+        description: `${result.total_created ?? 0} reviews criados para ${result.products_with_reviews ?? 0} de ${result.products_processed ?? 0} produtos. Datas distribuídas entre 2020-2026.`,
+      });
+      await load();
+    } catch (e: any) {
+      toast({ title: "Erro na geração", description: e.message, variant: "destructive" });
+    }
+    setCatalogGenerating(false);
+  };
+
   const stars = (n: number) => Array.from({ length: 5 }, (_, i) => (
     <Star key={i} className={`h-3.5 w-3.5 ${i < n ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} />
   ));

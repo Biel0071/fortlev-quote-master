@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.enrich-products]
 verify_jwt = false
+
+[functions.validate-product-image]
+verify_jwt = false
+
+[functions.ai-daily-report]
+verify_jwt = false

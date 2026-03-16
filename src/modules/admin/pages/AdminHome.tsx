@@ -824,9 +824,6 @@ export default function AdminHome() {
                           <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
                             <Pencil className="w-3 h-3" /> Editar
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/admin/produtos/editar/${p.id}`, "_blank")}>
-                            <ExternalLink className="w-3 h-3" /> Nova guia
-                          </Button>
                           <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/produto/${p.id}`, "_blank")}>
                             <ExternalLink className="w-3 h-3" /> Ver loja
                           </Button>

@@ -593,7 +593,7 @@ export default function AdminHome() {
         <p className="text-sm text-muted-foreground">Edite a vitrine de vendas sem mexer no código.</p>
       </div>
 
-      <Tabs defaultValue="banners">
+      <Tabs defaultValue={sessionStorage.getItem("admin_home_tab") || "banners"} onValueChange={(v) => sessionStorage.setItem("admin_home_tab", v)}>
         <TabsList className="w-full justify-start flex-wrap h-auto">
           <TabsTrigger value="banners">Banners</TabsTrigger>
           <TabsTrigger value="categorias">Categorias destaque</TabsTrigger>

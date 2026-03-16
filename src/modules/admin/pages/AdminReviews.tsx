@@ -48,17 +48,20 @@ type LogEntry = {
 /* ------------------------------------------------------------------ */
 export default function AdminReviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewImageIds, setReviewImageIds] = useState<Set<string>>(new Set());
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "approved">("pending");
+  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "with_image">("pending");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
   const [genCount, setGenCount] = useState(5);
   const [genProductCount, setGenProductCount] = useState(10);
+  const [genMode, setGenMode] = useState<"text" | "image" | "ai">("text");
   const [showLogs, setShowLogs] = useState(false);
   const [visibleCount, setVisibleCount] = useState(40);
   const [totalProducts, setTotalProducts] = useState(0);
+  const [reviewsWithImagesCount, setReviewsWithImagesCount] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
 
   /* ---------- data loading ---------- */

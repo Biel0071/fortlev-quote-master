@@ -119,7 +119,22 @@ type HomeSeo = {
   active: boolean;
 };
 
+type SimpleProduct = {
+  id: string;
+  name: string;
+  price: number;
+  promo_price: number;
+  featured: boolean;
+  best_seller: boolean;
+  clicks: number;
+  active: boolean;
+  category: string | null;
+  category_id: string | null;
+  images: { path: string }[];
+};
+
 export default function AdminHome() {
+  const nav = useNavigate();
   const [loading, setLoading] = useState(true);
 
   const [banners, setBanners] = useState<Banner[]>([]);

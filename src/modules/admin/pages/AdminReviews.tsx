@@ -439,6 +439,23 @@ export default function AdminReviews() {
                     </div>
                     {r.title && <p className="font-semibold text-sm">{r.title}</p>}
                     <p className="text-sm text-muted-foreground line-clamp-2">{r.content}</p>
+                    {/* Image thumbnails */}
+                    {reviewImageMap.has(r.id) && (
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {(reviewImageMap.get(r.id) ?? []).map((url, idx) => (
+                          <img
+                            key={idx}
+                            src={url}
+                            alt={`Review image ${idx + 1}`}
+                            className="w-[120px] h-[120px] object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLightboxUrl(url);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
                       <span className="font-medium text-foreground">{r.author_name}</span>
                       {r.author_location && <span>• {r.author_location}</span>}

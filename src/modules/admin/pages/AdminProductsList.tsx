@@ -355,7 +355,7 @@ export default function AdminProductsList() {
             {/* Validar Preços (batch) */}
             <Card className="border-primary/10 hover:border-primary/30 transition-colors">
               <CardContent className="p-4 text-center space-y-2">
-                <DollarSign className="h-8 w-8 mx-auto text-emerald-600" />
+                <DollarSign className="h-8 w-8 mx-auto text-primary" />
                 <h4 className="font-semibold text-sm">Validar Preços</h4>
                 <p className="text-[10px] text-muted-foreground leading-tight">Corrige preços em lote automaticamente</p>
                 <Button size="sm" className="w-full text-xs gap-1" disabled={batchAction !== null} onClick={() => runBatchAction("validate_prices")}>

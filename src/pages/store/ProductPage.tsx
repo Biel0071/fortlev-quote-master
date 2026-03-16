@@ -24,6 +24,7 @@ import { CustomerReviewForm } from "@/components/store/pdp/CustomerReviewForm";
 import { QuantitySelector } from "@/components/store/pdp/QuantitySelector";
 import { ShippingCalculator } from "@/components/store/pdp/ShippingCalculator";
 import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
+import { SmartUpsellCrossSell } from "@/components/store/pdp/SmartUpsellCrossSell";
 import { cloud } from "@/lib/cloud";
 
 function parseInlineBold(text: string) {

@@ -104,8 +104,17 @@ export default function StoreHome() {
 
   const featuredIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
-    const featured = list.filter((p) => p?.featured).slice(0, 8).map((p) => p.id) as string[];
+    const featured = list.filter((p) => p?.featured || p?.best_seller).map((p) => p.id) as string[];
     return featured.length > 0 ? featured : list.slice(0, 8).map((p) => p.id);
+  }, [activeProducts]);
+
+  const topClickedIds = useMemo(() => {
+    const list = (activeProducts ?? []) as any[];
+    return list
+      .filter((p) => Number(p?.clicks ?? 0) > 0)
+      .sort((a, b) => Number(b.clicks ?? 0) - Number(a.clicks ?? 0))
+      .slice(0, 8)
+      .map((p) => p.id) as string[];
   }, [activeProducts]);
 
   return (
@@ -165,11 +174,11 @@ export default function StoreHome() {
         >
           <HomeProductsByIds
             loading={loading}
-            productIds={merch.monthlyTopSales}
+            productIds={topClickedIds}
             products={activeProducts as any}
             onAdd={onAdd}
             limit={8}
-            emptyText="Sem vendas registradas neste período."
+            emptyText="Sem dados de cliques registrados."
           />
         </HomeSection>
       ) : null}

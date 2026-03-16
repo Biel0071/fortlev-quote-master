@@ -147,6 +147,7 @@ export default function AdminHome() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [seoRow, setSeoRow] = useState<HomeSeo | null>(null);
+  const [allProducts, setAllProducts] = useState<SimpleProduct[]>([]);
 
   const loadAll = async () => {
     setLoading(true);

@@ -234,6 +234,20 @@ export default function AdminHome() {
 
   const bannerUrl = (path?: string | null) => publicImageUrl("banner-images", path);
   const categoryUrl = (path?: string | null) => publicImageUrl("category-images", path);
+  const productImgUrl = (path?: string | null) => publicImageUrl("product-images", path);
+
+  const featuredProducts = useMemo(() => allProducts.filter((p) => p.featured || p.best_seller), [allProducts]);
+  const topClickedProducts = useMemo(
+    () => [...allProducts].filter((p) => p.clicks > 0).sort((a, b) => b.clicks - a.clicks).slice(0, 20),
+    [allProducts],
+  );
+
+  const toggleProductFeatured = async (p: SimpleProduct) => {
+    const { error } = await cloud.from("store_products").update({ featured: !p.featured } as any).eq("id", p.id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    invalidateSmartCache("store_products:list");
+    await loadAll();
+  };
 
   // --- BANNERS ---
   const [bTitle, setBTitle] = useState("");

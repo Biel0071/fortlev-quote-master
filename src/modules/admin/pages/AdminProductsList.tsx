@@ -534,7 +534,7 @@ export default function AdminProductsList() {
         </div>
       ) : (
         <div className={`grid ${GRID_COLS[gridSize]} gap-3`}>
-          {filtered.map(p => {
+          {visibleItems.map(p => {
             const thumb = imageMap[p.id];
             const isSelected = selected.has(p.id);
 
@@ -675,6 +675,22 @@ export default function AdminProductsList() {
             );
           })}
         </div>
+        {/* Load more */}
+        {hasMore && (
+          <div className="flex flex-col items-center gap-2 py-6">
+            <p className="text-xs text-muted-foreground">
+              Mostrando {visibleCount} de {filtered.length} produtos
+            </p>
+            <Button variant="outline" size="sm" onClick={() => setVisibleCount(prev => prev + 60)}>
+              Carregar mais
+            </Button>
+          </div>
+        )}
+        {!hasMore && filtered.length > 60 && (
+          <p className="text-center text-xs text-muted-foreground py-4">
+            Todos os {filtered.length} produtos exibidos
+          </p>
+        )}
       )}
 
       {/* Delete confirmation */}

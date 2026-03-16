@@ -152,12 +152,12 @@ function AdminSidebar() {
                                 ? "bg-sidebar-accent text-sidebar-primary font-semibold shadow-sm"
                                 : "hover:bg-sidebar-accent/60 text-sidebar-foreground/90 hover:text-sidebar-foreground"
                             }`}
-                            activeClassName="bg-primary/10 text-primary font-semibold"
+                            activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
                           >
-                            <item.icon className={`mr-2 h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                            <item.icon className={`mr-2 h-4 w-4 ${isActive ? "text-sidebar-primary" : "text-sidebar-foreground/70"}`} />
                             {!collapsed && <span className="text-[13px]">{item.title}</span>}
                             {isActive && !collapsed && (
-                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full" />
+                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-sidebar-primary rounded-r-full" />
                             )}
                           </NavLink>
                         </SidebarMenuButton>

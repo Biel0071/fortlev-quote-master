@@ -338,6 +338,13 @@ serve(async (req) => {
       const totalImages = results.reduce((s, r) => s + r.images_attached, 0);
       const totalErrors = results.filter((r) => r.error).length;
 
+      // Recalc rating summaries for products with new reviews
+      for (const r of results) {
+        if (r.reviews_created > 0) {
+          await recalcRatingSummary(supa, r.product_id);
+        }
+      }
+
       await logEvent(supa, totalErrors > 0 ? "warning" : "info",
         `Geração concluída: ${totalCreated} reviews, ${totalImages} imagens, ${totalErrors} erros (modo: ${mode})`, {
           total_created: totalCreated,

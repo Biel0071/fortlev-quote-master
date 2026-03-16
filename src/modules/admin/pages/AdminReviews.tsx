@@ -512,6 +512,19 @@ export default function AdminReviews() {
           </CardContent>
         )}
       </Card>
+
+      {/* ====== Image Lightbox ====== */}
+      <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
+        <DialogContent className="max-w-3xl p-2 bg-background/95 backdrop-blur">
+          {lightboxUrl && (
+            <img
+              src={lightboxUrl}
+              alt="Review image enlarged"
+              className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -305,8 +305,8 @@ export default function AdminReviews() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="text">Apenas texto</SelectItem>
-                  <SelectItem value="image">Texto + imagem real</SelectItem>
-                  <SelectItem value="ai">Apenas IA (texto)</SelectItem>
+                  <SelectItem value="image">Apenas imagem</SelectItem>
+                  <SelectItem value="text_image">Texto + imagem</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={String(genProductCount)} onValueChange={(v) => setGenProductCount(Number(v))}>

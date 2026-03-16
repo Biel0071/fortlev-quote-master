@@ -67,10 +67,11 @@ export default function AdminReviews() {
   /* ---------- data loading ---------- */
   const load = useCallback(async () => {
     setLoading(true);
-    const [reviewsRes, logsRes, productsRes] = await Promise.all([
+    const [reviewsRes, logsRes, productsRes, imagesRes] = await Promise.all([
       cloud.from("product_reviews").select("*, store_products(name)").order("created_at", { ascending: false }).limit(1000),
       cloud.from("system_event_logs").select("*").eq("source", "review-system").order("created_at", { ascending: false }).limit(50),
       cloud.from("store_products").select("id", { count: "exact", head: true }).eq("active", true).eq("status", "published"),
+      cloud.from("review_images").select("review_id"),
     ]);
 
     if (reviewsRes.error) toast({ title: "Erro", description: reviewsRes.error.message, variant: "destructive" });
@@ -82,6 +83,11 @@ export default function AdminReviews() {
     setReviews(mapped);
     setLogs((logsRes.data ?? []) as LogEntry[]);
     setTotalProducts(productsRes.count ?? 0);
+
+    const imgIds = new Set((imagesRes.data ?? []).map((i: any) => i.review_id as string));
+    setReviewImageIds(imgIds);
+    setReviewsWithImagesCount(imgIds.size);
+
     setSelected(new Set());
     setLoading(false);
   }, []);

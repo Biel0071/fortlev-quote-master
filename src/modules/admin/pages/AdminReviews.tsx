@@ -12,7 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   BarChart3, CheckCircle, Clock, Loader2, MessageSquare, RefreshCw,
   Search, Sparkles, Star, TrendingUp, Trash2, XCircle, Calendar,
-  Image as ImageIcon, FileText, Eye, ChevronDown, ChevronUp, X,
+  Image as ImageIcon, FileText, Eye, ChevronDown, ChevronUp, X, Camera,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */

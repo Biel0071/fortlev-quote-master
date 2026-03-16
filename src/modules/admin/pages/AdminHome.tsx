@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import { publicImageUrl, normalizeStorageObjectPath } from "@/utils/storage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { invalidateSmartCache } from "@/utils/smartCache";
+import { ExternalLink, Pencil } from "lucide-react";
 
 async function uploadToBucket(bucket: string, file: File) {
   const ext = file.name.split(".").pop() || "bin";

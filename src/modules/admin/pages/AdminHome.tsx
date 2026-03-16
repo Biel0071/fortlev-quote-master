@@ -741,6 +741,100 @@ export default function AdminHome() {
           </Card>
         </TabsContent>
 
+        {/* --- DESTAQUES TAB --- */}
+        <TabsContent value="destaques" className="space-y-4">
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle>Produtos em destaque</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">Produtos marcados como destaque que aparecem na Home. Clique para editar.</p>
+              {loading ? (
+                <div className="text-muted-foreground">Carregando...</div>
+              ) : featuredProducts.length === 0 ? (
+                <div className="text-muted-foreground">Nenhum produto em destaque.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {featuredProducts.map((p) => (
+                    <div key={p.id} className="rounded-xl border border-border bg-card p-3 flex gap-3 items-start group">
+                      <div className="w-14 h-14 rounded-lg bg-muted/30 border border-border overflow-hidden shrink-0 flex items-center justify-center">
+                        {p.images?.[0]?.path ? (
+                          <img src={productImgUrl(p.images[0].path)} alt={p.name} className="w-full h-full object-contain" loading="lazy" />
+                        ) : (
+                          <div className="w-full h-full bg-muted/50" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{p.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          R$ {p.price.toFixed(2)}{p.promo_price > 0 && p.promo_price < p.price ? ` → R$ ${p.promo_price.toFixed(2)}` : ""}
+                        </div>
+                        <div className="flex items-center gap-1 mt-1.5">
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/${p.id}`)}>
+                            <Pencil className="w-3 h-3" /> Editar
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/produto/${p.id}`, "_blank")}>
+                            <ExternalLink className="w-3 h-3" /> Ver
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => toggleProductFeatured(p)}>
+                            Remover
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* --- MAIS VENDIDOS TAB --- */}
+        <TabsContent value="mais-vendidos" className="space-y-4">
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle>Mais vendidos (por cliques)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">Top 20 produtos mais clicados. Clique para editar preços, imagens ou aplicar desconto.</p>
+              {loading ? (
+                <div className="text-muted-foreground">Carregando...</div>
+              ) : topClickedProducts.length === 0 ? (
+                <div className="text-muted-foreground">Sem dados de cliques registrados ainda.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {topClickedProducts.map((p, idx) => (
+                    <div key={p.id} className="rounded-xl border border-border bg-card p-3 flex gap-3 items-start">
+                      <div className="text-lg font-bold text-muted-foreground/40 w-6 shrink-0 text-center">#{idx + 1}</div>
+                      <div className="w-14 h-14 rounded-lg bg-muted/30 border border-border overflow-hidden shrink-0 flex items-center justify-center">
+                        {p.images?.[0]?.path ? (
+                          <img src={productImgUrl(p.images[0].path)} alt={p.name} className="w-full h-full object-contain" loading="lazy" />
+                        ) : (
+                          <div className="w-full h-full bg-muted/50" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{p.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {p.clicks} cliques • R$ {p.price.toFixed(2)}
+                        </div>
+                        <div className="flex items-center gap-1 mt-1.5">
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/${p.id}`)}>
+                            <Pencil className="w-3 h-3" /> Editar
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/produto/${p.id}`, "_blank")}>
+                            <ExternalLink className="w-3 h-3" /> Ver
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="departamentos" className="space-y-4">
           <Card className="rounded-2xl">
             <CardHeader>

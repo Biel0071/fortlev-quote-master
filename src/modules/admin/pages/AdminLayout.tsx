@@ -133,7 +133,7 @@ function AdminSidebar() {
           return (
             <SidebarGroup key={section.label} className="py-1">
               {!collapsed && (
-                <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-3 mb-0.5">
+                <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-foreground/50 font-semibold px-3 mb-0.5">
                   {section.label}
                 </SidebarGroupLabel>
               )}

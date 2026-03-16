@@ -236,39 +236,7 @@ function splitDescription(markdown: string) {
   return { general, tech };
 }
 
-function ProductRatingBadge({ productId }: { productId: string }) {
-  const [summary, setSummary] = useState<{ average_rating: number; total_reviews: number } | null>(null);
-
-  useEffect(() => {
-    if (!productId) return;
-    cloud
-      .from("product_rating_summary")
-      .select("average_rating, total_reviews")
-      .eq("product_id", productId)
-      .single()
-      .then(({ data }) => {
-        if (data && (data as any).total_reviews > 0) setSummary(data as any);
-      });
-  }, [productId]);
-
-  if (!summary) return null;
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex gap-0.5">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Star
-            key={i}
-            className={`h-3.5 w-3.5 ${i < Math.round(summary.average_rating) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"}`}
-          />
-        ))}
-      </div>
-      <span className="text-xs text-muted-foreground">
-        {Number(summary.average_rating).toFixed(1)} ({summary.total_reviews})
-      </span>
-    </div>
-  );
-}
+// Rating is now rendered inside ProductBadges component
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -379,15 +347,10 @@ export default function ProductPage() {
 
             {/* Product info */}
             <div className="lg:col-span-5 space-y-3 sm:space-y-4 min-w-0 max-w-full overflow-hidden">
-              <ProductBadges featured={Boolean((product as any).featured)} basePrice={basePrice} promoPrice={promoPrice} />
+              <ProductBadges featured={Boolean((product as any).featured)} basePrice={basePrice} promoPrice={promoPrice} productId={(product as any).id} />
 
               <div className="min-w-0 max-w-full">
                 <h1 className="text-xl sm:text-[28px] font-bold tracking-tight leading-tight break-words [overflow-wrap:anywhere]">{product.name}</h1>
-
-                {/* Rating badge */}
-                <div className="mt-1.5">
-                  <ProductRatingBadge productId={(product as any).id} />
-                </div>
 
                 <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground break-words [overflow-wrap:anywhere]">
                   {Number((product as any).stock ?? 0) <= Number((product as any).min_stock ?? 0) ? (

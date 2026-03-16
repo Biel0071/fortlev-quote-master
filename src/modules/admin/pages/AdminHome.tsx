@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import { publicImageUrl, normalizeStorageObjectPath } from "@/utils/storage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { invalidateSmartCache } from "@/utils/smartCache";
+import { ExternalLink, Pencil } from "lucide-react";
 
 async function uploadToBucket(bucket: string, file: File) {
   const ext = file.name.split(".").pop() || "bin";
@@ -117,7 +119,22 @@ type HomeSeo = {
   active: boolean;
 };
 
+type SimpleProduct = {
+  id: string;
+  name: string;
+  price: number;
+  promo_price: number;
+  featured: boolean;
+  best_seller: boolean;
+  clicks: number;
+  active: boolean;
+  category: string | null;
+  category_id: string | null;
+  images: { path: string }[];
+};
+
 export default function AdminHome() {
+  const nav = useNavigate();
   const [loading, setLoading] = useState(true);
 
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -130,6 +147,7 @@ export default function AdminHome() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [seoRow, setSeoRow] = useState<HomeSeo | null>(null);
+  const [allProducts, setAllProducts] = useState<SimpleProduct[]>([]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -186,6 +204,27 @@ export default function AdminHome() {
     setDepartments((deps.data ?? []) as any);
     setOffers((off.data ?? []) as any);
     setSeoRow((seo.data as any) ?? null);
+
+    // Load products for Destaques / Mais Vendidos tabs
+    const { data: prodRows } = await cloud
+      .from("store_products")
+      .select("id, name, price, promo_price, featured, best_seller, clicks, active, category, category_id, store_product_images(path, sort_order)")
+      .eq("active", true)
+      .order("name", { ascending: true })
+      .limit(1000);
+
+    const prods: SimpleProduct[] = ((prodRows ?? []) as any[]).map((p: any) => ({
+      ...p,
+      price: Number(p.price ?? 0),
+      promo_price: Number(p.promo_price ?? 0),
+      clicks: Number(p.clicks ?? 0),
+      images: (p.store_product_images ?? [])
+        .filter((im: any) => !!im?.path)
+        .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .slice(0, 1),
+    }));
+    setAllProducts(prods);
+
     setLoading(false);
   };
 
@@ -195,6 +234,20 @@ export default function AdminHome() {
 
   const bannerUrl = (path?: string | null) => publicImageUrl("banner-images", path);
   const categoryUrl = (path?: string | null) => publicImageUrl("category-images", path);
+  const productImgUrl = (path?: string | null) => publicImageUrl("product-images", path);
+
+  const featuredProducts = useMemo(() => allProducts.filter((p) => p.featured || p.best_seller), [allProducts]);
+  const topClickedProducts = useMemo(
+    () => [...allProducts].filter((p) => p.clicks > 0).sort((a, b) => b.clicks - a.clicks).slice(0, 20),
+    [allProducts],
+  );
+
+  const toggleProductFeatured = async (p: SimpleProduct) => {
+    const { error } = await cloud.from("store_products").update({ featured: !p.featured } as any).eq("id", p.id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    invalidateSmartCache("store_products:list");
+    await loadAll();
+  };
 
   // --- BANNERS ---
   const [bTitle, setBTitle] = useState("");
@@ -541,10 +594,12 @@ export default function AdminHome() {
       <Tabs defaultValue="banners">
         <TabsList className="w-full justify-start flex-wrap h-auto">
           <TabsTrigger value="banners">Banners</TabsTrigger>
+          <TabsTrigger value="categorias">Categorias destaque</TabsTrigger>
+          <TabsTrigger value="destaques">Destaques ({featuredProducts.length})</TabsTrigger>
+          <TabsTrigger value="mais-vendidos">Mais vendidos</TabsTrigger>
           <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
           <TabsTrigger value="vantagens">Vantagens</TabsTrigger>
           <TabsTrigger value="ofertas">Ofertas</TabsTrigger>
-          <TabsTrigger value="categorias">Categorias destaque</TabsTrigger>
           <TabsTrigger value="sessoes">Sessões produtos</TabsTrigger>
           <TabsTrigger value="seo">SEO</TabsTrigger>
           <TabsTrigger value="politicas">Políticas</TabsTrigger>
@@ -681,6 +736,100 @@ export default function AdminHome() {
                     </div>
                   </div>
                 ))
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* --- DESTAQUES TAB --- */}
+        <TabsContent value="destaques" className="space-y-4">
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle>Produtos em destaque</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">Produtos marcados como destaque que aparecem na Home. Clique para editar.</p>
+              {loading ? (
+                <div className="text-muted-foreground">Carregando...</div>
+              ) : featuredProducts.length === 0 ? (
+                <div className="text-muted-foreground">Nenhum produto em destaque.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {featuredProducts.map((p) => (
+                    <div key={p.id} className="rounded-xl border border-border bg-card p-3 flex gap-3 items-start group">
+                      <div className="w-14 h-14 rounded-lg bg-muted/30 border border-border overflow-hidden shrink-0 flex items-center justify-center">
+                        {p.images?.[0]?.path ? (
+                          <img src={productImgUrl(p.images[0].path)} alt={p.name} className="w-full h-full object-contain" loading="lazy" />
+                        ) : (
+                          <div className="w-full h-full bg-muted/50" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{p.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          R$ {p.price.toFixed(2)}{p.promo_price > 0 && p.promo_price < p.price ? ` → R$ ${p.promo_price.toFixed(2)}` : ""}
+                        </div>
+                        <div className="flex items-center gap-1 mt-1.5">
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/${p.id}`)}>
+                            <Pencil className="w-3 h-3" /> Editar
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/produto/${p.id}`, "_blank")}>
+                            <ExternalLink className="w-3 h-3" /> Ver
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => toggleProductFeatured(p)}>
+                            Remover
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* --- MAIS VENDIDOS TAB --- */}
+        <TabsContent value="mais-vendidos" className="space-y-4">
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle>Mais vendidos (por cliques)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">Top 20 produtos mais clicados. Clique para editar preços, imagens ou aplicar desconto.</p>
+              {loading ? (
+                <div className="text-muted-foreground">Carregando...</div>
+              ) : topClickedProducts.length === 0 ? (
+                <div className="text-muted-foreground">Sem dados de cliques registrados ainda.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {topClickedProducts.map((p, idx) => (
+                    <div key={p.id} className="rounded-xl border border-border bg-card p-3 flex gap-3 items-start">
+                      <div className="text-lg font-bold text-muted-foreground/40 w-6 shrink-0 text-center">#{idx + 1}</div>
+                      <div className="w-14 h-14 rounded-lg bg-muted/30 border border-border overflow-hidden shrink-0 flex items-center justify-center">
+                        {p.images?.[0]?.path ? (
+                          <img src={productImgUrl(p.images[0].path)} alt={p.name} className="w-full h-full object-contain" loading="lazy" />
+                        ) : (
+                          <div className="w-full h-full bg-muted/50" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{p.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {p.clicks} cliques • R$ {p.price.toFixed(2)}
+                        </div>
+                        <div className="flex items-center gap-1 mt-1.5">
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/${p.id}`)}>
+                            <Pencil className="w-3 h-3" /> Editar
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => window.open(`/produto/${p.id}`, "_blank")}>
+                            <ExternalLink className="w-3 h-3" /> Ver
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>

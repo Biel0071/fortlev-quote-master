@@ -133,7 +133,7 @@ function AdminSidebar() {
           return (
             <SidebarGroup key={section.label} className="py-1">
               {!collapsed && (
-                <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-3 mb-0.5">
+                <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-foreground/50 font-semibold px-3 mb-0.5">
                   {section.label}
                 </SidebarGroupLabel>
               )}
@@ -150,7 +150,7 @@ function AdminSidebar() {
                             className={`relative transition-all duration-150 rounded-lg mx-1 ${
                               isActive
                                 ? "bg-primary/10 text-primary font-semibold shadow-sm"
-                                : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
+                                : "hover:bg-muted/40 text-foreground/80 hover:text-foreground"
                             }`}
                             activeClassName="bg-primary/10 text-primary font-semibold"
                           >

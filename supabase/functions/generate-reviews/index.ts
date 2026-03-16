@@ -204,9 +204,17 @@ Retorne APENAS um JSON array sem markdown:
   const usedUrlsThisBatch = new Set<string>(); // track URLs used in this batch
 
   for (const r of reviews) {
-    const daysAgo = Math.floor(Math.random() * 90);
-    const hoursAgo = Math.floor(Math.random() * 24);
-    const created = new Date(now - daysAgo * 86400000 - hoursAgo * 3600000);
+    // Date spread: if dateSpread provided use wide range, otherwise recent 90 days
+    let created: Date;
+    if (dateSpreadYears > 0) {
+      // Spread between (now - dateSpreadYears) and now
+      const msRange = dateSpreadYears * 365 * 86400000;
+      created = new Date(now - Math.floor(Math.random() * msRange));
+    } else {
+      const daysAgo = Math.floor(Math.random() * 90);
+      const hoursAgo = Math.floor(Math.random() * 24);
+      created = new Date(now - daysAgo * 86400000 - hoursAgo * 3600000);
+    }
 
     // Determine if this review gets an image based on mode
     let shouldHaveImage = false;

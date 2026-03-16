@@ -420,6 +420,11 @@ export default function AdminReviews() {
                         {r.origin === "ai_generated" ? <Sparkles className="h-2.5 w-2.5" /> : <FileText className="h-2.5 w-2.5" />}
                         {r.origin === "ai_generated" ? "IA" : r.origin}
                       </Badge>
+                      {reviewImageIds.has(r.id) && (
+                        <Badge variant="outline" className="text-[10px] gap-1 border-purple-300 text-purple-600">
+                          <ImageIcon className="h-2.5 w-2.5" /> Imagem
+                        </Badge>
+                      )}
                     </div>
                     {r.title && <p className="font-semibold text-sm">{r.title}</p>}
                     <p className="text-sm text-muted-foreground line-clamp-2">{r.content}</p>

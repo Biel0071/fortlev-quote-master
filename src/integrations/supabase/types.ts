@@ -234,6 +234,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_system_reports: {
+        Row: {
+          alerts: Json | null
+          analysis_text: string | null
+          comparison_json: Json | null
+          created_at: string | null
+          id: string
+          metrics_json: Json | null
+          report_date: string
+          suggestions: Json | null
+        }
+        Insert: {
+          alerts?: Json | null
+          analysis_text?: string | null
+          comparison_json?: Json | null
+          created_at?: string | null
+          id?: string
+          metrics_json?: Json | null
+          report_date: string
+          suggestions?: Json | null
+        }
+        Update: {
+          alerts?: Json | null
+          analysis_text?: string | null
+          comparison_json?: Json | null
+          created_at?: string | null
+          id?: string
+          metrics_json?: Json | null
+          report_date?: string
+          suggestions?: Json | null
+        }
+        Relationships: []
+      }
       best_conversations: {
         Row: {
           chat_session_id: string
@@ -1162,6 +1195,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "image_import_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_review_queue: {
+        Row: {
+          ai_analysis: string | null
+          confidence: number | null
+          created_at: string | null
+          id: string
+          image_path: string | null
+          image_url: string
+          product_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_analysis?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          image_path?: string | null
+          image_url: string
+          product_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_analysis?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          image_path?: string | null
+          image_url?: string
+          product_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_review_queue_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "store_products"
@@ -2278,6 +2364,36 @@ export type Database = {
           message?: string
           metadata?: Json
           source?: string
+        }
+        Relationships: []
+      }
+      system_memory: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          entity: string | null
+          entity_id: string | null
+          event: string
+          id: string
+          impact: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          entity?: string | null
+          entity_id?: string | null
+          event: string
+          id?: string
+          impact?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          entity?: string | null
+          entity_id?: string | null
+          event?: string
+          id?: string
+          impact?: string | null
         }
         Relationships: []
       }

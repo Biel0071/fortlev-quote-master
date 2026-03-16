@@ -670,10 +670,12 @@ export default function AdminProductScraper() {
       const rows = selected.map(p => ({
         name: p.produto,
         price: p.precoNum || 0,
+        unit: p.unidade || "UN",
         category: p.categoria || null,
         source_id: p.url || null,
         active: true,
         stock: 0,
+        status: p.errors?.includes("price_error") ? "draft" : "published",
       }));
 
       const { error } = await supabase.from("store_products").insert(rows as any);

@@ -844,7 +844,7 @@ export default function AdminBulkImageSearch() {
           { value: products.length, label: "Total", icon: BarChart3, color: "" },
           { value: noImagesCount, label: "Sem imagens", icon: ImageIcon, color: "text-destructive" },
           { value: noDescriptionCount, label: "Sem descrição", icon: FileText, color: "text-orange-500" },
-          { value: incompleteCount, label: "Incompletos", icon: AlertTriangle, color: "text-amber-500" },
+          { value: incompleteCount + noImagesCount, label: "Incompletos", icon: AlertTriangle, color: "text-amber-500" },
           { value: `${products.length > 0 ? Math.round(((products.length - noImagesCount) / products.length) * 100) : 0}%`, label: "Cobertura", icon: Activity, color: "text-primary" },
           { value: stats?.throughput ? `${stats.throughput.toFixed(1)}/min` : "—", label: "Velocidade", icon: Gauge, color: "text-green-600" },
         ].map((stat) => (

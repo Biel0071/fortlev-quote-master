@@ -280,10 +280,15 @@ function PreviewImportPanel({
               <AlertTriangle className="h-4 w-4" />
               {validation.totalWithErrors} produto(s) com problemas detectados
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
               {validation.priceErrors > 0 && (
                 <div className="flex items-center gap-1 text-orange-600">
-                  <DollarSign className="h-3 w-3" /> {validation.priceErrors} preço(s) fora da faixa
+                  <DollarSign className="h-3 w-3" /> {validation.priceErrors} preço(s) inválido(s)
+                </div>
+              )}
+              {validation.priceAutoCorrected > 0 && (
+                <div className="flex items-center gap-1 text-blue-600">
+                  <DollarSign className="h-3 w-3" /> {validation.priceAutoCorrected} corrigido(s) auto
                 </div>
               )}
               {validation.missingImages > 0 && (

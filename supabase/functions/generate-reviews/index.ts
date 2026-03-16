@@ -235,7 +235,7 @@ Retorne APENAS um JSON array sem markdown:
       pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
       cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
       verified_purchase: r.verified_purchase ?? true,
-      approved: !shouldHaveImage,
+      approved: mode === "text" ? true : !shouldHaveImage,
       origin: "ai_generated",
       created_at: created.toISOString(),
     };

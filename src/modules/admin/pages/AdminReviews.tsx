@@ -387,6 +387,43 @@ export default function AdminReviews() {
         </CardContent>
       </Card>
 
+      {/* ====== Search Review Images Section ====== */}
+      <Card className="rounded-2xl border-dashed border-2 border-purple-300/40 bg-purple-50/30 dark:bg-purple-950/10">
+        <CardContent className="p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-purple-100 dark:bg-purple-900/30 p-2.5">
+                <Camera className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Buscar imagens reais para reviews</p>
+                <p className="text-xs text-muted-foreground">
+                  Busca fotos de instalação, obra e aplicação para usar nos reviews.
+                  Pool atual: <strong>{poolStats.total_images}</strong> imagens em <strong>{poolStats.products_with_pool}</strong> produtos.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={searchReviewImagesBatch}
+              disabled={searchingImages}
+              variant="outline"
+              className="gap-2 ml-auto border-purple-300 text-purple-700 hover:bg-purple-100 dark:border-purple-700 dark:text-purple-300"
+            >
+              {searchingImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+              Buscar imagens (20 produtos)
+            </Button>
+          </div>
+          {searchingImages && (
+            <div className="mt-4 space-y-1.5">
+              <p className="text-xs text-muted-foreground animate-pulse">
+                Buscando imagens reais de instalação e uso para reviews…
+              </p>
+              <Progress className="h-1.5" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* ====== Search + Filters ====== */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">

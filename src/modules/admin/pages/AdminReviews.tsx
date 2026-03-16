@@ -299,6 +299,16 @@ export default function AdminReviews() {
               </div>
             </div>
             <div className="flex items-center gap-2 ml-auto flex-wrap">
+              <Select value={genMode} onValueChange={(v) => setGenMode(v as any)}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Apenas texto</SelectItem>
+                  <SelectItem value="image">Texto + imagem real</SelectItem>
+                  <SelectItem value="ai">Apenas IA (texto)</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={String(genProductCount)} onValueChange={(v) => setGenProductCount(Number(v))}>
                 <SelectTrigger className="w-[130px]">
                   <SelectValue />

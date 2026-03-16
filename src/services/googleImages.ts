@@ -25,6 +25,20 @@ type ImportResponse = {
   error?: string;
 };
 
+export type PipelineResult = {
+  ok: boolean;
+  product_id: string;
+  saved: Array<{ path: string; public_url: string; sort_order: number; confidence: number }>;
+  ai_calls_used: number;
+  candidates_found: number;
+  candidates_filtered: number;
+  candidates_scored: number;
+  validated: Array<{ url: string; heuristic: number; confidence: number; status: string; analysis: string }>;
+  fallback_needed: boolean;
+  log: string[];
+  error?: string;
+};
+
 export type ImportImagesResult = {
   imported: Array<{ path: string; public_url: string; sort_order: number }>;
   requested: number;
@@ -124,5 +138,44 @@ export async function importGoogleProductImages(params: {
   const failed = Number(payload.failed ?? Math.max(0, requested - imported.length));
 
   return { imported, requested, failed };
+}
+
+/**
+ * Run the integrated pipeline: search → filter → heuristic score → AI validate (max 3) → save
+ * Reduces AI costs by only validating top candidates.
+ */
+export async function runImagePipeline(params: {
+  productId: string;
+  autoApprove?: boolean;
+  maxImages?: number;
+}): Promise<PipelineResult> {
+  const headers = await authHeaders();
+
+  const response = await fetch(`${getFunctionsBaseUrl()}/search-product-images`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      action: "pipeline",
+      productId: params.productId,
+      autoApprove: params.autoApprove ?? true,
+      maxImages: params.maxImages ?? 5,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as PipelineResult;
+
+  if (!response.ok || !payload.ok) {
+    const errorCode = payload?.error ?? "";
+    let friendlyMsg = "Não foi possível processar imagens.";
+
+    if (errorCode === "unauthorized") friendlyMsg = "Sessão expirada. Faça login novamente.";
+    else if (errorCode === "forbidden") friendlyMsg = "Acesso negado.";
+    else if (errorCode === "product_not_found") friendlyMsg = "Produto não encontrado.";
+    else if (payload?.error) friendlyMsg = payload.error;
+
+    throw new Error(friendlyMsg);
+  }
+
+  return payload;
 }
 

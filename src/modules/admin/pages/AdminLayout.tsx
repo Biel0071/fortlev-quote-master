@@ -133,7 +133,7 @@ function AdminSidebar() {
           return (
             <SidebarGroup key={section.label} className="py-1">
               {!collapsed && (
-                <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-foreground/50 font-semibold px-3 mb-0.5">
+                <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60 font-semibold px-3 mb-0.5">
                   {section.label}
                 </SidebarGroupLabel>
               )}
@@ -149,15 +149,15 @@ function AdminSidebar() {
                             end={item.url === "/admin/dashboard"}
                             className={`relative transition-all duration-150 rounded-lg mx-1 ${
                               isActive
-                                ? "bg-primary/10 text-primary font-semibold shadow-sm"
-                                : "hover:bg-muted/40 text-foreground/80 hover:text-foreground"
+                                ? "bg-sidebar-accent text-sidebar-primary font-semibold shadow-sm"
+                                : "hover:bg-sidebar-accent/60 text-sidebar-foreground/90 hover:text-sidebar-foreground"
                             }`}
-                            activeClassName="bg-primary/10 text-primary font-semibold"
+                            activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
                           >
-                            <item.icon className={`mr-2 h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                            <item.icon className={`mr-2 h-4 w-4 ${isActive ? "text-sidebar-primary" : "text-sidebar-foreground/70"}`} />
                             {!collapsed && <span className="text-[13px]">{item.title}</span>}
                             {isActive && !collapsed && (
-                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full" />
+                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-sidebar-primary rounded-r-full" />
                             )}
                           </NavLink>
                         </SidebarMenuButton>

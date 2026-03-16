@@ -49,6 +49,7 @@ import {
   AdminProductsImport,
   AdminProductScraper,
   AdminReviews,
+  AdminPriceIntelligence,
 } from "@/modules/admin";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";

@@ -99,6 +99,7 @@ export default function AdminReviews() {
     let result = reviews;
     if (filter === "pending") result = result.filter((r) => !r.approved);
     if (filter === "approved") result = result.filter((r) => r.approved);
+    if (filter === "with_image") result = result.filter((r) => reviewImageIds.has(r.id));
     const s = q.trim().toLowerCase();
     if (s) result = result.filter((r) =>
       r.content.toLowerCase().includes(s) ||
@@ -106,7 +107,7 @@ export default function AdminReviews() {
       (r.product_name ?? "").toLowerCase().includes(s)
     );
     return result;
-  }, [reviews, filter, q]);
+  }, [reviews, filter, q, reviewImageIds]);
 
   const pendingCount = reviews.filter((r) => !r.approved).length;
   const approvedCount = reviews.filter((r) => r.approved).length;

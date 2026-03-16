@@ -810,10 +810,7 @@ export default function AdminBulkImageSearch() {
   // ─── LIST VIEW ───
   const progressPercent = stats ? Math.round((stats.completed / Math.max(1, stats.total)) * 100) : 0;
   const errorCount = jobs.filter((l) => l.status === "error").length;
-  const eligibleCount = getFilteredProducts().filter(
-    (p) => p.imageCount < MAX_IMAGES_PER_PRODUCT || !p.description || (p.description?.trim().length ?? 0) < 20
-  ).length;
-  const eligibleLabel = "elegíveis";
+  const actionCount = filtered.length;
 
   return (
     <div className="space-y-4 px-1 sm:px-0">

@@ -219,6 +219,22 @@ export default function AdminProductsList() {
     return rows.filter(r => r.price <= 0 || r.price > 100000).length;
   }, [rows]);
 
+  const noImageCount = useMemo(() => {
+    return rows.filter(r => r.status === "no_image_found").length;
+  }, [rows]);
+
+  const reprocessNoImage = async () => {
+    const ids = rows.filter(r => r.status === "no_image_found").map(r => r.id);
+    if (ids.length === 0) return;
+    // Optimistic
+    setRows(prev => prev.map(r => r.status === "no_image_found" ? { ...r, active: true, status: "import_pending" } : r));
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      await cloud.from("store_products").update({ active: true, status: "import_pending" } as any).in("id", batch);
+    }
+    toast({ title: "Reprocessamento agendado", description: `${ids.length} produtos reativados para nova importação.` });
+  };
+
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const r of rows) {

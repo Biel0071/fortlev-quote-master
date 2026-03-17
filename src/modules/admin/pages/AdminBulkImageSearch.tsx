@@ -151,6 +151,10 @@ export default function AdminBulkImageSearch() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [workerCount, setWorkerCount] = useState(MAX_WORKERS);
 
+  // Product selection for rebuild
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const rebuildModeRef = useRef(false);
+
   // Pipeline state
   const [pipelineRunning, setPipelineRunning] = useState(false);
   const [stats, setStats] = useState<PipelineStats | null>(null);

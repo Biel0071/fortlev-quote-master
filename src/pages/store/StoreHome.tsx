@@ -138,11 +138,42 @@ export default function StoreHome() {
 
   const topClickedIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
-    return list
+
+    // Real click-based ranking
+    const clicked = list
       .filter((p) => Number(p?.clicks ?? 0) > 0)
       .sort((a, b) => Number(b.clicks ?? 0) - Number(a.clicks ?? 0))
-      .slice(0, 8)
+      .slice(0, 20)
       .map((p) => p.id) as string[];
+
+    // If we have enough real data (5+), use it
+    if (clicked.length >= 5) return clicked.slice(0, 8);
+
+    // Otherwise fallback to curated best-sellers list
+    const curatedBestSellers = [
+      "38c51f55-fbf0-41c4-b223-b9993e7efb40", // LIZ CP4
+      "df447713-81f6-4326-acba-fc83645bfc7c", // LIZ CP2
+      "c85ead3d-ae2b-4823-b3a0-75de80041b7c", // Betoneira 400L
+      "fef0b373-84d1-4ba7-b341-13f03cbcef38", // Bloco 20
+      "9a4875e3-2067-4d8e-b936-56f36fe6b7e4", // Bloco 10
+      "f2ebaf40-e55b-42f4-9ae6-9a1b959b5e7d", // Brita 0
+      "79696562-7535-4891-a52f-9529095bd9c3", // Brita 1
+      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3", // Caixa 3000L
+    ];
+
+    const existingIds = new Set(list.map((p) => p.id));
+    const validCurated = curatedBestSellers.filter((id) => existingIds.has(id));
+
+    // Merge: real clicks first, then curated to fill remaining slots
+    const seen = new Set(clicked);
+    const merged = [...clicked];
+    for (const id of validCurated) {
+      if (!seen.has(id) && merged.length < 8) {
+        seen.add(id);
+        merged.push(id);
+      }
+    }
+    return merged;
   }, [activeProducts]);
 
   return (
@@ -206,7 +237,6 @@ export default function StoreHome() {
             products={activeProducts as any}
             onAdd={onAdd}
             limit={8}
-            emptyText="Sem dados de cliques registrados."
           />
         </HomeSection>
       ) : null}

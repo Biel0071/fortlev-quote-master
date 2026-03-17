@@ -118,20 +118,50 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const authHeader = req.headers.get("Authorization") ?? "";
     const { action } = await req.json();
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const sb = createClient(supabaseUrl, serviceKey);
+
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: roleOk } = await userClient.rpc("has_role", {
+      _user_id: userData.user.id,
+      _role: "admin",
+    });
+
+    if (!roleOk) {
+      return new Response(JSON.stringify({ error: "forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (action === "validate_prices") {
       return await validateAllPrices(sb);
     } else if (action === "analyze_prices") {
       return await analyzePrices(sb);
     } else if (action === "download_images") {
-      return await downloadAllImages(sb, supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
+      return await downloadAllImages(sb, supabaseUrl, authHeader, anonKey);
     } else if (action === "both") {
       const priceResult = await validateAllPricesInner(sb);
-      const imageResult = await downloadAllImagesInner(sb, supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
+      const imageResult = await downloadAllImagesInner(sb, supabaseUrl, authHeader, anonKey);
       return new Response(JSON.stringify({ ok: true, prices: priceResult, images: imageResult }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

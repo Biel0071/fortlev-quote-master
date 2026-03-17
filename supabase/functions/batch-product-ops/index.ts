@@ -113,6 +113,8 @@ async function fetchAll(sb: any, table: string, columns: string, orderCol = "cre
   return all;
 }
 
+function round2(n: number) { return Math.round(n * 100) / 100; }
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -145,6 +147,33 @@ serve(async (req) => {
   }
 });
 
+// ── Smart price fix: tries divisors AND multipliers ──
+function tryFixPrice(price: number, range: { min: number; max: number; avg: number }): number | null {
+  if (price <= 0) return round2(range.avg);
+
+  // Price too high → try dividing
+  if (price > range.max) {
+    for (const divisor of [10, 100, 1000]) {
+      const fixed = round2(price / divisor);
+      if (fixed >= range.min && fixed <= range.max) return fixed;
+    }
+    // Still too high → clamp to max
+    return round2(range.max);
+  }
+
+  // Price too low → try multiplying
+  if (price < range.min) {
+    for (const multiplier of [10, 100, 1000]) {
+      const fixed = round2(price * multiplier);
+      if (fixed >= range.min && fixed <= range.max) return fixed;
+    }
+    // Still too low → set to min
+    return round2(range.min);
+  }
+
+  return null; // already in range
+}
+
 // ── PRICE VALIDATION ──
 async function validateAllPricesInner(sb: any) {
   const ranges = await fetchAll(sb, "price_intelligence", "*", "categoria");
@@ -155,13 +184,27 @@ async function validateAllPricesInner(sb: any) {
 
   const products = await fetchAll(sb, "store_products", "id,name,price,promo_price,unit,category");
 
-  const results = { total: products.length, validated: 0, corrected: 0, errors: 0, skipped: 0, details: [] as any[] };
+  const results = {
+    total: products.length,
+    validated: 0,
+    corrected: 0,
+    promo_fixed: 0,
+    errors: 0,
+    skipped: 0,
+    zero_price_fixed: 0,
+    details: [] as any[],
+    by_category: {} as Record<string, { total: number; ok: number; corrected: number; errors: number }>,
+  };
 
-  // Process in batches of 200 with small delay to avoid timeouts
+  const addCat = (cat: string, field: "total" | "ok" | "corrected" | "errors") => {
+    if (!results.by_category[cat]) results.by_category[cat] = { total: 0, ok: 0, corrected: 0, errors: 0 };
+    results.by_category[cat][field]++;
+  };
+
   const BATCH = 200;
   for (let i = 0; i < products.length; i += BATCH) {
     const batch = products.slice(i, i + BATCH);
-    const updates: Array<{ id: string; price: number }> = [];
+    const updates: Array<{ id: string; price?: number; promo_price?: number }> = [];
 
     for (const p of batch) {
       const category = detectCategory(p.name);
@@ -173,42 +216,86 @@ async function validateAllPricesInner(sb: any) {
       const range = rangeMap.get(key);
       if (!range) { results.skipped++; continue; }
 
-      const price = p.price || 0;
+      addCat(category, "total");
 
-      if (price >= range.min && price <= range.max) {
-        results.validated++;
-        continue;
-      }
+      const price = Number(p.price) || 0;
+      const promo = Number(p.promo_price) || 0;
+      const updateObj: { id: string; price?: number; promo_price?: number } = { id: p.id };
+      let changed = false;
 
-      let corrected = false;
-      if (price > range.max) {
-        for (const divisor of [10, 100, 1000]) {
-          const fixed = Math.round((price / divisor) * 100) / 100;
-          if (fixed >= range.min && fixed <= range.max) {
-            updates.push({ id: p.id, price: fixed });
-            results.corrected++;
-            results.details.push({ id: p.id, name: p.name, original: price, corrected: fixed, action: "corrected" });
-            corrected = true;
-            break;
+      // ── Fix main price ──
+      if (price <= 0) {
+        // Zero/null price → set to category average
+        updateObj.price = round2(range.avg);
+        changed = true;
+        results.zero_price_fixed++;
+        if (results.details.length < 300) {
+          results.details.push({ id: p.id, name: p.name, original: price, corrected: updateObj.price, category, unit, action: "zero_fixed" });
+        }
+      } else if (price >= range.min && price <= range.max) {
+        // Price OK
+      } else {
+        const fixed = tryFixPrice(price, range);
+        if (fixed !== null && fixed !== price) {
+          updateObj.price = fixed;
+          changed = true;
+          results.corrected++;
+          if (results.details.length < 300) {
+            results.details.push({ id: p.id, name: p.name, original: price, corrected: fixed, category, unit, action: "corrected" });
           }
+        } else {
+          results.errors++;
+          addCat(category, "errors");
+          if (results.details.length < 300) {
+            results.details.push({ id: p.id, name: p.name, price, category, unit, range, action: "error" });
+          }
+          continue;
         }
       }
 
-      if (!corrected) {
-        results.errors++;
-        // Only keep first 200 error details to avoid huge responses
-        if (results.details.length < 200) {
-          results.details.push({ id: p.id, name: p.name, price, category, unit, range, action: "error" });
+      // ── Fix promo_price ──
+      const effectivePrice = updateObj.price ?? price;
+      if (promo > 0) {
+        if (promo >= effectivePrice) {
+          // Promo >= price → invalid, clear it
+          updateObj.promo_price = 0;
+          changed = true;
+          results.promo_fixed++;
+        } else if (promo < range.min * 0.5) {
+          // Promo way below range → likely a bug, clear it
+          updateObj.promo_price = 0;
+          changed = true;
+          results.promo_fixed++;
+        } else if (promo > range.max) {
+          // Promo above range max → fix it
+          const promoFixed = tryFixPrice(promo, range);
+          if (promoFixed !== null && promoFixed < effectivePrice) {
+            updateObj.promo_price = promoFixed;
+          } else {
+            updateObj.promo_price = 0;
+          }
+          changed = true;
+          results.promo_fixed++;
         }
+      }
+
+      if (changed) {
+        addCat(category, "corrected");
+        updates.push(updateObj);
+      } else {
+        results.validated++;
+        addCat(category, "ok");
       }
     }
 
     // Apply batch updates
     for (const u of updates) {
-      await sb.from("store_products").update({ price: u.price }).eq("id", u.id);
+      const { id, ...fields } = u;
+      if (Object.keys(fields).length > 0) {
+        await sb.from("store_products").update(fields).eq("id", id);
+      }
     }
 
-    // Small delay between batches
     if (i + BATCH < products.length) {
       await new Promise((r) => setTimeout(r, 300));
     }

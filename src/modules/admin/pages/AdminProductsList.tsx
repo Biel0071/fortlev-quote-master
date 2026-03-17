@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -17,9 +19,9 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
 import {
-  ArrowUp, Brain, ChevronDown, ChevronUp, Copy, DollarSign, Download, Globe, Grid2x2, Grid3x3,
+  ArrowUp, Brain, CheckCircle, ChevronDown, ChevronUp, Copy, DollarSign, Download, Globe, Grid2x2, Grid3x3,
   ImagePlus, LayoutGrid, Loader2, MoreHorizontal, Package, Pencil, Play, Plus, Power,
-  RefreshCw, Search, Trash2, Upload,
+  RefreshCw, Search, Trash2, Upload, XCircle, AlertTriangle,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent } from "@/components/ui/card";
@@ -72,6 +74,7 @@ export default function AdminProductsList() {
   const [batchTotal, setBatchTotal] = useState(0);
   const cancelRef = useRef(false);
   const runningRef = useRef(false);
+  const [priceReport, setPriceReport] = useState<any>(null);
 
   const load = async () => {
     setLoading(true);
@@ -137,12 +140,13 @@ export default function AdminProductsList() {
     try {
       const { data, error } = await cloud.functions.invoke("batch-product-ops", { body: { action } });
       if (error) throw error;
-      if (action === "validate_prices") {
-        sonnerToast.success(`Preços validados: ${data.corrected ?? 0} corrigidos`);
-      } else if (action === "download_images") {
+      if (action === "validate_prices" || action === "both") {
+        const report = action === "both" ? data?.prices : data;
+        setPriceReport(report);
+        sonnerToast.success(`Preços: ${report?.corrected ?? 0} corrigidos, ${report?.promo_fixed ?? 0} promos ajustados`);
+      }
+      if (action === "download_images") {
         sonnerToast.success(`Imagens: ${data.success ?? 0} baixadas`);
-      } else {
-        sonnerToast.success("Operações concluídas!");
       }
       await load();
     } catch (e) {
@@ -651,6 +655,92 @@ export default function AdminProductsList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Price validation report dialog */}
+      <Dialog open={!!priceReport} onOpenChange={(open) => !open && setPriceReport(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-primary" />
+              Relatório de Validação de Preços
+            </DialogTitle>
+          </DialogHeader>
+          {priceReport && (
+            <div className="space-y-4">
+              {/* Summary stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { label: "Total analisados", value: priceReport.total, icon: Package, color: "text-foreground" },
+                  { label: "Preços OK", value: priceReport.validated, icon: CheckCircle, color: "text-green-600" },
+                  { label: "Corrigidos", value: priceReport.corrected, icon: AlertTriangle, color: "text-amber-600" },
+                  { label: "Promos ajustadas", value: priceReport.promo_fixed, icon: DollarSign, color: "text-blue-600" },
+                  { label: "Preço zero fixado", value: priceReport.zero_price_fixed, icon: XCircle, color: "text-orange-600" },
+                  { label: "Sem categoria", value: priceReport.skipped, icon: Package, color: "text-muted-foreground" },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-lg border bg-card p-2.5 text-center">
+                    <s.icon className={`h-4 w-4 mx-auto mb-1 ${s.color}`} />
+                    <p className={`text-lg font-bold ${s.color}`}>{s.value ?? 0}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* By category breakdown */}
+              {priceReport.by_category && Object.keys(priceReport.by_category).length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">Por categoria</h4>
+                  <ScrollArea className="max-h-48">
+                    <div className="space-y-1">
+                      {Object.entries(priceReport.by_category)
+                        .sort(([, a]: any, [, b]: any) => b.corrected - a.corrected)
+                        .map(([cat, stats]: any) => (
+                          <div key={cat} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-md hover:bg-muted/50">
+                            <span className="font-medium capitalize">{cat}</span>
+                            <div className="flex items-center gap-3 text-muted-foreground">
+                              <span>{stats.total} total</span>
+                              {stats.corrected > 0 && <span className="text-amber-600">{stats.corrected} fixados</span>}
+                              {stats.errors > 0 && <span className="text-destructive">{stats.errors} erros</span>}
+                              {stats.ok > 0 && <span className="text-green-600">{stats.ok} ok</span>}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
+              {/* Details (first few corrections) */}
+              {priceReport.details && priceReport.details.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
+                    Detalhes ({priceReport.details.length} itens)
+                  </h4>
+                  <ScrollArea className="max-h-48">
+                    <div className="space-y-1">
+                      {priceReport.details.slice(0, 50).map((d: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-md hover:bg-muted/50 gap-2">
+                          <span className="truncate flex-1 min-w-0">{d.name}</span>
+                          {d.action === "corrected" || d.action === "zero_fixed" ? (
+                            <span className="shrink-0 text-amber-600">
+                              {formatCurrency(d.original)} → {formatCurrency(d.corrected)}
+                            </span>
+                          ) : (
+                            <span className="shrink-0 text-destructive">
+                              {formatCurrency(d.price)} (fora da faixa)
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
+              <Button className="w-full" onClick={() => setPriceReport(null)}>Fechar</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Scroll to top FAB */}
       {showScrollTop && (

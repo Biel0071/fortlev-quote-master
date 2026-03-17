@@ -90,8 +90,7 @@ function QtyStepper({
 
 function ProductCardRating({ productId }: { productId: string }) {
   const rating = useProductRating(productId);
-  if (!rating) return null;
-  return <MiniStars avg={rating.avg} total={rating.total} />;
+  return <MiniStars avg={rating?.avg ?? 0} total={rating?.total ?? 0} />;
 }
 
 export function StoreProductCard({

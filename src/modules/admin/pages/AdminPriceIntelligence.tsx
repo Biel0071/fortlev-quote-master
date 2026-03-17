@@ -301,7 +301,7 @@ export default function AdminPriceIntelligence() {
 
           <Card>
             <CardContent className="p-0">
-              <ScrollArea className="max-h-[600px]">
+              <ScrollArea className="h-[600px]">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-background border-b z-10">
                     <tr>

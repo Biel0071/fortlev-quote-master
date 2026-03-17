@@ -478,6 +478,21 @@ export default function AdminBulkImageSearch() {
     updateStats({ activeWorkers: (statsRef.current?.activeWorkers ?? 0) + 1, processing: (statsRef.current?.processing ?? 0) + 1, pending: (statsRef.current?.pending ?? 0) - 1 });
 
     try {
+      // STEP 0: Delete old images if rebuild mode
+      if (rebuildModeRef.current) {
+        updateJob(jobIdx, { step: "🗑️ Removendo imagens antigas..." });
+        try {
+          const { data: existingImages } = await cloud.from("store_product_images").select("id, path").eq("product_id", job.productId);
+          if (existingImages && existingImages.length > 0) {
+            const paths = existingImages.map((img: any) => img.path).filter(Boolean);
+            if (paths.length > 0) {
+              await cloud.storage.from("product-images").remove(paths);
+            }
+            await cloud.from("store_product_images").delete().eq("product_id", job.productId);
+          }
+        } catch { /* ignore cleanup errors */ }
+      }
+
       // STEP 1: AI Enrichment
       let aiSearchQueries: string[] = [];
       let layeredQueries: { manufacturer?: string[]; marketplace?: string[]; general?: string[] } = {};
@@ -486,7 +501,7 @@ export default function AdminBulkImageSearch() {
       let aiImagePrompt = "";
       const product = products.find((p) => p.id === job.productId);
       const needsDescription = !product?.description || (product.description?.trim().length ?? 0) < 20;
-      const neededImages = MAX_IMAGES_PER_PRODUCT - (product?.imageCount ?? 0);
+      const neededImages = rebuildModeRef.current ? MAX_IMAGES_PER_PRODUCT : MAX_IMAGES_PER_PRODUCT - (product?.imageCount ?? 0);
 
       if (needsDescription || neededImages > 0) {
         updateJob(jobIdx, { step: "🧠 Aguardando slot IA..." });

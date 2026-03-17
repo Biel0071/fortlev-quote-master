@@ -140,12 +140,13 @@ export default function AdminProductsList() {
     try {
       const { data, error } = await cloud.functions.invoke("batch-product-ops", { body: { action } });
       if (error) throw error;
-      if (action === "validate_prices") {
-        sonnerToast.success(`Preços validados: ${data.corrected ?? 0} corrigidos`);
-      } else if (action === "download_images") {
+      if (action === "validate_prices" || action === "both") {
+        const report = action === "both" ? data?.prices : data;
+        setPriceReport(report);
+        sonnerToast.success(`Preços: ${report?.corrected ?? 0} corrigidos, ${report?.promo_fixed ?? 0} promos ajustados`);
+      }
+      if (action === "download_images") {
         sonnerToast.success(`Imagens: ${data.success ?? 0} baixadas`);
-      } else {
-        sonnerToast.success("Operações concluídas!");
       }
       await load();
     } catch (e) {

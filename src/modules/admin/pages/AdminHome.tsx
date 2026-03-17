@@ -620,7 +620,7 @@ export default function AdminHome() {
           <TabsTrigger value="banners">Banners</TabsTrigger>
           <TabsTrigger value="categorias">Categorias destaque</TabsTrigger>
           <TabsTrigger value="destaques">Destaques ({featuredProducts.length})</TabsTrigger>
-          <TabsTrigger value="mais-vendidos">Mais vendidos</TabsTrigger>
+          <TabsTrigger value="mais-vendidos">Mais vendidos ({topClickedProducts.length})</TabsTrigger>
           <TabsTrigger value="departamentos">Departamentos</TabsTrigger>
           <TabsTrigger value="vantagens">Vantagens</TabsTrigger>
           <TabsTrigger value="ofertas">Ofertas</TabsTrigger>

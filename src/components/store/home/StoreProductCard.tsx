@@ -39,20 +39,22 @@ function useProductRating(productId: string) {
 
 function MiniStars({ avg, total }: { avg: number; total: number }) {
   return (
-    <div className="flex items-center gap-1 mt-1">
+    <div className="flex items-center gap-1 mt-1.5">
       <div className="flex gap-0.5">
         {Array.from({ length: 5 }, (_, i) => (
           <Star
             key={i}
-            className={`h-4 w-4 ${i < Math.round(avg) ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-300"}`}
+            className={`h-4 w-4 ${
+              i < Math.round(avg)
+                ? "fill-yellow-400 text-yellow-400"
+                : "fill-muted text-muted-foreground/40"
+            }`}
           />
         ))}
       </div>
-      {total > 0 ? (
-        <span className="text-xs text-muted-foreground ml-0.5">({total})</span>
-      ) : (
-        <span className="text-xs text-muted-foreground ml-0.5">(0)</span>
-      )}
+      <span className="text-[11px] text-muted-foreground ml-0.5">
+        ({total})
+      </span>
     </div>
   );
 }
@@ -72,7 +74,7 @@ function QtyStepper({
       <Button
         type="button"
         variant="ghost"
-        className="h-10 w-10 rounded-lg"
+        className="h-10 w-10 rounded-lg text-base"
         onClick={() => onChange(Math.max(1, value - 1))}
         aria-label="Diminuir quantidade"
       >
@@ -82,7 +84,7 @@ function QtyStepper({
       <Button
         type="button"
         variant="ghost"
-        className="h-10 w-10 rounded-lg"
+        className="h-10 w-10 rounded-lg text-base"
         onClick={() => onChange(value + 1)}
         aria-label="Aumentar quantidade"
       >
@@ -145,61 +147,67 @@ export function StoreProductCard({
           nav(`/produto/${product?.id}`);
         }
       }}
-      className="group h-full overflow-hidden rounded-2xl bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
+      className="group flex flex-col h-full overflow-hidden rounded-2xl bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
       aria-label={`Abrir produto ${product?.name ?? ""}`}
     >
-      <div className="relative aspect-square bg-white border-b border-border overflow-hidden flex items-center justify-center p-2">
+      {/* Image — fixed aspect ratio, consistent sizing */}
+      <div className="relative aspect-square bg-white border-b border-border overflow-hidden flex items-center justify-center p-3">
         {imgUrl ? (
           <img
             src={imgUrl}
             alt={product?.name ?? "Produto"}
-            className="max-h-full max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.02]"
+            className="max-h-full max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.03]"
             loading="lazy"
           />
         ) : (
-          <div className="h-full w-full bg-muted" />
+          <div className="h-full w-full rounded-lg bg-muted animate-pulse" />
         )}
       </div>
 
-      <CardContent className="p-4 sm:p-4 flex flex-col gap-3">
-        <div className="min-w-0">
-          <div className="text-[15px] sm:text-sm font-semibold leading-snug line-clamp-2">{product?.name}</div>
+      {/* Content — flex-col to push button to bottom */}
+      <CardContent className="flex flex-col flex-1 p-3 sm:p-4 gap-2">
+        {/* Name + Stars */}
+        <div className="min-w-0 flex-shrink-0">
+          <h3 className="text-sm sm:text-[15px] font-semibold leading-snug line-clamp-2 min-h-[2.5em]">
+            {product?.name}
+          </h3>
           <ProductCardRating productId={product?.id} />
         </div>
 
-        <div className="mt-auto space-y-3">
-          <div className="min-w-0">
-            {hasPromo ? (
-              <div className="text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div>
-            ) : null}
-            <div className="text-lg sm:text-lg font-extrabold tracking-tight">{formatCurrency(effectivePrice)}</div>
-            {installments ? <div className="text-xs text-muted-foreground">{installments}</div> : null}
-          </div>
+        {/* Price */}
+        <div className="min-w-0 flex-shrink-0 mt-auto pt-1">
+          {hasPromo && (
+            <div className="text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div>
+          )}
+          <div className="text-lg font-extrabold tracking-tight leading-tight">{formatCurrency(effectivePrice)}</div>
+          {installments && (
+            <div className="text-[11px] text-muted-foreground mt-0.5">{installments}</div>
+          )}
+        </div>
 
-          <div
-            className="flex flex-col gap-2"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[140px,1fr] sm:items-center">
-              <QtyStepper value={qty} onChange={setQty} />
-              <Button
-                variant="accent"
-                className={`h-12 rounded-xl px-4 w-full text-base transition-transform ${addingFx ? "scale-[0.97]" : ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAddingFx(true);
-                  trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: product.id });
-                  onAdd(product.id, qty);
-                }}
-              >
-                Adicionar
-              </Button>
-            </div>
+        {/* Qty + Add button — always at bottom */}
+        <div
+          className="flex-shrink-0 mt-2"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col gap-2">
+            <QtyStepper value={qty} onChange={setQty} />
+            <Button
+              variant="accent"
+              className={`h-11 sm:h-12 rounded-xl px-4 w-full text-sm sm:text-base font-semibold transition-transform ${addingFx ? "scale-[0.97]" : ""}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setAddingFx(true);
+                trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: product.id });
+                onAdd(product.id, qty);
+              }}
+            >
+              Adicionar
+            </Button>
           </div>
         </div>
       </CardContent>
     </Card>
   );
 }
-

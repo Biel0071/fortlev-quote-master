@@ -32,9 +32,9 @@ export const HomeProductsByIds = React.forwardRef<HTMLDivElement, Props>(
     return (
       <div ref={ref}>
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 min-[375px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {Array.from({ length: limit }).map((_, i) => (
-              <Skeleton key={i} className="h-[360px] w-full rounded-2xl" />
+              <Skeleton key={i} className="h-[380px] w-full rounded-2xl" />
             ))}
           </div>
         ) : visible.length === 0 ? (
@@ -42,7 +42,7 @@ export const HomeProductsByIds = React.forwardRef<HTMLDivElement, Props>(
             <CardContent className="py-6 text-sm text-muted-foreground">{emptyText}</CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+          <div className="grid grid-cols-1 min-[375px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {visible.map((p: any) => (
               <StoreProductCard key={p.id} product={p} onAdd={onAdd} />
             ))}

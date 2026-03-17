@@ -454,9 +454,9 @@ export default function AdminReviews() {
                 <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <p className="font-semibold text-sm">Gerar reviews para catálogo</p>
+                <p className="font-semibold text-sm">Pipeline inteligente de reviews</p>
                 <p className="text-xs text-muted-foreground">
-                  Destaques: 10-25 reviews • Normais: 3-8 (50% chance) • Datas 2020-2026 • Auto-aprovado
+                  Prioriza produtos com menos reviews • 3-8 reviews/produto • Ordem aleatória • Max 25/produto • Datas 2020-2026
                 </p>
               </div>
             </div>

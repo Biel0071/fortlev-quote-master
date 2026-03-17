@@ -109,26 +109,26 @@ export default function StoreHome() {
 
     // Priority products to appear first (from curated list)
     const priorityIds = [
+      "31f0affc-e596-413e-b113-9c17ef3ecab2", // Caixa 1000L FORTLEV
+      "1f6a420a-b46b-4d75-b888-8aa6c1e4ee2a", // Caixa 2000L FORTLEV
+      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3", // Caixa 3000L FORTLEV
+      "8b13a472-154d-422b-b567-fb8c726eaada", // Caixa 5000L FORTLEV
+      "a787085e-0984-481a-9644-61c08f796870", // Caixa 10000L FORTLEV
+      "978068df-f401-4997-803b-81354d216453", // Caixa 500L FORTLEV
+      "494af806-59f1-4f5d-bd1a-4cd7b14e3c16", // Caixa 750L FORTLEV
+      "cb426409-f5fd-4d4f-9f44-0f94ec5937c0", // Caixa 1500L FORTLEV
+      "e5c8e09d-ecba-4da6-b401-aa8fac3cc961", // Caixa 7500L FORTLEV
+      "dff3c30d-69d7-47bc-870e-87137e201b4c", // Caixa 15000L FORTLEV
+      "daeadbc0-b89e-477f-b8da-28f1eda6688d", // Caixa 20000L FORTLEV
+      "9b4e6839-85d2-4310-a249-b8468ece0c83", // Fossa Séptica FORTLEV
+      "ea44340a-1b19-42e0-98d7-b19c1e9059d4", // Tanque 5000L FORTLEV
+      "710399a9-a49a-46ba-a6d6-8c695ee750d0", // Tanque 10000L FORTLEV
+      "c7dd4267-f322-4147-a2cd-6969800c5453", // Caixa 310L FORTLEV
       "38c51f55-fbf0-41c4-b223-b9993e7efb40", // LIZ CP4
       "df447713-81f6-4326-acba-fc83645bfc7c", // LIZ CP2
       "c85ead3d-ae2b-4823-b3a0-75de80041b7c", // Betoneira 400L
       "fef0b373-84d1-4ba7-b341-13f03cbcef38", // Bloco 20
       "9a4875e3-2067-4d8e-b936-56f36fe6b7e4", // Bloco 10
-      "4cb67f3a-fe47-40c9-88c6-647377e8e6b1", // Bloco 14
-      "f2ebaf40-e55b-42f4-9ae6-9a1b959b5e7d", // Brita 0
-      "79696562-7535-4891-a52f-9529095bd9c3", // Brita 1
-      "b0c6e965-941b-4091-a8cb-5e4a9f90af9f", // AC I
-      "e4b69c28-a2ae-4b20-9a31-d412faec6bde", // AC II
-      "9051155f-bc01-400f-ac59-f1c96dc4525a", // AC III
-      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3", // Caixa 3000L
-      "8b8f783f-47e3-492c-a1ba-82f7e27ace4c", // Tijolo 12 furos
-      "46742601-a3b6-48fc-8060-616cebc0e8d1", // Tijolo 9 furos
-      "beea05b0-ff59-4b5f-9f28-890418cbab8e", // Telha Precon
-      "1b4511bd-1a4f-4aec-a667-8beaeef12169", // KMR 10000L
-      "8b13a472-154d-422b-b567-fb8c726eaada", // Fortlev 5000L
-      "1f6a420a-b46b-4d75-b888-8aa6c1e4ee2a", // Fortlev 2000L
-      "31f0affc-e596-413e-b113-9c17ef3ecab2", // Fortlev 1000L
-      "a787085e-0984-481a-9644-61c08f796870", // Fortlev 10000L
     ];
 
     const existingPriority = priorityIds.filter((id) => featured.includes(id));
@@ -151,14 +151,14 @@ export default function StoreHome() {
 
     // Otherwise fallback to curated best-sellers list
     const curatedBestSellers = [
+      "31f0affc-e596-413e-b113-9c17ef3ecab2", // Caixa 1000L FORTLEV
+      "1f6a420a-b46b-4d75-b888-8aa6c1e4ee2a", // Caixa 2000L FORTLEV
+      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3", // Caixa 3000L FORTLEV
+      "8b13a472-154d-422b-b567-fb8c726eaada", // Caixa 5000L FORTLEV
+      "a787085e-0984-481a-9644-61c08f796870", // Caixa 10000L FORTLEV
+      "978068df-f401-4997-803b-81354d216453", // Caixa 500L FORTLEV
       "38c51f55-fbf0-41c4-b223-b9993e7efb40", // LIZ CP4
-      "df447713-81f6-4326-acba-fc83645bfc7c", // LIZ CP2
-      "c85ead3d-ae2b-4823-b3a0-75de80041b7c", // Betoneira 400L
       "fef0b373-84d1-4ba7-b341-13f03cbcef38", // Bloco 20
-      "9a4875e3-2067-4d8e-b936-56f36fe6b7e4", // Bloco 10
-      "f2ebaf40-e55b-42f4-9ae6-9a1b959b5e7d", // Brita 0
-      "79696562-7535-4891-a52f-9529095bd9c3", // Brita 1
-      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3", // Caixa 3000L
     ];
 
     const existingIds = new Set(list.map((p) => p.id));

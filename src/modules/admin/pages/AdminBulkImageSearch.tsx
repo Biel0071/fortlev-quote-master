@@ -151,6 +151,10 @@ export default function AdminBulkImageSearch() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [workerCount, setWorkerCount] = useState(MAX_WORKERS);
 
+  // Product selection for rebuild
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const rebuildModeRef = useRef(false);
+
   // Pipeline state
   const [pipelineRunning, setPipelineRunning] = useState(false);
   const [stats, setStats] = useState<PipelineStats | null>(null);
@@ -474,6 +478,21 @@ export default function AdminBulkImageSearch() {
     updateStats({ activeWorkers: (statsRef.current?.activeWorkers ?? 0) + 1, processing: (statsRef.current?.processing ?? 0) + 1, pending: (statsRef.current?.pending ?? 0) - 1 });
 
     try {
+      // STEP 0: Delete old images if rebuild mode
+      if (rebuildModeRef.current) {
+        updateJob(jobIdx, { step: "🗑️ Removendo imagens antigas..." });
+        try {
+          const { data: existingImages } = await cloud.from("store_product_images").select("id, path").eq("product_id", job.productId);
+          if (existingImages && existingImages.length > 0) {
+            const paths = existingImages.map((img: any) => img.path).filter(Boolean);
+            if (paths.length > 0) {
+              await cloud.storage.from("product-images").remove(paths);
+            }
+            await cloud.from("store_product_images").delete().eq("product_id", job.productId);
+          }
+        } catch { /* ignore cleanup errors */ }
+      }
+
       // STEP 1: AI Enrichment
       let aiSearchQueries: string[] = [];
       let layeredQueries: { manufacturer?: string[]; marketplace?: string[]; general?: string[] } = {};
@@ -482,7 +501,7 @@ export default function AdminBulkImageSearch() {
       let aiImagePrompt = "";
       const product = products.find((p) => p.id === job.productId);
       const needsDescription = !product?.description || (product.description?.trim().length ?? 0) < 20;
-      const neededImages = MAX_IMAGES_PER_PRODUCT - (product?.imageCount ?? 0);
+      const neededImages = rebuildModeRef.current ? MAX_IMAGES_PER_PRODUCT : MAX_IMAGES_PER_PRODUCT - (product?.imageCount ?? 0);
 
       if (needsDescription || neededImages > 0) {
         updateJob(jobIdx, { step: "🧠 Aguardando slot IA..." });
@@ -820,7 +839,24 @@ export default function AdminBulkImageSearch() {
   };
 
   const startPipeline = () => {
+    rebuildModeRef.current = false;
     runPipeline(filtered);
+  };
+
+  const startRebuildSelected = () => {
+    if (selectedProductIds.size === 0) {
+      toast({ title: "Selecione produtos", description: "Marque pelo menos um produto para refazer imagens." });
+      return;
+    }
+    const eligible = products.filter((p) => selectedProductIds.has(p.id));
+    rebuildModeRef.current = true;
+    runPipeline(eligible);
+  };
+
+  const startRebuildBatch = (limit: number) => {
+    const eligible = limit === 0 ? [...products] : products.slice(0, limit);
+    rebuildModeRef.current = true;
+    runPipeline(eligible);
   };
 
   const resumePipeline = () => {
@@ -842,10 +878,27 @@ export default function AdminBulkImageSearch() {
       toast({ title: "Sem erros", description: "Nenhum produto com erro para reprocessar." });
       return;
     }
+    rebuildModeRef.current = false;
     runPipeline(eligible);
   };
 
   const stopPipeline = () => { abortRef.current = true; };
+
+  const toggleProductSelection = (id: string) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllProducts = () => {
+    if (selectedProductIds.size === filtered.length) {
+      setSelectedProductIds(new Set());
+    } else {
+      setSelectedProductIds(new Set(filtered.map((p) => p.id)));
+    }
+  };
 
   // ─── DETAIL VIEW ───
   if (detailProduct) {
@@ -1112,6 +1165,30 @@ export default function AdminBulkImageSearch() {
                 <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
                 IMPORTAR AUTOMATICAMENTE ({actionCount} itens)
               </Button>
+
+              {/* Rebuild with new rules */}
+              <div className="flex gap-2 flex-wrap items-center">
+                <span className="text-xs font-medium text-muted-foreground">🔄 Refazer imagens com nova regra:</span>
+                {[
+                  { label: "Selecionados", action: () => startRebuildSelected() },
+                  { label: "50 produtos", action: () => startRebuildBatch(50) },
+                  { label: "100 produtos", action: () => startRebuildBatch(100) },
+                  { label: "500 produtos", action: () => startRebuildBatch(500) },
+                  { label: "Catálogo inteiro", action: () => startRebuildBatch(0) },
+                ].map((opt) => (
+                  <Button
+                    key={opt.label}
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    disabled={loading || pipelineRunning}
+                    onClick={opt.action}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+
               {actionCount === 0 && (
                 <p className="text-xs text-green-600 font-medium">✅ Todos os produtos já estão completos!</p>
               )}
@@ -1333,9 +1410,37 @@ export default function AdminBulkImageSearch() {
       {/* Products list */}
       <Card className="rounded-xl sm:rounded-2xl">
         <CardHeader className="pb-2 sm:pb-3">
-          <CardTitle className="text-base sm:text-lg">
-            {filter === "no-images" ? `Produtos sem imagens (${filtered.length})` : filter === "no-description" ? `Produtos sem descrição (${filtered.length})` : filter === "incomplete" ? `Produtos incompletos (${filtered.length})` : `Todos os produtos (${filtered.length})`}
-          </CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-base sm:text-lg">
+              {filter === "no-images" ? `Produtos sem imagens (${filtered.length})` : filter === "no-description" ? `Produtos sem descrição (${filtered.length})` : filter === "incomplete" ? `Produtos incompletos (${filtered.length})` : `Todos os produtos (${filtered.length})`}
+            </CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              {selectedProductIds.size > 0 && (
+                <Button size="sm" className="h-8 text-xs sm:text-sm gap-1.5" onClick={startRebuildSelected} disabled={pipelineRunning}>
+                  <RefreshCw className="w-3.5 h-3.5" /> Refazer imagens ({selectedProductIds.size})
+                </Button>
+              )}
+              <div className="flex gap-1">
+                {[
+                  { label: "50", limit: 50 },
+                  { label: "100", limit: 100 },
+                  { label: "500", limit: 500 },
+                  { label: "Tudo", limit: 0 },
+                ].map((opt) => (
+                  <Button
+                    key={opt.label}
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[10px] sm:text-xs px-2"
+                    disabled={pipelineRunning}
+                    onClick={() => startRebuildBatch(opt.limit)}
+                  >
+                    🔄 {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
           {loading ? (
@@ -1346,31 +1451,50 @@ export default function AdminBulkImageSearch() {
             </div>
           ) : (
             <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-0.5 sm:pr-1">
+              {/* Select all */}
+              <div className="flex items-center gap-2 px-2.5 py-1.5 border-b border-border/50 mb-1">
+                <Checkbox
+                  checked={selectedProductIds.size === filtered.length && filtered.length > 0}
+                  onCheckedChange={toggleSelectAllProducts}
+                  className="h-4 w-4"
+                />
+                <span className="text-xs font-medium text-muted-foreground">
+                  {selectedProductIds.size > 0 ? `${selectedProductIds.size} selecionado(s)` : "Selecionar todos"}
+                </span>
+              </div>
+
               {filtered.map((p) => (
                 <div
                   key={p.id}
                   className="flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl border border-border p-2.5 sm:p-3 hover:bg-muted/30 transition cursor-pointer active:bg-muted/50"
-                  onClick={() => openDetail(p)}
                 >
-                  {p.imageCount > 0 && p.images[0] && (
-                    <img src={getPublicUrl(p.images[0].path)} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-md object-cover shrink-0 border border-border" loading="lazy" />
-                  )}
-                  {p.imageCount === 0 && (
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-muted/40 flex items-center justify-center shrink-0 border border-border">
-                      <ImageIcon className="w-4 h-4 text-muted-foreground/50" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-xs sm:text-sm truncate">{p.name}</div>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <Badge variant={p.imageCount >= MAX_IMAGES_PER_PRODUCT ? "default" : p.imageCount > 0 ? "outline" : "secondary"} className="text-[10px] sm:text-xs px-1.5 py-0">
-                        {p.imageCount} img
-                      </Badge>
-                      {p.description && p.description.trim().length >= 20 ? (
-                        <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0 border-green-500/50 text-green-600">📝</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">Sem desc</Badge>
-                      )}
+                  <Checkbox
+                    checked={selectedProductIds.has(p.id)}
+                    onCheckedChange={() => toggleProductSelection(p.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-4 w-4 shrink-0"
+                  />
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0" onClick={() => openDetail(p)}>
+                    {p.imageCount > 0 && p.images[0] && (
+                      <img src={getPublicUrl(p.images[0].path)} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-md object-cover shrink-0 border border-border" loading="lazy" />
+                    )}
+                    {p.imageCount === 0 && (
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-muted/40 flex items-center justify-center shrink-0 border border-border">
+                        <ImageIcon className="w-4 h-4 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-xs sm:text-sm truncate">{p.name}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <Badge variant={p.imageCount >= MAX_IMAGES_PER_PRODUCT ? "default" : p.imageCount > 0 ? "outline" : "secondary"} className="text-[10px] sm:text-xs px-1.5 py-0">
+                          {p.imageCount} img
+                        </Badge>
+                        {p.description && p.description.trim().length >= 20 ? (
+                          <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0 border-green-500/50 text-green-600">📝</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">Sem desc</Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <Button size="sm" variant="outline" className="shrink-0 h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3" onClick={(e) => { e.stopPropagation(); openSearch(p); }}>

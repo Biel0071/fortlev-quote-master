@@ -28,6 +28,7 @@ type ImportResponse = {
 export type PipelineResult = {
   ok: boolean;
   product_id: string;
+  product_disabled?: boolean;
   saved: Array<{ path: string; public_url: string; sort_order: number; confidence: number }>;
   ai_calls_used: number;
   candidates_found: number;

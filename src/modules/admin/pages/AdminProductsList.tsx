@@ -36,6 +36,7 @@ type Row = {
   promo_price: number;
   stock: number;
   active: boolean;
+  status?: string | null;
   category?: string | null;
   category_id?: string | null;
 };
@@ -102,7 +103,7 @@ export default function AdminProductsList() {
     while (hasMore) {
       const { data, error } = await cloud
         .from("store_products")
-        .select("id, name, sku, price, promo_price, stock, active, category, category_id")
+        .select("id, name, sku, price, promo_price, stock, active, status, category, category_id")
         .order("name", { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
 
@@ -217,6 +218,22 @@ export default function AdminProductsList() {
   const suspiciousCount = useMemo(() => {
     return rows.filter(r => r.price <= 0 || r.price > 100000).length;
   }, [rows]);
+
+  const noImageCount = useMemo(() => {
+    return rows.filter(r => r.status === "no_image_found").length;
+  }, [rows]);
+
+  const reprocessNoImage = async () => {
+    const ids = rows.filter(r => r.status === "no_image_found").map(r => r.id);
+    if (ids.length === 0) return;
+    // Optimistic
+    setRows(prev => prev.map(r => r.status === "no_image_found" ? { ...r, active: true, status: "import_pending" } : r));
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      await cloud.from("store_products").update({ active: true, status: "import_pending" } as any).in("id", batch);
+    }
+    toast({ title: "Reprocessamento agendado", description: `${ids.length} produtos reativados para nova importação.` });
+  };
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -422,8 +439,7 @@ export default function AdminProductsList() {
         </Button>
       </div>
 
-      {/* Stats panel */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -443,6 +459,17 @@ export default function AdminProductsList() {
             <div>
               <p className="text-xl font-bold">{inactiveCount}</p>
               <p className="text-[10px] text-muted-foreground">Inativos</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+              <ImagePlus className="h-5 w-5 text-destructive" />
+            </div>
+            <div>
+              <p className="text-xl font-bold">{noImageCount}</p>
+              <p className="text-[10px] text-muted-foreground">Sem imagem</p>
             </div>
           </CardContent>
         </Card>
@@ -469,6 +496,19 @@ export default function AdminProductsList() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Reprocess no-image products */}
+      {noImageCount > 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-xl border bg-destructive/5 border-destructive/20">
+          <ImagePlus className="h-5 w-5 text-destructive shrink-0" />
+          <p className="text-sm flex-1">
+            <strong>{noImageCount}</strong> produtos desativados por falta de imagem.
+          </p>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={reprocessNoImage}>
+            <RefreshCw className="h-3.5 w-3.5" /> Reprocessar todos
+          </Button>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
@@ -685,7 +725,8 @@ export default function AdminProductsList() {
                     </div>
                   )}
                   <Checkbox checked={isSelected} className="absolute top-2 left-2 h-4 w-4 bg-background/80" onClick={e => e.stopPropagation()} onCheckedChange={() => toggleSelect(p.id)} />
-                  {!p.active && <Badge variant="secondary" className="absolute top-2 right-2 text-[9px] px-1.5 py-0">Inativo</Badge>}
+                  {p.status === "no_image_found" && <Badge variant="destructive" className="absolute top-2 right-2 text-[9px] px-1.5 py-0">🔴 Sem imagem</Badge>}
+                  {!p.active && p.status !== "no_image_found" && <Badge variant="secondary" className="absolute top-2 right-2 text-[9px] px-1.5 py-0">Inativo</Badge>}
                 </div>
                 <div className="p-2">
                   <h3 className="text-[11px] font-medium leading-tight line-clamp-2">{p.name}</h3>
@@ -757,8 +798,8 @@ export default function AdminProductsList() {
                       onCheckedChange={() => toggleActive(p)}
                       className="scale-75"
                     />
-                    <span className={`text-[10px] font-medium ${p.active ? "text-green-600" : "text-muted-foreground"}`}>
-                      {p.active ? "🟢 Ativo" : "🔴 Inativo"}
+                    <span className={`text-[10px] font-medium ${p.status === "no_image_found" ? "text-destructive" : p.active ? "text-green-600" : "text-muted-foreground"}`}>
+                      {p.status === "no_image_found" ? "🔴 Sem imagem" : p.active ? "🟢 Ativo" : "🔴 Inativo"}
                     </span>
                   </div>
                   <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}><Pencil className="h-3 w-3" /> Editar</Button>

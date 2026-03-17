@@ -39,16 +39,20 @@ function useProductRating(productId: string) {
 
 function MiniStars({ avg, total }: { avg: number; total: number }) {
   return (
-    <div className="flex items-center gap-1">
-      <div className="flex gap-px">
+    <div className="flex items-center gap-1 mt-1">
+      <div className="flex gap-0.5">
         {Array.from({ length: 5 }, (_, i) => (
           <Star
             key={i}
-            className={`h-3 w-3 ${i < Math.round(avg) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"}`}
+            className={`h-4 w-4 ${i < Math.round(avg) ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-300"}`}
           />
         ))}
       </div>
-      <span className="text-[10px] text-muted-foreground">({total})</span>
+      {total > 0 ? (
+        <span className="text-xs text-muted-foreground ml-0.5">({total})</span>
+      ) : (
+        <span className="text-xs text-muted-foreground ml-0.5">(0)</span>
+      )}
     </div>
   );
 }

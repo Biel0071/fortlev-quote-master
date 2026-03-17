@@ -81,33 +81,27 @@ export default function StoreCatalog() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="max-w-6xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pb-24 md:pb-10 space-y-4 sm:space-y-6 min-w-0">
-        <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-border bg-card shadow-sm">
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div className="absolute inset-0 opacity-20 fortlev-gradient" />
-            <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-muted/40 blur-3xl" />
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-10 space-y-3 sm:space-y-5 min-w-0">
+        {/* Header */}
+        <header className="flex items-end justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Catálogo</h1>
+            <p className="text-xs text-muted-foreground">Navegue por categorias e encontre seus produtos.</p>
           </div>
+        </header>
 
-          <header className="relative p-4 sm:p-6 flex items-end justify-between gap-3 flex-wrap">
-            <div className="min-w-0">
-              <h1 className="text-xl sm:text-[28px] font-semibold tracking-tight">Catálogo</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">Navegue por categorias e encontre seus produtos.</p>
-            </div>
-            <Button asChild variant="outline" className="h-10 sm:h-12 rounded-2xl text-sm shrink-0">
-              <Link to="/carrinho">Ir ao carrinho</Link>
-            </Button>
-          </header>
-        </section>
-
-        <section className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:-mx-0 sm:px-0">
+        {/* Category chips - compact scrollable */}
+        <section className="flex gap-1.5 overflow-x-auto pb-1 -mx-3 px-3 sm:-mx-0 sm:px-0 scrollbar-none" style={{ scrollbarWidth: "none" }}>
           {categories.map((c) => {
             const active = c.slug === selectedSlug;
             return (
-              <Button
+              <button
                 key={c.slug}
-                size="sm"
-                variant={active ? "default" : "outline"}
-                className="h-11 rounded-2xl"
+                className={`shrink-0 h-8 px-3.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                }`}
                 onClick={() => {
                   const next = new URLSearchParams(searchParams);
                   if (c.slug === "all") next.delete("categoria");
@@ -124,27 +118,28 @@ export default function StoreCatalog() {
                 }}
               >
                 {c.name}
-              </Button>
+              </button>
             );
           })}
         </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Search + count */}
+        <div className="flex items-center gap-2">
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar produto..."
-            className="md:col-span-2 h-12 rounded-2xl"
+            className="flex-1 h-10 rounded-xl text-sm"
           />
-          <div className="text-xs text-muted-foreground md:text-right self-center">
-            {selectedSlug === "all" ? "Mostrando todas as categorias" : `Categoria: ${selectedSlug}`}
-          </div>
+          <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
+            {filtered.length} {filtered.length === 1 ? "produto" : "produtos"}
+          </span>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-[360px] w-full rounded-2xl" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <Skeleton key={i} className="h-[320px] w-full rounded-2xl" />
             ))}
           </div>
         ) : error ? (
@@ -154,7 +149,7 @@ export default function StoreCatalog() {
             <CardContent className="p-6 text-sm text-muted-foreground">Nenhum produto encontrado.</CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 auto-rows-fr">
             {filtered.map((p: any) => (
               <StoreProductCard
                 key={p.id}

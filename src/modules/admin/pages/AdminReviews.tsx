@@ -466,9 +466,11 @@ export default function AdminReviews() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="20">20 produtos</SelectItem>
                   <SelectItem value="50">50 produtos</SelectItem>
                   <SelectItem value="100">100 produtos</SelectItem>
+                  <SelectItem value="200">200 produtos</SelectItem>
+                  <SelectItem value="500">500 produtos</SelectItem>
+                  <SelectItem value="1000">1000 produtos</SelectItem>
                   <SelectItem value="0">Catálogo inteiro</SelectItem>
                 </SelectContent>
               </Select>

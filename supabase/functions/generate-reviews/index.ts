@@ -494,92 +494,117 @@ serve(async (req) => {
     /* ============================================================ */
     if (action === "catalog") {
       const limit = body?.limit ?? 0; // 0 = all
-      await logEvent(supa, "info", `Geração catálogo iniciada (limit: ${limit || "all"})`, { limit });
+      const MAX_REVIEWS_PER_PRODUCT = 25;
+      await logEvent(supa, "info", `Pipeline catálogo iniciada (limit: ${limit || "all"})`, { limit });
 
-      // Get all active published products
-      let query = supa
-        .from("store_products")
-        .select("id, featured, best_seller")
-        .eq("active", true)
-        .eq("status", "published");
-      if (limit > 0) query = query.limit(limit);
-      const { data: allProducts } = await query;
+      // Step 1: Fetch ALL active products with their existing review count
+      // Use LEFT JOIN via product_rating_summary to prioritize products with fewer reviews
+      const allCandidates: { id: string; featured: boolean; best_seller: boolean; existing_reviews: number }[] = [];
+      const PAGE_SIZE = 1000;
+      let offset = 0;
+      let hasMore = true;
 
-      if (!allProducts?.length) {
+      while (hasMore) {
+        const { data: batch } = await supa
+          .from("store_products")
+          .select("id, featured, best_seller")
+          .eq("active", true)
+          .eq("status", "published")
+          .range(offset, offset + PAGE_SIZE - 1);
+
+        if (!batch?.length) { hasMore = false; break; }
+
+        // Get review counts for this batch
+        for (const p of batch) {
+          const { count } = await supa
+            .from("product_reviews")
+            .select("id", { count: "exact", head: true })
+            .eq("product_id", p.id);
+          allCandidates.push({
+            id: p.id,
+            featured: p.featured ?? false,
+            best_seller: p.best_seller ?? false,
+            existing_reviews: count ?? 0,
+          });
+        }
+
+        offset += PAGE_SIZE;
+        if (batch.length < PAGE_SIZE) hasMore = false;
+        await delay(200);
+      }
+
+      if (!allCandidates.length) {
         return new Response(JSON.stringify({ ok: true, message: "No products", total_created: 0 }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Shuffle to randomize
-      const shuffled = allProducts.sort(() => Math.random() - 0.5);
+      // Step 2: Filter out products that already have >= MAX_REVIEWS_PER_PRODUCT
+      const eligible = allCandidates.filter((p) => p.existing_reviews < MAX_REVIEWS_PER_PRODUCT);
 
+      // Step 3: Sort by fewest reviews first, then shuffle within similar counts for variety
+      eligible.sort((a, b) => a.existing_reviews - b.existing_reviews);
+
+      // Step 4: Apply Fisher-Yates shuffle to randomize (breaks alphabetical/creation order)
+      for (let i = eligible.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+      }
+
+      // Re-sort so products with fewer reviews come first (stable priority)
+      eligible.sort((a, b) => a.existing_reviews - b.existing_reviews);
+
+      // Step 5: Limit to requested amount
+      const selected = limit > 0 ? eligible.slice(0, limit) : eligible;
+
+      if (!selected.length) {
+        await logEvent(supa, "info", "Pipeline catálogo: todos os produtos já têm reviews suficientes");
+        return new Response(JSON.stringify({ ok: true, message: "All products covered", total_created: 0 }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Step 6: Generate reviews in parallel chunks of 10
       const results: any[] = [];
       let totalCreated = 0;
       let totalImages = 0;
-      const CHUNK = 5;
+      const CHUNK = 10;
 
-      for (let i = 0; i < shuffled.length; i += CHUNK) {
-        const chunk = shuffled.slice(i, i + CHUNK);
+      for (let i = 0; i < selected.length; i += CHUNK) {
+        const chunk = selected.slice(i, i + CHUNK);
 
-        for (const p of chunk) {
+        const chunkPromises = chunk.map(async (p) => {
           try {
-            // Check existing count
-            const { count: existingCount } = await supa
-              .from("product_reviews")
-              .select("id", { count: "exact", head: true })
-              .eq("product_id", p.id);
-
-            if ((existingCount ?? 0) >= 250) {
-              results.push({ product_id: p.id, reviews_created: 0, images_attached: 0, error: "Max reached" });
-              continue;
+            const remaining = MAX_REVIEWS_PER_PRODUCT - p.existing_reviews;
+            if (remaining <= 0) {
+              return { product_id: p.id, reviews_created: 0, images_attached: 0, error: "Max reached" };
             }
 
-            // Featured/best_seller: 10-25 reviews, normal: 50% chance 3-8 reviews
-            let count: number;
-            if (p.featured || p.best_seller) {
-              count = Math.floor(Math.random() * 16) + 10; // 10-25
-            } else {
-              if (Math.random() < 0.5) {
-                count = Math.floor(Math.random() * 6) + 3; // 3-8
-              } else {
-                results.push({ product_id: p.id, reviews_created: 0, images_attached: 0, error: "Skipped (random)" });
-                continue;
-              }
-            }
-
-            // Cap to remaining slots
-            count = Math.min(count, 250 - (existingCount ?? 0));
+            // Balanced distribution: 3-8 reviews per product
+            const count = Math.min(
+              Math.floor(Math.random() * 6) + 3, // 3-8
+              remaining
+            );
 
             // Use text mode with date spread 2020-2026 (6 years)
             const result = await generateReviewsForProduct(
               supa, SUPABASE_URL, LOVABLE_API_KEY, p.id, Math.min(count, 8), "text", 6
             );
 
-            // If count > 8, do multiple rounds
-            let remaining = count - 8;
-            let created = result.reviews_created;
-            let imgs = result.images_attached;
-            while (remaining > 0 && created < count) {
-              const batch = Math.min(remaining, 8);
-              const r2 = await generateReviewsForProduct(
-                supa, SUPABASE_URL, LOVABLE_API_KEY, p.id, batch, "text", 6
-              );
-              created += r2.reviews_created;
-              imgs += r2.images_attached;
-              remaining -= batch;
-              await delay(300);
-            }
-
-            totalCreated += created;
-            totalImages += imgs;
-            results.push({ product_id: p.id, reviews_created: created, images_attached: imgs });
+            return { product_id: p.id, reviews_created: result.reviews_created, images_attached: result.images_attached };
           } catch (e) {
-            results.push({ product_id: p.id, reviews_created: 0, images_attached: 0, error: String(e) });
+            return { product_id: p.id, reviews_created: 0, images_attached: 0, error: String(e) };
           }
+        });
+
+        const chunkResults = await Promise.all(chunkPromises);
+        for (const r of chunkResults) {
+          results.push(r);
+          totalCreated += r.reviews_created;
+          totalImages += r.images_attached;
         }
 
-        if (i + CHUNK < shuffled.length) await delay(1000);
+        if (i + CHUNK < selected.length) await delay(500);
       }
 
       // Recalc rating summaries for all affected products
@@ -589,18 +614,20 @@ serve(async (req) => {
         }
       }
 
-      await logEvent(supa, "info", `Geração catálogo concluída: ${totalCreated} reviews para ${results.filter((r: any) => r.reviews_created > 0).length} produtos`, {
+      await logEvent(supa, "info", `Pipeline catálogo concluída: ${totalCreated} reviews para ${results.filter((r: any) => r.reviews_created > 0).length} de ${selected.length} produtos`, {
         total_created: totalCreated,
         total_images: totalImages,
-        products_processed: shuffled.length,
+        products_processed: selected.length,
+        total_eligible: eligible.length,
       });
 
       return new Response(JSON.stringify({
         ok: true,
         total_created: totalCreated,
         total_images: totalImages,
-        products_processed: shuffled.length,
+        products_processed: selected.length,
         products_with_reviews: results.filter((r: any) => r.reviews_created > 0).length,
+        total_eligible: eligible.length,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

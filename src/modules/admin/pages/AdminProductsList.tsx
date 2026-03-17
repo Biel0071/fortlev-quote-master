@@ -103,7 +103,7 @@ export default function AdminProductsList() {
     while (hasMore) {
       const { data, error } = await cloud
         .from("store_products")
-        .select("id, name, sku, price, promo_price, stock, active, category, category_id")
+        .select("id, name, sku, price, promo_price, stock, active, status, category, category_id")
         .order("name", { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
 

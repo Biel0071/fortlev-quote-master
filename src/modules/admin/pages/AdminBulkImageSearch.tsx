@@ -1386,9 +1386,37 @@ export default function AdminBulkImageSearch() {
       {/* Products list */}
       <Card className="rounded-xl sm:rounded-2xl">
         <CardHeader className="pb-2 sm:pb-3">
-          <CardTitle className="text-base sm:text-lg">
-            {filter === "no-images" ? `Produtos sem imagens (${filtered.length})` : filter === "no-description" ? `Produtos sem descrição (${filtered.length})` : filter === "incomplete" ? `Produtos incompletos (${filtered.length})` : `Todos os produtos (${filtered.length})`}
-          </CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-base sm:text-lg">
+              {filter === "no-images" ? `Produtos sem imagens (${filtered.length})` : filter === "no-description" ? `Produtos sem descrição (${filtered.length})` : filter === "incomplete" ? `Produtos incompletos (${filtered.length})` : `Todos os produtos (${filtered.length})`}
+            </CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              {selectedProductIds.size > 0 && (
+                <Button size="sm" className="h-8 text-xs sm:text-sm gap-1.5" onClick={startRebuildSelected} disabled={pipelineRunning}>
+                  <RefreshCw className="w-3.5 h-3.5" /> Refazer imagens ({selectedProductIds.size})
+                </Button>
+              )}
+              <div className="flex gap-1">
+                {[
+                  { label: "50", limit: 50 },
+                  { label: "100", limit: 100 },
+                  { label: "500", limit: 500 },
+                  { label: "Tudo", limit: 0 },
+                ].map((opt) => (
+                  <Button
+                    key={opt.label}
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[10px] sm:text-xs px-2"
+                    disabled={pipelineRunning}
+                    onClick={() => startRebuildBatch(opt.limit)}
+                  >
+                    🔄 {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
           {loading ? (
@@ -1399,31 +1427,50 @@ export default function AdminBulkImageSearch() {
             </div>
           ) : (
             <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-0.5 sm:pr-1">
+              {/* Select all */}
+              <div className="flex items-center gap-2 px-2.5 py-1.5 border-b border-border/50 mb-1">
+                <Checkbox
+                  checked={selectedProductIds.size === filtered.length && filtered.length > 0}
+                  onCheckedChange={toggleSelectAllProducts}
+                  className="h-4 w-4"
+                />
+                <span className="text-xs font-medium text-muted-foreground">
+                  {selectedProductIds.size > 0 ? `${selectedProductIds.size} selecionado(s)` : "Selecionar todos"}
+                </span>
+              </div>
+
               {filtered.map((p) => (
                 <div
                   key={p.id}
                   className="flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl border border-border p-2.5 sm:p-3 hover:bg-muted/30 transition cursor-pointer active:bg-muted/50"
-                  onClick={() => openDetail(p)}
                 >
-                  {p.imageCount > 0 && p.images[0] && (
-                    <img src={getPublicUrl(p.images[0].path)} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-md object-cover shrink-0 border border-border" loading="lazy" />
-                  )}
-                  {p.imageCount === 0 && (
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-muted/40 flex items-center justify-center shrink-0 border border-border">
-                      <ImageIcon className="w-4 h-4 text-muted-foreground/50" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-xs sm:text-sm truncate">{p.name}</div>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <Badge variant={p.imageCount >= MAX_IMAGES_PER_PRODUCT ? "default" : p.imageCount > 0 ? "outline" : "secondary"} className="text-[10px] sm:text-xs px-1.5 py-0">
-                        {p.imageCount} img
-                      </Badge>
-                      {p.description && p.description.trim().length >= 20 ? (
-                        <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0 border-green-500/50 text-green-600">📝</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">Sem desc</Badge>
-                      )}
+                  <Checkbox
+                    checked={selectedProductIds.has(p.id)}
+                    onCheckedChange={() => toggleProductSelection(p.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-4 w-4 shrink-0"
+                  />
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0" onClick={() => openDetail(p)}>
+                    {p.imageCount > 0 && p.images[0] && (
+                      <img src={getPublicUrl(p.images[0].path)} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-md object-cover shrink-0 border border-border" loading="lazy" />
+                    )}
+                    {p.imageCount === 0 && (
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-muted/40 flex items-center justify-center shrink-0 border border-border">
+                        <ImageIcon className="w-4 h-4 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-xs sm:text-sm truncate">{p.name}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <Badge variant={p.imageCount >= MAX_IMAGES_PER_PRODUCT ? "default" : p.imageCount > 0 ? "outline" : "secondary"} className="text-[10px] sm:text-xs px-1.5 py-0">
+                          {p.imageCount} img
+                        </Badge>
+                        {p.description && p.description.trim().length >= 20 ? (
+                          <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0 border-green-500/50 text-green-600">📝</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0">Sem desc</Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <Button size="sm" variant="outline" className="shrink-0 h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3" onClick={(e) => { e.stopPropagation(); openSearch(p); }}>

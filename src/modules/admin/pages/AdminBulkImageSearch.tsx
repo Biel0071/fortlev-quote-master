@@ -839,7 +839,24 @@ export default function AdminBulkImageSearch() {
   };
 
   const startPipeline = () => {
+    rebuildModeRef.current = false;
     runPipeline(filtered);
+  };
+
+  const startRebuildSelected = () => {
+    if (selectedProductIds.size === 0) {
+      toast({ title: "Selecione produtos", description: "Marque pelo menos um produto para refazer imagens." });
+      return;
+    }
+    const eligible = products.filter((p) => selectedProductIds.has(p.id));
+    rebuildModeRef.current = true;
+    runPipeline(eligible);
+  };
+
+  const startRebuildBatch = (limit: number) => {
+    const eligible = limit === 0 ? [...products] : products.slice(0, limit);
+    rebuildModeRef.current = true;
+    runPipeline(eligible);
   };
 
   const resumePipeline = () => {
@@ -861,10 +878,27 @@ export default function AdminBulkImageSearch() {
       toast({ title: "Sem erros", description: "Nenhum produto com erro para reprocessar." });
       return;
     }
+    rebuildModeRef.current = false;
     runPipeline(eligible);
   };
 
   const stopPipeline = () => { abortRef.current = true; };
+
+  const toggleProductSelection = (id: string) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllProducts = () => {
+    if (selectedProductIds.size === filtered.length) {
+      setSelectedProductIds(new Set());
+    } else {
+      setSelectedProductIds(new Set(filtered.map((p) => p.id)));
+    }
+  };
 
   // ─── DETAIL VIEW ───
   if (detailProduct) {

@@ -237,7 +237,7 @@ export default function StoreHome() {
             products={activeProducts as any}
             onAdd={onAdd}
             limit={8}
-            emptyText="Sem dados de cliques registrados."
+          />
           />
         </HomeSection>
       ) : null}

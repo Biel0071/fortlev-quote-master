@@ -439,8 +439,7 @@ export default function AdminProductsList() {
         </Button>
       </div>
 
-      {/* Stats panel */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -460,6 +459,17 @@ export default function AdminProductsList() {
             <div>
               <p className="text-xl font-bold">{inactiveCount}</p>
               <p className="text-[10px] text-muted-foreground">Inativos</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+              <ImagePlus className="h-5 w-5 text-destructive" />
+            </div>
+            <div>
+              <p className="text-xl font-bold">{noImageCount}</p>
+              <p className="text-[10px] text-muted-foreground">Sem imagem</p>
             </div>
           </CardContent>
         </Card>
@@ -486,6 +496,19 @@ export default function AdminProductsList() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Reprocess no-image products */}
+      {noImageCount > 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-xl border bg-destructive/5 border-destructive/20">
+          <ImagePlus className="h-5 w-5 text-destructive shrink-0" />
+          <p className="text-sm flex-1">
+            <strong>{noImageCount}</strong> produtos desativados por falta de imagem.
+          </p>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={reprocessNoImage}>
+            <RefreshCw className="h-3.5 w-3.5" /> Reprocessar todos
+          </Button>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">

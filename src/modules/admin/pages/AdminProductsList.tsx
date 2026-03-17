@@ -74,6 +74,7 @@ export default function AdminProductsList() {
   const [batchTotal, setBatchTotal] = useState(0);
   const cancelRef = useRef(false);
   const runningRef = useRef(false);
+  const [priceReport, setPriceReport] = useState<any>(null);
 
   const load = async () => {
     setLoading(true);

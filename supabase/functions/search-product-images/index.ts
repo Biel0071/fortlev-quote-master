@@ -559,18 +559,35 @@ async function runPipeline(
 
   log.push(`Saved: ${saved.length} images`);
 
-  // Step 6: Fallback — if no images saved, try AI generation
+  // Step 6: If no images saved, auto-disable product
   let aiFallbackUsed = false;
   if (saved.length === 0) {
-    log.push("No images found, triggering AI generation fallback");
+    log.push("No valid images found — disabling product automatically");
     aiFallbackUsed = true;
-    // We don't call generate-product-images inline to keep this function focused
-    // The caller can check saved.length === 0 and trigger generation separately
+
+    // Mark product as inactive with no_image_found status
+    await admin
+      .from("store_products")
+      .update({ active: false, status: "no_image_found" } as any)
+      .eq("id", productId);
+
+    // Log to image_import_logs for audit
+    await admin.from("image_import_logs").insert({
+      product_id: productId,
+      status: "no_image",
+      images_found: allCandidates.length,
+      images_saved: 0,
+      processing_time: 0,
+      error_message: "Produto desativado automaticamente por não possuir imagens válidas",
+    } as any);
+
+    log.push("Product disabled: status=no_image_found, active=false");
   }
 
   return {
     ok: true,
     product_id: productId,
+    product_disabled: saved.length === 0,
     saved,
     ai_calls_used: aiCallsUsed,
     candidates_found: allCandidates.length,

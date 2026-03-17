@@ -36,6 +36,7 @@ type Row = {
   promo_price: number;
   stock: number;
   active: boolean;
+  status?: string | null;
   category?: string | null;
   category_id?: string | null;
 };

@@ -237,12 +237,34 @@ export default function AdminHome() {
   const productImgUrl = (path?: string | null) => publicImageUrl("product-images", path);
 
   const featuredProducts = useMemo(() => allProducts.filter((p) => p.featured || p.best_seller), [allProducts]);
+  // Curated best-sellers fallback (same IDs used in StoreHome)
+  const curatedBestSellerIds = useMemo(() => [
+    "38c51f55-fbf0-41c4-b223-b9993e7efb40", // LIZ CP4
+    "df447713-81f6-4326-acba-fc83645bfc7c", // LIZ CP2
+    "c85ead3d-ae2b-4823-b3a0-75de80041b7c", // Betoneira 400L
+    "fef0b373-84d1-4ba7-b341-13f03cbcef38", // Bloco 20
+    "9a4875e3-2067-4d8e-b936-56f36fe6b7e4", // Bloco 10
+    "f2ebaf40-e55b-42f4-9ae6-9a1b959b5e7d", // Brita 0
+    "79696562-7535-4891-a52f-9529095bd9c3", // Brita 1
+    "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3", // Caixa 3000L
+  ], []);
+
   const topClickedProducts = useMemo(() => {
     const withClicks = [...allProducts].filter((p) => p.clicks > 0).sort((a, b) => b.clicks - a.clicks).slice(0, 20);
     if (withClicks.length >= 5) return withClicks;
-    // Fallback: top 20 by name when no click data yet
-    return allProducts.slice(0, 20);
-  }, [allProducts]);
+
+    // Fallback: use curated list merged with real clicks
+    const byId = new Map(allProducts.map((p) => [p.id, p]));
+    const seen = new Set(withClicks.map((p) => p.id));
+    const merged = [...withClicks];
+    for (const id of curatedBestSellerIds) {
+      if (!seen.has(id) && byId.has(id)) {
+        seen.add(id);
+        merged.push(byId.get(id)!);
+      }
+    }
+    return merged.length > 0 ? merged : allProducts.slice(0, 20);
+  }, [allProducts, curatedBestSellerIds]);
 
   const toggleProductFeatured = async (p: SimpleProduct) => {
     const { error } = await cloud.from("store_products").update({ featured: !p.featured } as any).eq("id", p.id);

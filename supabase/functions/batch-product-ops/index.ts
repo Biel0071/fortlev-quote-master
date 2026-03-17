@@ -528,69 +528,70 @@ async function validateAllPrices(sb: any) {
 }
 
 // ── IMAGE DOWNLOAD ──
-async function downloadAllImagesInner(sb: any, supabaseUrl: string, anonKey: string) {
-  const allProducts = await fetchAll(sb, "store_products", "id,name,category");
+async function downloadAllImagesInner(sb: any, supabaseUrl: string, authHeader: string, anonKey: string) {
+  const allProducts = await fetchAll(sb, "store_products", "id,name,category,active,status");
   const allImages = await fetchAll(sb, "store_product_images", "product_id", "product_id");
 
   const productsWithImages = new Set(allImages.map((i: any) => i.product_id));
-  const productsWithoutImages = allProducts.filter((p: any) => !productsWithImages.has(p.id));
+  const productsWithoutImages = allProducts.filter((p: any) => (
+    !productsWithImages.has(p.id)
+    && p.active !== false
+    && p.status !== "no_image_found"
+  ));
 
-  const results = { total: productsWithoutImages.length, success: 0, failed: 0, details: [] as any[] };
+  const results = { total: productsWithoutImages.length, success: 0, failed: 0, disabled: 0, details: [] as any[] };
 
   for (let i = 0; i < productsWithoutImages.length; i += 5) {
     const batch = productsWithoutImages.slice(i, i + 5);
 
     await Promise.all(batch.map(async (p: any) => {
       try {
-        const searchResp = await fetch(`${supabaseUrl}/functions/v1/search-product-images`, {
+        const pipelineResp = await fetch(`${supabaseUrl}/functions/v1/search-product-images`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${anonKey}`,
+            "Authorization": authHeader,
+            "apikey": anonKey,
           },
           body: JSON.stringify({
-            action: "search",
+            action: "pipeline",
             productId: p.id,
-            productName: p.name,
-            category: p.category || detectCategory(p.name) || "",
-            maxResults: 3,
+            autoApprove: true,
+            maxImages: 5,
           }),
         });
 
-        if (!searchResp.ok) {
+        const pipelineData = await pipelineResp.json().catch(() => ({}));
+
+        if (!pipelineResp.ok) {
           results.failed++;
-          if (results.details.length < 200) results.details.push({ id: p.id, name: p.name, action: "search_failed" });
+          if (results.details.length < 200) {
+            results.details.push({
+              id: p.id,
+              name: p.name,
+              action: "pipeline_failed",
+              error: pipelineData?.error ?? `http_${pipelineResp.status}`,
+            });
+          }
           return;
         }
 
-        const searchData = await searchResp.json();
-        const images = searchData?.images || searchData?.results || [];
-
-        if (images.length === 0) {
-          results.failed++;
-          if (results.details.length < 200) results.details.push({ id: p.id, name: p.name, action: "no_images_found" });
+        if (pipelineData?.product_disabled) {
+          results.disabled++;
+          if (results.details.length < 200) {
+            results.details.push({ id: p.id, name: p.name, action: "disabled_no_image" });
+          }
           return;
         }
 
-        const importResp = await fetch(`${supabaseUrl}/functions/v1/search-product-images`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${anonKey}`,
-          },
-          body: JSON.stringify({
-            action: "import",
-            productId: p.id,
-            images: images.slice(0, 1),
-          }),
-        });
-
-        if (importResp.ok) {
-          results.success++;
-          if (results.details.length < 200) results.details.push({ id: p.id, name: p.name, action: "imported", count: 1 });
-        } else {
-          results.failed++;
-          if (results.details.length < 200) results.details.push({ id: p.id, name: p.name, action: "import_failed" });
+        results.success++;
+        if (results.details.length < 200) {
+          results.details.push({
+            id: p.id,
+            name: p.name,
+            action: "imported",
+            count: Array.isArray(pipelineData?.saved) ? pipelineData.saved.length : 0,
+          });
         }
       } catch (err) {
         results.failed++;
@@ -606,8 +607,8 @@ async function downloadAllImagesInner(sb: any, supabaseUrl: string, anonKey: str
   return results;
 }
 
-async function downloadAllImages(sb: any, supabaseUrl: string, anonKey: string) {
-  const results = await downloadAllImagesInner(sb, supabaseUrl, anonKey);
+async function downloadAllImages(sb: any, supabaseUrl: string, authHeader: string, anonKey: string) {
+  const results = await downloadAllImagesInner(sb, supabaseUrl, authHeader, anonKey);
   return new Response(JSON.stringify({ ok: true, ...results }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });

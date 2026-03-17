@@ -13,7 +13,7 @@ import { formatCurrency } from "@/utils/formatters";
 import {
   ArrowLeft, Brain, Save, Plus, Trash2, Search, Play, Loader2,
   CheckCircle, XCircle, AlertTriangle, BarChart3, Bug, TrendingUp, TrendingDown,
-  DollarSign, Activity, Shield,
+  DollarSign, Activity, Shield, Package,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -35,13 +35,17 @@ export default function AdminPriceIntelligence() {
   const [newRow, setNewRow] = useState({ categoria: "", unidade: "unidade", preco_min: 0, preco_max: 0, preco_medio: 0 });
   const [activeTab, setActiveTab] = useState("ranges");
 
+  // Product counts per category
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
+  const [loadingCounts, setLoadingCounts] = useState(false);
+
   // Analysis state
   const [analyzing, setAnalyzing] = useState(false);
   const [report, setReport] = useState<any>(null);
   const [fixing, setFixing] = useState(false);
   const [fixReport, setFixReport] = useState<any>(null);
 
-  useEffect(() => { loadRows(); }, []);
+  useEffect(() => { loadRows(); loadCategoryCounts(); }, []);
 
   const loadRows = async () => {
     setLoading(true);
@@ -51,6 +55,86 @@ export default function AdminPriceIntelligence() {
       .order("categoria");
     if (data) setRows(data as unknown as PriceRow[]);
     setLoading(false);
+  };
+
+  // Count products per price intelligence category using name-based detection
+  const loadCategoryCounts = async () => {
+    setLoadingCounts(true);
+    const PAGE_SIZE = 1000;
+    let allProducts: { name: string }[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await cloud
+        .from("store_products")
+        .select("name")
+        .order("name", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error || !data || data.length === 0) break;
+      allProducts = allProducts.concat(data as any[]);
+      if (data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+
+    // Simple category detection matching the backend logic
+    const CATEGORY_KEYWORDS: Array<{ keywords: string[]; category: string }> = [
+      { keywords: ["caixa d'agua", "caixa dagua", "caixa d\u2019agua"], category: "caixa dagua" },
+      { keywords: ["caixa sifonada"], category: "caixa sifonada" },
+      { keywords: ["caixa eletrica"], category: "caixa eletrica" },
+      { keywords: ["cabo eletrico", "cabo flexivel"], category: "cabo eletrico" },
+      { keywords: ["vaso sanitario"], category: "vaso sanitario" },
+      { keywords: ["porcelanato"], category: "porcelanato" },
+      { keywords: ["revestimento"], category: "revestimento" },
+      { keywords: ["impermeabilizante"], category: "impermeabilizante" },
+      { keywords: ["argamassa"], category: "argamassa" },
+      { keywords: ["vergalhao", "vergalhão"], category: "vergalhao" },
+      { keywords: ["cimento"], category: "cimento" },
+      { keywords: ["areia"], category: "areia" },
+      { keywords: ["brita"], category: "brita" },
+      { keywords: ["bloco"], category: "bloco" },
+      { keywords: ["tijolo"], category: "tijolo" },
+      { keywords: ["telha"], category: "telha" },
+      { keywords: ["piso"], category: "piso" },
+      { keywords: ["ferro"], category: "ferro" },
+      { keywords: ["fio"], category: "fio" },
+      { keywords: ["tubo"], category: "tubo" },
+      { keywords: ["cano"], category: "cano" },
+      { keywords: ["registro"], category: "registro" },
+      { keywords: ["torneira"], category: "torneira" },
+      { keywords: ["tinta"], category: "tinta" },
+      { keywords: ["conduite"], category: "conduite" },
+      { keywords: ["gesso"], category: "gesso" },
+      { keywords: ["argila"], category: "argila" },
+      { keywords: ["porta"], category: "porta" },
+      { keywords: ["janela"], category: "janela" },
+      { keywords: ["madeira"], category: "madeira" },
+      { keywords: ["prego"], category: "prego" },
+      { keywords: ["parafuso"], category: "parafuso" },
+      { keywords: ["arame"], category: "arame" },
+      { keywords: ["manta"], category: "manta" },
+      { keywords: ["chuveiro"], category: "chuveiro" },
+      { keywords: ["ralo"], category: "ralo" },
+    ];
+
+    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+    const counts: Record<string, number> = {};
+    for (const p of allProducts) {
+      const hay = norm(p.name);
+      for (const e of CATEGORY_KEYWORDS) {
+        let found = false;
+        for (const kw of e.keywords) {
+          if (hay.includes(norm(kw))) {
+            counts[e.category] = (counts[e.category] || 0) + 1;
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+    }
+
+    setCategoryCounts(counts);
+    setLoadingCounts(false);
   };
 
   const handleSave = async (row: PriceRow) => {
@@ -226,35 +310,48 @@ export default function AdminPriceIntelligence() {
                       <th className="text-center py-2.5 px-3 w-24">Mín (R$)</th>
                       <th className="text-center py-2.5 px-3 w-24">Máx (R$)</th>
                       <th className="text-center py-2.5 px-3 w-24">Médio (R$)</th>
+                      <th className="text-center py-2.5 px-3 w-20">Itens</th>
                       <th className="text-center py-2.5 px-3 w-24">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
-                      <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Carregando...</td></tr>
+                      <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Carregando...</td></tr>
                     ) : filtered.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Nenhuma faixa encontrada</td></tr>
-                    ) : filtered.map(row => (
-                      <tr key={row.id} className="border-b last:border-0 hover:bg-muted/40">
-                        <td className="py-2 px-3 font-medium capitalize">{row.categoria}</td>
-                        <td className="py-2 px-3"><Badge variant="outline" className="text-xs">{row.unidade}</Badge></td>
-                        <td className="py-2 px-3">
-                          <Input type="number" step="0.01" className="h-7 text-xs text-center w-20 mx-auto" value={row.preco_min} onChange={e => updateRow(row.id, "preco_min", parseFloat(e.target.value) || 0)} />
-                        </td>
-                        <td className="py-2 px-3">
-                          <Input type="number" step="0.01" className="h-7 text-xs text-center w-20 mx-auto" value={row.preco_max} onChange={e => updateRow(row.id, "preco_max", parseFloat(e.target.value) || 0)} />
-                        </td>
-                        <td className="py-2 px-3">
-                          <Input type="number" step="0.01" className="h-7 text-xs text-center w-20 mx-auto" value={row.preco_medio} onChange={e => updateRow(row.id, "preco_medio", parseFloat(e.target.value) || 0)} />
-                        </td>
-                        <td className="py-2 px-3">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSave(row)} disabled={saving}><Save className="h-3 w-3" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                      <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma faixa encontrada</td></tr>
+                    ) : filtered.map(row => {
+                      const count = categoryCounts[row.categoria] ?? 0;
+                      return (
+                        <tr key={row.id} className="border-b last:border-0 hover:bg-muted/40">
+                          <td className="py-2 px-3 font-medium capitalize">{row.categoria}</td>
+                          <td className="py-2 px-3"><Badge variant="outline" className="text-xs">{row.unidade}</Badge></td>
+                          <td className="py-2 px-3">
+                            <Input type="number" step="0.01" className="h-7 text-xs text-center w-20 mx-auto" value={row.preco_min} onChange={e => updateRow(row.id, "preco_min", parseFloat(e.target.value) || 0)} />
+                          </td>
+                          <td className="py-2 px-3">
+                            <Input type="number" step="0.01" className="h-7 text-xs text-center w-20 mx-auto" value={row.preco_max} onChange={e => updateRow(row.id, "preco_max", parseFloat(e.target.value) || 0)} />
+                          </td>
+                          <td className="py-2 px-3">
+                            <Input type="number" step="0.01" className="h-7 text-xs text-center w-20 mx-auto" value={row.preco_medio} onChange={e => updateRow(row.id, "preco_medio", parseFloat(e.target.value) || 0)} />
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            {loadingCounts ? (
+                              <Loader2 className="h-3 w-3 animate-spin mx-auto text-muted-foreground" />
+                            ) : (
+                              <Badge variant={count > 0 ? "default" : "secondary"} className="text-xs">
+                                {count}
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="py-2 px-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSave(row)} disabled={saving}><Save className="h-3 w-3" /></Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </ScrollArea>
@@ -266,7 +363,6 @@ export default function AdminPriceIntelligence() {
         <TabsContent value="validation" className="space-y-4">
           {report && (
             <>
-              {/* Summary cards */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <StatCard icon={Activity} label="Analisados" value={report.analyzed} color="text-foreground" />
                 <StatCard icon={CheckCircle} label="Preço OK" value={report.price_ok} color="text-green-600 dark:text-green-400" />
@@ -276,7 +372,6 @@ export default function AdminPriceIntelligence() {
                 <StatCard icon={DollarSign} label="Sem categoria" value={report.skipped} color="text-muted-foreground" />
               </div>
 
-              {/* Health bar */}
               {report.analyzed > 0 && (
                 <Card>
                   <CardContent className="p-4">
@@ -295,11 +390,10 @@ export default function AdminPriceIntelligence() {
                 </Card>
               )}
 
-              {/* Category breakdown */}
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm">Por categoria</CardTitle></CardHeader>
                 <CardContent className="p-0">
-                  <ScrollArea className="max-h-72">
+                  <ScrollArea className="max-h-[400px]">
                     <div className="divide-y">
                       {sortedCategories.map((c: any) => (
                         <div key={c.name} className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30">
@@ -319,17 +413,12 @@ export default function AdminPriceIntelligence() {
                 </CardContent>
               </Card>
 
-              {/* Products above range */}
               {report.products_above?.length > 0 && (
                 <ProductList title="Produtos acima da faixa" items={report.products_above} type="above" />
               )}
-
-              {/* Products below range */}
               {report.products_below?.length > 0 && (
                 <ProductList title="Produtos abaixo da faixa" items={report.products_below} type="below" />
               )}
-
-              {/* Products with zero price */}
               {report.products_zero?.length > 0 && (
                 <ProductList title="Produtos sem preço" items={report.products_zero} type="zero" />
               )}
@@ -353,30 +442,50 @@ export default function AdminPriceIntelligence() {
                   <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Bug className="h-4 w-4 text-destructive" /> Bugs detectados</CardTitle></CardHeader>
                   <CardContent className="p-0">
                     <ScrollArea className="max-h-[500px]">
-                      <div className="divide-y">
-                        {report.bugs.map((b: any, i: number) => (
-                          <div key={i} className="px-4 py-3 hover:bg-muted/30">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium truncate">{b.name}</p>
-                                <p className="text-xs text-muted-foreground capitalize">{b.category} · {b.unit}</p>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <p className="text-sm font-bold">{formatCurrency(b.price)}</p>
-                                {b.promo_price > 0 && <p className="text-xs text-muted-foreground">Promo: {formatCurrency(b.promo_price)}</p>}
-                              </div>
-                            </div>
-                            <div className="mt-1.5 space-y-1">
-                              {b.bugs.map((bug: string, j: number) => (
-                                <div key={j} className="flex items-center gap-1.5 text-xs text-destructive">
-                                  <Bug className="h-3 w-3 shrink-0" />
-                                  <span>{bug}</span>
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-background border-b z-10">
+                          <tr>
+                            <th className="text-left py-2 px-3">Produto</th>
+                            <th className="text-left py-2 px-3 w-28">Categoria</th>
+                            <th className="text-center py-2 px-3 w-24">Preço atual</th>
+                            <th className="text-center py-2 px-3 w-28">Esperado</th>
+                            <th className="text-left py-2 px-3">Problema</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {report.bugs.map((b: any, i: number) => (
+                            <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
+                              <td className="py-2 px-3">
+                                <p className="font-medium truncate max-w-[200px]">{b.name}</p>
+                              </td>
+                              <td className="py-2 px-3">
+                                <Badge variant="outline" className="text-[10px] capitalize">{b.category}</Badge>
+                              </td>
+                              <td className="py-2 px-3 text-center font-bold">
+                                {formatCurrency(b.price)}
+                                {b.promo_price > 0 && <span className="block text-[10px] text-muted-foreground">Promo: {formatCurrency(b.promo_price)}</span>}
+                              </td>
+                              <td className="py-2 px-3 text-center text-xs text-muted-foreground">
+                                {(() => {
+                                  const catData = report.by_category?.[b.category];
+                                  if (catData) return `${formatCurrency(catData.range_min)} - ${formatCurrency(catData.range_max)}`;
+                                  return "—";
+                                })()}
+                              </td>
+                              <td className="py-2 px-3">
+                                <div className="space-y-0.5">
+                                  {b.bugs.map((bug: string, j: number) => (
+                                    <div key={j} className="flex items-center gap-1 text-xs text-destructive">
+                                      <Bug className="h-3 w-3 shrink-0" />
+                                      <span>{bug}</span>
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </ScrollArea>
                   </CardContent>
                 </Card>
@@ -430,7 +539,6 @@ export default function AdminPriceIntelligence() {
                 <StatCard icon={AlertTriangle} label="Acima da faixa" value={report.margin_above} color="text-destructive" />
               </div>
 
-              {/* Margin health */}
               {report.analyzed > 0 && (
                 <Card>
                   <CardContent className="p-4">
@@ -466,11 +574,10 @@ export default function AdminPriceIntelligence() {
                 </Card>
               )}
 
-              {/* Category comparison */}
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm">Preços reais vs. Faixas esperadas</CardTitle></CardHeader>
                 <CardContent className="p-0">
-                  <ScrollArea className="max-h-80">
+                  <ScrollArea className="max-h-[400px]">
                     <table className="w-full text-xs">
                       <thead className="sticky top-0 bg-background border-b">
                         <tr>
@@ -507,7 +614,6 @@ export default function AdminPriceIntelligence() {
                 </CardContent>
               </Card>
 
-              {/* Products with margin issues */}
               {report.products_margin_issues?.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm">Produtos com margem fora do padrão</CardTitle></CardHeader>

@@ -151,14 +151,14 @@ export default function StoreHome() {
 
     // Otherwise fallback to curated best-sellers list
     const curatedBestSellers = [
+      "31f0affc-e596-413e-b113-9c17ef3ecab2", // Caixa 1000L FORTLEV
+      "1f6a420a-b46b-4d75-b888-8aa6c1e4ee2a", // Caixa 2000L FORTLEV
+      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3", // Caixa 3000L FORTLEV
+      "8b13a472-154d-422b-b567-fb8c726eaada", // Caixa 5000L FORTLEV
+      "a787085e-0984-481a-9644-61c08f796870", // Caixa 10000L FORTLEV
+      "978068df-f401-4997-803b-81354d216453", // Caixa 500L FORTLEV
       "38c51f55-fbf0-41c4-b223-b9993e7efb40", // LIZ CP4
-      "df447713-81f6-4326-acba-fc83645bfc7c", // LIZ CP2
-      "c85ead3d-ae2b-4823-b3a0-75de80041b7c", // Betoneira 400L
       "fef0b373-84d1-4ba7-b341-13f03cbcef38", // Bloco 20
-      "9a4875e3-2067-4d8e-b936-56f36fe6b7e4", // Bloco 10
-      "f2ebaf40-e55b-42f4-9ae6-9a1b959b5e7d", // Brita 0
-      "79696562-7535-4891-a52f-9529095bd9c3", // Brita 1
-      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3", // Caixa 3000L
     ];
 
     const existingIds = new Set(list.map((p) => p.id));

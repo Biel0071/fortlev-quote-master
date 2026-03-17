@@ -725,7 +725,8 @@ export default function AdminProductsList() {
                     </div>
                   )}
                   <Checkbox checked={isSelected} className="absolute top-2 left-2 h-4 w-4 bg-background/80" onClick={e => e.stopPropagation()} onCheckedChange={() => toggleSelect(p.id)} />
-                  {!p.active && <Badge variant="secondary" className="absolute top-2 right-2 text-[9px] px-1.5 py-0">Inativo</Badge>}
+                  {p.status === "no_image_found" && <Badge variant="destructive" className="absolute top-2 right-2 text-[9px] px-1.5 py-0">🔴 Sem imagem</Badge>}
+                  {!p.active && p.status !== "no_image_found" && <Badge variant="secondary" className="absolute top-2 right-2 text-[9px] px-1.5 py-0">Inativo</Badge>}
                 </div>
                 <div className="p-2">
                   <h3 className="text-[11px] font-medium leading-tight line-clamp-2">{p.name}</h3>

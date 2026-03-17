@@ -81,7 +81,7 @@ export default function StoreCatalog() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-10 space-y-3 sm:space-y-5 min-w-0">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-10 space-y-3 sm:space-y-5 min-w-0 overflow-x-hidden">
         {/* Header */}
         <header className="flex items-end justify-between gap-3 flex-wrap">
           <div className="min-w-0">

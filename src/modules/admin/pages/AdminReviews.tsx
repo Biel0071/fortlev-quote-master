@@ -62,7 +62,7 @@ export default function AdminReviews() {
   const [genProductCount, setGenProductCount] = useState(10);
   const [genMode, setGenMode] = useState<"text" | "image" | "text_image">("text");
   const [catalogGenerating, setCatalogGenerating] = useState(false);
-  const [catalogLimit, setCatalogLimit] = useState<number>(20);
+  const [catalogLimit, setCatalogLimit] = useState<number>(100);
   const [showLogs, setShowLogs] = useState(false);
   const [visibleCount, setVisibleCount] = useState(40);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -454,9 +454,9 @@ export default function AdminReviews() {
                 <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <p className="font-semibold text-sm">Gerar reviews para catálogo</p>
+                <p className="font-semibold text-sm">Pipeline inteligente de reviews</p>
                 <p className="text-xs text-muted-foreground">
-                  Destaques: 10-25 reviews • Normais: 3-8 (50% chance) • Datas 2020-2026 • Auto-aprovado
+                  Prioriza produtos com menos reviews • 3-8 reviews/produto • Ordem aleatória • Max 25/produto • Datas 2020-2026
                 </p>
               </div>
             </div>
@@ -466,9 +466,11 @@ export default function AdminReviews() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="20">20 produtos</SelectItem>
                   <SelectItem value="50">50 produtos</SelectItem>
                   <SelectItem value="100">100 produtos</SelectItem>
+                  <SelectItem value="200">200 produtos</SelectItem>
+                  <SelectItem value="500">500 produtos</SelectItem>
+                  <SelectItem value="1000">1000 produtos</SelectItem>
                   <SelectItem value="0">Catálogo inteiro</SelectItem>
                 </SelectContent>
               </Select>

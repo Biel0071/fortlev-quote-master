@@ -333,11 +333,11 @@ export default function ProductPage() {
             {/* Gallery */}
             <div className="min-w-0 max-w-full overflow-hidden lg:col-span-7">
               <Card className="rounded-2xl sm:rounded-3xl overflow-hidden border-border bg-card shadow-sm">
-                <div className="aspect-[4/3] bg-muted/20">
+                <div className="aspect-square sm:aspect-[4/3] bg-white flex items-center justify-center p-4">
                   {activeImg ? (
-                    <img src={activeImg} alt={product.name} className="h-full w-full object-cover" loading="eager" />
+                    <img src={activeImg} alt={product.name} className="max-h-full max-w-full object-contain" loading="eager" />
                   ) : (
-                    <div className="h-full w-full bg-muted" />
+                    <div className="h-full w-full bg-muted rounded-lg animate-pulse" />
                   )}
                 </div>
                 {images.length > 1 ? (

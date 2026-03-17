@@ -826,8 +826,23 @@ serve(async (req) => {
         }
 
         if (inserted.length === 0) {
-          return new Response(JSON.stringify({ error: "no_valid_images", requested: images.length, failed }), {
-            status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          // Auto-disable product instead of returning error
+          await admin
+            .from("store_products")
+            .update({ active: false, status: "no_image_found" } as any)
+            .eq("id", productId);
+
+          await admin.from("image_import_logs").insert({
+            product_id: productId,
+            status: "no_image",
+            images_found: images.length,
+            images_saved: 0,
+            processing_time: 0,
+            error_message: "Produto desativado automaticamente — nenhuma imagem válida importada",
+          } as any);
+
+          return new Response(JSON.stringify({ ok: true, product_disabled: true, imported: [], requested: images.length, failed }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 

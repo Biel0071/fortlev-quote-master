@@ -409,126 +409,15 @@ serve(async (req) => {
       );
     }
 
-    /* ── AI Image Generation Fallback ── */
+    /* ── AI Image Generation Fallback — DISABLED ── */
+    /* Products with 6-8 search images are sufficient; no AI generation needed */
     if (action === "generate-image") {
-      const productId = body?.productId;
-      const prompt = body?.prompt;
-
-      if (!productId || !prompt) {
-        return new Response(JSON.stringify({ error: "missing productId or prompt" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      console.log("Generating AI image for product:", productId);
-
-      let imgData: any;
-      await acquireAISlot();
-      try {
-        const imgResp = await fetch(AI_GATEWAY, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "google/gemini-3.1-flash-image-preview",
-            messages: [{ role: "user", content: prompt }],
-            modalities: ["image", "text"],
-          }),
-        });
-
-        if (!imgResp.ok) {
-          const txt = await imgResp.text();
-          releaseAISlot();
-          console.error("AI image generation error:", imgResp.status, txt.slice(0, 300));
-          return new Response(
-            JSON.stringify({ error: "ai_image_generation_failed", status: imgResp.status }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        imgData = await imgResp.json();
-        releaseAISlot();
-      } catch (err: any) {
-        releaseAISlot();
-        throw err;
-      }
-
-      const imageB64 = imgData?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-      if (!imageB64 || !imageB64.startsWith("data:image")) {
-        return new Response(
-          JSON.stringify({ error: "no_image_in_response" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const base64Match = imageB64.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/);
-      if (!base64Match) {
-        return new Response(
-          JSON.stringify({ error: "invalid_base64_format" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const ext = base64Match[1] === "jpeg" ? "jpg" : base64Match[1];
-      const rawB64 = base64Match[2];
-
-      const binaryStr = atob(rawB64);
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let i = 0; i < binaryStr.length; i++) {
-        bytes[i] = binaryStr.charCodeAt(i);
-      }
-
-      const safeProductId = productId.slice(0, 8);
-      const path = `ai-generated/${safeProductId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-
-      const { error: uploadErr } = await admin.storage.from("product-images").upload(path, bytes, {
-        contentType: `image/${base64Match[1]}`,
-        upsert: false,
-        cacheControl: "3600",
-      });
-
-      if (uploadErr) {
-        console.error("Upload error:", uploadErr);
-        return new Response(
-          JSON.stringify({ error: "upload_failed", detail: uploadErr.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const { data: maxSortRow } = await admin
-        .from("store_product_images")
-        .select("sort_order")
-        .eq("product_id", productId)
-        .order("sort_order", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const sortOrder = Number(maxSortRow?.sort_order ?? -1) + 1;
-
-      const { error: insertErr } = await admin.from("store_product_images").insert({
-        product_id: productId,
-        path,
-        sort_order: sortOrder,
-      } as any);
-
-      if (insertErr) {
-        await admin.storage.from("product-images").remove([path]);
-        return new Response(
-          JSON.stringify({ error: "db_insert_failed", detail: insertErr.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const { data: publicData } = admin.storage.from("product-images").getPublicUrl(path);
-
+      console.log("AI image generation skipped (disabled) for product:", body?.productId);
       return new Response(
         JSON.stringify({
           success: true,
-          path,
-          public_url: publicData.publicUrl,
-          sort_order: sortOrder,
-          generated: true,
+          skipped: true,
+          reason: "ai_image_generation_disabled",
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

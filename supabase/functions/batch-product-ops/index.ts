@@ -93,7 +93,6 @@ function detectUnit(name: string, category?: string | null): string {
   return "unidade";
 }
 
-/** Paginated fetch — loads ALL rows in pages of PAGE_SIZE */
 async function fetchAll(sb: any, table: string, columns: string, orderCol = "created_at") {
   const PAGE_SIZE = 1000;
   let all: any[] = [];
@@ -126,6 +125,8 @@ serve(async (req) => {
 
     if (action === "validate_prices") {
       return await validateAllPrices(sb);
+    } else if (action === "analyze_prices") {
+      return await analyzePrices(sb);
     } else if (action === "download_images") {
       return await downloadAllImages(sb, supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
     } else if (action === "both") {
@@ -136,7 +137,7 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: "action must be validate_prices, download_images, or both" }), {
+    return new Response(JSON.stringify({ error: "action must be validate_prices, analyze_prices, download_images, or both" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
@@ -151,30 +152,222 @@ serve(async (req) => {
 function tryFixPrice(price: number, range: { min: number; max: number; avg: number }): number | null {
   if (price <= 0) return round2(range.avg);
 
-  // Price too high → try dividing
   if (price > range.max) {
     for (const divisor of [10, 100, 1000]) {
       const fixed = round2(price / divisor);
       if (fixed >= range.min && fixed <= range.max) return fixed;
     }
-    // Still too high → clamp to max
     return round2(range.max);
   }
 
-  // Price too low → try multiplying
   if (price < range.min) {
     for (const multiplier of [10, 100, 1000]) {
       const fixed = round2(price * multiplier);
       if (fixed >= range.min && fixed <= range.max) return fixed;
     }
-    // Still too low → set to min
     return round2(range.min);
   }
 
-  return null; // already in range
+  return null;
 }
 
-// ── PRICE VALIDATION ──
+// ── Margin classification ──
+function classifyMargin(price: number, range: { min: number; max: number; avg: number }): string {
+  if (price <= 0) return "sem_preco";
+  const spread = range.max - range.min;
+  if (spread <= 0) return "ok";
+  const position = (price - range.min) / spread; // 0 = at min, 1 = at max
+  if (position < 0) return "abaixo_faixa";
+  if (position > 1) return "acima_faixa";
+  if (position < 0.15) return "margem_baixa";
+  if (position > 0.85) return "margem_alta";
+  return "margem_ok";
+}
+
+// ── READ-ONLY ANALYSIS (no data changes) ──
+async function analyzePrices(sb: any) {
+  const ranges = await fetchAll(sb, "price_intelligence", "*", "categoria");
+  const rangeMap = new Map<string, { min: number; max: number; avg: number }>();
+  ranges.forEach((r: any) => {
+    rangeMap.set(`${r.categoria}|${r.unidade}`, { min: r.preco_min, max: r.preco_max, avg: r.preco_medio });
+  });
+
+  const products = await fetchAll(sb, "store_products", "id,name,price,promo_price,unit,category,active");
+
+  const report = {
+    total: products.length,
+    analyzed: 0,
+    skipped: 0,
+
+    // Validation
+    price_ok: 0,
+    price_above_range: 0,
+    price_below_range: 0,
+    price_zero: 0,
+
+    // Bugs
+    bugs: [] as any[],
+    bug_count: 0,
+
+    // Margin
+    margin_ok: 0,
+    margin_low: 0,
+    margin_high: 0,
+    margin_below: 0,
+    margin_above: 0,
+
+    // Promo issues
+    promo_ok: 0,
+    promo_invalid: 0,
+    promo_bugs: [] as any[],
+
+    // Category breakdown
+    by_category: {} as Record<string, {
+      total: number;
+      ok: number;
+      above: number;
+      below: number;
+      zero: number;
+      bugs: number;
+      avg_price: number;
+      min_price: number;
+      max_price: number;
+      range_min: number;
+      range_max: number;
+      range_avg: number;
+    }>,
+
+    // Top issues (first 100 of each type)
+    products_above: [] as any[],
+    products_below: [] as any[],
+    products_zero: [] as any[],
+    products_margin_issues: [] as any[],
+  };
+
+  const addCat = (cat: string, range: { min: number; max: number; avg: number }) => {
+    if (!report.by_category[cat]) {
+      report.by_category[cat] = {
+        total: 0, ok: 0, above: 0, below: 0, zero: 0, bugs: 0,
+        avg_price: 0, min_price: Infinity, max_price: 0,
+        range_min: range.min, range_max: range.max, range_avg: range.avg,
+      };
+    }
+    return report.by_category[cat];
+  };
+
+  for (const p of products) {
+    const category = detectCategory(p.name);
+    const unit = detectUnit(p.name, category);
+
+    if (!category) { report.skipped++; continue; }
+
+    const key = `${category}|${unit}`;
+    const range = rangeMap.get(key);
+    if (!range) { report.skipped++; continue; }
+
+    report.analyzed++;
+    const cat = addCat(category, range);
+    cat.total++;
+
+    const price = Number(p.price) || 0;
+    const promo = Number(p.promo_price) || 0;
+
+    // Track actual prices for category stats
+    if (price > 0) {
+      cat.avg_price += price;
+      if (price < cat.min_price) cat.min_price = price;
+      if (price > cat.max_price) cat.max_price = price;
+    }
+
+    // ── 1. Price Validation ──
+    if (price <= 0) {
+      report.price_zero++;
+      cat.zero++;
+      if (report.products_zero.length < 100) {
+        report.products_zero.push({ id: p.id, name: p.name, price, category, unit });
+      }
+    } else if (price > range.max) {
+      report.price_above_range++;
+      cat.above++;
+      const suggestion = tryFixPrice(price, range);
+      if (report.products_above.length < 100) {
+        report.products_above.push({ id: p.id, name: p.name, price, category, unit, range_max: range.max, suggestion });
+      }
+    } else if (price < range.min) {
+      report.price_below_range++;
+      cat.below++;
+      const suggestion = tryFixPrice(price, range);
+      if (report.products_below.length < 100) {
+        report.products_below.push({ id: p.id, name: p.name, price, category, unit, range_min: range.min, suggestion });
+      }
+    } else {
+      report.price_ok++;
+      cat.ok++;
+    }
+
+    // ── 2. Bug Detection ──
+    const bugList: string[] = [];
+
+    if (price <= 0 && p.active) bugList.push("Produto ativo com preço zero");
+    if (price > range.max * 10) bugList.push(`Preço ${round2(price / range.max)}x acima do máximo — possível erro de importação`);
+    if (price > 0 && price < range.min * 0.1) bugList.push(`Preço ${round2(range.min / price)}x abaixo do mínimo — possível erro decimal`);
+    if (promo > 0 && promo >= price) bugList.push("Preço promocional maior ou igual ao preço normal");
+    if (promo > 0 && promo > range.max) bugList.push("Preço promocional acima da faixa máxima");
+    if (promo > 0 && price > 0 && promo < price * 0.3) bugList.push(`Desconto promocional de ${round2((1 - promo / price) * 100)}% — pode ser erro`);
+    if (promo > 0 && promo < range.min * 0.5) bugList.push("Preço promocional muito abaixo da faixa mínima");
+
+    if (bugList.length > 0) {
+      report.bug_count += bugList.length;
+      cat.bugs += bugList.length;
+      if (report.bugs.length < 200) {
+        report.bugs.push({ id: p.id, name: p.name, price, promo_price: promo, category, unit, bugs: bugList });
+      }
+    }
+
+    // ── 3. Margin Analysis ──
+    const margin = classifyMargin(price, range);
+    if (margin === "margem_ok") report.margin_ok++;
+    else if (margin === "margem_baixa") {
+      report.margin_low++;
+      if (report.products_margin_issues.length < 100) {
+        report.products_margin_issues.push({ id: p.id, name: p.name, price, category, unit, margin, position: round2((price - range.min) / (range.max - range.min) * 100) });
+      }
+    }
+    else if (margin === "margem_alta") {
+      report.margin_high++;
+      if (report.products_margin_issues.length < 100) {
+        report.products_margin_issues.push({ id: p.id, name: p.name, price, category, unit, margin, position: round2((price - range.min) / (range.max - range.min) * 100) });
+      }
+    }
+    else if (margin === "abaixo_faixa") report.margin_below++;
+    else if (margin === "acima_faixa") report.margin_above++;
+
+    // ── Promo validation ──
+    if (promo > 0) {
+      if (promo < price && promo >= range.min * 0.5 && promo <= range.max) {
+        report.promo_ok++;
+      } else {
+        report.promo_invalid++;
+        if (report.promo_bugs.length < 100) {
+          report.promo_bugs.push({ id: p.id, name: p.name, price, promo_price: promo, category, unit, issue: promo >= price ? "promo >= preço" : promo > range.max ? "promo > máx" : promo < range.min * 0.5 ? "promo muito baixo" : "outro" });
+        }
+      }
+    }
+  }
+
+  // Compute avg prices per category
+  for (const cat of Object.values(report.by_category)) {
+    const counted = cat.total - cat.zero;
+    if (counted > 0) cat.avg_price = round2(cat.avg_price / counted);
+    if (cat.min_price === Infinity) cat.min_price = 0;
+  }
+
+  return new Response(JSON.stringify({ ok: true, report }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// ── PRICE VALIDATION (with fixes) ──
 async function validateAllPricesInner(sb: any) {
   const ranges = await fetchAll(sb, "price_intelligence", "*", "categoria");
   const rangeMap = new Map<string, { min: number; max: number; avg: number }>();
@@ -223,9 +416,7 @@ async function validateAllPricesInner(sb: any) {
       const updateObj: { id: string; price?: number; promo_price?: number } = { id: p.id };
       let changed = false;
 
-      // ── Fix main price ──
       if (price <= 0) {
-        // Zero/null price → set to category average
         updateObj.price = round2(range.avg);
         changed = true;
         results.zero_price_fixed++;
@@ -253,21 +444,17 @@ async function validateAllPricesInner(sb: any) {
         }
       }
 
-      // ── Fix promo_price ──
       const effectivePrice = updateObj.price ?? price;
       if (promo > 0) {
         if (promo >= effectivePrice) {
-          // Promo >= price → invalid, clear it
           updateObj.promo_price = 0;
           changed = true;
           results.promo_fixed++;
         } else if (promo < range.min * 0.5) {
-          // Promo way below range → likely a bug, clear it
           updateObj.promo_price = 0;
           changed = true;
           results.promo_fixed++;
         } else if (promo > range.max) {
-          // Promo above range max → fix it
           const promoFixed = tryFixPrice(promo, range);
           if (promoFixed !== null && promoFixed < effectivePrice) {
             updateObj.promo_price = promoFixed;
@@ -288,7 +475,6 @@ async function validateAllPricesInner(sb: any) {
       }
     }
 
-    // Apply batch updates
     for (const u of updates) {
       const { id, ...fields } = u;
       if (Object.keys(fields).length > 0) {

@@ -1165,6 +1165,30 @@ export default function AdminBulkImageSearch() {
                 <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
                 IMPORTAR AUTOMATICAMENTE ({actionCount} itens)
               </Button>
+
+              {/* Rebuild with new rules */}
+              <div className="flex gap-2 flex-wrap items-center">
+                <span className="text-xs font-medium text-muted-foreground">🔄 Refazer imagens com nova regra:</span>
+                {[
+                  { label: "Selecionados", action: () => startRebuildSelected() },
+                  { label: "50 produtos", action: () => startRebuildBatch(50) },
+                  { label: "100 produtos", action: () => startRebuildBatch(100) },
+                  { label: "500 produtos", action: () => startRebuildBatch(500) },
+                  { label: "Catálogo inteiro", action: () => startRebuildBatch(0) },
+                ].map((opt) => (
+                  <Button
+                    key={opt.label}
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    disabled={loading || pipelineRunning}
+                    onClick={opt.action}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+
               {actionCount === 0 && (
                 <p className="text-xs text-green-600 font-medium">✅ Todos os produtos já estão completos!</p>
               )}

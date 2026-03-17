@@ -49,7 +49,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 function getImageUrl(path: string) {
   if (path.startsWith("http")) return path;
-  return `${SUPABASE_URL}/storage/v1/object/public/store-images/${path}`;
+  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`;
 }
 
 export default function AdminProductsList() {

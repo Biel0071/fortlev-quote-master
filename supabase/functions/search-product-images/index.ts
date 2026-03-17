@@ -648,7 +648,7 @@ serve(async (req) => {
       const { data: usageRow } = await admin.from("search_image_usage")
         .select("id, searches_count").eq("user_id", userData.user.id).eq("usage_date", today).maybeSingle();
 
-      if ((usageRow?.searches_count ?? 0) >= 500) {
+      if ((usageRow?.searches_count ?? 0) >= 5000) {
         return new Response(JSON.stringify({ error: "daily_limit_exceeded" }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

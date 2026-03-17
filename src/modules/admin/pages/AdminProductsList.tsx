@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,7 +22,7 @@ import { formatCurrency } from "@/utils/formatters";
 import {
   ArrowUp, Brain, CheckCircle, ChevronDown, ChevronUp, Copy, DollarSign, Download, Globe, Grid2x2, Grid3x3,
   ImagePlus, LayoutGrid, Loader2, MoreHorizontal, Package, Pencil, Play, Plus, Power,
-  RefreshCw, Search, Trash2, Upload, XCircle, AlertTriangle,
+  RefreshCw, Search, Trash2, Upload, XCircle, AlertTriangle, Eye, EyeOff,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +31,7 @@ import { toast as sonnerToast } from "sonner";
 type Row = {
   id: string;
   name: string;
+  sku?: string | null;
   price: number;
   promo_price: number;
   stock: number;
@@ -54,6 +56,16 @@ function getImageUrl(path: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`;
 }
 
+// Debounce hook
+function useDebounce(value: string, delay: number) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
 export default function AdminProductsList() {
   const nav = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -61,6 +73,7 @@ export default function AdminProductsList() {
   const [imageMap, setImageMap] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<Category[]>([]);
   const [q, setQ] = useState("");
+  const debouncedQ = useDebounce(q, 300);
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [gridSize, setGridSize] = useState<GridSize>("md");
@@ -68,6 +81,9 @@ export default function AdminProductsList() {
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [batchAction, setBatchAction] = useState<string | null>(null);
+
+  // Bulk action confirmation
+  const [bulkConfirm, setBulkConfirm] = useState<{ action: "activate" | "deactivate" | "delete"; count: number } | null>(null);
 
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchDone, setBatchDone] = useState(0);
@@ -86,7 +102,7 @@ export default function AdminProductsList() {
     while (hasMore) {
       const { data, error } = await cloud
         .from("store_products")
-        .select("id, name, price, promo_price, stock, active, category, category_id")
+        .select("id, name, sku, price, promo_price, stock, active, category, category_id")
         .order("name", { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
 
@@ -104,7 +120,6 @@ export default function AdminProductsList() {
     setLoading(false);
 
     // Load first image for each product
-    const productIds = allRows.map(r => r.id);
     const imgMap: Record<string, string> = {};
     const IMG_PAGE = 1000;
     let imgFrom = 0;
@@ -158,10 +173,9 @@ export default function AdminProductsList() {
 
   const [visibleCount, setVisibleCount] = useState(60);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Reset visible count when filter changes
-  useEffect(() => { setVisibleCount(60); }, [q, filterActive, filterCategory]);
+  useEffect(() => { setVisibleCount(60); }, [debouncedQ, filterActive, filterCategory]);
 
   // Scroll-to-top visibility
   useEffect(() => {
@@ -181,17 +195,37 @@ export default function AdminProductsList() {
     if (filterCategory !== "all") {
       result = result.filter(r => r.category_id === filterCategory || r.category === filterCategory);
     }
-    const s = q.trim().toLowerCase();
-    if (s) result = result.filter(r => r.name.toLowerCase().includes(s));
+    const s = debouncedQ.trim().toLowerCase();
+    if (s) {
+      result = result.filter(r =>
+        r.name.toLowerCase().includes(s) ||
+        (r.sku && r.sku.toLowerCase().includes(s)) ||
+        (r.category && r.category.toLowerCase().includes(s)) ||
+        String(r.price).includes(s)
+      );
+    }
     return result;
-  }, [q, rows, filterActive, filterCategory]);
+  }, [debouncedQ, rows, filterActive, filterCategory]);
 
   const visibleItems = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const hasMore = visibleCount < filtered.length;
 
   const activeCount = rows.filter(r => r.active).length;
   const inactiveCount = rows.length - activeCount;
-  const activeIds = useMemo(() => rows.filter(r => r.active).map(r => r.id), [rows]);
+
+  // Stats
+  const suspiciousCount = useMemo(() => {
+    return rows.filter(r => r.price <= 0 || r.price > 100000).length;
+  }, [rows]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const r of rows) {
+      const cat = r.category_id || r.category || "sem_categoria";
+      counts[cat] = (counts[cat] || 0) + 1;
+    }
+    return counts;
+  }, [rows]);
 
   const toggleSelect = (id: string) => {
     setSelected(prev => {
@@ -209,11 +243,62 @@ export default function AdminProductsList() {
     }
   };
 
+  const selectAllCategory = () => {
+    if (filterCategory === "all") return;
+    const catProducts = rows.filter(r => r.category_id === filterCategory || r.category === filterCategory);
+    setSelected(new Set(catProducts.map(r => r.id)));
+  };
+
   const toggleActive = async (p: Row) => {
-    const { error } = await cloud.from("store_products").update({ active: !p.active } as any).eq("id", p.id);
-    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
-    toast({ title: p.active ? "Desativado" : "Ativado", description: p.name });
+    // Optimistic update
     setRows(prev => prev.map(r => r.id === p.id ? { ...r, active: !r.active } : r));
+    const { error } = await cloud.from("store_products").update({ active: !p.active } as any).eq("id", p.id);
+    if (error) {
+      // Rollback
+      setRows(prev => prev.map(r => r.id === p.id ? { ...r, active: p.active } : r));
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: p.active ? "Desativado" : "Ativado", description: p.name });
+  };
+
+  // Bulk actions
+  const bulkActivate = async () => {
+    const ids = Array.from(selected);
+    // Optimistic
+    setRows(prev => prev.map(r => ids.includes(r.id) ? { ...r, active: true } : r));
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      await cloud.from("store_products").update({ active: true } as any).in("id", batch);
+    }
+    toast({ title: "Ativados", description: `${ids.length} produtos ativados.` });
+    setSelected(new Set());
+    setBulkConfirm(null);
+  };
+
+  const bulkDeactivate = async () => {
+    const ids = Array.from(selected);
+    setRows(prev => prev.map(r => ids.includes(r.id) ? { ...r, active: false } : r));
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      await cloud.from("store_products").update({ active: false } as any).in("id", batch);
+    }
+    toast({ title: "Desativados", description: `${ids.length} produtos desativados.` });
+    setSelected(new Set());
+    setBulkConfirm(null);
+  };
+
+  const bulkDelete = async () => {
+    const ids = Array.from(selected);
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      await cloud.from("store_product_images").delete().in("product_id", batch);
+      await cloud.from("store_products").delete().in("id", batch);
+    }
+    setRows(prev => prev.filter(r => !ids.includes(r.id)));
+    toast({ title: "Excluídos", description: `${ids.length} produtos removidos.` });
+    setSelected(new Set());
+    setBulkConfirm(null);
   };
 
   const duplicateProduct = async (p: Row) => {
@@ -223,7 +308,7 @@ export default function AdminProductsList() {
     const { data: newProd, error: insertErr } = await cloud
       .from("store_products")
       .insert({ ...rest, name: `${rest.name} (cópia)`, active: false, status: "draft", source_id: null, sku: null } as any)
-      .select("id, name, price, promo_price, stock, active, category, category_id")
+      .select("id, name, sku, price, promo_price, stock, active, category, category_id")
       .single();
     if (insertErr) { toast({ title: "Erro ao duplicar", description: insertErr.message, variant: "destructive" }); return; }
     if (newProd) {
@@ -245,6 +330,7 @@ export default function AdminProductsList() {
 
   const startBatch = async () => {
     if (runningRef.current) return;
+    const activeIds = rows.filter(r => r.active).map(r => r.id);
     runningRef.current = true;
     cancelRef.current = false;
     setBatchRunning(true);
@@ -275,8 +361,8 @@ export default function AdminProductsList() {
     const PAGE_SIZE = 1000;
     let allData: any[] = [];
     let from = 0;
-    let hasMore = true;
-    while (hasMore) {
+    let hasMoreData = true;
+    while (hasMoreData) {
       const { data, error } = await cloud
         .from("store_products")
         .select("id, name, sku, category, category_id, unit, price, promo_price, stock, min_stock, active, status, views, clicks, sales, created_at, store_categories(name)")
@@ -285,7 +371,7 @@ export default function AdminProductsList() {
       if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
       const batch = data ?? [];
       allData = [...allData, ...batch];
-      hasMore = batch.length === PAGE_SIZE;
+      hasMoreData = batch.length === PAGE_SIZE;
       from += PAGE_SIZE;
     }
     const data = allData;
@@ -313,6 +399,14 @@ export default function AdminProductsList() {
 
   const isCompact = gridSize === "sm";
 
+  const getCategoryName = (p: Row) => {
+    if (p.category_id) {
+      const cat = categories.find(c => c.id === p.category_id);
+      return cat?.name || p.category || null;
+    }
+    return p.category || null;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-5">
       {/* Header */}
@@ -326,6 +420,54 @@ export default function AdminProductsList() {
         <Button onClick={() => nav("/admin/produtos/novo")} className="gap-2">
           <Plus className="h-4 w-4" /> Novo produto
         </Button>
+      </div>
+
+      {/* Stats panel */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Package className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xl font-bold">{activeCount}</p>
+              <p className="text-[10px] text-muted-foreground">Produtos ativos</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+              <EyeOff className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-xl font-bold">{inactiveCount}</p>
+              <p className="text-[10px] text-muted-foreground">Inativos</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-xl font-bold">{suspiciousCount}</p>
+              <p className="text-[10px] text-muted-foreground">Preço suspeito</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+              <LayoutGrid className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xl font-bold">{categories.length}</p>
+              <p className="text-[10px] text-muted-foreground">Categorias</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Toolbar */}
@@ -350,7 +492,6 @@ export default function AdminProductsList() {
       <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
         <CollapsibleContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 rounded-xl border bg-card/80 backdrop-blur-sm">
-            {/* Scraper */}
             <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav("/admin/produtos/scraper")}>
               <CardContent className="p-4 text-center space-y-2">
                 <Globe className="h-8 w-8 mx-auto text-primary" />
@@ -358,8 +499,6 @@ export default function AdminProductsList() {
                 <p className="text-[10px] text-muted-foreground leading-tight">Captura produtos de sites concorrentes</p>
               </CardContent>
             </Card>
-
-            {/* Gerador de Imagens */}
             <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav("/admin/produtos/imagens")}>
               <CardContent className="p-4 text-center space-y-2">
                 <ImagePlus className="h-8 w-8 mx-auto text-primary" />
@@ -367,8 +506,6 @@ export default function AdminProductsList() {
                 <p className="text-[10px] text-muted-foreground leading-tight">Busca e baixa imagens automaticamente</p>
               </CardContent>
             </Card>
-
-            {/* Inteligência de Preço */}
             <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav("/admin/produtos/inteligencia-preco")}>
               <CardContent className="p-4 text-center space-y-2">
                 <DollarSign className="h-8 w-8 mx-auto text-primary" />
@@ -376,8 +513,6 @@ export default function AdminProductsList() {
                 <p className="text-[10px] text-muted-foreground leading-tight">Valida e corrige preços por faixa de mercado</p>
               </CardContent>
             </Card>
-
-            {/* Validar Preços (batch) */}
             <Card className="border-primary/10 hover:border-primary/30 transition-colors">
               <CardContent className="p-4 text-center space-y-2">
                 <DollarSign className="h-8 w-8 mx-auto text-primary" />
@@ -389,8 +524,6 @@ export default function AdminProductsList() {
                 </Button>
               </CardContent>
             </Card>
-
-            {/* Executar Tudo */}
             <Card className="border-primary/10 hover:border-primary/30 transition-colors">
               <CardContent className="p-4 text-center space-y-2">
                 <div className="flex justify-center gap-0.5">
@@ -409,22 +542,24 @@ export default function AdminProductsList() {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Stats */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5">
-          <Package className="h-3.5 w-3.5" />
-          <span className="font-medium text-foreground">{rows.length}</span> total
+      {/* Bulk selection bar */}
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border bg-primary/5 border-primary/20">
+          <Badge variant="default" className="text-sm px-3 py-1">{selected.size} selecionados</Badge>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setBulkConfirm({ action: "activate", count: selected.size })}>
+            <Eye className="h-3.5 w-3.5" /> Ativar
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setBulkConfirm({ action: "deactivate", count: selected.size })}>
+            <EyeOff className="h-3.5 w-3.5" /> Desativar
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs text-destructive hover:text-destructive" onClick={() => setBulkConfirm({ action: "delete", count: selected.size })}>
+            <Trash2 className="h-3.5 w-3.5" /> Excluir
+          </Button>
+          <Button size="sm" variant="ghost" className="text-xs ml-auto" onClick={() => setSelected(new Set())}>
+            Limpar seleção
+          </Button>
         </div>
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5">
-          <Power className="h-3.5 w-3.5 text-primary" />
-          <span className="font-medium text-foreground">{activeCount}</span> ativos
-        </div>
-        {selected.size > 0 && (
-          <div className="flex items-center gap-1.5 text-sm bg-primary/10 text-primary rounded-lg px-3 py-1.5 font-medium">
-            {selected.size} selecionados
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Batch progress */}
       {batchRunning && (
@@ -445,7 +580,7 @@ export default function AdminProductsList() {
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar produto..." className="pl-9" />
+            <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por nome, SKU, categoria ou preço..." className="pl-9" />
           </div>
 
           {/* Category filter */}
@@ -456,14 +591,16 @@ export default function AdminProductsList() {
             <SelectContent>
               <SelectItem value="all">Todas categorias</SelectItem>
               {categories.map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name} {categoryCounts[c.id] ? `(${categoryCounts[c.id]})` : ""}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {(["all", "active", "inactive"] as const).map(f => (
               <Button
                 key={f}
@@ -478,6 +615,11 @@ export default function AdminProductsList() {
             <Button variant="outline" size="icon" className="h-9 w-9" onClick={load} disabled={loading || batchRunning}>
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
+            {filterCategory !== "all" && (
+              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={selectAllCategory}>
+                Selecionar toda categoria
+              </Button>
+            )}
           </div>
 
           {/* Grid size + select all */}
@@ -492,31 +634,13 @@ export default function AdminProductsList() {
               </Button>
             )}
             <div className="flex items-center border rounded-lg overflow-hidden">
-              <Button
-                variant={gridSize === "sm" ? "default" : "ghost"}
-                size="icon"
-                className="h-8 w-8 rounded-none"
-                onClick={() => setGridSize("sm")}
-                title="Grade pequena"
-              >
+              <Button variant={gridSize === "sm" ? "default" : "ghost"} size="icon" className="h-8 w-8 rounded-none" onClick={() => setGridSize("sm")} title="Grade pequena">
                 <Grid3x3 className="h-3.5 w-3.5" />
               </Button>
-              <Button
-                variant={gridSize === "md" ? "default" : "ghost"}
-                size="icon"
-                className="h-8 w-8 rounded-none"
-                onClick={() => setGridSize("md")}
-                title="Grade média"
-              >
+              <Button variant={gridSize === "md" ? "default" : "ghost"} size="icon" className="h-8 w-8 rounded-none" onClick={() => setGridSize("md")} title="Grade média">
                 <LayoutGrid className="h-3.5 w-3.5" />
               </Button>
-              <Button
-                variant={gridSize === "lg" ? "default" : "ghost"}
-                size="icon"
-                className="h-8 w-8 rounded-none"
-                onClick={() => setGridSize("lg")}
-                title="Grade grande"
-              >
+              <Button variant={gridSize === "lg" ? "default" : "ghost"} size="icon" className="h-8 w-8 rounded-none" onClick={() => setGridSize("lg")} title="Grade grande">
                 <Grid2x2 className="h-3.5 w-3.5" />
               </Button>
             </div>
@@ -542,6 +666,7 @@ export default function AdminProductsList() {
           {visibleItems.map(p => {
             const thumb = imageMap[p.id];
             const isSelected = selected.has(p.id);
+            const catName = getCategoryName(p);
 
             return isCompact ? (
               <div
@@ -564,7 +689,16 @@ export default function AdminProductsList() {
                 </div>
                 <div className="p-2">
                   <h3 className="text-[11px] font-medium leading-tight line-clamp-2">{p.name}</h3>
-                  <p className="text-xs font-bold mt-1">{displayPrice(p)}</p>
+                  {catName && <p className="text-[9px] text-muted-foreground mt-0.5 truncate">{catName}</p>}
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs font-bold">{displayPrice(p)}</p>
+                    <Switch
+                      checked={p.active}
+                      onCheckedChange={() => toggleActive(p)}
+                      onClick={e => e.stopPropagation()}
+                      className="scale-75"
+                    />
+                  </div>
                 </div>
               </div>
             ) : (
@@ -590,7 +724,7 @@ export default function AdminProductsList() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <h3 className="font-semibold text-sm leading-tight line-clamp-2">{p.name}</h3>
-                        {p.category && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.category}</p>}
+                        {catName && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{catName}</p>}
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
@@ -617,7 +751,16 @@ export default function AdminProductsList() {
                   </div>
                 </div>
                 <div className="border-t border-border/40 px-3 py-1.5 flex items-center gap-1">
-                  <Badge variant={p.active ? "default" : "secondary"} className="text-[10px] px-2 py-0 mr-auto">{p.active ? "Ativo" : "Inativo"}</Badge>
+                  <div className="flex items-center gap-2 mr-auto">
+                    <Switch
+                      checked={p.active}
+                      onCheckedChange={() => toggleActive(p)}
+                      className="scale-75"
+                    />
+                    <span className={`text-[10px] font-medium ${p.active ? "text-green-600" : "text-muted-foreground"}`}>
+                      {p.active ? "🟢 Ativo" : "🔴 Inativo"}
+                    </span>
+                  </div>
                   <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}><Pencil className="h-3 w-3" /> Editar</Button>
                   <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => duplicateProduct(p)}><Copy className="h-3 w-3" /> Duplicar</Button>
                   <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(p)}><Trash2 className="h-3 w-3" /></Button>
@@ -656,6 +799,39 @@ export default function AdminProductsList() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Bulk action confirmation */}
+      <AlertDialog open={!!bulkConfirm} onOpenChange={(open) => !open && setBulkConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {bulkConfirm?.action === "activate" && "Ativar produtos?"}
+              {bulkConfirm?.action === "deactivate" && "Desativar produtos?"}
+              {bulkConfirm?.action === "delete" && "Excluir produtos?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkConfirm?.action === "activate" && `Tem certeza que deseja ativar ${bulkConfirm.count} produtos?`}
+              {bulkConfirm?.action === "deactivate" && `Tem certeza que deseja desativar ${bulkConfirm.count} produtos?`}
+              {bulkConfirm?.action === "delete" && `Tem certeza que deseja excluir ${bulkConfirm.count} produtos permanentemente? Esta ação não pode ser desfeita.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (bulkConfirm?.action === "activate") bulkActivate();
+                else if (bulkConfirm?.action === "deactivate") bulkDeactivate();
+                else if (bulkConfirm?.action === "delete") bulkDelete();
+              }}
+              className={bulkConfirm?.action === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            >
+              {bulkConfirm?.action === "activate" && "Ativar"}
+              {bulkConfirm?.action === "deactivate" && "Desativar"}
+              {bulkConfirm?.action === "delete" && "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Price validation report dialog */}
       <Dialog open={!!priceReport} onOpenChange={(open) => !open && setPriceReport(null)}>
         <DialogContent className="max-w-lg">
@@ -667,7 +843,6 @@ export default function AdminProductsList() {
           </DialogHeader>
           {priceReport && (
             <div className="space-y-4">
-              {/* Summary stats */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {[
                   { label: "Total analisados", value: priceReport.total, icon: Package, color: "text-foreground" },
@@ -685,7 +860,6 @@ export default function AdminProductsList() {
                 ))}
               </div>
 
-              {/* By category breakdown */}
               {priceReport.by_category && Object.keys(priceReport.by_category).length > 0 && (
                 <div>
                   <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">Por categoria</h4>
@@ -709,7 +883,6 @@ export default function AdminProductsList() {
                 </div>
               )}
 
-              {/* Details (first few corrections) */}
               {priceReport.details && priceReport.details.length > 0 && (
                 <div>
                   <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">

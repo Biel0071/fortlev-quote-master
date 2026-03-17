@@ -798,8 +798,8 @@ export default function AdminProductsList() {
                       onCheckedChange={() => toggleActive(p)}
                       className="scale-75"
                     />
-                    <span className={`text-[10px] font-medium ${p.active ? "text-green-600" : "text-muted-foreground"}`}>
-                      {p.active ? "🟢 Ativo" : "🔴 Inativo"}
+                    <span className={`text-[10px] font-medium ${p.status === "no_image_found" ? "text-destructive" : p.active ? "text-green-600" : "text-muted-foreground"}`}>
+                      {p.status === "no_image_found" ? "🔴 Sem imagem" : p.active ? "🟢 Ativo" : "🔴 Inativo"}
                     </span>
                   </div>
                   <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}><Pencil className="h-3 w-3" /> Editar</Button>

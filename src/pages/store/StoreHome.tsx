@@ -238,7 +238,6 @@ export default function StoreHome() {
             onAdd={onAdd}
             limit={8}
           />
-          />
         </HomeSection>
       ) : null}
 

@@ -38,6 +38,7 @@ export { default as AdminBatchOps } from "./pages/AdminBatchOps";
 export { default as AdminRecommendations } from "./pages/AdminRecommendations";
 export { default as AdminShipping } from "./pages/AdminShipping";
 export { default as AdminAiReportsPage } from "./pages/AdminAiReportsPage";
+export { default as AdminIntelligenceUnified } from "./pages/AdminIntelligenceUnified";
 
 // Payments
 export { default as AdminPaymentsLayout } from "./pages/payments/AdminPaymentsLayout";

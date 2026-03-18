@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Navigate } from "react-router-dom";
 
 export function AdminSettingsFrete() {
   return (
@@ -10,12 +11,7 @@ export function AdminSettingsFrete() {
 }
 
 export function AdminSettingsPagamentos() {
-  return (
-    <Card className="rounded-2xl">
-      <CardHeader><CardTitle>Pagamentos</CardTitle></CardHeader>
-      <CardContent className="text-sm text-muted-foreground">Configurações de pagamento em breve.</CardContent>
-    </Card>
-  );
+  return <Navigate to="/admin/payments" replace />;
 }
 
 export function AdminSettingsIdentidade() {

@@ -519,13 +519,6 @@ async function searchFortlevImages(
   capacity: string
 ): Promise<{ saved: number; errors: string[] }> {
   const errors: string[] = [];
-  const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
-  const GOOGLE_CX = Deno.env.get("GOOGLE_CX");
-
-  if (!GOOGLE_API_KEY || !GOOGLE_CX) {
-    errors.push("GOOGLE_API_KEY or GOOGLE_CX not configured");
-    return { saved: 0, errors };
-  }
 
   const typeLabel = type.includes("tanque") ? "tanque polietileno" : "caixa d'água";
   const queries = [
@@ -535,13 +528,29 @@ async function searchFortlevImages(
 
   const allImages: { url: string; title: string }[] = [];
 
+  // Try DuckDuckGo first (no API key needed)
   for (const q of queries) {
     if (allImages.length >= 10) break;
-    console.log(`[fortlev] Searching: "${q}"`);
-    const results = await searchGoogleImages(q, GOOGLE_API_KEY, GOOGLE_CX);
-    console.log(`[fortlev] Got ${results.length} results for "${q}"`);
+    console.log(`[fortlev] DDG search: "${q}"`);
+    const results = await searchDuckDuckGoImages(q);
+    console.log(`[fortlev] DDG got ${results.length} results`);
     for (const r of results) {
       if (!allImages.some(i => i.url === r.url)) allImages.push(r);
+    }
+  }
+
+  // Fallback to Google if available
+  if (allImages.length < 3) {
+    const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
+    const GOOGLE_CX = Deno.env.get("GOOGLE_CX");
+    if (GOOGLE_API_KEY && GOOGLE_CX) {
+      for (const q of queries) {
+        if (allImages.length >= 10) break;
+        const results = await searchGoogleImages(q, GOOGLE_API_KEY, GOOGLE_CX);
+        for (const r of results) {
+          if (!allImages.some(i => i.url === r.url)) allImages.push(r);
+        }
+      }
     }
   }
   console.log(`[fortlev] Total unique images for ${capacity}L: ${allImages.length}`);

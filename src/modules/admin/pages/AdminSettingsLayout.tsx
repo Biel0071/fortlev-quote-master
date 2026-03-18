@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from "react-router-dom";
-import { Users, Palette, Plug, Truck, CreditCard, TicketPercent } from "lucide-react";
+import { Users, Palette, Plug, Truck, CreditCard } from "lucide-react";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 const settingsItems = [
@@ -8,7 +8,6 @@ const settingsItems = [
   { label: "Integrações", to: "/admin/configuracoes/integracoes", icon: Plug },
   { label: "Frete", to: "/admin/configuracoes/frete", icon: Truck },
   { label: "Pagamentos", to: "/admin/configuracoes/pagamentos", icon: CreditCard },
-  { label: "Cupons", to: "/admin/configuracoes/cupons", icon: TicketPercent },
 ];
 
 export default function AdminSettingsLayout() {

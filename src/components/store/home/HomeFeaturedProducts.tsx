@@ -60,7 +60,7 @@ export function HomeFeaturedProducts({
       ) : null}
 
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-[360px] w-full rounded-2xl" />
           ))}
@@ -70,7 +70,7 @@ export function HomeFeaturedProducts({
           <CardContent className="py-6 text-sm text-muted-foreground">Sem produtos ativos para exibir.</CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 auto-rows-fr">
           {featured.map((p: any) => (
             <StoreProductCard key={p.id} product={p} onAdd={onAdd} />
           ))}

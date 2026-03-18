@@ -184,13 +184,13 @@ export function HomeWeeklyOffers({
       ) : null}
 
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-[340px] w-full rounded-2xl" />
           ))}
         </div>
       ) : visible.length === 0 ? null : (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 auto-rows-fr">
           {visible.slice(0, 8).map((x: any) => (
             <OfferCard
               key={(x.offer?.id ?? x.product.id) as string}

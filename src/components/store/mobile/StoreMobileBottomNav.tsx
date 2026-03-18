@@ -1,5 +1,5 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, LayoutGrid, ShoppingCart, User } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Home, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function StoreMobileBottomNav({
@@ -19,7 +19,6 @@ export function StoreMobileBottomNav({
 
   const items = [
     { label: "Home", icon: Home, active: isHome, onClick: () => nav("/materiais") },
-    { label: "Categorias", icon: LayoutGrid, active: isCatalog, onClick: () => nav("/loja") },
     {
       label: "Carrinho",
       icon: ShoppingCart,
@@ -30,7 +29,6 @@ export function StoreMobileBottomNav({
         else nav("/carrinho");
       },
     },
-    { label: "Conta", icon: User, active: isAccount, onClick: () => nav("/conta") },
   ];
 
   return (

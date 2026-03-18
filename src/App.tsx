@@ -180,6 +180,39 @@ const App = () => (
                 <Route path="integracoes" element={<AdminSettingsIntegracoes />} />
               </Route>
 
+              {/* Gateway AllowPay */}
+              <Route path="payments" element={<AdminPaymentsLayout />}>
+                <Route index element={<AdminPaymentsOverview />} />
+                <Route path="gateways" element={<AdminPaymentsGateways />} />
+                <Route path="gateways/add" element={<AdminPaymentsGatewayAdd />} />
+                <Route path="gateways/logs" element={<AdminPaymentsGatewayLogs />} />
+                <Route path="gateways/status" element={<AdminPaymentsGatewayStatus />} />
+                <Route path="checkouts" element={<AdminPaymentsCheckouts />} />
+                <Route path="checkouts/create" element={<AdminPaymentsCheckoutCreate />} />
+                <Route path="checkouts/templates" element={<AdminPaymentsCheckoutTemplates />} />
+                <Route path="checkouts/webhooks" element={<AdminPaymentsCheckoutWebhooks />} />
+                <Route path="methods" element={<AdminPaymentsMethods />} />
+                <Route path="methods/pix" element={<AdminPaymentsPix />} />
+                <Route path="methods/card" element={<AdminPaymentsCard />} />
+                <Route path="methods/boleto" element={<AdminPaymentsBoleto />} />
+                <Route path="methods/split" element={<AdminPaymentsSplit />} />
+                <Route path="antifraud" element={<AdminPaymentsAntifraud />} />
+                <Route path="antifraud/rules" element={<AdminPaymentsAntifraudRules />} />
+                <Route path="antifraud/score" element={<AdminPaymentsAntifraudScore />} />
+                <Route path="antifraud/blacklist" element={<AdminPaymentsAntifraudBlacklist />} />
+                <Route path="subscriptions" element={<AdminPaymentsSubscriptions />} />
+                <Route path="subscriptions/plans" element={<AdminPaymentsSubscriptionsPlans />} />
+                <Route path="subscriptions/clients" element={<AdminPaymentsSubscriptionsClients />} />
+                <Route path="subscriptions/recurring" element={<AdminPaymentsSubscriptionsRecurring />} />
+                <Route path="webhooks" element={<AdminPaymentsWebhooks />} />
+                <Route path="webhooks/events" element={<AdminPaymentsWebhookEvents />} />
+                <Route path="webhooks/logs" element={<AdminPaymentsWebhookLogs />} />
+                <Route path="api" element={<AdminPaymentsApi />} />
+                <Route path="api/keys" element={<AdminPaymentsApiKeys />} />
+                <Route path="api/docs" element={<AdminPaymentsApiDocs />} />
+                <Route path="api/sandbox" element={<AdminPaymentsApiSandbox />} />
+              </Route>
+
               {/* rotas reservadas */}
               <Route path="ofertas" element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>} />
             </Route>

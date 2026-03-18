@@ -77,6 +77,22 @@ export default function AdminReviews() {
   const [searchingImages, setSearchingImages] = useState(false);
   const [poolStats, setPoolStats] = useState({ total_images: 0, products_with_pool: 0 });
 
+  /* ---------- daily engine state ---------- */
+  type DailyConfig = {
+    id: string; enabled: boolean; max_reviews_per_day: number; min_reviews_per_day: number;
+    max_reviews_per_product: number; max_total_per_product: number; start_hour: number;
+    end_hour: number; image_percentage: number;
+  };
+  type DailyRun = {
+    id: string; run_date: string; reviews_generated: number; images_attached: number;
+    products_covered: number; target_count: number; status: string; error_message: string | null; created_at: string;
+  };
+  const [dailyConfig, setDailyConfig] = useState<DailyConfig | null>(null);
+  const [dailyRuns, setDailyRuns] = useState<DailyRun[]>([]);
+  const [dailyLoading, setDailyLoading] = useState(false);
+  const [dailyRunning, setDailyRunning] = useState(false);
+  const [showDailyHistory, setShowDailyHistory] = useState(false);
+
   /* ---------- data loading ---------- */
   const load = useCallback(async () => {
     setLoading(true);

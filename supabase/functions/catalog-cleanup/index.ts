@@ -347,66 +347,339 @@ async function fixPrices(supabase: any) {
 }
 
 // ─── REBUILD FORTLEV ───────────────────────────────────────────
-async function rebuildFortlev(supabase: any) {
-  const { data: cats } = await supabase.from("store_categories").select("id, name").eq("name", "Hidráulica").single();
-  const hidraulicaId = cats?.id;
 
-  const { data: fortlevProducts } = await supabase
+function extractCapacity(name: string): string | null {
+  const m = name.match(/(\d[\d.]*)\s*l/i);
+  if (!m) return null;
+  return m[1].replace(/\./g, "");
+}
+
+type FortlevType = "caixa" | "tanque" | "tanque_industrial" | "tanque_verde" | "fossa" | "outro";
+
+function classifyFortlev(name: string): FortlevType {
+  const n = norm(name);
+  if (n.includes("fossa")) return "fossa";
+  if (n.includes("industrial")) return "tanque_industrial";
+  if (n.includes("verde")) return "tanque_verde";
+  if (n.includes("tanque")) return "tanque";
+  if (n.includes("caixa") || n.includes("reservatorio") || n.includes("reservatório")) return "caixa";
+  return "outro";
+}
+
+function officialName(type: FortlevType, capacity: string | null): string | null {
+  if (!capacity) return null;
+  switch (type) {
+    case "caixa": return `Caixa d'Água de Polietileno ${capacity}L - Fortlev`;
+    case "tanque": return `Tanque de Polietileno ${capacity}L - Fortlev`;
+    case "tanque_industrial": return `Tanque Industrial de Polietileno ${capacity}L - Fortlev`;
+    case "tanque_verde": return `Tanque de Polietileno Verde ${capacity}L - Fortlev`;
+    case "fossa": return null; // keep original
+    default: return null;
+  }
+}
+
+function fortlevDescription(type: FortlevType, capacity: string): string {
+  const typeLabel = type === "tanque" || type === "tanque_industrial" || type === "tanque_verde"
+    ? `Tanque de Polietileno ${capacity}L`
+    : `Caixa d'Água de Polietileno ${capacity}L`;
+
+  return `A ${typeLabel} Fortlev é produzida em polietileno de alta resistência, garantindo durabilidade, proteção contra raios UV e vedação segura.
+
+Ideal para residências, comércios e instalações industriais.
+
+**Características:**
+• Fabricada em polietileno de alta densidade
+• Alta resistência mecânica e química
+• Tampa com vedação segura
+• Proteção UV
+• Fácil instalação e manutenção
+• Produto original Fortlev com garantia de fábrica
+
+**Capacidade:** ${capacity} litros`;
+}
+
+async function fetchHtml(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(url, {
+      method: "GET", signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      },
+    });
+    if (!response.ok) return "";
+    return await response.text();
+  } catch { return ""; } finally { clearTimeout(timeout); }
+}
+
+async function searchDuckDuckGoImages(query: string): Promise<{ url: string; title: string }[]> {
+  const html = await fetchHtml(`https://duckduckgo.com/?q=${encodeURIComponent(query)}&iax=images&ia=images`);
+  if (!html) return [];
+
+  const vqd = html.match(/vqd=['"]([^'"]+)['"]/i)?.[1] ?? html.match(/"vqd":"([^"]+)"/i)?.[1] ?? html.match(/vqd=([^&"']+)/i)?.[1] ?? "";
+  if (!vqd) {
+    console.log(`[ddg] No vqd found for "${query}"`);
+    return [];
+  }
+
+  const endpoint = new URL("https://duckduckgo.com/i.js");
+  endpoint.searchParams.set("q", query);
+  endpoint.searchParams.set("l", "br-pt");
+  endpoint.searchParams.set("o", "json");
+  endpoint.searchParams.set("vqd", vqd);
+  endpoint.searchParams.set("f", ",,,");
+  endpoint.searchParams.set("p", "1");
+
+  try {
+    const response = await fetch(endpoint.toString(), {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        Referer: "https://duckduckgo.com/",
+        "X-Requested-With": "XMLHttpRequest",
+        Accept: "application/json,text/javascript,*/*;q=0.1",
+      },
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (Array.isArray(data?.results) ? data.results : []).map((item: any) => ({
+      url: String(item?.image || ""),
+      title: String(item?.title || ""),
+    })).filter((i: any) => i.url && i.url.startsWith("http"));
+  } catch { return []; }
+}
+
+async function searchGoogleImages(query: string, apiKey: string, cx: string): Promise<{ url: string; title: string }[]> {
+  const googleUrl = new URL("https://www.googleapis.com/customsearch/v1");
+  googleUrl.searchParams.set("key", apiKey);
+  googleUrl.searchParams.set("cx", cx);
+  googleUrl.searchParams.set("q", query);
+  googleUrl.searchParams.set("searchType", "image");
+  googleUrl.searchParams.set("num", "10");
+  googleUrl.searchParams.set("start", "1");
+  googleUrl.searchParams.set("imgSize", "large");
+
+  try {
+    const resp = await fetch(googleUrl.toString());
+    if (!resp.ok) {
+      const errBody = await resp.text().catch(() => "");
+      console.error(`Google API error ${resp.status}: ${errBody.slice(0, 500)}`);
+      return [];
+    }
+    const payload = await resp.json();
+    return (Array.isArray(payload?.items) ? payload.items : []).map((item: any) => ({
+      url: item?.link || "",
+      title: item?.title || "",
+    })).filter((i: any) => i.url);
+  } catch { return []; }
+}
+
+async function downloadAndStoreImage(
+  supabase: any,
+  imageUrl: string,
+  productId: string,
+  index: number
+): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const resp = await fetch(imageUrl, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0" },
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok) return null;
+    const ct = resp.headers.get("content-type") || "";
+    if (!ct.includes("image")) return null;
+
+    const blob = await resp.blob();
+    if (blob.size < 5000) return null; // too small
+
+    const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+    const path = `${productId}/${index}.${ext}`;
+
+    const arrayBuffer = await blob.arrayBuffer();
+    const { error } = await supabase.storage
+      .from("product-images")
+      .upload(path, arrayBuffer, { contentType: ct, upsert: true });
+
+    if (error) return null;
+    return path;
+  } catch { return null; }
+}
+
+async function searchFortlevImages(
+  supabase: any,
+  productId: string,
+  type: FortlevType,
+  capacity: string
+): Promise<{ saved: number; errors: string[] }> {
+  const errors: string[] = [];
+
+  const typeLabel = type.includes("tanque") ? "tanque polietileno" : "caixa d'água";
+  const queries = [
+    `Fortlev ${typeLabel} ${capacity}L produto polietileno`,
+    `caixa d'água Fortlev ${capacity} litros`,
+  ];
+
+  const allImages: { url: string; title: string }[] = [];
+
+  // Try DuckDuckGo first (no API key needed)
+  for (const q of queries) {
+    if (allImages.length >= 10) break;
+    console.log(`[fortlev] DDG search: "${q}"`);
+    const results = await searchDuckDuckGoImages(q);
+    console.log(`[fortlev] DDG got ${results.length} results`);
+    for (const r of results) {
+      if (!allImages.some(i => i.url === r.url)) allImages.push(r);
+    }
+  }
+
+  // Fallback to Google if available
+  if (allImages.length < 3) {
+    const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
+    const GOOGLE_CX = Deno.env.get("GOOGLE_CX");
+    if (GOOGLE_API_KEY && GOOGLE_CX) {
+      for (const q of queries) {
+        if (allImages.length >= 10) break;
+        const results = await searchGoogleImages(q, GOOGLE_API_KEY, GOOGLE_CX);
+        for (const r of results) {
+          if (!allImages.some(i => i.url === r.url)) allImages.push(r);
+        }
+      }
+    }
+  }
+  console.log(`[fortlev] Total unique images for ${capacity}L: ${allImages.length}`);
+
+  // Filter
+  const validKeywords = ["fortlev", "caixa", "reservatorio", "tanque", "polietileno", "agua", "litros"];
+  const invalidKeywords = ["banner", "logo", "sprite", "icon", "favicon", "carrinho"];
+
+  const scored = allImages.map((img) => {
+    const text = norm(img.title + " " + img.url);
+    let score = 1;
+    for (const kw of validKeywords) if (text.includes(kw)) score += 2;
+    for (const kw of invalidKeywords) if (text.includes(kw)) score -= 5;
+    return { ...img, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored.filter((s) => s.score > 0).slice(0, 5);
+
+  if (top.length === 0) {
+    errors.push("No valid images found after filtering");
+    return { saved: 0, errors };
+  }
+
+  // Download and store images
+  let saved = 0;
+  for (let i = 0; i < top.length; i++) {
+    const path = await downloadAndStoreImage(supabase, top[i].url, productId, i);
+    if (path) {
+      await supabase.from("store_product_images").insert({
+        product_id: productId,
+        path,
+        sort_order: i,
+      });
+      saved++;
+    }
+  }
+
+  if (saved === 0) errors.push("All image downloads failed");
+  return { saved, errors };
+}
+
+async function rebuildFortlev(supabase: any) {
+  // Get Hidráulica category
+  const { data: hidCat } = await supabase.from("store_categories").select("id, name").eq("name", "Hidráulica").single();
+  const hidraulicaId = hidCat?.id;
+
+  // Fetch ALL fortlev-related products
+  const { data: allFortlev } = await supabase
     .from("store_products")
-    .select("id, name, price, category_id")
-    .or("name.ilike.%fortlev%");
+    .select("id, name, price, category_id, description, sku")
+    .or("name.ilike.%fortlev%,name.ilike.%caixa d%agua%,name.ilike.%caixa dagua%,name.ilike.%reservatorio%");
+
+  if (!allFortlev || allFortlev.length === 0) {
+    return { fortlev_total: 0, report: [], message: "Nenhum produto Fortlev encontrado" };
+  }
 
   const report: any[] = [];
+  let namesFixed = 0;
+  let imagesRemoved = 0;
+  let imagesImported = 0;
+  let descriptionsGenerated = 0;
+  const errors: string[] = [];
 
-  if (hidraulicaId && fortlevProducts?.length) {
-    const ids = fortlevProducts.map((p: any) => p.id);
-    for (let i = 0; i < ids.length; i += 100) {
-      await supabase.from("store_products")
-        .update({ category_id: hidraulicaId, category: "Hidráulica" })
-        .in("id", ids.slice(i, i + 100));
+  for (const p of allFortlev) {
+    const type = classifyFortlev(p.name);
+    const capacity = extractCapacity(p.name);
+
+    if (type === "outro" || type === "fossa") {
+      report.push({ product: p.name, action: "skipped", reason: type === "fossa" ? "fossa séptica" : "tipo não identificado" });
+      continue;
     }
-    report.push({ action: "moved_to_hidraulica", count: ids.length });
-  }
 
-  const fortlevCaixas = (fortlevProducts || []).filter((p: any) => /caixa|tanque/i.test(p.name));
+    // 1. Standardize name
+    const newName = officialName(type, capacity);
+    const nameChanged = newName && newName !== p.name;
+    if (nameChanged) {
+      await supabase.from("store_products").update({ name: newName }).eq("id", p.id);
+      namesFixed++;
+    }
 
-  for (const p of fortlevCaixas) {
-    const { data: images } = await supabase.from("store_product_images").select("id, path").eq("product_id", p.id);
-    if (images?.length) {
-      const paths = images.map((i: any) => i.path).filter(Boolean);
-      if (paths.length) await supabase.storage.from("product-images").remove(paths);
+    // 2. Move to Hidráulica
+    if (hidraulicaId && p.category_id !== hidraulicaId) {
+      await supabase.from("store_products").update({ category_id: hidraulicaId, category: "Hidráulica" }).eq("id", p.id);
+    }
+
+    // 3. Clean old images
+    const { data: oldImages } = await supabase.from("store_product_images").select("id, path").eq("product_id", p.id);
+    if (oldImages?.length) {
+      const paths = oldImages.map((i: any) => i.path).filter(Boolean);
+      if (paths.length) {
+        try { await supabase.storage.from("product-images").remove(paths); } catch (_) {}
+      }
       await supabase.from("store_product_images").delete().eq("product_id", p.id);
-      report.push({ action: "images_removed", product: p.name, count: images.length });
+      imagesRemoved += oldImages.length;
     }
-  }
 
-  for (const p of fortlevCaixas) {
-    const nameLower = p.name.toLowerCase();
-    let newName = p.name;
-    const capMatch = nameLower.match(/(\d+[\.\d]*)\s*l/);
-    const capacity = capMatch ? capMatch[1].replace(".", "") : null;
-
+    // 4. Search and import official images
     if (capacity) {
-      if (/industrial/i.test(nameLower)) {
-        newName = `Tanque Industrial de Polietileno ${capacity}L - FORTLEV`;
-      } else if (/verde/i.test(nameLower)) {
-        newName = `Tanque de Polietileno Verde ${capacity}L - FORTLEV`;
-      } else if (/tanque/i.test(nameLower) && !/caixa/i.test(nameLower)) {
-        newName = `Tanque de Polietileno ${capacity}L - FORTLEV`;
-      } else {
-        newName = `Caixa d'Água Fortlev ${capacity}L Polietileno`;
-      }
-
-      if (newName !== p.name) {
-        await supabase.from("store_products").update({ name: newName }).eq("id", p.id);
-        report.push({ action: "name_standardized", old: p.name, new: newName });
-      }
+      const imgResult = await searchFortlevImages(supabase, p.id, type, capacity);
+      imagesImported += imgResult.saved;
+      if (imgResult.errors.length) errors.push(...imgResult.errors);
     }
+
+    // 5. Generate/update description for all Fortlev products
+    if (capacity) {
+      const desc = fortlevDescription(type, capacity);
+      await supabase.from("store_products").update({ description: desc }).eq("id", p.id);
+      descriptionsGenerated++;
+    }
+
+    report.push({
+      product: p.name,
+      new_name: nameChanged ? newName : "(unchanged)",
+      type,
+      capacity: capacity || "unknown",
+      images_removed: oldImages?.length || 0,
+      action: "processed",
+    });
   }
 
   return {
-    fortlev_total: fortlevProducts?.length || 0,
-    caixas_processed: fortlevCaixas.length,
+    fortlev_total: allFortlev.length,
+    names_fixed: namesFixed,
+    images_removed: imagesRemoved,
+    images_imported: imagesImported,
+    descriptions_generated: descriptionsGenerated,
+    errors_count: errors.length,
+    errors: errors.slice(0, 20),
     report: report.slice(0, 100),
   };
 }

@@ -522,12 +522,6 @@ async function searchFortlevImages(
   if (saved === 0) errors.push("All image downloads failed");
   return { saved, errors };
 }
-    return { saved: result.imported?.length || 0, errors };
-  } catch (e) {
-    errors.push(`import error: ${e.message}`);
-    return { saved: 0, errors };
-  }
-}
 
 async function rebuildFortlev(supabase: any) {
   // Get Hidráulica category

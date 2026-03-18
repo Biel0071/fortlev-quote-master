@@ -129,9 +129,7 @@ export default function AdminReviews() {
     setLogs((logsRes.data ?? []) as LogEntry[]);
     setTotalProducts(productsRes.count ?? 0);
 
-    if (REVIEWS_ENABLE_IMAGES && results[3]) {
-      const imagesRes = results[3];
-      const poolStatsRes = results[4];
+    if (REVIEWS_ENABLE_IMAGES && imagesRes) {
       if (poolStatsRes?.data && (poolStatsRes.data as any).ok) {
         setPoolStats({
           total_images: (poolStatsRes.data as any).total_images ?? 0,

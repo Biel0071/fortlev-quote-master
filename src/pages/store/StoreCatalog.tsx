@@ -123,15 +123,9 @@ export default function StoreCatalog() {
           })}
         </section>
 
-        {/* Search + count */}
-        <div className="flex items-center gap-2">
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar produto..."
-            className="flex-1 h-10 rounded-xl text-sm"
-          />
-          <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
+        {/* Product count */}
+        <div className="flex items-center justify-end">
+          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
             {filtered.length} {filtered.length === 1 ? "produto" : "produtos"}
           </span>
         </div>

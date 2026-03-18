@@ -6,6 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const API_URL = "https://app.allowpay.online/api";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -14,7 +16,6 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const apiKey = Deno.env.get("ALLOWPAY_API_KEY")!;
-  const integrationToken = Deno.env.get("ALLOWPAY_INTEGRATION_TOKEN")!;
 
   const sb = createClient(supabaseUrl, serviceKey);
 
@@ -51,34 +52,45 @@ Deno.serve(async (req) => {
     }
 
     const startMs = Date.now();
-    const apiRes = await fetch(`https://api.allowpay.com/api/payments/status/${externalId}`, {
+    const apiRes = await fetch(`${API_URL}/payments/${externalId}`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "X-Integration-Token": integrationToken,
       },
     });
     const durationMs = Date.now() - startMs;
 
-    let resBody: any = {};
-    try { resBody = await apiRes.json(); } catch { resBody = {}; }
+    let resBody: Record<string, unknown> = {};
+    try {
+      resBody = await apiRes.json();
+    } catch {
+      resBody = {};
+    }
 
-    await sb.from("payment_logs").insert({
-      direction: "outbound",
-      method: "GET",
-      url: `https://api.allowpay.com/api/payments/status/${externalId}`,
-      request_body: { payment_id: externalId },
-      response_body: resBody,
-      status_code: apiRes.status,
-      duration_ms: durationMs,
-    });
+    try {
+      await sb.from("payment_logs").insert({
+        direction: "outbound",
+        method: "GET",
+        url: `${API_URL}/payments/${externalId}`,
+        request_body: { payment_id: externalId },
+        response_body: resBody,
+        status_code: apiRes.status,
+        duration_ms: durationMs,
+      });
+    } catch {
+      // ignore log failure
+    }
 
-    const newStatus = resBody.status || "unknown";
+    const newStatus = (resBody as any).status || "unknown";
 
     // Update local transaction
-    if (transactionId) {
-      await sb.from("payment_transactions").update({ status: newStatus }).eq("id", transactionId);
-    } else {
-      await sb.from("payment_transactions").update({ status: newStatus }).eq("external_id", externalId);
+    try {
+      if (transactionId) {
+        await sb.from("payment_transactions").update({ status: newStatus }).eq("id", transactionId);
+      } else {
+        await sb.from("payment_transactions").update({ status: newStatus }).eq("external_id", externalId);
+      }
+    } catch {
+      // ignore update failure
     }
 
     return new Response(

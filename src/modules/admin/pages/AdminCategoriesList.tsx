@@ -200,7 +200,9 @@ export default function AdminCategoriesList() {
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-semibold text-sm leading-tight line-clamp-1">{c.name}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">/{c.slug}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          /{c.slug} · <span className="font-medium text-foreground">{c.product_count ?? 0}</span> {(c.product_count ?? 0) === 1 ? "produto" : "produtos"}
+                        </p>
                       </div>
                     </div>
 

@@ -257,7 +257,15 @@ export default function ProductPage() {
 
   const images = useMemo(() => {
     const list = (product as any)?.images ?? [];
-    return Array.isArray(list) ? list : [];
+    if (!Array.isArray(list)) return [];
+    // Deduplicate by path to avoid repeated images
+    const seen = new Set<string>();
+    return list.filter((img: any) => {
+      const p = img?.path;
+      if (!p || seen.has(p)) return false;
+      seen.add(p);
+      return true;
+    });
   }, [product]);
 
   const [activeImg, setActiveImg] = useState<string | null>(null);

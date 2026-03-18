@@ -4,8 +4,6 @@ import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 const settingsItems = [
   { label: "Usuários e Acessos", to: "/admin/configuracoes/usuarios", icon: Users, masterOnly: true },
-  { label: "Frete", to: "/admin/configuracoes/frete", icon: Truck },
-  { label: "Pagamentos", to: "/admin/configuracoes/pagamentos", icon: CreditCard },
   { label: "Identidade da Loja", to: "/admin/configuracoes/identidade", icon: Palette },
   { label: "Integrações", to: "/admin/configuracoes/integracoes", icon: Plug },
 ];

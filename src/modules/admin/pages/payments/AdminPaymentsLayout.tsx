@@ -111,20 +111,7 @@ export default function AdminPaymentsLayout() {
           </h2>
         </div>
 
-        <div className="px-2 pt-2">
-          <button
-            onClick={() => nav("/admin/payments")}
-            className={cn(
-              "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors",
-              location.pathname === "/admin/payments"
-                ? "bg-primary/10 text-primary font-medium"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            Visão Geral
-          </button>
-        </div>
+        {/* Visão Geral removed — lives in Dashboard now */}
 
         <nav className="px-2 py-2 space-y-1">
           {NAV_GROUPS.map((group) => {

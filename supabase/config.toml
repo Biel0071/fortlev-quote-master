@@ -38,3 +38,12 @@ verify_jwt = false
 
 [functions.catalog-cleanup]
 verify_jwt = false
+
+[functions.allowpay-create-payment]
+verify_jwt = false
+
+[functions.allowpay-payment-status]
+verify_jwt = false
+
+[functions.allowpay-webhook]
+verify_jwt = false

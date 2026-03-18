@@ -483,11 +483,14 @@ async function searchFortlevImages(
 
   for (const q of queries) {
     if (allImages.length >= 10) break;
+    console.log(`[fortlev] Searching: "${q}"`);
     const results = await searchGoogleImages(q, GOOGLE_API_KEY, GOOGLE_CX);
+    console.log(`[fortlev] Got ${results.length} results for "${q}"`);
     for (const r of results) {
       if (!allImages.some(i => i.url === r.url)) allImages.push(r);
     }
   }
+  console.log(`[fortlev] Total unique images for ${capacity}L: ${allImages.length}`);
 
   // Filter
   const validKeywords = ["fortlev", "caixa", "reservatorio", "tanque", "polietileno", "agua", "litros"];

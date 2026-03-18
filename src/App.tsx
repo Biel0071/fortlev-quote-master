@@ -159,7 +159,7 @@ const App = () => (
 
               {/* Pagamentos */}
               <Route path="payments" element={<AdminPaymentsLayout />}>
-                <Route index element={<AdminPaymentsOverview />} />
+                <Route index element={<Navigate to="/admin/payments/gateways" replace />} />
                 <Route path="gateways" element={<AdminPaymentsGateways />} />
                 <Route path="gateways/add" element={<AdminPaymentsGatewayAdd />} />
                 <Route path="checkouts" element={<AdminPaymentsCheckouts />} />

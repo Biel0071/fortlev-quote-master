@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   BarChart3,
   Box,
-  CreditCard,
   FileText,
   Home,
   Image as ImageIcon,

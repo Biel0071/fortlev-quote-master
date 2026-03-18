@@ -14,6 +14,7 @@ import {
   Star,
   Store,
   Tags,
+  TicketPercent,
   Users,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";

@@ -410,7 +410,11 @@ async function searchGoogleImages(query: string, apiKey: string, cx: string): Pr
 
   try {
     const resp = await fetch(googleUrl.toString());
-    if (!resp.ok) return [];
+    if (!resp.ok) {
+      const errBody = await resp.text().catch(() => "");
+      console.error(`Google API error ${resp.status}: ${errBody.slice(0, 500)}`);
+      return [];
+    }
     const payload = await resp.json();
     return (Array.isArray(payload?.items) ? payload.items : []).map((item: any) => ({
       url: item?.link || "",

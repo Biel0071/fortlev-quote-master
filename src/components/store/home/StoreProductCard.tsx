@@ -147,11 +147,11 @@ export function StoreProductCard({
           nav(`/produto/${product?.id}`);
         }
       }}
-      className="group flex flex-col h-full overflow-hidden rounded-2xl bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
+      className="group flex h-full w-full min-w-0 max-w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md"
       aria-label={`Abrir produto ${product?.name ?? ""}`}
     >
       {/* Image — fixed aspect ratio */}
-      <div className="relative aspect-square bg-white border-b border-border overflow-hidden flex items-center justify-center p-2 sm:p-3">
+      <div className="relative aspect-square overflow-hidden border-b border-border bg-background flex items-center justify-center p-2 sm:p-3">
         {imgUrl ? (
           <img
             src={imgUrl}
@@ -165,7 +165,7 @@ export function StoreProductCard({
       </div>
 
       {/* Content */}
-      <CardContent className="flex flex-col flex-1 p-2.5 sm:p-4 gap-1.5 sm:gap-2 overflow-hidden">
+      <CardContent className="flex min-w-0 flex-1 flex-col gap-2 overflow-hidden p-2.5 sm:p-4">
         {/* Name + Stars */}
         <div className="min-w-0">
           <h3 className="text-xs sm:text-[15px] font-semibold leading-snug line-clamp-2 min-h-[2.2em] sm:min-h-[2.5em]">

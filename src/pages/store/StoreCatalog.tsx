@@ -1,8 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { Input } from "@/components/ui/input";
+import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
@@ -12,42 +9,29 @@ import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { StoreProductCard } from "@/components/store/home/StoreProductCard";
+import { useSearchParams } from "react-router-dom";
 
 export default function StoreCatalog() {
   const cart = useCart();
   const tracker = useVisitorTracker();
   const { activeProducts, loading, error } = useStoreProducts();
   const { activeCategories } = useStoreCategories();
-
-  const [q, setQ] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
-  useEffect(() => {
-    const urlQ = (searchParams.get("q") ?? "").toString();
-    if (urlQ && urlQ !== q) setQ(urlQ);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  const q = (searchParams.get("q") ?? "").toString();
   const selectedSlug = searchParams.get("categoria") ?? "all";
-
-  const categories = useMemo(() => {
-    return [{ slug: "all", name: "Todas" }, ...activeCategories.map((c) => ({ slug: c.slug, name: c.name }))];
-  }, [activeCategories]);
 
   const filtered = useMemo(() => {
     const search = q.trim().toLowerCase();
-
     const selectedCategoryId =
-      selectedSlug === "all" ? null : (activeCategories.find((c) => c.slug === selectedSlug)?.id ?? null);
+      selectedSlug === "all" ? null : activeCategories.find((c) => c.slug === selectedSlug)?.id ?? null;
+    const promoOnly = searchParams.get("promo") === "1";
 
     return activeProducts
       .filter((p: any) => {
-        if (selectedCategoryId) {
-          if ((p.category_id ?? null) !== selectedCategoryId) return false;
-        }
+        if (selectedCategoryId && (p.category_id ?? null) !== selectedCategoryId) return false;
 
-        const promoOnly = searchParams.get("promo") === "1";
         if (promoOnly) {
           const price = Number(p?.price ?? 0);
           const promo = Number(p?.promo_price ?? 0);
@@ -76,59 +60,25 @@ export default function StoreCatalog() {
   }, [activeProducts, q, selectedSlug, activeCategories, searchParams]);
 
   return (
-    <div className="flex flex-col bg-background w-full overflow-x-hidden">
-      <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
+    <div className="flex flex-col w-full overflow-x-hidden bg-background">
+      <StoreTopbar
+        cartCount={cart.totalItems}
+        onCartClick={() => setCartOpen(true)}
+        categories={activeCategories as any}
+      />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-28 md:pb-10 space-y-3 sm:space-y-5 min-w-0 overflow-x-hidden">
-        {/* Header */}
+      <main className="mx-auto w-full max-w-6xl min-w-0 overflow-x-hidden px-4 sm:px-6 py-4 sm:py-6 pb-28 md:pb-10 space-y-4 sm:space-y-5">
         <header className="flex items-end justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Catálogo</h1>
             <p className="text-xs text-muted-foreground">Navegue por categorias e encontre seus produtos.</p>
           </div>
-        </header>
-
-        {/* Category chips - compact scrollable */}
-        <section className="flex gap-1.5 overflow-x-auto pb-1 -mx-3 px-3 sm:-mx-0 sm:px-0 scrollbar-none" style={{ scrollbarWidth: "none" }}>
-          {categories.map((c) => {
-            const active = c.slug === selectedSlug;
-            return (
-              <button
-                key={c.slug}
-                className={`shrink-0 h-8 px-3.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted/60 text-muted-foreground hover:bg-muted"
-                }`}
-                onClick={() => {
-                  const next = new URLSearchParams(searchParams);
-                  if (c.slug === "all") next.delete("categoria");
-                  else next.set("categoria", c.slug);
-                  setSearchParams(next, { replace: true });
-
-                  const catId = c.slug === "all" ? null : (activeCategories.find((x) => x.slug === c.slug)?.id ?? null);
-                  tracker.track({
-                    type: "category_click",
-                    categoryId: catId,
-                    metadata: { slug: c.slug },
-                    path: window.location.pathname + window.location.search,
-                  });
-                }}
-              >
-                {c.name}
-              </button>
-            );
-          })}
-        </section>
-
-        {/* Product count */}
-        <div className="flex items-center justify-end">
-          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+          <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
             {filtered.length} {filtered.length === 1 ? "produto" : "produtos"}
           </span>
-        </div>
+        </header>
 
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
@@ -170,4 +120,3 @@ export default function StoreCatalog() {
     </div>
   );
 }
-

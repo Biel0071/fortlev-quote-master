@@ -19,7 +19,6 @@ export function StoreMobileBottomNav({
 
   const items = [
     { label: "Home", icon: Home, active: isHome, onClick: () => nav("/materiais") },
-    { label: "Categorias", icon: LayoutGrid, active: isCatalog, onClick: () => nav("/loja") },
     {
       label: "Carrinho",
       icon: ShoppingCart,
@@ -30,7 +29,6 @@ export function StoreMobileBottomNav({
         else nav("/carrinho");
       },
     },
-    { label: "Conta", icon: User, active: isAccount, onClick: () => nav("/conta") },
   ];
 
   return (

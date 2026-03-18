@@ -436,15 +436,15 @@ async function searchFortlevImages(
     }
   }
 
-  // Filter: prefer images with fortlev/caixa/tanque/reservatorio in title or URL
-  const validKeywords = ["fortlev", "caixa", "reservatorio", "tanque", "polietileno"];
-  const invalidKeywords = ["instalacao", "projeto", "loja", "banner", "logo", "sprite"];
+  // Filter: prefer images with fortlev/caixa/tanque in title or URL, but accept all from search
+  const validKeywords = ["fortlev", "caixa", "reservatorio", "tanque", "polietileno", "agua"];
+  const invalidKeywords = ["instalacao", "projeto", "banner", "logo", "sprite", "icon", "favicon"];
 
   const scored = allImages.map((img) => {
-    const text = norm(img.title + " " + img.url);
-    let score = 0;
+    const text = norm(img.title + " " + (img.url || ""));
+    let score = 1; // base score: accept all search results
     for (const kw of validKeywords) if (text.includes(kw)) score += 2;
-    for (const kw of invalidKeywords) if (text.includes(kw)) score -= 3;
+    for (const kw of invalidKeywords) if (text.includes(kw)) score -= 5;
     return { ...img, score };
   });
 

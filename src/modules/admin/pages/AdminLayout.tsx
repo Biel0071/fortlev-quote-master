@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   BarChart3,
   Box,
-  CreditCard,
   FileText,
   Home,
   Image as ImageIcon,
@@ -15,8 +14,6 @@ import {
   Star,
   Store,
   Tags,
-  TicketPercent,
-  Truck,
   Users,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -75,9 +72,6 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { title: "Produtos", url: "/admin/produtos", icon: Box, page: "produtos" },
       { title: "Categorias", url: "/admin/categorias", icon: Tags, page: "categorias" },
       { title: "Avaliações", url: "/admin/avaliacoes", icon: Star, page: "avaliacoes" },
-      { title: "Cupons", url: "/admin/cupons", icon: TicketPercent, page: "cupons" },
-      { title: "Frete", url: "/admin/frete", icon: Truck, page: "frete" },
-      { title: "Pagamentos", url: "/admin/payments", icon: CreditCard, page: "payments" },
     ],
   },
   {

@@ -145,40 +145,46 @@ const App = () => (
               <Route path="pedidos" element={<AdminOrders />} />
               <Route path="paginas" element={<AdminPages />} />
               <Route path="clientes" element={<AdminCustomers />} />
-              <Route path="cupons" element={<AdminCoupons />} />
               <Route path="banners" element={<AdminBanners />} />
               <Route path="avaliacoes" element={<AdminReviews />} />
-              <Route path="frete" element={<AdminShipping />} />
               <Route path="tema" element={<AdminTheme />} />
               <Route path="configuracoes" element={<AdminSettingsLayout />}>
                 <Route index element={<AdminSettings />} />
                 <Route path="usuarios" element={<AdminUsersAccess />} />
                 <Route path="identidade" element={<AdminSettingsIdentidade />} />
                 <Route path="integracoes" element={<AdminSettingsIntegracoes />} />
+                <Route path="frete" element={<AdminShipping />} />
+                <Route path="cupons" element={<AdminCoupons />} />
+                <Route path="pagamentos" element={<AdminPaymentsLayout />}>
+                  <Route index element={<Navigate to="/admin/configuracoes/pagamentos/gateways" replace />} />
+                  <Route path="gateways" element={<AdminPaymentsGateways />} />
+                  <Route path="gateways/add" element={<AdminPaymentsGatewayAdd />} />
+                  <Route path="checkouts" element={<AdminPaymentsCheckouts />} />
+                  <Route path="methods" element={<AdminPaymentsMethods />} />
+                  <Route path="methods/pix" element={<AdminPaymentsMethods />} />
+                  <Route path="methods/card" element={<AdminPaymentsMethods />} />
+                  <Route path="methods/boleto" element={<AdminPaymentsMethods />} />
+                  <Route path="methods/split" element={<AdminPaymentsMethods />} />
+                  <Route path="antifraud" element={<AdminPaymentsAntifraud />} />
+                  <Route path="antifraud/rules" element={<AdminPaymentsAntifraud />} />
+                  <Route path="subscriptions" element={<AdminPaymentsSubscriptions />} />
+                  <Route path="subscriptions/plans" element={<AdminPaymentsSubscriptions />} />
+                  <Route path="webhooks" element={<AdminPaymentsWebhooks />} />
+                  <Route path="webhooks/events" element={<AdminPaymentsWebhooks />} />
+                  <Route path="api" element={<AdminPaymentsApi />} />
+                  <Route path="api/keys" element={<AdminPaymentsApi />} />
+                  <Route path="api/docs" element={<AdminPaymentsApi />} />
+                  <Route path="api/sandbox" element={<AdminPaymentsApi />} />
+                </Route>
               </Route>
 
-              {/* Pagamentos */}
-              <Route path="payments" element={<AdminPaymentsLayout />}>
-                <Route index element={<Navigate to="/admin/payments/gateways" replace />} />
-                <Route path="gateways" element={<AdminPaymentsGateways />} />
-                <Route path="gateways/add" element={<AdminPaymentsGatewayAdd />} />
-                <Route path="checkouts" element={<AdminPaymentsCheckouts />} />
-                <Route path="methods" element={<AdminPaymentsMethods />} />
-                <Route path="methods/pix" element={<AdminPaymentsMethods />} />
-                <Route path="methods/card" element={<AdminPaymentsMethods />} />
-                <Route path="methods/boleto" element={<AdminPaymentsMethods />} />
-                <Route path="methods/split" element={<AdminPaymentsMethods />} />
-                <Route path="antifraud" element={<AdminPaymentsAntifraud />} />
-                <Route path="antifraud/rules" element={<AdminPaymentsAntifraud />} />
-                <Route path="subscriptions" element={<AdminPaymentsSubscriptions />} />
-                <Route path="subscriptions/plans" element={<AdminPaymentsSubscriptions />} />
-                <Route path="webhooks" element={<AdminPaymentsWebhooks />} />
-                <Route path="webhooks/events" element={<AdminPaymentsWebhooks />} />
-                <Route path="api" element={<AdminPaymentsApi />} />
-                <Route path="api/keys" element={<AdminPaymentsApi />} />
-                <Route path="api/docs" element={<AdminPaymentsApi />} />
-                <Route path="api/sandbox" element={<AdminPaymentsApi />} />
-              </Route>
+              {/* Legacy redirects */}
+              <Route path="cupons" element={<Navigate to="/admin/configuracoes/cupons" replace />} />
+              <Route path="frete" element={<Navigate to="/admin/configuracoes/frete" replace />} />
+              <Route path="payments/*" element={<Navigate to="/admin/configuracoes/pagamentos" replace />} />
+
+
+
 
               {/* rotas reservadas */}
               <Route path="ofertas" element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>} />

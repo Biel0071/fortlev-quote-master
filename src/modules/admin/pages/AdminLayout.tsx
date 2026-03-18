@@ -75,6 +75,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { title: "Categorias", url: "/admin/categorias", icon: Tags, page: "categorias" },
       { title: "Avaliações", url: "/admin/avaliacoes", icon: Star, page: "avaliacoes" },
       { title: "Cupons", url: "/admin/configuracoes/cupons", icon: TicketPercent, page: "cupons" },
+      { title: "Pagamentos", url: "/admin/configuracoes/pagamentos", icon: CreditCard, page: "pagamentos" },
     ],
   },
   {

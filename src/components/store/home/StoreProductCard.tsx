@@ -68,23 +68,23 @@ function QtyStepper({
 }) {
   return (
     <div
-      className="flex items-center justify-between rounded-xl border border-border bg-card px-1 py-1"
+      className="flex items-center justify-between rounded-lg sm:rounded-xl border border-border bg-card px-0.5 sm:px-1 py-0.5 sm:py-1"
       aria-label={`Quantidade ${value}`}
     >
       <Button
         type="button"
         variant="ghost"
-        className="h-10 w-10 rounded-lg text-base"
+        className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg text-sm sm:text-base"
         onClick={() => onChange(Math.max(1, value - 1))}
         aria-label="Diminuir quantidade"
       >
         −
       </Button>
-      <div className="min-w-8 text-center text-sm font-bold tabular-nums">{value}</div>
+      <div className="min-w-6 sm:min-w-8 text-center text-xs sm:text-sm font-bold tabular-nums">{value}</div>
       <Button
         type="button"
         variant="ghost"
-        className="h-10 w-10 rounded-lg text-base"
+        className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg text-sm sm:text-base"
         onClick={() => onChange(value + 1)}
         aria-label="Aumentar quantidade"
       >

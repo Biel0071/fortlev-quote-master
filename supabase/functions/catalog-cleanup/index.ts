@@ -520,17 +520,39 @@ async function searchFortlevImages(
 ): Promise<{ saved: number; errors: string[] }> {
   const errors: string[] = [];
 
-  const typeLabel = type.includes("tanque") ? "tanque polietileno" : "caixa d'água";
-  const queries = [
-    `Fortlev ${typeLabel} ${capacity}L produto polietileno`,
-    `caixa d'água Fortlev ${capacity} litros`,
-  ];
+  // ── Type-specific queries to avoid cross-contamination ──
+  const isCaixa = type === "caixa";
+  const isTanque = type === "tanque" || type === "tanque_industrial" || type === "tanque_verde";
+
+  let queries: string[];
+  if (isCaixa) {
+    queries = [
+      `Fortlev caixa d'água ${capacity}L polietileno produto foto`,
+      `caixa d'água Fortlev ${capacity} litros polietileno azul`,
+      `Fortlev caixa dagua ${capacity}L produto isolado`,
+    ];
+  } else if (type === "tanque_industrial") {
+    queries = [
+      `Fortlev tanque industrial polietileno ${capacity}L produto`,
+      `tanque industrial Fortlev ${capacity} litros`,
+    ];
+  } else if (type === "tanque_verde") {
+    queries = [
+      `Fortlev tanque polietileno verde ${capacity}L produto`,
+      `tanque verde Fortlev ${capacity} litros`,
+    ];
+  } else {
+    queries = [
+      `Fortlev tanque polietileno ${capacity}L produto foto`,
+      `tanque Fortlev ${capacity} litros polietileno`,
+    ];
+  }
 
   const allImages: { url: string; title: string }[] = [];
 
-  // Try DuckDuckGo first (no API key needed)
+  // Try DuckDuckGo first
   for (const q of queries) {
-    if (allImages.length >= 10) break;
+    if (allImages.length >= 15) break;
     console.log(`[fortlev] DDG search: "${q}"`);
     const results = await searchDuckDuckGoImages(q);
     console.log(`[fortlev] DDG got ${results.length} results`);
@@ -545,7 +567,7 @@ async function searchFortlevImages(
     const GOOGLE_CX = Deno.env.get("GOOGLE_CX");
     if (GOOGLE_API_KEY && GOOGLE_CX) {
       for (const q of queries) {
-        if (allImages.length >= 10) break;
+        if (allImages.length >= 15) break;
         const results = await searchGoogleImages(q, GOOGLE_API_KEY, GOOGLE_CX);
         for (const r of results) {
           if (!allImages.some(i => i.url === r.url)) allImages.push(r);
@@ -553,17 +575,48 @@ async function searchFortlevImages(
       }
     }
   }
-  console.log(`[fortlev] Total unique images for ${capacity}L: ${allImages.length}`);
+  console.log(`[fortlev] Total unique images for ${type} ${capacity}L: ${allImages.length}`);
 
-  // Filter
-  const validKeywords = ["fortlev", "caixa", "reservatorio", "tanque", "polietileno", "agua", "litros"];
-  const invalidKeywords = ["banner", "logo", "sprite", "icon", "favicon", "carrinho"];
+  // ── Scoring with type-aware filtering ──
+  const validKeywords = ["fortlev", "polietileno", "litros"];
+  const invalidKeywords = ["banner", "logo", "sprite", "icon", "favicon", "carrinho", "loja", "site", "menu"];
+
+  // Cross-contamination keywords: penalize wrong type heavily
+  const caixaWords = ["caixa", "reservatorio", "tampa"];
+  const tanqueWords = ["tanque", "industrial"];
 
   const scored = allImages.map((img) => {
     const text = norm(img.title + " " + img.url);
     let score = 1;
+
+    // Positive: general relevance
     for (const kw of validKeywords) if (text.includes(kw)) score += 2;
+    if (text.includes(capacity)) score += 3;
+
+    // Negative: invalid images
     for (const kw of invalidKeywords) if (text.includes(kw)) score -= 5;
+
+    // Type-specific scoring (critical for avoiding cross-contamination)
+    if (isCaixa) {
+      for (const kw of caixaWords) if (text.includes(kw)) score += 4;
+      // Penalize if it mentions "tanque" (wrong type for caixa)
+      if (text.includes("tanque")) score -= 8;
+      if (text.includes("industrial")) score -= 8;
+      // Prefer blue caixa images
+      if (text.includes("azul")) score += 2;
+    } else if (isTanque) {
+      for (const kw of tanqueWords) if (text.includes(kw)) score += 4;
+      // Penalize if it mentions "caixa" (wrong type for tanque)
+      if (text.includes("caixa") && !text.includes("tanque")) score -= 8;
+    }
+
+    // Prefer product-isolated/frontal photos
+    if (text.includes("produto") || text.includes("frontal") || text.includes("isolated") || text.includes("recorte")) score += 3;
+    // Prefer images from Fortlev official sources
+    if (text.includes("fortlev.com")) score += 5;
+    // Prefer larger images (likely product photos)
+    if (text.includes("1000") || text.includes("grande") || text.includes("high")) score += 1;
+
     return { ...img, score };
   });
 
@@ -571,7 +624,7 @@ async function searchFortlevImages(
   const top = scored.filter((s) => s.score > 0).slice(0, 5);
 
   if (top.length === 0) {
-    errors.push("No valid images found after filtering");
+    errors.push(`No valid images found for ${type} ${capacity}L after filtering`);
     return { saved: 0, errors };
   }
 
@@ -589,7 +642,7 @@ async function searchFortlevImages(
     }
   }
 
-  if (saved === 0) errors.push("All image downloads failed");
+  if (saved === 0) errors.push(`All image downloads failed for ${type} ${capacity}L`);
   return { saved, errors };
 }
 

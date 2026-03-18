@@ -1,5 +1,5 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, LayoutGrid, ShoppingCart, User } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Home, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function StoreMobileBottomNav({

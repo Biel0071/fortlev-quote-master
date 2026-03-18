@@ -5,3 +5,8 @@
   padding: 0;
   text-align: left;
 }
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}

@@ -2309,6 +2309,84 @@ export type Database = {
         }
         Relationships: []
       }
+      shipping_rules: {
+        Row: {
+          active: boolean
+          created_at: string
+          formula_description: string
+          id: string
+          max_distance_km: number
+          max_weight_kg: number
+          min_freight: number
+          rate_per_km: number
+          rate_percent: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          formula_description?: string
+          id?: string
+          max_distance_km?: number
+          max_weight_kg?: number
+          min_freight?: number
+          rate_per_km?: number
+          rate_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          formula_description?: string
+          id?: string
+          max_distance_km?: number
+          max_weight_kg?: number
+          min_freight?: number
+          rate_per_km?: number
+          rate_percent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shipping_zones: {
+        Row: {
+          active: boolean
+          base_price: number
+          created_at: string
+          id: string
+          max_km: number
+          min_km: number
+          name: string
+          per_km_price: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          base_price?: number
+          created_at?: string
+          id?: string
+          max_km?: number
+          min_km?: number
+          name: string
+          per_km_price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          base_price?: number
+          created_at?: string
+          id?: string
+          max_km?: number
+          min_km?: number
+          name?: string
+          per_km_price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       store_banners: {
         Row: {
           active: boolean

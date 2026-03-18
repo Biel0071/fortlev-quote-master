@@ -37,34 +37,14 @@ export { default as AdminAiReports } from "./pages/AdminAiReports";
 export { default as AdminBatchOps } from "./pages/AdminBatchOps";
 export { default as AdminRecommendations } from "./pages/AdminRecommendations";
 
-// Payments / Gateway AllowPay
+// Payments
 export { default as AdminPaymentsLayout } from "./pages/payments/AdminPaymentsLayout";
 export { default as AdminPaymentsOverview } from "./pages/payments/AdminPaymentsOverview";
 export { default as AdminPaymentsGateways } from "./pages/payments/AdminPaymentsGateways";
 export { default as AdminPaymentsGatewayAdd } from "./pages/payments/AdminPaymentsGatewayAdd";
-export { default as AdminPaymentsGatewayLogs } from "./pages/payments/AdminPaymentsGatewayLogs";
-export { default as AdminPaymentsGatewayStatus } from "./pages/payments/AdminPaymentsGatewayStatus";
 export { default as AdminPaymentsCheckouts } from "./pages/payments/AdminPaymentsCheckouts";
-export { default as AdminPaymentsCheckoutCreate } from "./pages/payments/AdminPaymentsCheckoutCreate";
-export { default as AdminPaymentsCheckoutTemplates } from "./pages/payments/AdminPaymentsCheckoutTemplates";
-export { default as AdminPaymentsCheckoutWebhooks } from "./pages/payments/AdminPaymentsCheckoutWebhooks";
 export { default as AdminPaymentsMethods } from "./pages/payments/AdminPaymentsMethods";
-export { default as AdminPaymentsPix } from "./pages/payments/AdminPaymentsPix";
-export { default as AdminPaymentsCard } from "./pages/payments/AdminPaymentsCard";
-export { default as AdminPaymentsBoleto } from "./pages/payments/AdminPaymentsBoleto";
-export { default as AdminPaymentsSplit } from "./pages/payments/AdminPaymentsSplit";
 export { default as AdminPaymentsAntifraud } from "./pages/payments/AdminPaymentsAntifraud";
-export { default as AdminPaymentsAntifraudRules } from "./pages/payments/AdminPaymentsAntifraudRules";
-export { default as AdminPaymentsAntifraudScore } from "./pages/payments/AdminPaymentsAntifraudScore";
-export { default as AdminPaymentsAntifraudBlacklist } from "./pages/payments/AdminPaymentsAntifraudBlacklist";
 export { default as AdminPaymentsSubscriptions } from "./pages/payments/AdminPaymentsSubscriptions";
-export { default as AdminPaymentsSubscriptionsPlans } from "./pages/payments/AdminPaymentsSubscriptionsPlans";
-export { default as AdminPaymentsSubscriptionsClients } from "./pages/payments/AdminPaymentsSubscriptionsClients";
-export { default as AdminPaymentsSubscriptionsRecurring } from "./pages/payments/AdminPaymentsSubscriptionsRecurring";
 export { default as AdminPaymentsWebhooks } from "./pages/payments/AdminPaymentsWebhooks";
-export { default as AdminPaymentsWebhookEvents } from "./pages/payments/AdminPaymentsWebhookEvents";
-export { default as AdminPaymentsWebhookLogs } from "./pages/payments/AdminPaymentsWebhookLogs";
 export { default as AdminPaymentsApi } from "./pages/payments/AdminPaymentsApi";
-export { default as AdminPaymentsApiKeys } from "./pages/payments/AdminPaymentsApiKeys";
-export { default as AdminPaymentsApiDocs } from "./pages/payments/AdminPaymentsApiDocs";
-export { default as AdminPaymentsApiSandbox } from "./pages/payments/AdminPaymentsApiSandbox";

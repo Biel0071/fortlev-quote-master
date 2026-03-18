@@ -4,31 +4,21 @@ import {
   CreditCard,
   LayoutDashboard,
   Server,
-  Plus,
-  FileText,
-  Activity,
   ShoppingCart,
-  FileCode,
-  Layout,
-  Webhook,
   QrCode,
   CreditCard as CardIcon,
   Receipt,
   Split,
   Shield,
-  ListChecks,
-  BarChart3,
-  Ban,
   Repeat,
-  Users,
-  CalendarClock,
   Globe,
-  Zap,
   Key,
   BookOpen,
   TestTube,
   ChevronDown,
   ChevronRight,
+  FileCode,
+  Webhook,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,19 +31,14 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Server,
     items: [
       { label: "Todos Gateways", to: "/admin/payments/gateways", icon: Server },
-      { label: "Adicionar Gateway", to: "/admin/payments/gateways/add", icon: Plus },
-      { label: "Logs de Gateway", to: "/admin/payments/gateways/logs", icon: FileText },
-      { label: "Status do Sistema", to: "/admin/payments/gateways/status", icon: Activity },
+      { label: "Adicionar Gateway", to: "/admin/payments/gateways/add", icon: Server },
     ],
   },
   {
     label: "Checkouts",
     icon: ShoppingCart,
     items: [
-      { label: "Checkouts Criados", to: "/admin/payments/checkouts", icon: ShoppingCart },
-      { label: "Criar Checkout", to: "/admin/payments/checkouts/create", icon: Plus },
-      { label: "Templates", to: "/admin/payments/checkouts/templates", icon: Layout },
-      { label: "Webhooks Checkout", to: "/admin/payments/checkouts/webhooks", icon: Webhook },
+      { label: "Checkouts", to: "/admin/payments/checkouts", icon: ShoppingCart },
     ],
   },
   {
@@ -63,33 +48,28 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "PIX", to: "/admin/payments/methods/pix", icon: QrCode },
       { label: "Cartão", to: "/admin/payments/methods/card", icon: CardIcon },
       { label: "Boleto", to: "/admin/payments/methods/boleto", icon: Receipt },
-      { label: "Split de Pagamento", to: "/admin/payments/methods/split", icon: Split },
+      { label: "Split", to: "/admin/payments/methods/split", icon: Split },
     ],
   },
   {
     label: "Antifraude",
     icon: Shield,
     items: [
-      { label: "Regras", to: "/admin/payments/antifraud/rules", icon: ListChecks },
-      { label: "Score de Risco", to: "/admin/payments/antifraud/score", icon: BarChart3 },
-      { label: "Lista Negra", to: "/admin/payments/antifraud/blacklist", icon: Ban },
+      { label: "Regras", to: "/admin/payments/antifraud/rules", icon: Shield },
     ],
   },
   {
     label: "Assinaturas",
     icon: Repeat,
     items: [
-      { label: "Planos", to: "/admin/payments/subscriptions/plans", icon: CalendarClock },
-      { label: "Clientes", to: "/admin/payments/subscriptions/clients", icon: Users },
-      { label: "Cobranças Recorrentes", to: "/admin/payments/subscriptions/recurring", icon: Repeat },
+      { label: "Planos", to: "/admin/payments/subscriptions/plans", icon: Repeat },
     ],
   },
   {
     label: "Webhooks",
     icon: Webhook,
     items: [
-      { label: "Eventos", to: "/admin/payments/webhooks/events", icon: Zap },
-      { label: "Logs", to: "/admin/payments/webhooks/logs", icon: FileText },
+      { label: "Eventos e Logs", to: "/admin/payments/webhooks/events", icon: Webhook },
     ],
   },
   {
@@ -98,7 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "API Keys", to: "/admin/payments/api/keys", icon: Key },
       { label: "Documentação", to: "/admin/payments/api/docs", icon: BookOpen },
-      { label: "Testes Sandbox", to: "/admin/payments/api/sandbox", icon: TestTube },
+      { label: "Sandbox", to: "/admin/payments/api/sandbox", icon: TestTube },
     ],
   },
 ];
@@ -123,16 +103,14 @@ export default function AdminPaymentsLayout() {
 
   return (
     <div className="flex min-h-[calc(100vh-3rem)]">
-      {/* Sub-sidebar */}
       <aside className="w-64 border-r border-border bg-muted/30 overflow-y-auto shrink-0 hidden md:block">
         <div className="p-4 border-b border-border">
           <h2 className="font-bold text-sm flex items-center gap-2">
             <CreditCard className="h-4 w-4 text-primary" />
-            Gateway AllowPay
+            Pagamentos
           </h2>
         </div>
 
-        {/* Overview link */}
         <div className="px-2 pt-2">
           <button
             onClick={() => nav("/admin/payments")}
@@ -148,7 +126,6 @@ export default function AdminPaymentsLayout() {
           </button>
         </div>
 
-        {/* Groups */}
         <nav className="px-2 py-2 space-y-1">
           {NAV_GROUPS.map((group) => {
             const isOpen = openGroups[group.label] ?? false;
@@ -197,7 +174,6 @@ export default function AdminPaymentsLayout() {
         </nav>
       </aside>
 
-      {/* Content */}
       <div className="flex-1 min-w-0">
         <Outlet />
       </div>

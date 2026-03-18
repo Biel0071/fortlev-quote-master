@@ -184,8 +184,8 @@ export default function AdminCategoriesList() {
                 <div className="flex items-start justify-between gap-2">
                    <div
                       className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
-                      onClick={() => window.open(`/produtos?categoria=${c.slug}`, "_blank")}
-                      title="Ver produtos desta categoria"
+                       onClick={() => window.open(`/loja?categoria=${encodeURIComponent(c.slug)}`, "_blank")}
+                       title={`Ver ${c.product_count ?? 0} produtos desta categoria`}
                     >
                       <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-muted/40 overflow-hidden flex items-center justify-center">
                         {c.image_path ? (

@@ -56,6 +56,7 @@ export default function CheckoutPage() {
   const leadTracker = useCheckoutSessionTracker();
   const { activeProducts } = useStoreProducts();
   const contact = useStoreContact();
+  const { threshold: WHATSAPP_ROUTE_LIMIT } = useRoutingThreshold();
 
   useDynamicSeo({
     title: `Finalizar sua compra | ${contact.storeName || "Materiais de Construção"}`,

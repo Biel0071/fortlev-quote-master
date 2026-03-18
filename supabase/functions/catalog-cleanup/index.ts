@@ -542,8 +542,8 @@ async function rebuildFortlev(supabase: any) {
       if (imgResult.errors.length) errors.push(...imgResult.errors);
     }
 
-    // 5. Generate description
-    if (capacity && (!p.description || p.description.length < 50)) {
+    // 5. Generate/update description for all Fortlev products
+    if (capacity) {
       const desc = fortlevDescription(type, capacity);
       await supabase.from("store_products").update({ description: desc }).eq("id", p.id);
       descriptionsGenerated++;

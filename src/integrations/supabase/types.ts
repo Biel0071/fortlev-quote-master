@@ -1669,6 +1669,84 @@ export type Database = {
           },
         ]
       }
+      reviews_daily_engine: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          end_hour: number
+          id: string
+          image_percentage: number
+          max_reviews_per_day: number
+          max_reviews_per_product: number
+          max_total_per_product: number
+          min_reviews_per_day: number
+          start_hour: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          end_hour?: number
+          id?: string
+          image_percentage?: number
+          max_reviews_per_day?: number
+          max_reviews_per_product?: number
+          max_total_per_product?: number
+          min_reviews_per_day?: number
+          start_hour?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          end_hour?: number
+          id?: string
+          image_percentage?: number
+          max_reviews_per_day?: number
+          max_reviews_per_product?: number
+          max_total_per_product?: number
+          min_reviews_per_day?: number
+          start_hour?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reviews_daily_runs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          images_attached: number
+          products_covered: number
+          reviews_generated: number
+          run_date: string
+          status: string
+          target_count: number
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          images_attached?: number
+          products_covered?: number
+          reviews_generated?: number
+          run_date?: string
+          status?: string
+          target_count?: number
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          images_attached?: number
+          products_covered?: number
+          reviews_generated?: number
+          run_date?: string
+          status?: string
+          target_count?: number
+        }
+        Relationships: []
+      }
       sales_records: {
         Row: {
           created_at: string

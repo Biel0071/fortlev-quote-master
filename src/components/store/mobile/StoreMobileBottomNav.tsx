@@ -38,7 +38,7 @@ export function StoreMobileBottomNav({
       role="navigation"
       aria-label="Navegação"
     >
-      <div className="mx-auto flex h-16 max-w-lg items-center justify-around px-2">
+      <div className="mx-auto flex h-[60px] max-w-lg items-center justify-around px-2">
         {items.map((item) => {
           const Icon = item.icon;
           return (

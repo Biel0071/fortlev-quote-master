@@ -13,35 +13,43 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const webhookSecret = Deno.env.get("ALLOWPAY_WEBHOOK_SECRET")!;
+  const webhookSecret = Deno.env.get("ALLOWPAY_WEBHOOK_SECRET");
 
   const sb = createClient(supabaseUrl, serviceKey);
 
   try {
-    // Validate webhook secret
-    const incomingSecret =
-      req.headers.get("x-webhook-secret") ||
-      req.headers.get("x-allowpay-signature") ||
-      new URL(req.url).searchParams.get("secret");
+    // Optional webhook secret validation
+    if (webhookSecret) {
+      const incomingSecret =
+        req.headers.get("x-webhook-secret") ||
+        req.headers.get("x-allowpay-signature") ||
+        new URL(req.url).searchParams.get("secret");
 
-    if (incomingSecret !== webhookSecret) {
-      console.warn("Webhook secret inválido");
-      return new Response(
-        JSON.stringify({ error: "Webhook secret inválido" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (incomingSecret && incomingSecret !== webhookSecret) {
+        console.warn("Webhook secret inválido");
+        return new Response(
+          JSON.stringify({ error: "Webhook secret inválido" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const payload = await req.json();
-    const event = payload.event || payload.type || "unknown";
-    const paymentId = payload.payment_id || payload.data?.payment_id || payload.data?.id || payload.id;
+
+    // Codiguz postback format: { id, type, objectId, data: { ... } }
+    const postbackType = payload.type || "unknown";
+    const txData = payload.data || payload;
+    const externalId = payload.objectId || txData.id || payload.id;
+    const codiguzStatus = txData.status;
+
+    console.log(`Webhook recebido: type=${postbackType}, objectId=${externalId}, status=${codiguzStatus}`);
 
     // Log webhook event
     let webhookLogId: string | null = null;
     try {
       const { data: webhookLog } = await sb.from("payment_webhooks").insert({
         source: "allowpay",
-        event,
+        event: `${postbackType}.${codiguzStatus}`,
         payload,
         status: "received",
       }).select("id").single();
@@ -57,7 +65,7 @@ Deno.serve(async (req) => {
         method: "POST",
         url: "/allowpay-webhook",
         request_body: payload,
-        response_body: { event, payment_id: paymentId },
+        response_body: { type: postbackType, status: codiguzStatus, external_id: externalId },
         status_code: 200,
         duration_ms: 0,
       });
@@ -65,46 +73,51 @@ Deno.serve(async (req) => {
       // ignore
     }
 
-    // Process event
+    // Map Codiguz status to internal status
     const statusMap: Record<string, string> = {
-      "payment.created": "pending",
-      "payment.pending": "pending",
-      "payment.approved": "approved",
-      "payment.failed": "failed",
-      "payment.refunded": "refunded",
-      "payment.cancelled": "failed",
+      waiting_payment: "pending",
+      processing: "pending",
+      authorized: "pending",
+      paid: "approved",
+      refunded: "refunded",
+      refused: "failed",
+      chargedback: "failed",
+      canceled: "failed",
     };
 
-    const newStatus = statusMap[event];
+    const newStatus = statusMap[codiguzStatus];
 
-    if (newStatus && paymentId) {
-      // Update transaction status
+    if (newStatus && externalId) {
       try {
         const { data: txRows } = await sb
           .from("payment_transactions")
           .select("id, order_id")
-          .eq("external_id", paymentId);
+          .eq("external_id", externalId);
 
         if (txRows && txRows.length > 0) {
           const tx = txRows[0];
 
           await sb.from("payment_transactions").update({
             status: newStatus,
-            metadata_json: { last_webhook_event: event, updated_via: "webhook" },
+            metadata_json: {
+              last_webhook_event: codiguzStatus,
+              updated_via: "webhook",
+              paid_at: txData.paidAt || null,
+            },
           }).eq("id", tx.id);
 
-          // If approved, update the order to "pago"
-          if (event === "payment.approved" && tx.order_id) {
+          // If paid, update the order to "pago"
+          if (codiguzStatus === "paid" && tx.order_id) {
             await sb.from("store_orders").update({ status: "pago" }).eq("id", tx.order_id);
             console.log(`Pedido ${tx.order_id} atualizado para pago`);
           }
 
           // If refunded, update order
-          if (event === "payment.refunded" && tx.order_id) {
+          if (codiguzStatus === "refunded" && tx.order_id) {
             await sb.from("store_orders").update({ status: "reembolsado" }).eq("id", tx.order_id);
           }
         } else {
-          console.warn(`Transação não encontrada para payment_id: ${paymentId}`);
+          console.warn(`Transação não encontrada para external_id: ${externalId}`);
         }
       } catch (txErr) {
         console.error("Erro ao atualizar transação:", txErr);
@@ -121,7 +134,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ received: true, event }),
+      JSON.stringify({ received: true, type: postbackType, status: codiguzStatus }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
@@ -138,7 +151,7 @@ Deno.serve(async (req) => {
         duration_ms: 0,
       });
     } catch {
-      // ignore log failure
+      // ignore
     }
 
     return new Response(

@@ -1,13 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export interface CreatePaymentParams {
-  amount: number;
-  currency?: string;
-  payment_method: "pix" | "card" | "boleto";
+  amount: number; // in BRL (e.g. 10.50)
+  payment_method?: "pix" | "card" | "boleto";
   customer: {
     name: string;
     email: string;
     phone?: string;
+    document?: { type: "CPF" | "CNPJ"; number: string };
   };
   metadata?: {
     order_id?: string;
@@ -24,11 +24,13 @@ export interface CreatePaymentResult {
   payment_url: string | null;
   boleto_url: string | null;
   status: string;
+  expiration_date: string | null;
 }
 
 export interface PaymentStatusResult {
   payment_id: string;
   status: string;
+  mapped_status: string;
   details: Record<string, unknown>;
 }
 

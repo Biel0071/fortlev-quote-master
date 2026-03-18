@@ -32,9 +32,9 @@ export const HomeProductsByIds = React.forwardRef<HTMLDivElement, Props>(
     return (
       <div ref={ref}>
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
             {Array.from({ length: limit }).map((_, i) => (
-              <Skeleton key={i} className="h-[380px] w-full rounded-2xl" />
+              <Skeleton key={i} className="h-[320px] sm:h-[380px] w-full rounded-2xl" />
             ))}
           </div>
         ) : visible.length === 0 ? (

@@ -28,8 +28,8 @@ type Cat = {
   featured: boolean;
   active: boolean;
   image_path: string | null;
+  product_count?: number;
 };
-
 export default function AdminCategoriesList() {
   const nav = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -39,12 +39,29 @@ export default function AdminCategoriesList() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await cloud
-      .from("store_categories")
-      .select("id, name, slug, description, sort_order, featured, active, image_path")
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true });
-    setRows((data ?? []) as any);
+    const [catRes, countRes] = await Promise.all([
+      cloud
+        .from("store_categories")
+        .select("id, name, slug, description, sort_order, featured, active, image_path")
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
+      cloud
+        .from("store_products")
+        .select("id, category_id")
+        .eq("active", true),
+    ]);
+
+    const cats = (catRes.data ?? []) as Cat[];
+    const products = (countRes.data ?? []) as Array<{ id: string; category_id: string | null }>;
+
+    const countMap = new Map<string, number>();
+    for (const p of products) {
+      if (p.category_id) {
+        countMap.set(p.category_id, (countMap.get(p.category_id) ?? 0) + 1);
+      }
+    }
+
+    setRows(cats.map(c => ({ ...c, product_count: countMap.get(c.id) ?? 0 })));
     setLoading(false);
   };
 
@@ -167,8 +184,8 @@ export default function AdminCategoriesList() {
                 <div className="flex items-start justify-between gap-2">
                    <div
                       className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
-                      onClick={() => window.open(`/produtos?categoria=${c.slug}`, "_blank")}
-                      title="Ver produtos desta categoria"
+                       onClick={() => window.open(`/loja?categoria=${encodeURIComponent(c.slug)}`, "_blank")}
+                       title={`Ver ${c.product_count ?? 0} produtos desta categoria`}
                     >
                       <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-muted/40 overflow-hidden flex items-center justify-center">
                         {c.image_path ? (
@@ -183,7 +200,9 @@ export default function AdminCategoriesList() {
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-semibold text-sm leading-tight line-clamp-1">{c.name}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">/{c.slug}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          /{c.slug} · <span className="font-medium text-foreground">{c.product_count ?? 0}</span> {(c.product_count ?? 0) === 1 ? "produto" : "produtos"}
+                        </p>
                       </div>
                     </div>
 

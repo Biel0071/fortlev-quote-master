@@ -39,23 +39,33 @@ export default function AdminCategoriesList() {
 
   const load = async () => {
     setLoading(true);
-    const [catRes, countRes] = await Promise.all([
-      cloud
-        .from("store_categories")
-        .select("id, name, slug, description, sort_order, featured, active, image_path")
-        .order("sort_order", { ascending: true })
-        .order("name", { ascending: true }),
-      cloud
-        .from("store_products")
-        .select("id, category_id")
-        .eq("active", true),
-    ]);
+
+    // Fetch categories
+    const catRes = await cloud
+      .from("store_categories")
+      .select("id, name, slug, description, sort_order, featured, active, image_path")
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
 
     const cats = (catRes.data ?? []) as Cat[];
-    const products = (countRes.data ?? []) as Array<{ id: string; category_id: string | null }>;
+
+    // Fetch ALL products in pages of 1000 to avoid the default limit
+    const allProducts: Array<{ id: string; category_id: string | null }> = [];
+    let from = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data } = await cloud
+        .from("store_products")
+        .select("id, category_id")
+        .range(from, from + PAGE - 1);
+      if (!data || data.length === 0) break;
+      allProducts.push(...(data as Array<{ id: string; category_id: string | null }>));
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
 
     const countMap = new Map<string, number>();
-    for (const p of products) {
+    for (const p of allProducts) {
       if (p.category_id) {
         countMap.set(p.category_id, (countMap.get(p.category_id) ?? 0) + 1);
       }

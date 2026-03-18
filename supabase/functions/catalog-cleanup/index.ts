@@ -38,13 +38,53 @@ function norm(s: string) {
   return (s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
+// ─── OFFICIAL FORTLEV CATALOG (source of truth from quotation system) ──
+const FORTLEV_CATALOG: {
+  capacity: number;
+  type: "caixa" | "tanque" | "tanque_industrial" | "tanque_verde";
+  name: string;
+  price: number;
+  sku: string;
+}[] = [
+  // Caixas d'Água de Polietileno
+  { capacity: 100, type: "caixa", name: "Caixa d'Água de Polietileno 100L - Fortlev", price: 89.00, sku: "FORTLEV-CX-100" },
+  { capacity: 150, type: "caixa", name: "Caixa d'Água de Polietileno 150L - Fortlev", price: 115.00, sku: "FORTLEV-CX-150" },
+  { capacity: 250, type: "caixa", name: "Caixa d'Água de Polietileno 250L - Fortlev", price: 149.00, sku: "FORTLEV-CX-250" },
+  { capacity: 310, type: "caixa", name: "Caixa d'Água de Polietileno 310L - Fortlev", price: 169.00, sku: "FORTLEV-CX-310" },
+  { capacity: 500, type: "caixa", name: "Caixa d'Água de Polietileno 500L - Fortlev", price: 190.00, sku: "FORTLEV-CX-500" },
+  { capacity: 750, type: "caixa", name: "Caixa d'Água de Polietileno 750L - Fortlev", price: 219.00, sku: "FORTLEV-CX-750" },
+  { capacity: 1000, type: "caixa", name: "Caixa d'Água de Polietileno 1000L - Fortlev", price: 249.00, sku: "FORTLEV-CX-1000" },
+  { capacity: 1500, type: "caixa", name: "Caixa d'Água de Polietileno 1500L - Fortlev", price: 399.00, sku: "FORTLEV-CX-1500" },
+  { capacity: 2000, type: "caixa", name: "Caixa d'Água de Polietileno 2000L - Fortlev", price: 520.00, sku: "FORTLEV-CX-2000" },
+  { capacity: 3000, type: "caixa", name: "Caixa d'Água de Polietileno 3000L - Fortlev", price: 650.00, sku: "FORTLEV-CX-3000" },
+  { capacity: 5000, type: "caixa", name: "Caixa d'Água de Polietileno 5000L - Fortlev", price: 1699.00, sku: "FORTLEV-CX-5000" },
+  { capacity: 7500, type: "caixa", name: "Caixa d'Água de Polietileno 7500L - Fortlev", price: 2699.00, sku: "FORTLEV-CX-7500" },
+  { capacity: 10000, type: "caixa", name: "Caixa d'Água de Polietileno 10000L - Fortlev", price: 2999.00, sku: "FORTLEV-CX-10000" },
+  { capacity: 15000, type: "caixa", name: "Caixa d'Água de Polietileno 15000L - Fortlev", price: 4200.00, sku: "FORTLEV-CX-15000" },
+  { capacity: 20000, type: "caixa", name: "Caixa d'Água de Polietileno 20000L - Fortlev", price: 5500.00, sku: "FORTLEV-CX-20000" },
+
+  // Tanques de Polietileno
+  { capacity: 1000, type: "tanque", name: "Tanque de Polietileno 1000L - Fortlev", price: 266.00, sku: "FORTLEV-TQ-1000" },
+  { capacity: 2000, type: "tanque", name: "Tanque de Polietileno 2000L - Fortlev", price: 556.00, sku: "FORTLEV-TQ-2000" },
+  { capacity: 3000, type: "tanque", name: "Tanque de Polietileno 3000L - Fortlev", price: 696.00, sku: "FORTLEV-TQ-3000" },
+  { capacity: 5000, type: "tanque", name: "Tanque de Polietileno 5000L - Fortlev", price: 1818.00, sku: "FORTLEV-TQ-5000" },
+  { capacity: 10000, type: "tanque", name: "Tanque de Polietileno 10000L - Fortlev", price: 3209.00, sku: "FORTLEV-TQ-10000" },
+  { capacity: 15000, type: "tanque", name: "Tanque de Polietileno 15000L - Fortlev", price: 4494.00, sku: "FORTLEV-TQ-15000" },
+  { capacity: 20000, type: "tanque", name: "Tanque de Polietileno 20000L - Fortlev", price: 5885.00, sku: "FORTLEV-TQ-20000" },
+
+  // Tanques Industriais
+  { capacity: 10000, type: "tanque_industrial", name: "Tanque Industrial de Polietileno 10000L - Fortlev", price: 3359.00, sku: "FORTLEV-TI-10000" },
+  { capacity: 15000, type: "tanque_industrial", name: "Tanque Industrial de Polietileno 15000L - Fortlev", price: 4704.00, sku: "FORTLEV-TI-15000" },
+  { capacity: 20000, type: "tanque_industrial", name: "Tanque Industrial de Polietileno 20000L - Fortlev", price: 6160.00, sku: "FORTLEV-TI-20000" },
+
+  // Tanques Verdes
+  { capacity: 10000, type: "tanque_verde", name: "Tanque de Polietileno Verde 10000L - Fortlev", price: 3299.00, sku: "FORTLEV-TV-10000" },
+  { capacity: 15000, type: "tanque_verde", name: "Tanque de Polietileno Verde 15000L - Fortlev", price: 4620.00, sku: "FORTLEV-TV-15000" },
+  { capacity: 20000, type: "tanque_verde", name: "Tanque de Polietileno Verde 20000L - Fortlev", price: 6050.00, sku: "FORTLEV-TV-20000" },
+];
+
 // ─── SCORING-BASED CATEGORY RULES (priority order) ────────────
-// Each keyword has a weight. Category with highest total score wins.
-// Priority field breaks ties (lower = higher priority).
-type ScoredCategory = {
-  priority: number;
-  keywords: [string, number][];  // [keyword, weight]
-};
+type ScoredCategory = { priority: number; keywords: [string, number][] };
 
 const SCORED_CATEGORIES: Record<string, ScoredCategory> = {
   "Pisos e Porcelanatos": {
@@ -103,40 +143,22 @@ const SCORED_CATEGORIES: Record<string, ScoredCategory> = {
   },
   "Telhas e Coberturas": {
     priority: 6,
-    keywords: [
-      ["telha", 10], ["cumeeira", 10], ["rufo", 9], ["calha", 8],
-      ["eternit", 8], ["brasilit", 8], ["fibrocimento", 9],
-    ],
+    keywords: [["telha", 10], ["cumeeira", 10], ["rufo", 9], ["calha", 8], ["eternit", 8], ["brasilit", 8], ["fibrocimento", 9]],
   },
   "Estruturas": {
     priority: 7,
-    keywords: [
-      ["vergalhao", 10], ["coluna", 7], ["viga", 7], ["trelica", 9],
-      ["malha", 6], ["ferro", 5], ["armacao", 8], ["arame", 6],
-      ["gerdau", 8], ["ca50", 9], ["ca60", 9],
-    ],
+    keywords: [["vergalhao", 10], ["coluna", 7], ["viga", 7], ["trelica", 9], ["malha", 6], ["ferro", 5], ["armacao", 8], ["arame", 6], ["gerdau", 8], ["ca50", 9], ["ca60", 9]],
   },
   "Portas e Janelas": {
     priority: 8,
-    keywords: [
-      ["porta ", 8], ["janela", 9], ["batente", 9], ["guarnicao", 8],
-      ["marco", 6], ["porta aluminio", 10], ["porta madeira", 10],
-      ["porta correr", 10], ["porta pivotante", 10], ["janela aluminio", 10],
-      ["veneziana", 9], ["vitro", 7],
-    ],
+    keywords: [["porta ", 8], ["janela", 9], ["batente", 9], ["guarnicao", 8], ["marco", 6], ["porta aluminio", 10], ["porta madeira", 10], ["porta correr", 10], ["porta pivotante", 10], ["janela aluminio", 10], ["veneziana", 9], ["vitro", 7]],
   },
   "Elétrica": {
     priority: 9,
-    keywords: [
-      ["fio", 5], ["cabo", 5], ["disjuntor", 10], ["tomada", 9],
-      ["interruptor", 9], ["quadro distribuicao", 10], ["condulete", 9],
-      ["eletroduto", 9], ["lampada", 8], ["luminaria", 8],
-      ["led", 4], ["reator", 8], ["pial", 7], ["tramontina", 5],
-    ],
+    keywords: [["fio", 5], ["cabo", 5], ["disjuntor", 10], ["tomada", 9], ["interruptor", 9], ["quadro distribuicao", 10], ["condulete", 9], ["eletroduto", 9], ["lampada", 8], ["luminaria", 8], ["led", 4], ["reator", 8], ["pial", 7], ["tramontina", 5]],
   },
 };
 
-// Negative keywords: if product name matches, EXCLUDE from category
 const NEGATIVE_RULES: Record<string, string[]> = {
   "Pisos e Porcelanatos": ["argamassa", "rejunte", "massa colante", "cimento", "graute"],
   "Ferramentas": ["porcelanato", "ceramica", "piso", "azulejo", "revestimento"],
@@ -149,40 +171,24 @@ function scoreProduct(productName: string): { category: string; score: number; c
   for (const [catName, config] of Object.entries(SCORED_CATEGORIES)) {
     let totalScore = 0;
     const negatives = NEGATIVE_RULES[catName] || [];
-
-    // Check negative rules: if a negative keyword is found, reduce priority heavily
     let hasNegative = false;
     for (const neg of negatives) {
-      if (nameLower.includes(norm(neg))) {
-        hasNegative = true;
-        break;
-      }
+      if (nameLower.includes(norm(neg))) { hasNegative = true; break; }
     }
-
     for (const [kw, weight] of config.keywords) {
-      if (nameLower.includes(norm(kw))) {
-        totalScore += weight;
-      }
+      if (nameLower.includes(norm(kw))) totalScore += weight;
     }
-
     if (totalScore > 0) {
-      // Penalize if negative keyword found
       if (hasNegative) totalScore = Math.floor(totalScore * 0.3);
       results.push({ cat: catName, score: totalScore, priority: config.priority });
     }
   }
 
   if (results.length === 0) return null;
-
-  // Sort by score desc, then priority asc (lower = better)
   results.sort((a, b) => b.score - a.score || a.priority - b.priority);
-
   const best = results[0];
-  // Minimum threshold: score must be >= 7
   if (best.score < 7) return null;
-
-  const confidence = Math.min(100, best.score * 5);
-  return { category: best.cat, score: best.score, confidence };
+  return { category: best.cat, score: best.score, confidence: Math.min(100, best.score * 5) };
 }
 
 // ─── RECLASSIFY ────────────────────────────────────────────────
@@ -190,27 +196,19 @@ async function reclassify(supabase: any) {
   const { data: cats } = await supabase.from("store_categories").select("id, name, active");
   const catMap = new Map(cats.map((c: any) => [c.name, c]));
 
-  // Also try to create missing categories
   const neededCats = Object.keys(SCORED_CATEGORIES);
   for (const name of neededCats) {
     if (!catMap.has(name)) {
-      const { data: newCat } = await supabase.from("store_categories")
-        .insert({ name, active: true })
-        .select("id, name, active")
-        .single();
+      const { data: newCat } = await supabase.from("store_categories").insert({ name, active: true }).select("id, name, active").single();
       if (newCat) catMap.set(name, newCat);
     }
   }
 
-  // Get ALL products (not just Outros) to re-audit
   const allProducts: any[] = [];
   let from = 0;
   const PAGE = 1000;
   while (true) {
-    const { data, error } = await supabase
-      .from("store_products")
-      .select("id, name, category, category_id")
-      .range(from, from + PAGE - 1);
+    const { data, error } = await supabase.from("store_products").select("id, name, category, category_id").range(from, from + PAGE - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
     allProducts.push(...data);
@@ -218,10 +216,8 @@ async function reclassify(supabase: any) {
     from += PAGE;
   }
 
-  // Find the "Outros" category id
   const outrosCat = cats.find((c: any) => c.name === "Outros");
   const outrosId = outrosCat?.id;
-
   const report: any[] = [];
   const categoriesToActivate = new Set<string>();
   const updates: { id: string; catId: string; catName: string }[] = [];
@@ -229,38 +225,21 @@ async function reclassify(supabase: any) {
   for (const p of allProducts) {
     const isOutros = p.category_id === outrosId || (p.category || "").toLowerCase() === "outros";
     const result = scoreProduct(p.name);
-
     if (!result) continue;
-
     const targetCat = catMap.get(result.category);
     if (!targetCat) continue;
-
-    // Skip if already correctly classified
     if (p.category_id === targetCat.id) continue;
-
-    // For non-Outros products, only reclassify if confidence is very high (>=80)
     if (!isOutros && result.confidence < 80) continue;
-
     if (!targetCat.active) categoriesToActivate.add(result.category);
-
     updates.push({ id: p.id, catId: targetCat.id, catName: result.category });
-    report.push({
-      product: p.name,
-      from: p.category || "Outros",
-      to: result.category,
-      score: result.score,
-      confidence: result.confidence,
-      motivo: `Score ${result.score} (keywords matched)`,
-    });
+    report.push({ product: p.name, from: p.category || "Outros", to: result.category, score: result.score, confidence: result.confidence });
   }
 
-  // Activate inactive categories
   for (const catName of categoriesToActivate) {
     const cat = catMap.get(catName);
     if (cat) await supabase.from("store_categories").update({ active: true }).eq("id", cat.id);
   }
 
-  // Batch update products by category
   const byCat: Record<string, { catName: string; ids: string[] }> = {};
   for (const u of updates) {
     if (!byCat[u.catId]) byCat[u.catId] = { catName: u.catName, ids: [] };
@@ -271,30 +250,18 @@ async function reclassify(supabase: any) {
   for (const [catId, { catName, ids }] of Object.entries(byCat)) {
     for (let i = 0; i < ids.length; i += 100) {
       const batch = ids.slice(i, i + 100);
-      const { error } = await supabase
-        .from("store_products")
-        .update({ category_id: catId, category: catName })
-        .in("id", batch);
+      const { error } = await supabase.from("store_products").update({ category_id: catId, category: catName }).in("id", batch);
       if (!error) moved += batch.length;
     }
   }
 
-  return {
-    total_products: allProducts.length,
-    moved,
-    categories_activated: [...categoriesToActivate],
-    report: report.slice(0, 200),
-  };
+  return { total_products: allProducts.length, moved, categories_activated: [...categoriesToActivate], report: report.slice(0, 200) };
 }
 
 // ─── PRICE FIXING ──────────────────────────────────────────────
 async function fixPrices(supabase: any) {
   const { data: intel } = await supabase.from("price_intelligence").select("*");
-  const { data: products, error } = await supabase
-    .from("store_products")
-    .select("id, name, price, category, category_id")
-    .eq("active", true);
-
+  const { data: products, error } = await supabase.from("store_products").select("id, name, price, category, category_id").eq("active", true);
   if (error) throw error;
 
   const report: any[] = [];
@@ -348,10 +315,11 @@ async function fixPrices(supabase: any) {
 
 // ─── REBUILD FORTLEV ───────────────────────────────────────────
 
-function extractCapacity(name: string): string | null {
+function extractCapacity(name: string): number | null {
+  // Match patterns like "10.000L", "10000L", "1000 L", "1000lts", "100L"
   const m = name.match(/(\d[\d.]*)\s*l/i);
   if (!m) return null;
-  return m[1].replace(/\./g, "");
+  return parseInt(m[1].replace(/\./g, ""), 10);
 }
 
 type FortlevType = "caixa" | "tanque" | "tanque_industrial" | "tanque_verde" | "fossa" | "outro";
@@ -362,30 +330,24 @@ function classifyFortlev(name: string): FortlevType {
   if (n.includes("industrial")) return "tanque_industrial";
   if (n.includes("verde")) return "tanque_verde";
   if (n.includes("tanque")) return "tanque";
-  if (n.includes("caixa") || n.includes("reservatorio") || n.includes("reservatório")) return "caixa";
+  if (n.includes("caixa") && (n.includes("agua") || n.includes("polietileno"))) return "caixa";
+  if (n.includes("reservatorio")) return "caixa";
   return "outro";
 }
 
-function officialName(type: FortlevType, capacity: string | null): string | null {
-  if (!capacity) return null;
-  switch (type) {
-    case "caixa": return `Caixa d'Água de Polietileno ${capacity}L - Fortlev`;
-    case "tanque": return `Tanque de Polietileno ${capacity}L - Fortlev`;
-    case "tanque_industrial": return `Tanque Industrial de Polietileno ${capacity}L - Fortlev`;
-    case "tanque_verde": return `Tanque de Polietileno Verde ${capacity}L - Fortlev`;
-    case "fossa": return null; // keep original
-    default: return null;
-  }
-}
-
-function fortlevDescription(type: FortlevType, capacity: string): string {
-  const typeLabel = type === "tanque" || type === "tanque_industrial" || type === "tanque_verde"
+function fortlevDescription(type: FortlevType, capacity: number): string {
+  const isTanque = type === "tanque" || type === "tanque_industrial" || type === "tanque_verde";
+  const typeLabel = isTanque
     ? `Tanque de Polietileno ${capacity}L`
     : `Caixa d'Água de Polietileno ${capacity}L`;
 
-  return `A ${typeLabel} Fortlev é produzida em polietileno de alta resistência, garantindo durabilidade, proteção contra raios UV e vedação segura.
+  const usage = isTanque
+    ? "Ideal para armazenamento de água em propriedades rurais, indústrias e comércios."
+    : "Indicada para residências, comércios e pequenas instalações.";
 
-Ideal para residências, comércios e instalações industriais.
+  return `A ${typeLabel} Fortlev é fabricada em polietileno de alta resistência, garantindo durabilidade e vedação segura.
+
+${usage}
 
 **Características:**
 • Fabricada em polietileno de alta densidade
@@ -395,7 +357,33 @@ Ideal para residências, comércios e instalações industriais.
 • Fácil instalação e manutenção
 • Produto original Fortlev com garantia de fábrica
 
-**Capacidade:** ${capacity} litros`;
+**Capacidade:** ${capacity.toLocaleString("pt-BR")} litros`;
+}
+
+// ─── IMAGE SEARCH ──────────────────────────────────────────────
+
+async function searchGoogleImages(query: string, apiKey: string, cx: string): Promise<{ url: string; title: string; displayLink: string }[]> {
+  const googleUrl = new URL("https://www.googleapis.com/customsearch/v1");
+  googleUrl.searchParams.set("key", apiKey);
+  googleUrl.searchParams.set("cx", cx);
+  googleUrl.searchParams.set("q", query);
+  googleUrl.searchParams.set("searchType", "image");
+  googleUrl.searchParams.set("num", "10");
+  googleUrl.searchParams.set("imgSize", "large");
+
+  try {
+    const resp = await fetch(googleUrl.toString());
+    if (!resp.ok) {
+      console.error(`Google API error ${resp.status}`);
+      return [];
+    }
+    const payload = await resp.json();
+    return (Array.isArray(payload?.items) ? payload.items : []).map((item: any) => ({
+      url: item?.link || "",
+      title: item?.title || "",
+      displayLink: item?.displayLink || "",
+    })).filter((i: any) => i.url);
+  } catch { return []; }
 }
 
 async function fetchHtml(url: string): Promise<string> {
@@ -407,7 +395,6 @@ async function fetchHtml(url: string): Promise<string> {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
       },
     });
     if (!response.ok) return "";
@@ -415,15 +402,11 @@ async function fetchHtml(url: string): Promise<string> {
   } catch { return ""; } finally { clearTimeout(timeout); }
 }
 
-async function searchDuckDuckGoImages(query: string): Promise<{ url: string; title: string }[]> {
+async function searchDuckDuckGoImages(query: string): Promise<{ url: string; title: string; displayLink: string }[]> {
   const html = await fetchHtml(`https://duckduckgo.com/?q=${encodeURIComponent(query)}&iax=images&ia=images`);
   if (!html) return [];
-
-  const vqd = html.match(/vqd=['"]([^'"]+)['"]/i)?.[1] ?? html.match(/"vqd":"([^"]+)"/i)?.[1] ?? html.match(/vqd=([^&"']+)/i)?.[1] ?? "";
-  if (!vqd) {
-    console.log(`[ddg] No vqd found for "${query}"`);
-    return [];
-  }
+  const vqd = html.match(/vqd=['"]([^'"]+)['"]/i)?.[1] ?? html.match(/"vqd":"([^"]+)"/i)?.[1] ?? "";
+  if (!vqd) return [];
 
   const endpoint = new URL("https://duckduckgo.com/i.js");
   endpoint.searchParams.set("q", query);
@@ -435,9 +418,8 @@ async function searchDuckDuckGoImages(query: string): Promise<{ url: string; tit
 
   try {
     const response = await fetch(endpoint.toString(), {
-      method: "GET",
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0",
         Referer: "https://duckduckgo.com/",
         "X-Requested-With": "XMLHttpRequest",
         Accept: "application/json,text/javascript,*/*;q=0.1",
@@ -448,40 +430,13 @@ async function searchDuckDuckGoImages(query: string): Promise<{ url: string; tit
     return (Array.isArray(data?.results) ? data.results : []).map((item: any) => ({
       url: String(item?.image || ""),
       title: String(item?.title || ""),
+      displayLink: String(item?.source || ""),
     })).filter((i: any) => i.url && i.url.startsWith("http"));
   } catch { return []; }
 }
 
-async function searchGoogleImages(query: string, apiKey: string, cx: string): Promise<{ url: string; title: string }[]> {
-  const googleUrl = new URL("https://www.googleapis.com/customsearch/v1");
-  googleUrl.searchParams.set("key", apiKey);
-  googleUrl.searchParams.set("cx", cx);
-  googleUrl.searchParams.set("q", query);
-  googleUrl.searchParams.set("searchType", "image");
-  googleUrl.searchParams.set("num", "10");
-  googleUrl.searchParams.set("start", "1");
-  googleUrl.searchParams.set("imgSize", "large");
-
-  try {
-    const resp = await fetch(googleUrl.toString());
-    if (!resp.ok) {
-      const errBody = await resp.text().catch(() => "");
-      console.error(`Google API error ${resp.status}: ${errBody.slice(0, 500)}`);
-      return [];
-    }
-    const payload = await resp.json();
-    return (Array.isArray(payload?.items) ? payload.items : []).map((item: any) => ({
-      url: item?.link || "",
-      title: item?.title || "",
-    })).filter((i: any) => i.url);
-  } catch { return []; }
-}
-
 async function downloadAndStoreImage(
-  supabase: any,
-  imageUrl: string,
-  productId: string,
-  index: number
+  supabase: any, imageUrl: string, productId: string, index: number
 ): Promise<string | null> {
   try {
     const controller = new AbortController();
@@ -497,7 +452,7 @@ async function downloadAndStoreImage(
     if (!ct.includes("image")) return null;
 
     const blob = await resp.blob();
-    if (blob.size < 5000) return null; // too small
+    if (blob.size < 5000) return null; // too small = likely placeholder
 
     const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
     const path = `${productId}/${index}.${ext}`;
@@ -507,7 +462,7 @@ async function downloadAndStoreImage(
       .from("product-images")
       .upload(path, arrayBuffer, { contentType: ct, upsert: true });
 
-    if (error) return null;
+    if (error) { console.error(`Upload error for ${path}:`, error.message); return null; }
     return path;
   } catch { return null; }
 }
@@ -516,121 +471,136 @@ async function searchFortlevImages(
   supabase: any,
   productId: string,
   type: FortlevType,
-  capacity: string
+  capacity: number
 ): Promise<{ saved: number; errors: string[] }> {
   const errors: string[] = [];
-
-  // ── Type-specific queries to avoid cross-contamination ──
   const isCaixa = type === "caixa";
-  const isTanque = type === "tanque" || type === "tanque_industrial" || type === "tanque_verde";
+  const isTanqueIndustrial = type === "tanque_industrial";
+  const isTanqueVerde = type === "tanque_verde";
+  const isTanque = type === "tanque" || isTanqueIndustrial || isTanqueVerde;
 
+  // Build type-specific queries — CRITICAL: never mix caixa/tanque terms
   let queries: string[];
   if (isCaixa) {
     queries = [
-      `Fortlev caixa d'água ${capacity}L polietileno produto foto`,
-      `caixa d'água Fortlev ${capacity} litros polietileno azul`,
-      `Fortlev caixa dagua ${capacity}L produto isolado`,
+      `caixa d'água Fortlev ${capacity}L polietileno produto`,
+      `Fortlev caixa d'água ${capacity} litros polietileno foto produto`,
+      `caixa dagua polietileno ${capacity}L Fortlev azul`,
     ];
-  } else if (type === "tanque_industrial") {
+  } else if (isTanqueIndustrial) {
     queries = [
-      `Fortlev tanque industrial polietileno ${capacity}L produto`,
-      `tanque industrial Fortlev ${capacity} litros`,
+      `tanque industrial Fortlev ${capacity}L polietileno produto`,
+      `Fortlev tanque industrial polietileno ${capacity} litros`,
     ];
-  } else if (type === "tanque_verde") {
+  } else if (isTanqueVerde) {
     queries = [
-      `Fortlev tanque polietileno verde ${capacity}L produto`,
-      `tanque verde Fortlev ${capacity} litros`,
+      `tanque Fortlev verde ${capacity}L polietileno produto`,
+      `Fortlev tanque polietileno verde ${capacity} litros`,
     ];
   } else {
     queries = [
-      `Fortlev tanque polietileno ${capacity}L produto foto`,
-      `tanque Fortlev ${capacity} litros polietileno`,
+      `tanque Fortlev ${capacity}L polietileno produto`,
+      `Fortlev tanque polietileno ${capacity} litros foto`,
     ];
   }
 
-  const allImages: { url: string; title: string }[] = [];
+  const allImages: { url: string; title: string; displayLink: string }[] = [];
 
-  // Try DuckDuckGo first
-  for (const q of queries) {
-    if (allImages.length >= 15) break;
-    console.log(`[fortlev] DDG search: "${q}"`);
-    const results = await searchDuckDuckGoImages(q);
-    console.log(`[fortlev] DDG got ${results.length} results`);
-    for (const r of results) {
-      if (!allImages.some(i => i.url === r.url)) allImages.push(r);
-    }
-  }
-
-  // Fallback to Google if available
-  if (allImages.length < 3) {
-    const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
-    const GOOGLE_CX = Deno.env.get("GOOGLE_CX");
-    if (GOOGLE_API_KEY && GOOGLE_CX) {
-      for (const q of queries) {
-        if (allImages.length >= 15) break;
-        const results = await searchGoogleImages(q, GOOGLE_API_KEY, GOOGLE_CX);
-        for (const r of results) {
-          if (!allImages.some(i => i.url === r.url)) allImages.push(r);
-        }
+  // Try Google first (better quality results)
+  const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
+  const GOOGLE_CX = Deno.env.get("GOOGLE_CX");
+  if (GOOGLE_API_KEY && GOOGLE_CX) {
+    for (const q of queries) {
+      if (allImages.length >= 20) break;
+      console.log(`[fortlev] Google search: "${q}"`);
+      const results = await searchGoogleImages(q, GOOGLE_API_KEY, GOOGLE_CX);
+      console.log(`[fortlev] Google got ${results.length} results`);
+      for (const r of results) {
+        if (!allImages.some(i => i.url === r.url)) allImages.push(r);
       }
     }
   }
+
+  // Fallback to DuckDuckGo
+  if (allImages.length < 5) {
+    for (const q of queries) {
+      if (allImages.length >= 20) break;
+      console.log(`[fortlev] DDG search: "${q}"`);
+      const results = await searchDuckDuckGoImages(q);
+      console.log(`[fortlev] DDG got ${results.length} results`);
+      for (const r of results) {
+        if (!allImages.some(i => i.url === r.url)) allImages.push(r);
+      }
+    }
+  }
+
   console.log(`[fortlev] Total unique images for ${type} ${capacity}L: ${allImages.length}`);
 
-  // ── Scoring with type-aware filtering ──
-  const validKeywords = ["fortlev", "polietileno", "litros"];
-  const invalidKeywords = ["banner", "logo", "sprite", "icon", "favicon", "carrinho", "loja", "site", "menu"];
-
-  // Cross-contamination keywords: penalize wrong type heavily
-  const caixaWords = ["caixa", "reservatorio", "tampa"];
-  const tanqueWords = ["tanque", "industrial"];
+  // ── Strict scoring with type-aware filtering ──
+  const invalidKeywords = ["banner", "logo", "sprite", "icon", "favicon", "carrinho", "loja", "menu", "svg", "gif", "site", "header", "footer"];
+  const invalidUrlPatterns = ["facebook", "instagram", "youtube", "twitter", "tiktok", "whatsapp"];
 
   const scored = allImages.map((img) => {
-    const text = norm(img.title + " " + img.url);
-    let score = 1;
+    const text = norm(img.title + " " + img.url + " " + img.displayLink);
+    let score = 0;
 
-    // Positive: general relevance
-    for (const kw of validKeywords) if (text.includes(kw)) score += 2;
-    if (text.includes(capacity)) score += 3;
+    // HARD REJECT: invalid images
+    for (const kw of invalidKeywords) if (text.includes(kw)) return { ...img, score: -100 };
+    for (const kw of invalidUrlPatterns) if (text.includes(kw)) return { ...img, score: -100 };
 
-    // Negative: invalid images
-    for (const kw of invalidKeywords) if (text.includes(kw)) score -= 5;
+    // Official source bonus
+    if (text.includes("fortlev.com")) score += 10;
+    if (text.includes("fortlev")) score += 4;
 
-    // Type-specific scoring (critical for avoiding cross-contamination)
+    // Capacity match
+    if (text.includes(String(capacity))) score += 5;
+
+    // ── CRITICAL: Type cross-contamination prevention ──
     if (isCaixa) {
-      for (const kw of caixaWords) if (text.includes(kw)) score += 4;
-      // Penalize if it mentions "tanque" (wrong type for caixa)
-      if (text.includes("tanque")) score -= 8;
-      if (text.includes("industrial")) score -= 8;
-      // Prefer blue caixa images
-      if (text.includes("azul")) score += 2;
+      // Boost caixa-specific keywords
+      if (text.includes("caixa")) score += 6;
+      if (text.includes("reservatorio")) score += 4;
+      if (text.includes("azul")) score += 3;
+      // HARD PENALTY for tanque keywords (cross-contamination)
+      if (text.includes("tanque")) score -= 15;
+      if (text.includes("industrial")) score -= 15;
+      if (text.includes("verde") && !text.includes("caixa")) score -= 10;
     } else if (isTanque) {
-      for (const kw of tanqueWords) if (text.includes(kw)) score += 4;
-      // Penalize if it mentions "caixa" (wrong type for tanque)
-      if (text.includes("caixa") && !text.includes("tanque")) score -= 8;
+      // Boost tanque-specific keywords
+      if (text.includes("tanque")) score += 6;
+      // HARD PENALTY for caixa keywords
+      if (text.includes("caixa") && !text.includes("tanque")) score -= 15;
+      if (isTanqueIndustrial && text.includes("industrial")) score += 6;
+      if (isTanqueVerde && text.includes("verde")) score += 6;
     }
 
-    // Prefer product-isolated/frontal photos
-    if (text.includes("produto") || text.includes("frontal") || text.includes("isolated") || text.includes("recorte")) score += 3;
-    // Prefer images from Fortlev official sources
-    if (text.includes("fortlev.com")) score += 5;
-    // Prefer larger images (likely product photos)
-    if (text.includes("1000") || text.includes("grande") || text.includes("high")) score += 1;
+    // Prefer frontal/product photos (these should be main image)
+    if (text.includes("produto") || text.includes("frontal") || text.includes("isolated")) score += 4;
+    if (text.includes("fundo branco") || text.includes("recorte") || text.includes("recortada")) score += 3;
+    // Product detail keywords
+    if (text.includes("tampa")) score += 1;
+    if (text.includes("borda")) score += 1;
+    if (text.includes("detalhe")) score += 1;
+
+    // Prefer polietileno mention
+    if (text.includes("polietileno")) score += 3;
 
     return { ...img, score };
   });
 
+  // Sort by score desc, filter positive only
   scored.sort((a, b) => b.score - a.score);
-  const top = scored.filter((s) => s.score > 0).slice(0, 5);
+  const top = scored.filter((s) => s.score > 0).slice(0, 4);
 
   if (top.length === 0) {
-    errors.push(`No valid images found for ${type} ${capacity}L after filtering`);
+    errors.push(`No valid images found for ${type} ${capacity}L (${allImages.length} candidates all filtered)`);
     return { saved: 0, errors };
   }
 
-  // Download and store images
+  // Download and store - sort_order 0 = frontal/main image
   let saved = 0;
   for (let i = 0; i < top.length; i++) {
+    console.log(`[fortlev] Downloading #${i} (score=${top[i].score}): ${top[i].url.slice(0, 80)}`);
     const path = await downloadAndStoreImage(supabase, top[i].url, productId, i);
     if (path) {
       await supabase.from("store_product_images").insert({
@@ -651,11 +621,11 @@ async function rebuildFortlev(supabase: any) {
   const { data: hidCat } = await supabase.from("store_categories").select("id, name").eq("name", "Hidráulica").single();
   const hidraulicaId = hidCat?.id;
 
-  // Fetch ALL fortlev-related products
+  // Fetch ALL fortlev products from store
   const { data: allFortlev } = await supabase
     .from("store_products")
     .select("id, name, price, category_id, description, sku")
-    .or("name.ilike.%fortlev%,name.ilike.%caixa d%agua%,name.ilike.%caixa dagua%,name.ilike.%reservatorio%");
+    .or("name.ilike.%fortlev%,name.ilike.%caixa d%polietileno%,name.ilike.%tanque de polietileno%");
 
   if (!allFortlev || allFortlev.length === 0) {
     return { fortlev_total: 0, report: [], message: "Nenhum produto Fortlev encontrado" };
@@ -663,34 +633,73 @@ async function rebuildFortlev(supabase: any) {
 
   const report: any[] = [];
   let namesFixed = 0;
+  let pricesUpdated = 0;
+  let skusGenerated = 0;
   let imagesRemoved = 0;
   let imagesImported = 0;
   let descriptionsGenerated = 0;
-  const errors: string[] = [];
+  const noMatch: string[] = [];
+  const allErrors: string[] = [];
 
   for (const p of allFortlev) {
     const type = classifyFortlev(p.name);
     const capacity = extractCapacity(p.name);
 
-    if (type === "outro" || type === "fossa") {
-      report.push({ product: p.name, action: "skipped", reason: type === "fossa" ? "fossa séptica" : "tipo não identificado" });
+    // Skip non-Fortlev types
+    if (type === "outro") {
+      report.push({ product: p.name, action: "skipped", reason: "tipo não identificado como Fortlev" });
+      continue;
+    }
+    if (type === "fossa") {
+      report.push({ product: p.name, action: "skipped", reason: "fossa séptica - mantém original" });
+      continue;
+    }
+    if (!capacity) {
+      report.push({ product: p.name, action: "skipped", reason: "capacidade não detectada" });
       continue;
     }
 
-    // 1. Standardize name
-    const newName = officialName(type, capacity);
-    const nameChanged = newName && newName !== p.name;
-    if (nameChanged) {
-      await supabase.from("store_products").update({ name: newName }).eq("id", p.id);
-      namesFixed++;
+    // ── Match with official catalog ──
+    const catalogMatch = FORTLEV_CATALOG.find(c => c.capacity === capacity && c.type === type);
+
+    const updateData: Record<string, any> = {};
+
+    if (catalogMatch) {
+      // Use official name, price, sku
+      if (p.name !== catalogMatch.name) {
+        updateData.name = catalogMatch.name;
+        namesFixed++;
+      }
+      if (p.price !== catalogMatch.price) {
+        updateData.price = catalogMatch.price;
+        pricesUpdated++;
+      }
+      if (p.sku !== catalogMatch.sku) {
+        updateData.sku = catalogMatch.sku;
+        skusGenerated++;
+      }
+    } else {
+      noMatch.push(`${p.name} (${type} ${capacity}L)`);
     }
 
-    // 2. Move to Hidráulica
+    // Move to Hidráulica
     if (hidraulicaId && p.category_id !== hidraulicaId) {
-      await supabase.from("store_products").update({ category_id: hidraulicaId, category: "Hidráulica" }).eq("id", p.id);
+      updateData.category_id = hidraulicaId;
+      updateData.category = "Hidráulica";
     }
 
-    // 3. Clean old images
+    // Generate description
+    const desc = fortlevDescription(type, capacity);
+    updateData.description = desc;
+    updateData.status = "published";
+    descriptionsGenerated++;
+
+    // Apply updates
+    if (Object.keys(updateData).length > 0) {
+      await supabase.from("store_products").update(updateData).eq("id", p.id);
+    }
+
+    // ── Clean old images ──
     const { data: oldImages } = await supabase.from("store_product_images").select("id, path").eq("product_id", p.id);
     if (oldImages?.length) {
       const paths = oldImages.map((i: any) => i.path).filter(Boolean);
@@ -701,38 +710,35 @@ async function rebuildFortlev(supabase: any) {
       imagesRemoved += oldImages.length;
     }
 
-    // 4. Search and import official images
-    if (capacity) {
-      const imgResult = await searchFortlevImages(supabase, p.id, type, capacity);
-      imagesImported += imgResult.saved;
-      if (imgResult.errors.length) errors.push(...imgResult.errors);
-    }
-
-    // 5. Generate/update description for all Fortlev products
-    if (capacity) {
-      const desc = fortlevDescription(type, capacity);
-      await supabase.from("store_products").update({ description: desc }).eq("id", p.id);
-      descriptionsGenerated++;
-    }
+    // ── Search and import correct images ──
+    const imgResult = await searchFortlevImages(supabase, p.id, type, capacity);
+    imagesImported += imgResult.saved;
+    if (imgResult.errors.length) allErrors.push(...imgResult.errors);
 
     report.push({
-      product: p.name,
-      new_name: nameChanged ? newName : "(unchanged)",
+      product: catalogMatch?.name || p.name,
       type,
-      capacity: capacity || "unknown",
+      capacity,
+      name_updated: !!updateData.name,
+      price_updated: !!updateData.price,
+      sku: catalogMatch?.sku || "N/A",
       images_removed: oldImages?.length || 0,
-      action: "processed",
+      images_imported: imgResult.saved,
+      catalog_match: !!catalogMatch,
     });
   }
 
   return {
     fortlev_total: allFortlev.length,
-    names_fixed: namesFixed,
-    images_removed: imagesRemoved,
-    images_imported: imagesImported,
-    descriptions_generated: descriptionsGenerated,
-    errors_count: errors.length,
-    errors: errors.slice(0, 20),
+    produtos_reconstruidos: report.filter(r => r.action !== "skipped").length,
+    nomes_corrigidos: namesFixed,
+    precos_atualizados: pricesUpdated,
+    skus_gerados: skusGenerated,
+    imagens_removidas: imagesRemoved,
+    imagens_importadas: imagesImported,
+    descricoes_geradas: descriptionsGenerated,
+    produtos_sem_correspondencia: noMatch,
+    erros: allErrors.slice(0, 20),
     report: report.slice(0, 100),
   };
 }

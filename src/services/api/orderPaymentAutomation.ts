@@ -11,8 +11,19 @@ export interface OrderPaymentResult {
   whatsapp_url?: string;
 }
 
+async function getRoutingThreshold(): Promise<number> {
+  const { data } = await supabase
+    .from("payment_methods_config")
+    .select("config_json")
+    .eq("method", "routing_threshold")
+    .maybeSingle();
+
+  const val = (data?.config_json as any)?.threshold;
+  return typeof val === "number" && val > 0 ? val : 980;
+}
+
 /**
- * Auto-route payment: <=R$980 → AllowPay PIX, >R$980 → WhatsApp
+ * Auto-route payment: <=threshold → AllowPay PIX, >threshold → WhatsApp
  */
 export async function processOrderPayment(order: {
   id: string;
@@ -23,7 +34,7 @@ export async function processOrderPayment(order: {
   items_summary?: string;
   city?: string;
 }): Promise<OrderPaymentResult> {
-  const THRESHOLD = 980;
+  const THRESHOLD = await getRoutingThreshold();
 
   if (order.total <= THRESHOLD) {
     // Auto PIX via AllowPay

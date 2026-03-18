@@ -398,7 +398,15 @@ export default function CheckoutPage() {
       });
 
       cart.clear();
-      nav("/checkout/pagamento", { state: { orderId: order.orderId } });
+      nav("/checkout/pagamento", {
+        state: {
+          orderId: order.orderId,
+          total: order.total,
+          customerName: identify.customerName,
+          customerEmail: customerEmail.trim(),
+          customerPhone: identify.customerPhone,
+        },
+      });
     } catch (e: any) {
       setPlacing(false);
       toast({ title: "Erro ao finalizar", description: e?.message ?? "Tente novamente.", variant: "destructive" });

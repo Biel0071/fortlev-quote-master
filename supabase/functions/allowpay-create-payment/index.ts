@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     try {
       resBody = JSON.parse(rawText);
     } catch {
-      resBody = { raw };
+      resBody = { raw: rawText };
     }
 
     // Log the API call

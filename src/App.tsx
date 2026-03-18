@@ -54,6 +54,8 @@ import {
   AdminAiReports,
   AdminBatchOps,
   AdminRecommendations,
+  AdminShipping,
+  AdminAiReportsPage,
   // Payments
   AdminPaymentsLayout,
   AdminPaymentsOverview,
@@ -135,8 +137,7 @@ const App = () => (
               <Route path="produtos/scraper" element={<AdminProductScraper />} />
               <Route path="produtos/inteligencia-preco" element={<AdminPriceIntelligence />} />
               <Route path="imagens/revisao" element={<AdminImageReview />} />
-              <Route path="relatorios-ia" element={<AdminAiReports />} />
-              {/* batch ops now integrated into products page */}
+              <Route path="relatorios-ia" element={<AdminAiReportsPage />} />
               <Route path="produtos/recomendacoes" element={<AdminRecommendations />} />
 
               <Route path="categorias" element={<AdminCategoriesList />} />
@@ -149,6 +150,7 @@ const App = () => (
               <Route path="cupons" element={<AdminCoupons />} />
               <Route path="banners" element={<AdminBanners />} />
               <Route path="avaliacoes" element={<AdminReviews />} />
+              <Route path="frete" element={<AdminShipping />} />
               <Route path="tema" element={<AdminTheme />} />
               <Route path="analise-ia" element={<AdminAiAnalysis />} />
               <Route path="configuracoes" element={<AdminSettingsLayout />}>
@@ -190,15 +192,13 @@ const App = () => (
             <Route path="/auth/login" element={<LoginPage />} />
             <Route path="/auth/signup" element={<SignupPage />} />
 
-            {/* Sistemas de Orçamento (sempre retornam ao admin) */}
+            {/* Sistemas de Orçamento */}
             <Route path="/construcao" element={<Construction />} />
             <Route path="/orcamentos" element={<QuotationsIndex />} />
 
-            {/* Redirect legacy /dashboard to admin */}
             <Route path="/dashboard" element={<Navigate to="/admin/orcamentos" replace />} />
             <Route path="/dashboard/*" element={<Navigate to="/admin/orcamentos" replace />} />
 
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
@@ -208,4 +208,3 @@ const App = () => (
 );
 
 export default App;
-

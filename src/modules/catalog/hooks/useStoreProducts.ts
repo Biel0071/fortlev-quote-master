@@ -21,59 +21,69 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async (opts?: { silent?: boolean }) => {
+  const load = async (opts?: { silent?: boolean; retries?: number }) => {
     if (!enabled) return;
     if (!opts?.silent) setLoading(true);
     setError(null);
 
-    const PAGE_SIZE = 1000;
-    let allData: any[] = [];
-    let from = 0;
-    let hasMore = true;
+    const maxRetries = opts?.retries ?? 2;
 
-    while (hasMore) {
-      const { data, error: fetchError } = await cloud
-        .from("store_products")
-        .select(
-          "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, store_product_images(id, product_id, path, sort_order)",
-        )
-        .order("name", { ascending: true })
-        .range(from, from + PAGE_SIZE - 1);
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const PAGE_SIZE = 1000;
+        let allData: any[] = [];
+        let from = 0;
+        let hasMore = true;
 
-      if (fetchError) {
-        setError(fetchError.message);
+        while (hasMore) {
+          const { data, error: fetchError } = await cloud
+            .from("store_products")
+            .select(
+              "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, store_product_images(id, product_id, path, sort_order)",
+            )
+            .order("name", { ascending: true })
+            .range(from, from + PAGE_SIZE - 1);
+
+          if (fetchError) throw new Error(fetchError.message);
+
+          const batch = data ?? [];
+          allData = [...allData, ...batch];
+          hasMore = batch.length === PAGE_SIZE;
+          from += PAGE_SIZE;
+        }
+
+        const mapped: ProductWithImages[] = allData
+          .map((p: any) => ({
+            ...p,
+            id: String(p?.id ?? "").trim(),
+            name: String(p?.name ?? "").trim(),
+            price: Number(p?.price ?? 0),
+            promo_price: Number(p?.promo_price ?? 0),
+            stock: Number(p?.stock ?? 0),
+            images: (p.store_product_images ?? [])
+              .filter((im: any) => !!im?.path)
+              .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+          }))
+          .filter((p: any) => {
+            const ok = !!p.id && !!p.name;
+            if (!ok) console.warn("[useStoreProducts] produto inválido ignorado", p);
+            return ok;
+          });
+
+        setProducts(mapped);
+        setSmartCache(PRODUCTS_CACHE_KEY, mapped, PRODUCTS_CACHE_TTL_MS);
+        setLoading(false);
+        return; // success
+      } catch (err: any) {
+        if (attempt < maxRetries) {
+          await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+          continue;
+        }
+        setError(err?.message ?? "Erro ao carregar produtos");
         setProducts([]);
         setLoading(false);
-        return;
       }
-
-      const batch = data ?? [];
-      allData = [...allData, ...batch];
-      hasMore = batch.length === PAGE_SIZE;
-      from += PAGE_SIZE;
     }
-
-    const mapped: ProductWithImages[] = allData
-      .map((p: any) => ({
-        ...p,
-        id: String(p?.id ?? "").trim(),
-        name: String(p?.name ?? "").trim(),
-        price: Number(p?.price ?? 0),
-        promo_price: Number(p?.promo_price ?? 0),
-        stock: Number(p?.stock ?? 0),
-        images: (p.store_product_images ?? [])
-          .filter((im: any) => !!im?.path)
-          .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
-      }))
-      .filter((p: any) => {
-        const ok = !!p.id && !!p.name;
-        if (!ok) console.warn("[useStoreProducts] produto inválido ignorado", p);
-        return ok;
-      });
-
-    setProducts(mapped);
-    setSmartCache(PRODUCTS_CACHE_KEY, mapped, PRODUCTS_CACHE_TTL_MS);
-    setLoading(false);
   };
 
   useEffect(() => {

@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
@@ -14,7 +16,7 @@ import { useSearchParams } from "react-router-dom";
 export default function StoreCatalog() {
   const cart = useCart();
   const tracker = useVisitorTracker();
-  const { activeProducts, loading, error } = useStoreProducts();
+  const { activeProducts, loading, error, reload } = useStoreProducts();
   const { activeCategories } = useStoreCategories();
   const [cartOpen, setCartOpen] = useState(false);
   const [searchParams] = useSearchParams();
@@ -87,7 +89,14 @@ export default function StoreCatalog() {
             ))}
           </div>
         ) : error ? (
-          <div className="text-destructive">{error}</div>
+          <Card className="rounded-2xl">
+            <CardContent className="p-6 flex flex-col items-center gap-3 text-center">
+              <p className="text-sm text-destructive">Erro ao carregar produtos. Verifique sua conexão.</p>
+              <Button variant="outline" size="sm" onClick={() => reload()} className="gap-2">
+                <RefreshCw className="h-4 w-4" /> Tentar novamente
+              </Button>
+            </CardContent>
+          </Card>
         ) : filtered.length === 0 ? (
           <Card className="rounded-2xl">
             <CardContent className="p-6 text-sm text-muted-foreground">Nenhum produto encontrado.</CardContent>

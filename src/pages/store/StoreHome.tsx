@@ -182,7 +182,7 @@ export default function StoreHome() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <div className="pt-2 sm:pt-6 w-full overflow-hidden">
+      <div className="w-full overflow-hidden">
         <HomeHeroCarousel banners={home.banners} loading={home.loading} />
       </div>
 

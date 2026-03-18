@@ -1255,6 +1255,222 @@ export type Database = {
           },
         ]
       }
+      payment_api_keys: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          permissions: Json
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_checkouts: {
+        Row: {
+          config_json: Json
+          created_at: string
+          id: string
+          name: string
+          price: number
+          product_id: string | null
+          status: string
+          template: string
+          updated_at: string
+        }
+        Insert: {
+          config_json?: Json
+          created_at?: string
+          id?: string
+          name: string
+          price?: number
+          product_id?: string | null
+          status?: string
+          template?: string
+          updated_at?: string
+        }
+        Update: {
+          config_json?: Json
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+          product_id?: string | null
+          status?: string
+          template?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_checkouts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_gateways: {
+        Row: {
+          api_key_encrypted: string | null
+          config_json: Json
+          created_at: string
+          id: string
+          name: string
+          provider: string
+          secret_key_encrypted: string | null
+          status: string
+          updated_at: string
+          webhook_url: string | null
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          config_json?: Json
+          created_at?: string
+          id?: string
+          name: string
+          provider?: string
+          secret_key_encrypted?: string | null
+          status?: string
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          config_json?: Json
+          created_at?: string
+          id?: string
+          name?: string
+          provider?: string
+          secret_key_encrypted?: string | null
+          status?: string
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
+      payment_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_id: string | null
+          external_id: string | null
+          gateway_id: string | null
+          id: string
+          metadata_json: Json
+          method: string
+          order_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          customer_id?: string | null
+          external_id?: string | null
+          gateway_id?: string | null
+          id?: string
+          metadata_json?: Json
+          method?: string
+          order_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_id?: string | null
+          external_id?: string | null
+          gateway_id?: string | null
+          id?: string
+          metadata_json?: Json
+          method?: string
+          order_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "store_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_webhooks: {
+        Row: {
+          created_at: string
+          event: string
+          id: string
+          payload: Json
+          response_code: number | null
+          source: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          id?: string
+          payload?: Json
+          response_code?: number | null
+          source?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          id?: string
+          payload?: Json
+          response_code?: number | null
+          source?: string
+          status?: string
+        }
+        Relationships: []
+      }
       pipeline_runs: {
         Row: {
           avg_time_ms: number

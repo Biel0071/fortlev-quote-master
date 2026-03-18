@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   BarChart3,
   Box,
+  CreditCard,
   FileText,
   Home,
   Image as ImageIcon,
@@ -81,6 +82,12 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     label: "Marketing",
     items: [
       { title: "Banners", url: "/admin/banners", icon: ImageIcon, page: "banners" },
+    ],
+  },
+  {
+    label: "Pagamentos",
+    items: [
+      { title: "Gateway AllowPay", url: "/admin/payments", icon: CreditCard, page: "payments" },
     ],
   },
   {

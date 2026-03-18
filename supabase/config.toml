@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.daily-reviews-engine]
 verify_jwt = false
+
+[functions.catalog-cleanup]
+verify_jwt = false

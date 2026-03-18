@@ -398,6 +398,60 @@ Ideal para residências, comércios e instalações industriais.
 **Capacidade:** ${capacity} litros`;
 }
 
+async function fetchHtml(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(url, {
+      method: "GET", signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      },
+    });
+    if (!response.ok) return "";
+    return await response.text();
+  } catch { return ""; } finally { clearTimeout(timeout); }
+}
+
+async function searchDuckDuckGoImages(query: string): Promise<{ url: string; title: string }[]> {
+  const html = await fetchHtml(`https://duckduckgo.com/?q=${encodeURIComponent(query)}&iax=images&ia=images`);
+  if (!html) return [];
+
+  const vqd = html.match(/vqd=['"]([^'"]+)['"]/i)?.[1] ?? html.match(/"vqd":"([^"]+)"/i)?.[1] ?? html.match(/vqd=([^&"']+)/i)?.[1] ?? "";
+  if (!vqd) {
+    console.log(`[ddg] No vqd found for "${query}"`);
+    return [];
+  }
+
+  const endpoint = new URL("https://duckduckgo.com/i.js");
+  endpoint.searchParams.set("q", query);
+  endpoint.searchParams.set("l", "br-pt");
+  endpoint.searchParams.set("o", "json");
+  endpoint.searchParams.set("vqd", vqd);
+  endpoint.searchParams.set("f", ",,,");
+  endpoint.searchParams.set("p", "1");
+
+  try {
+    const response = await fetch(endpoint.toString(), {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        Referer: "https://duckduckgo.com/",
+        "X-Requested-With": "XMLHttpRequest",
+        Accept: "application/json,text/javascript,*/*;q=0.1",
+      },
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (Array.isArray(data?.results) ? data.results : []).map((item: any) => ({
+      url: String(item?.image || ""),
+      title: String(item?.title || ""),
+    })).filter((i: any) => i.url && i.url.startsWith("http"));
+  } catch { return []; }
+}
+
 async function searchGoogleImages(query: string, apiKey: string, cx: string): Promise<{ url: string; title: string }[]> {
   const googleUrl = new URL("https://www.googleapis.com/customsearch/v1");
   googleUrl.searchParams.set("key", apiKey);

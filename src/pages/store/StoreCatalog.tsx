@@ -89,7 +89,14 @@ export default function StoreCatalog() {
             ))}
           </div>
         ) : error ? (
-          <div className="text-destructive">{error}</div>
+          <Card className="rounded-2xl">
+            <CardContent className="p-6 flex flex-col items-center gap-3 text-center">
+              <p className="text-sm text-destructive">Erro ao carregar produtos. Verifique sua conexão.</p>
+              <Button variant="outline" size="sm" onClick={() => reload()} className="gap-2">
+                <RefreshCw className="h-4 w-4" /> Tentar novamente
+              </Button>
+            </CardContent>
+          </Card>
         ) : filtered.length === 0 ? (
           <Card className="rounded-2xl">
             <CardContent className="p-6 text-sm text-muted-foreground">Nenhum produto encontrado.</CardContent>

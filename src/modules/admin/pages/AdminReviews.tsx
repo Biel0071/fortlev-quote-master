@@ -11,12 +11,17 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import {
   BarChart3, CheckCircle, Clock, Loader2, MessageSquare, RefreshCw,
-  Search, Sparkles, Star, TrendingUp, Trash2, XCircle, Calendar,
-  Image as ImageIcon, FileText, Eye, ChevronDown, ChevronUp, X, Camera,
-  Power, Play, History, Settings2, Zap,
+  Search, Sparkles, Star, TrendingUp, Trash2, Calendar,
+  Image as ImageIcon, FileText, Eye, ChevronDown, ChevronUp, Camera,
+  Play, History, Zap, Package, Users,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+
+/* ------------------------------------------------------------------ */
+/*  Feature Flag                                                       */
+/* ------------------------------------------------------------------ */
+const REVIEWS_ENABLE_IMAGES = false;
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -47,6 +52,17 @@ type LogEntry = {
   metadata: any;
 };
 
+type DailyConfig = {
+  id: string; enabled: boolean; max_reviews_per_day: number; min_reviews_per_day: number;
+  max_reviews_per_product: number; max_total_per_product: number; start_hour: number;
+  end_hour: number; image_percentage: number;
+};
+
+type DailyRun = {
+  id: string; run_date: string; reviews_generated: number; images_attached: number;
+  products_covered: number; target_count: number; status: string; error_message: string | null; created_at: string;
+};
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -60,49 +76,48 @@ export default function AdminReviews() {
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "with_image">("pending");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [generating, setGenerating] = useState(false);
-  const [genCount, setGenCount] = useState(5);
-  const [genProductCount, setGenProductCount] = useState(10);
-  const [genMode, setGenMode] = useState<"text" | "image" | "text_image">("text");
-  const [catalogGenerating, setCatalogGenerating] = useState(false);
-  const [catalogLimit, setCatalogLimit] = useState<number>(0);
-  const [catalogProgress, setCatalogProgress] = useState<{
-    batch: number; created: number; images: number; processed: number; total: number; done: boolean;
-  } | null>(null);
   const [showLogs, setShowLogs] = useState(false);
   const [visibleCount, setVisibleCount] = useState(40);
   const [totalProducts, setTotalProducts] = useState(0);
   const [reviewsWithImagesCount, setReviewsWithImagesCount] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Unified generation
+  const [genMode, setGenMode] = useState<"text" | "image" | "text_image">("text");
+  const [genProductScope, setGenProductScope] = useState<string>("10");
+  const [genCountPer, setGenCountPer] = useState<string>("auto");
+  const [generating, setGenerating] = useState(false);
+  const [genProgress, setGenProgress] = useState<{
+    processed: number; total: number; created: number; images: number; done: boolean;
+  } | null>(null);
+
+  // Image pool
   const [searchingImages, setSearchingImages] = useState(false);
   const [poolStats, setPoolStats] = useState({ total_images: 0, products_with_pool: 0 });
 
-  /* ---------- daily engine state ---------- */
-  type DailyConfig = {
-    id: string; enabled: boolean; max_reviews_per_day: number; min_reviews_per_day: number;
-    max_reviews_per_product: number; max_total_per_product: number; start_hour: number;
-    end_hour: number; image_percentage: number;
-  };
-  type DailyRun = {
-    id: string; run_date: string; reviews_generated: number; images_attached: number;
-    products_covered: number; target_count: number; status: string; error_message: string | null; created_at: string;
-  };
+  // Daily engine
   const [dailyConfig, setDailyConfig] = useState<DailyConfig | null>(null);
   const [dailyRuns, setDailyRuns] = useState<DailyRun[]>([]);
-  const [dailyLoading, setDailyLoading] = useState(false);
   const [dailyRunning, setDailyRunning] = useState(false);
   const [showDailyHistory, setShowDailyHistory] = useState(false);
 
   /* ---------- data loading ---------- */
   const load = useCallback(async () => {
     setLoading(true);
-    const [reviewsRes, logsRes, productsRes, imagesRes, poolStatsRes] = await Promise.all([
-      cloud.from("product_reviews").select("*, store_products(name)").order("created_at", { ascending: false }).limit(1000),
-      cloud.from("system_event_logs").select("*").eq("source", "review-system").order("created_at", { ascending: false }).limit(50),
-      cloud.from("store_products").select("id", { count: "exact", head: true }).eq("active", true).eq("status", "published"),
-      cloud.from("review_images").select("review_id, image_url"),
-      cloud.functions.invoke("search-review-images", { body: { action: "stats" } }),
-    ]);
+    const reviewsQ = cloud.from("product_reviews").select("*, store_products(name)").order("created_at", { ascending: false }).limit(1000);
+    const logsQ = cloud.from("system_event_logs").select("*").in("source", ["review-system", "daily-reviews-engine"]).order("created_at", { ascending: false }).limit(50);
+    const productsQ = cloud.from("store_products").select("id", { count: "exact", head: true }).eq("active", true).eq("status", "published");
+
+    const [reviewsRes, logsRes, productsRes] = await Promise.all([reviewsQ, logsQ, productsQ]);
+
+    let imagesRes: any = null;
+    let poolStatsRes: any = null;
+    if (REVIEWS_ENABLE_IMAGES) {
+      [imagesRes, poolStatsRes] = await Promise.all([
+        cloud.from("review_images").select("review_id, image_url"),
+        cloud.functions.invoke("search-review-images", { body: { action: "stats" } }),
+      ]);
+    }
 
     if (reviewsRes.error) toast({ title: "Erro", description: reviewsRes.error.message, variant: "destructive" });
 
@@ -114,25 +129,25 @@ export default function AdminReviews() {
     setLogs((logsRes.data ?? []) as LogEntry[]);
     setTotalProducts(productsRes.count ?? 0);
 
-    // Pool stats
-    if (poolStatsRes.data && (poolStatsRes.data as any).ok) {
-      setPoolStats({
-        total_images: (poolStatsRes.data as any).total_images ?? 0,
-        products_with_pool: (poolStatsRes.data as any).products_with_pool ?? 0,
-      });
+    if (REVIEWS_ENABLE_IMAGES && imagesRes) {
+      if (poolStatsRes?.data && (poolStatsRes.data as any).ok) {
+        setPoolStats({
+          total_images: (poolStatsRes.data as any).total_images ?? 0,
+          products_with_pool: (poolStatsRes.data as any).products_with_pool ?? 0,
+        });
+      }
+      const imgMap = new Map<string, string[]>();
+      for (const i of (imagesRes.data ?? []) as any[]) {
+        const rid = i.review_id as string;
+        const url = i.image_url as string;
+        if (!imgMap.has(rid)) imgMap.set(rid, []);
+        imgMap.get(rid)!.push(url);
+      }
+      setReviewImageMap(imgMap);
+      const imgIds = new Set(imgMap.keys());
+      setReviewImageIds(imgIds);
+      setReviewsWithImagesCount(imgIds.size);
     }
-
-    const imgMap = new Map<string, string[]>();
-    for (const i of (imagesRes.data ?? []) as any[]) {
-      const rid = i.review_id as string;
-      const url = i.image_url as string;
-      if (!imgMap.has(rid)) imgMap.set(rid, []);
-      imgMap.get(rid)!.push(url);
-    }
-    setReviewImageMap(imgMap);
-    const imgIds = new Set(imgMap.keys());
-    setReviewImageIds(imgIds);
-    setReviewsWithImagesCount(imgIds.size);
 
     setSelected(new Set());
     setLoading(false);
@@ -140,53 +155,17 @@ export default function AdminReviews() {
 
   useEffect(() => { load(); }, [load]);
 
-  /* ---------- daily engine helpers ---------- */
+  /* ---------- daily engine loading ---------- */
   const loadDailyEngine = useCallback(async () => {
-    setDailyLoading(true);
     const [cfgRes, histRes] = await Promise.all([
       cloud.functions.invoke("daily-reviews-engine", { body: { action: "get_config" } }),
       cloud.functions.invoke("daily-reviews-engine", { body: { action: "history" } }),
     ]);
     if (cfgRes.data && (cfgRes.data as any).ok) setDailyConfig((cfgRes.data as any).config);
     if (histRes.data && (histRes.data as any).ok) setDailyRuns((histRes.data as any).runs ?? []);
-    setDailyLoading(false);
   }, []);
 
   useEffect(() => { loadDailyEngine(); }, [loadDailyEngine]);
-
-  const toggleDailyEngine = async () => {
-    if (!dailyConfig) return;
-    const newEnabled = !dailyConfig.enabled;
-    await cloud.functions.invoke("daily-reviews-engine", { body: { action: "update_config", enabled: newEnabled } });
-    setDailyConfig({ ...dailyConfig, enabled: newEnabled });
-    toast({ title: newEnabled ? "Engine ativada" : "Engine desativada" });
-  };
-
-  const updateDailyConfig = async (field: string, value: number) => {
-    if (!dailyConfig) return;
-    await cloud.functions.invoke("daily-reviews-engine", { body: { action: "update_config", [field]: value } });
-    setDailyConfig({ ...dailyConfig, [field]: value } as any);
-    toast({ title: "Configuração atualizada" });
-  };
-
-  const runDailyNow = async () => {
-    setDailyRunning(true);
-    try {
-      const { data, error } = await cloud.functions.invoke("daily-reviews-engine", { body: { action: "run" } });
-      if (error) throw error;
-      const result = data as any;
-      if (result.skipped) {
-        toast({ title: "Engine pulou execução", description: result.reason });
-      } else {
-        toast({ title: "Engine executada!", description: `${result.reviews_generated} reviews, ${result.images_attached} imagens, ${result.products_covered} produtos.` });
-        await load();
-      }
-      await loadDailyEngine();
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
-    }
-    setDailyRunning(false);
-  };
 
   /* ---------- computed ---------- */
   const filtered = useMemo(() => {
@@ -205,6 +184,8 @@ export default function AdminReviews() {
 
   const pendingCount = reviews.filter((r) => !r.approved).length;
   const approvedCount = reviews.filter((r) => r.approved).length;
+  const aiCount = reviews.filter((r) => r.origin === "ai_generated").length;
+  const realCount = reviews.filter((r) => r.origin === "customer").length;
 
   const todayCount = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -256,37 +237,102 @@ export default function AdminReviews() {
     await load();
   };
 
-  const generateBatch = async () => {
+  /* ---------- UNIFIED generation ---------- */
+  const handleGenerate = async () => {
     setGenerating(true);
+    setGenProgress(null);
+
+    const isAuto = genCountPer === "auto";
+    const productLimit = genProductScope === "0" ? 0 : Number(genProductScope);
+    const mode = REVIEWS_ENABLE_IMAGES ? genMode : "text";
+
     try {
-      const { data: products } = await cloud
-        .from("store_products")
-        .select("id")
-        .eq("active", true)
-        .eq("status", "published")
-        .limit(genProductCount);
+      if (isAuto) {
+        // Use catalog action (smart distribution)
+        let batchIndex = 0;
+        let totalCreated = 0;
+        let totalImages = 0;
+        let totalProcessed = 0;
+        let totalEligible = 0;
 
-      if (!products?.length) {
-        toast({ title: "Nenhum produto ativo encontrado", variant: "destructive" });
-        setGenerating(false);
-        return;
+        while (true) {
+          const { data, error } = await cloud.functions.invoke("generate-reviews", {
+            body: { action: "catalog", limit: productLimit, batch_index: batchIndex },
+          });
+          if (error) throw error;
+          const result = data as any;
+
+          totalCreated += result.total_created ?? 0;
+          totalImages += result.total_images ?? 0;
+          totalProcessed += result.products_in_batch ?? 0;
+          totalEligible = result.total_eligible ?? totalEligible;
+
+          setGenProgress({
+            processed: totalProcessed,
+            total: totalEligible,
+            created: totalCreated,
+            images: totalImages,
+            done: result.done,
+          });
+
+          if (result.done || !result.next_batch_index) break;
+          batchIndex = result.next_batch_index;
+        }
+
+        toast({
+          title: "Geração concluída!",
+          description: `${totalCreated} reviews para ${totalProcessed} produtos.`,
+        });
+      } else {
+        // Use generate action (fixed count per product)
+        const count = Number(genCountPer);
+        const limit = productLimit === 0 ? 1000 : productLimit;
+
+        const { data: products } = await cloud
+          .from("store_products")
+          .select("id")
+          .eq("active", true)
+          .eq("status", "published")
+          .limit(limit);
+
+        if (!products?.length) {
+          toast({ title: "Nenhum produto ativo encontrado", variant: "destructive" });
+          setGenerating(false);
+          return;
+        }
+
+        const productIds = products.map((p: any) => p.id);
+        setGenProgress({ processed: 0, total: productIds.length, created: 0, images: 0, done: false });
+
+        // Process in batches of 10
+        const BATCH = 10;
+        let totalCreated = 0;
+        let totalImages = 0;
+
+        for (let i = 0; i < productIds.length; i += BATCH) {
+          const batch = productIds.slice(i, i + BATCH);
+          const { data, error } = await cloud.functions.invoke("generate-reviews", {
+            body: { action: "generate", product_ids: batch, count, mode },
+          });
+          if (error) throw error;
+          const results = (data as any)?.results ?? [];
+          totalCreated += results.reduce((sum: number, r: any) => sum + (r.reviews_created ?? 0), 0);
+          totalImages += results.reduce((sum: number, r: any) => sum + (r.images_attached ?? 0), 0);
+
+          setGenProgress({
+            processed: Math.min(i + BATCH, productIds.length),
+            total: productIds.length,
+            created: totalCreated,
+            images: totalImages,
+            done: i + BATCH >= productIds.length,
+          });
+        }
+
+        toast({
+          title: "Geração concluída!",
+          description: `${totalCreated} reviews para ${productIds.length} produtos.`,
+        });
       }
-
-      const productIds = products.map((p: any) => p.id);
-      const { data, error } = await cloud.functions.invoke("generate-reviews", {
-        body: { action: "generate", product_ids: productIds, count: genCount, mode: genMode },
-      });
-
-      if (error) throw error;
-      const results = (data as any)?.results ?? [];
-      const total = results.reduce((sum: number, r: any) => sum + (r.reviews_created ?? 0), 0);
-      const totalImgs = results.reduce((sum: number, r: any) => sum + (r.images_attached ?? 0), 0);
-      const errors = results.filter((r: any) => r.error).length;
-
-      toast({
-        title: "Geração concluída",
-        description: `${total} avaliações (${totalImgs} com imagem) para ${productIds.length} produtos${errors ? ` (${errors} erros)` : ""}.`,
-      });
       await load();
     } catch (e: any) {
       toast({ title: "Erro na geração", description: e.message, variant: "destructive" });
@@ -294,6 +340,7 @@ export default function AdminReviews() {
     setGenerating(false);
   };
 
+  /* ---------- Image pool ---------- */
   const searchReviewImagesBatch = async () => {
     setSearchingImages(true);
     try {
@@ -304,7 +351,7 @@ export default function AdminReviews() {
       const result = data as any;
       toast({
         title: "Busca concluída",
-        description: `${result.processed ?? 0} produtos processados, ${result.total_found ?? 0} imagens encontradas, ${result.total_saved ?? 0} salvas. ${result.remaining ?? 0} produtos restantes.`,
+        description: `${result.processed ?? 0} produtos, ${result.total_saved ?? 0} imagens salvas.`,
       });
       await load();
     } catch (e: any) {
@@ -313,81 +360,74 @@ export default function AdminReviews() {
     setSearchingImages(false);
   };
 
-  const generateCatalog = async () => {
-    setCatalogGenerating(true);
-    setCatalogProgress(null);
-    let batchIndex = 0;
-    let totalCreated = 0;
-    let totalImages = 0;
-    let totalProcessed = 0;
-    let totalEligible = 0;
-
-    try {
-      while (true) {
-        const { data, error } = await cloud.functions.invoke("generate-reviews", {
-          body: { action: "catalog", limit: catalogLimit === 0 ? 0 : catalogLimit, batch_index: batchIndex },
-        });
-        if (error) throw error;
-        const result = data as any;
-
-        totalCreated += result.total_created ?? 0;
-        totalImages += result.total_images ?? 0;
-        totalProcessed += result.products_in_batch ?? 0;
-        totalEligible = result.total_eligible ?? totalEligible;
-
-        setCatalogProgress({
-          batch: batchIndex + 1,
-          created: totalCreated,
-          images: totalImages,
-          processed: totalProcessed,
-          total: totalEligible,
-          done: result.done,
-        });
-
-        if (result.done || !result.next_batch_index) break;
-        batchIndex = result.next_batch_index;
-      }
-
-      toast({
-        title: "Pipeline concluída!",
-        description: `${totalCreated} reviews geradas (${totalImages} com imagem) para ${totalProcessed} produtos.`,
-      });
-      await load();
-    } catch (e: any) {
-      toast({ title: "Erro na geração", description: e.message, variant: "destructive" });
-    }
-    setCatalogGenerating(false);
+  /* ---------- Daily engine actions ---------- */
+  const toggleDailyEngine = async () => {
+    if (!dailyConfig) return;
+    const newEnabled = !dailyConfig.enabled;
+    await cloud.functions.invoke("daily-reviews-engine", { body: { action: "update_config", enabled: newEnabled } });
+    setDailyConfig({ ...dailyConfig, enabled: newEnabled });
+    toast({ title: newEnabled ? "Engine ativada" : "Engine desativada" });
   };
 
+  const updateDailyConfig = async (field: string, value: number) => {
+    if (!dailyConfig) return;
+    await cloud.functions.invoke("daily-reviews-engine", { body: { action: "update_config", [field]: value } });
+    setDailyConfig({ ...dailyConfig, [field]: value } as any);
+  };
+
+  const runDailyNow = async () => {
+    setDailyRunning(true);
+    try {
+      const { data, error } = await cloud.functions.invoke("daily-reviews-engine", { body: { action: "run" } });
+      if (error) throw error;
+      const result = data as any;
+      if (result.skipped) {
+        toast({ title: "Engine pulou execução", description: result.reason });
+      } else {
+        toast({ title: "Engine executada!", description: `${result.reviews_generated} reviews para ${result.products_covered} produtos.` });
+        await load();
+      }
+      await loadDailyEngine();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
+    setDailyRunning(false);
+  };
+
+  /* ---------- helpers ---------- */
   const stars = (n: number) => Array.from({ length: 5 }, (_, i) => (
     <Star key={i} className={`h-3.5 w-3.5 ${i < n ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} />
   ));
 
   const visibleFiltered = filtered.slice(0, visibleCount);
+  const progressPct = genProgress && genProgress.total > 0 ? Math.round((genProgress.processed / genProgress.total) * 100) : 0;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Avaliações Inteligentes</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Gerencie e gere avaliações de produtos com IA — sistema automatizado.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Avaliações Inteligentes</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Gerencie e gere avaliações com IA — sistema unificado.
+          </p>
+        </div>
+        <Button variant="outline" size="icon" className="h-9 w-9" onClick={load} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+        </Button>
       </div>
 
       {/* ====== Dashboard Metrics ====== */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
           { label: "Total", value: reviews.length, icon: MessageSquare, color: "text-primary" },
           { label: "Hoje", value: todayCount, icon: Calendar, color: "text-blue-500" },
           { label: "Semana", value: weekCount, icon: TrendingUp, color: "text-emerald-500" },
           { label: "Pendentes", value: pendingCount, icon: Clock, color: "text-yellow-600" },
           { label: "Aprovadas", value: approvedCount, icon: CheckCircle, color: "text-green-600" },
-          { label: "Com imagem", value: reviewsWithImagesCount, icon: ImageIcon, color: "text-purple-500" },
-          { label: "Nota média", value: avgRating, icon: Star, color: "text-yellow-500" },
         ].map((m) => (
           <Card key={m.label} className="rounded-2xl">
-            <CardContent className="p-4 flex items-center gap-3">
+            <CardContent className="p-3 sm:p-4 flex items-center gap-3">
               <div className={`rounded-xl bg-muted/60 p-2 ${m.color}`}>
                 <m.icon className="h-4 w-4" />
               </div>
@@ -400,19 +440,19 @@ export default function AdminReviews() {
         ))}
       </div>
 
-      {/* Coverage + Rating distribution */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Coverage + Rating + Extra stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="rounded-2xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-primary" /> Cobertura de Produtos
+              <BarChart3 className="h-4 w-4 text-primary" /> Cobertura
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold">{coveragePercent}%</span>
               <span className="text-xs text-muted-foreground">
-                {productsWithReviews} de {totalProducts} produtos com avaliações
+                {productsWithReviews}/{totalProducts}
               </span>
             </div>
             <Progress value={coveragePercent} className="h-2" />
@@ -422,198 +462,210 @@ export default function AdminReviews() {
         <Card className="rounded-2xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Star className="h-4 w-4 text-yellow-500" /> Distribuição de Notas
+              <Star className="h-4 w-4 text-yellow-500" /> Distribuição
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1.5">
+          <CardContent className="space-y-1">
             {[5, 4, 3, 2, 1].map((n) => {
               const count = ratingDistribution[n - 1];
               const pct = reviews.length ? Math.round((count / reviews.length) * 100) : 0;
               return (
                 <div key={n} className="flex items-center gap-2 text-xs">
-                  <span className="w-4 text-right font-medium">{n}</span>
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                  <span className="w-3 text-right font-medium">{n}</span>
+                  <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
+                  <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
                     <div className="h-full bg-yellow-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="w-12 text-right text-muted-foreground">{count} ({pct}%)</span>
+                  <span className="w-10 text-right text-muted-foreground">{pct}%</span>
                 </div>
               );
             })}
           </CardContent>
         </Card>
+
+        <Card className="rounded-2xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" /> Detalhes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Nota média</span>
+              <span className="font-bold">{avgRating} ★</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Reviews IA</span>
+              <span className="font-medium">{aiCount}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Reviews reais</span>
+              <span className="font-medium">{realCount}</span>
+            </div>
+            {REVIEWS_ENABLE_IMAGES && (
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Com imagem</span>
+                <span className="font-medium">{reviewsWithImagesCount}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Produtos com reviews</span>
+              <span className="font-medium">{productsWithReviews}</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* ====== Generate Section ====== */}
-      <Card className="rounded-2xl border-dashed border-2 border-primary/20 bg-primary/5">
-        <CardContent className="p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-primary/10 p-2.5">
-                <Sparkles className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Gerar avaliações com IA</p>
-                <p className="text-xs text-muted-foreground">Selecione quantidade de produtos e reviews por produto</p>
-              </div>
+      {/* ====== UNIFIED Generate Section ====== */}
+      <Card className="rounded-2xl border-2 border-primary/20 bg-primary/5">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-primary/10 p-2.5">
+              <Sparkles className="h-5 w-5 text-primary" />
             </div>
-            <div className="flex items-center gap-2 ml-auto flex-wrap">
+            <div>
+              <p className="font-semibold text-sm">Gerar avaliações com IA</p>
+              <p className="text-xs text-muted-foreground">
+                Sistema unificado — selecione escopo, modo e quantidade.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Mode */}
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Modo</Label>
               <Select value={genMode} onValueChange={(v) => setGenMode(v as any)}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="text">Apenas texto</SelectItem>
-                  <SelectItem value="image">Apenas imagem</SelectItem>
-                  <SelectItem value="text_image">Texto + imagem</SelectItem>
+                  <SelectItem value="image" disabled={!REVIEWS_ENABLE_IMAGES}>Apenas imagem</SelectItem>
+                  <SelectItem value="text_image" disabled={!REVIEWS_ENABLE_IMAGES}>Texto + imagem</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={String(genProductCount)} onValueChange={(v) => setGenProductCount(Number(v))}>
-                <SelectTrigger className="w-[130px]">
+            </div>
+
+            {/* Products */}
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Produtos</Label>
+              <Select value={genProductScope} onValueChange={setGenProductScope}>
+                <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {[5, 10, 20, 50, 100].map((n) => (
-                    <SelectItem key={n} value={String(n)}>{n} produtos</SelectItem>
+                  {[
+                    { v: "10", l: "10 produtos" },
+                    { v: "50", l: "50 produtos" },
+                    { v: "100", l: "100 produtos" },
+                    { v: "200", l: "200 produtos" },
+                    { v: "500", l: "500 produtos" },
+                    { v: "0", l: "Catálogo inteiro" },
+                  ].map((o) => (
+                    <SelectItem key={o.v} value={o.v}>{o.l}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={String(genCount)} onValueChange={(v) => setGenCount(Number(v))}>
-                <SelectTrigger className="w-[130px]">
+            </div>
+
+            {/* Reviews per product */}
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Reviews/produto</Label>
+              <Select value={genCountPer} onValueChange={setGenCountPer}>
+                <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {[3, 5, 8].map((n) => (
-                    <SelectItem key={n} value={String(n)}>{n} reviews</SelectItem>
-                  ))}
+                  <SelectItem value="1">1 review</SelectItem>
+                  <SelectItem value="3">3 reviews</SelectItem>
+                  <SelectItem value="5">5 reviews</SelectItem>
+                  <SelectItem value="10">10 reviews</SelectItem>
+                  <SelectItem value="auto">Automático (inteligente)</SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={generateBatch} disabled={generating} className="gap-2">
+            </div>
+
+            {/* Button */}
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground invisible">Ação</Label>
+              <Button onClick={handleGenerate} disabled={generating} className="w-full h-9 gap-2">
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Gerar
+                Gerar com IA
               </Button>
             </div>
           </div>
-          {generating && (
-            <div className="mt-4 space-y-1.5">
-              <p className="text-xs text-muted-foreground animate-pulse">
-                Gerando avaliações com IA para {genProductCount} produtos ({genCount} cada)…
-              </p>
+
+          {genCountPer === "auto" && (
+            <p className="text-[11px] text-muted-foreground bg-muted/50 rounded-lg px-3 py-1.5">
+              ⚡ Modo automático: popular = 80-150 reviews • médio = 30-80 • comum = 10-30 • Max 150/produto
+            </p>
+          )}
+
+          {/* Progress */}
+          {generating && genProgress && (
+            <div className="space-y-2 bg-muted/30 rounded-xl p-4">
+              <div className="flex items-center justify-between text-sm font-medium">
+                <span>Processando catálogo…</span>
+                <span>{progressPct}%</span>
+              </div>
+              <Progress value={progressPct} className="h-2.5" />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-muted-foreground">
+                <span>Produtos: <strong className="text-foreground">{genProgress.processed} / {genProgress.total}</strong></span>
+                <span>Reviews: <strong className="text-foreground">{genProgress.created}</strong></span>
+                <span>Imagens: <strong className="text-foreground">{genProgress.images}</strong></span>
+                <span>Restantes: <strong className="text-foreground">{Math.max(0, genProgress.total - genProgress.processed)}</strong></span>
+              </div>
+            </div>
+          )}
+          {generating && !genProgress && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground animate-pulse">Analisando catálogo…</p>
               <Progress className="h-1.5" />
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* ====== Search Review Images Section ====== */}
-      <Card className="rounded-2xl border-dashed border-2 border-purple-300/40 bg-purple-50/30 dark:bg-purple-950/10">
-        <CardContent className="p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-purple-100 dark:bg-purple-900/30 p-2.5">
-                <Camera className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+      {/* ====== Image Pool Section ====== */}
+      {REVIEWS_ENABLE_IMAGES && (
+        <Card className="rounded-2xl border border-purple-200/50 dark:border-purple-800/30">
+          <CardContent className="p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-purple-100 dark:bg-purple-900/30 p-2.5">
+                  <Camera className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Pool de imagens de reviews</p>
+                  <p className="text-xs text-muted-foreground">
+                    Total: <strong>{poolStats.total_images}</strong> imagens em <strong>{poolStats.products_with_pool}</strong> produtos.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-sm">Buscar imagens reais para reviews</p>
-                <p className="text-xs text-muted-foreground">
-                  Busca fotos de instalação, obra e aplicação para usar nos reviews.
-                  Pool atual: <strong>{poolStats.total_images}</strong> imagens em <strong>{poolStats.products_with_pool}</strong> produtos.
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={searchReviewImagesBatch}
-              disabled={searchingImages}
-              variant="outline"
-              className="gap-2 ml-auto border-purple-300 text-purple-700 hover:bg-purple-100 dark:border-purple-700 dark:text-purple-300"
-            >
-              {searchingImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-              Buscar imagens (20 produtos)
-            </Button>
-          </div>
-          {searchingImages && (
-            <div className="mt-4 space-y-1.5">
-              <p className="text-xs text-muted-foreground animate-pulse">
-                Buscando imagens reais de instalação e uso para reviews…
-              </p>
-              <Progress className="h-1.5" />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ====== Catalog Generation Section ====== */}
-      <Card className="rounded-2xl border-dashed border-2 border-emerald-300/40 bg-emerald-50/30 dark:bg-emerald-950/10">
-        <CardContent className="p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
-                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Gerar catálogo completo</p>
-                <p className="text-xs text-muted-foreground">
-                  Distribuição inteligente: populares 80-150 • médios 30-80 • comuns 10-30 reviews • Max 150/produto • 10% com imagem
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 ml-auto">
-              <Select value={String(catalogLimit)} onValueChange={(v) => setCatalogLimit(Number(v))}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10 produtos</SelectItem>
-                  <SelectItem value="50">50 produtos</SelectItem>
-                  <SelectItem value="100">100 produtos</SelectItem>
-                  <SelectItem value="200">200 produtos</SelectItem>
-                  <SelectItem value="500">500 produtos</SelectItem>
-                  <SelectItem value="0">Catálogo inteiro</SelectItem>
-                </SelectContent>
-              </Select>
               <Button
-                onClick={generateCatalog}
-                disabled={catalogGenerating}
+                onClick={searchReviewImagesBatch}
+                disabled={searchingImages}
                 variant="outline"
-                className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-300"
+                size="sm"
+                className="gap-2 ml-auto"
               >
-                {catalogGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Gerar catálogo
+                {searchingImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                Buscar imagens reais
               </Button>
             </div>
-          </div>
-          {catalogGenerating && catalogProgress && (
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  Lote {catalogProgress.batch} • {catalogProgress.processed} de {catalogProgress.total} produtos
-                </span>
-                <span>
-                  {catalogProgress.created} reviews • {catalogProgress.images} com imagem
-                </span>
+            {searchingImages && (
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground animate-pulse">Buscando imagens reais…</p>
+                <Progress className="h-1.5 mt-1" />
               </div>
-              <Progress
-                value={catalogProgress.total > 0 ? (catalogProgress.processed / catalogProgress.total) * 100 : 0}
-                className="h-2"
-              />
-              <p className="text-[11px] text-muted-foreground animate-pulse">
-                Processando em lotes de 10 produtos… {catalogProgress.total - catalogProgress.processed} restantes
-              </p>
-            </div>
-          )}
-          {catalogGenerating && !catalogProgress && (
-            <div className="mt-4 space-y-1.5">
-              <p className="text-xs text-muted-foreground animate-pulse">
-                Analisando catálogo e calculando distribuição inteligente…
-              </p>
-              <Progress className="h-1.5" />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ====== Daily Reviews Engine ====== */}
-      <Card className="rounded-2xl border-2 border-amber-300/40 bg-amber-50/30 dark:bg-amber-950/10">
+      <Card className="rounded-2xl border border-amber-200/50 dark:border-amber-800/30">
         <CardContent className="p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-center gap-3">
@@ -623,7 +675,7 @@ export default function AdminReviews() {
               <div>
                 <p className="font-semibold text-sm">Engine de Reviews Diárias</p>
                 <p className="text-xs text-muted-foreground">
-                  Gera avaliações automaticamente todos os dias com distribuição natural.
+                  Gera automaticamente todos os dias com distribuição natural.
                 </p>
               </div>
             </div>
@@ -631,92 +683,83 @@ export default function AdminReviews() {
               {dailyConfig && (
                 <div className="flex items-center gap-2">
                   <Switch checked={dailyConfig.enabled} onCheckedChange={toggleDailyEngine} />
-                  <Label className="text-xs">{dailyConfig.enabled ? "Ativa" : "Inativa"}</Label>
+                  <Label className="text-xs font-medium">{dailyConfig.enabled ? "Ativa" : "Inativa"}</Label>
                 </div>
               )}
-              <Button onClick={runDailyNow} disabled={dailyRunning || !dailyConfig?.enabled} size="sm" variant="outline" className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300">
+              <Button onClick={runDailyNow} disabled={dailyRunning || !dailyConfig?.enabled} size="sm" variant="outline" className="gap-1.5">
                 {dailyRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                 Executar agora
               </Button>
             </div>
           </div>
 
-          {/* Config */}
           {dailyConfig && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Min/dia</Label>
-                <Input type="number" value={dailyConfig.min_reviews_per_day} min={1} max={100}
-                  onChange={(e) => updateDailyConfig("min_reviews_per_day", Number(e.target.value))} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Max/dia</Label>
-                <Input type="number" value={dailyConfig.max_reviews_per_day} min={1} max={100}
-                  onChange={(e) => updateDailyConfig("max_reviews_per_day", Number(e.target.value))} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Max/produto/dia</Label>
-                <Input type="number" value={dailyConfig.max_reviews_per_product} min={1} max={10}
-                  onChange={(e) => updateDailyConfig("max_reviews_per_product", Number(e.target.value))} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">% com imagem</Label>
-                <Input type="number" value={dailyConfig.image_percentage} min={0} max={100}
-                  onChange={(e) => updateDailyConfig("image_percentage", Number(e.target.value))} className="h-8 text-sm" />
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {[
+                { field: "min_reviews_per_day", label: "Min/dia", min: 1, max: 100 },
+                { field: "max_reviews_per_day", label: "Max/dia", min: 1, max: 100 },
+                { field: "max_reviews_per_product", label: "Max/produto", min: 1, max: 10 },
+                { field: "start_hour", label: "Início (hora)", min: 0, max: 23 },
+                { field: "end_hour", label: "Fim (hora)", min: 1, max: 23 },
+              ].map((cfg) => (
+                <div key={cfg.field} className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">{cfg.label}</Label>
+                  <Input
+                    type="number"
+                    value={(dailyConfig as any)[cfg.field]}
+                    min={cfg.min}
+                    max={cfg.max}
+                    onChange={(e) => updateDailyConfig(cfg.field, Number(e.target.value))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              ))}
             </div>
           )}
 
-          {/* Today's stats from runs */}
           {dailyRuns.length > 0 && (
-            <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-              <span className="font-medium text-foreground">Última execução:</span>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap border-t pt-3">
+              <span className="font-medium text-foreground">Última:</span>
               <span>{new Date(dailyRuns[0].created_at).toLocaleString("pt-BR")}</span>
               <Badge variant="outline" className="text-[10px]">{dailyRuns[0].reviews_generated} reviews</Badge>
-              <Badge variant="outline" className="text-[10px]">{dailyRuns[0].images_attached} imagens</Badge>
               <Badge variant="outline" className="text-[10px]">{dailyRuns[0].products_covered} produtos</Badge>
             </div>
           )}
 
-          {/* History toggle */}
-          <div>
-            <Button variant="ghost" size="sm" className="text-xs gap-1.5" onClick={() => setShowDailyHistory(!showDailyHistory)}>
-              <History className="h-3.5 w-3.5" />
-              Histórico ({dailyRuns.length} execuções)
-              {showDailyHistory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            </Button>
+          <Button variant="ghost" size="sm" className="text-xs gap-1.5" onClick={() => setShowDailyHistory(!showDailyHistory)}>
+            <History className="h-3.5 w-3.5" />
+            Histórico ({dailyRuns.length})
+            {showDailyHistory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </Button>
 
-            {showDailyHistory && dailyRuns.length > 0 && (
-              <div className="mt-2 border rounded-lg overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-2 font-medium">Data</th>
-                      <th className="text-right p-2 font-medium">Meta</th>
-                      <th className="text-right p-2 font-medium">Reviews</th>
-                      <th className="text-right p-2 font-medium">Imagens</th>
-                      <th className="text-right p-2 font-medium">Produtos</th>
-                      <th className="text-left p-2 font-medium">Status</th>
+          {showDailyHistory && dailyRuns.length > 0 && (
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-2 font-medium">Data</th>
+                    <th className="text-right p-2 font-medium">Meta</th>
+                    <th className="text-right p-2 font-medium">Reviews</th>
+                    <th className="text-right p-2 font-medium">Produtos</th>
+                    <th className="text-left p-2 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dailyRuns.map((run) => (
+                    <tr key={run.id} className="border-t">
+                      <td className="p-2">{new Date(run.created_at).toLocaleDateString("pt-BR")}</td>
+                      <td className="p-2 text-right">{run.target_count}</td>
+                      <td className="p-2 text-right font-medium">{run.reviews_generated}</td>
+                      <td className="p-2 text-right">{run.products_covered}</td>
+                      <td className="p-2">
+                        <Badge variant={run.status === "completed" ? "default" : "destructive"} className="text-[10px]">{run.status}</Badge>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {dailyRuns.map((run) => (
-                      <tr key={run.id} className="border-t">
-                        <td className="p-2">{new Date(run.created_at).toLocaleDateString("pt-BR")}</td>
-                        <td className="p-2 text-right">{run.target_count}</td>
-                        <td className="p-2 text-right font-medium">{run.reviews_generated}</td>
-                        <td className="p-2 text-right">{run.images_attached}</td>
-                        <td className="p-2 text-right">{run.products_covered}</td>
-                        <td className="p-2">
-                          <Badge variant={run.status === "completed" ? "default" : "destructive"} className="text-[10px]">{run.status}</Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -727,15 +770,12 @@ export default function AdminReviews() {
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por conteúdo, autor ou produto..." className="pl-9" />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {(["pending", "approved", "with_image", "all"] as const).map((f) => (
-            <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" className="text-xs gap-1" onClick={() => { setFilter(f); setVisibleCount(40); }}>
+          {(["pending", "approved", ...(REVIEWS_ENABLE_IMAGES ? ["with_image" as const] : []), "all"] as const).map((f) => (
+            <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" className="text-xs gap-1" onClick={() => { setFilter(f as any); setVisibleCount(40); }}>
               {f === "with_image" && <ImageIcon className="h-3 w-3" />}
               {f === "pending" ? `Pendentes (${pendingCount})` : f === "approved" ? `Aprovadas (${approvedCount})` : f === "with_image" ? `Com imagem (${reviewsWithImagesCount})` : `Todas (${reviews.length})`}
             </Button>
           ))}
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={load} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
         </div>
       </div>
 
@@ -794,7 +834,7 @@ export default function AdminReviews() {
                         {r.origin === "ai_generated" ? <Sparkles className="h-2.5 w-2.5" /> : <FileText className="h-2.5 w-2.5" />}
                         {r.origin === "ai_generated" ? "IA" : r.origin}
                       </Badge>
-                      {reviewImageIds.has(r.id) && (
+                      {REVIEWS_ENABLE_IMAGES && reviewImageIds.has(r.id) && (
                         <Badge variant="outline" className="text-[10px] gap-1 border-purple-300 text-purple-600">
                           <ImageIcon className="h-2.5 w-2.5" /> Imagem
                         </Badge>
@@ -803,7 +843,7 @@ export default function AdminReviews() {
                     {r.title && <p className="font-semibold text-sm">{r.title}</p>}
                     <p className="text-sm text-muted-foreground line-clamp-2">{r.content}</p>
                     {/* Image thumbnails */}
-                    {reviewImageMap.has(r.id) && (
+                    {REVIEWS_ENABLE_IMAGES && reviewImageMap.has(r.id) && (
                       <div className="flex gap-2 mt-2 flex-wrap">
                         {(reviewImageMap.get(r.id) ?? []).map((url, idx) => (
                           <img
@@ -811,10 +851,7 @@ export default function AdminReviews() {
                             src={url}
                             alt={`Review image ${idx + 1}`}
                             className="w-[120px] h-[120px] object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLightboxUrl(url);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); setLightboxUrl(url); }}
                           />
                         ))}
                       </div>

@@ -57,11 +57,11 @@ Deno.serve(async (req) => {
 
     const durationMs = Date.now() - startMs;
     let resBody: Record<string, unknown> = {};
+    const rawText = await apiRes.text();
 
     try {
-      resBody = await apiRes.json();
+      resBody = JSON.parse(rawText);
     } catch {
-      const raw = await apiRes.text();
       resBody = { raw };
     }
 

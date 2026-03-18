@@ -58,6 +58,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     label: "Visão Geral",
     items: [
       { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard, page: "dashboard" },
+      { title: "Home", url: "/admin/home", icon: Home, page: "home" },
     ],
   },
   {
@@ -74,14 +75,9 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { title: "Produtos", url: "/admin/produtos", icon: Box, page: "produtos" },
       { title: "Categorias", url: "/admin/categorias", icon: Tags, page: "categorias" },
       { title: "Avaliações", url: "/admin/avaliacoes", icon: Star, page: "avaliacoes" },
-    ],
-  },
-  {
-    label: "Financeiro",
-    items: [
-      { title: "Pagamentos", url: "/admin/payments", icon: CreditCard, page: "payments" },
-      { title: "Frete", url: "/admin/frete", icon: Truck, page: "frete" },
       { title: "Cupons", url: "/admin/cupons", icon: TicketPercent, page: "cupons" },
+      { title: "Frete", url: "/admin/frete", icon: Truck, page: "frete" },
+      { title: "Pagamentos", url: "/admin/payments", icon: CreditCard, page: "payments" },
     ],
   },
   {
@@ -93,8 +89,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     label: "Inteligência",
     items: [
-      { title: "Relatórios IA", url: "/admin/relatorios-ia", icon: Sparkles, page: "relatorios-ia" },
-      { title: "Análise IA", url: "/admin/analise-ia", icon: BarChart3, page: "analise-ia" },
+      { title: "Análise e Relatórios IA", url: "/admin/inteligencia-ia", icon: Sparkles, page: "inteligencia-ia" },
     ],
   },
   {

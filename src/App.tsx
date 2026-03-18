@@ -33,12 +33,9 @@ import {
   AdminSettings,
   AdminSettingsLayout,
   AdminUsersAccess,
-  AdminSettingsFrete,
-  AdminSettingsPagamentos,
   AdminSettingsIdentidade,
   AdminSettingsIntegracoes,
   AdminTheme,
-  AdminAiAnalysis,
   AdminDashboardTracking,
   AdminIntelligence,
   AdminDashboardQuotations,
@@ -51,11 +48,10 @@ import {
   AdminReviews,
   AdminPriceIntelligence,
   AdminImageReview,
-  AdminAiReports,
   AdminBatchOps,
   AdminRecommendations,
   AdminShipping,
-  AdminAiReportsPage,
+  AdminIntelligenceUnified,
   // Payments
   AdminPaymentsLayout,
   AdminPaymentsOverview,
@@ -137,7 +133,9 @@ const App = () => (
               <Route path="produtos/scraper" element={<AdminProductScraper />} />
               <Route path="produtos/inteligencia-preco" element={<AdminPriceIntelligence />} />
               <Route path="imagens/revisao" element={<AdminImageReview />} />
-              <Route path="relatorios-ia" element={<AdminAiReportsPage />} />
+              <Route path="inteligencia-ia" element={<AdminIntelligenceUnified />} />
+              <Route path="relatorios-ia" element={<Navigate to="/admin/inteligencia-ia" replace />} />
+              <Route path="analise-ia" element={<Navigate to="/admin/inteligencia-ia" replace />} />
               <Route path="produtos/recomendacoes" element={<AdminRecommendations />} />
 
               <Route path="categorias" element={<AdminCategoriesList />} />
@@ -152,19 +150,16 @@ const App = () => (
               <Route path="avaliacoes" element={<AdminReviews />} />
               <Route path="frete" element={<AdminShipping />} />
               <Route path="tema" element={<AdminTheme />} />
-              <Route path="analise-ia" element={<AdminAiAnalysis />} />
               <Route path="configuracoes" element={<AdminSettingsLayout />}>
                 <Route index element={<AdminSettings />} />
                 <Route path="usuarios" element={<AdminUsersAccess />} />
-                <Route path="frete" element={<AdminSettingsFrete />} />
-                <Route path="pagamentos" element={<AdminSettingsPagamentos />} />
                 <Route path="identidade" element={<AdminSettingsIdentidade />} />
                 <Route path="integracoes" element={<AdminSettingsIntegracoes />} />
               </Route>
 
               {/* Pagamentos */}
               <Route path="payments" element={<AdminPaymentsLayout />}>
-                <Route index element={<AdminPaymentsOverview />} />
+                <Route index element={<Navigate to="/admin/payments/gateways" replace />} />
                 <Route path="gateways" element={<AdminPaymentsGateways />} />
                 <Route path="gateways/add" element={<AdminPaymentsGatewayAdd />} />
                 <Route path="checkouts" element={<AdminPaymentsCheckouts />} />

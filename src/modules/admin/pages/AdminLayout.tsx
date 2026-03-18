@@ -3,11 +3,11 @@ import {
   ArrowLeft,
   BarChart3,
   Box,
+  CreditCard,
   FileText,
   Home,
   Image as ImageIcon,
   LayoutDashboard,
-  MessageSquareText,
   Palette,
   Settings,
   ShoppingBag,
@@ -16,6 +16,7 @@ import {
   Store,
   Tags,
   TicketPercent,
+  Truck,
   Users,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -57,7 +58,14 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     label: "Visão Geral",
     items: [
       { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard, page: "dashboard" },
-      { title: "Home", url: "/admin/home", icon: Home, page: "home" },
+    ],
+  },
+  {
+    label: "Vendas",
+    items: [
+      { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag, page: "pedidos" },
+      { title: "Orçamentos", url: "/admin/orcamentos", icon: FileText, page: "orcamentos" },
+      { title: "Clientes", url: "/admin/clientes", icon: Users, page: "clientes" },
     ],
   },
   {
@@ -69,11 +77,10 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     ],
   },
   {
-    label: "Vendas",
+    label: "Financeiro",
     items: [
-      { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag, page: "pedidos" },
-      { title: "Orçamentos", url: "/admin/orcamentos", icon: FileText, page: "orcamentos" },
-      { title: "Clientes", url: "/admin/clientes", icon: Users, page: "clientes" },
+      { title: "Pagamentos", url: "/admin/payments", icon: CreditCard, page: "payments" },
+      { title: "Frete", url: "/admin/frete", icon: Truck, page: "frete" },
       { title: "Cupons", url: "/admin/cupons", icon: TicketPercent, page: "cupons" },
     ],
   },
@@ -86,7 +93,8 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     label: "Inteligência",
     items: [
-      { title: "Análise IA", url: "/admin/analise-ia", icon: Sparkles, page: "analise-ia" },
+      { title: "Relatórios IA", url: "/admin/relatorios-ia", icon: Sparkles, page: "relatorios-ia" },
+      { title: "Análise IA", url: "/admin/analise-ia", icon: BarChart3, page: "analise-ia" },
     ],
   },
   {
@@ -122,10 +130,9 @@ function AdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-
         {/* Grouped menu sections */}
         {SIDEBAR_SECTIONS.map((section) => {
-          const visibleItems = section.items.filter((item) => 
+          const visibleItems = section.items.filter((item) =>
             item.page === "avaliacoes" || canViewPage(item.page)
           );
           if (!visibleItems.length) return null;

@@ -62,7 +62,10 @@ export default function AdminReviews() {
   const [genProductCount, setGenProductCount] = useState(10);
   const [genMode, setGenMode] = useState<"text" | "image" | "text_image">("text");
   const [catalogGenerating, setCatalogGenerating] = useState(false);
-  const [catalogLimit, setCatalogLimit] = useState<number>(100);
+  const [catalogLimit, setCatalogLimit] = useState<number>(0);
+  const [catalogProgress, setCatalogProgress] = useState<{
+    batch: number; created: number; images: number; processed: number; total: number; done: boolean;
+  } | null>(null);
   const [showLogs, setShowLogs] = useState(false);
   const [visibleCount, setVisibleCount] = useState(40);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -245,15 +248,42 @@ export default function AdminReviews() {
 
   const generateCatalog = async () => {
     setCatalogGenerating(true);
+    setCatalogProgress(null);
+    let batchIndex = 0;
+    let totalCreated = 0;
+    let totalImages = 0;
+    let totalProcessed = 0;
+    let totalEligible = 0;
+
     try {
-      const { data, error } = await cloud.functions.invoke("generate-reviews", {
-        body: { action: "catalog", limit: catalogLimit === 0 ? 0 : catalogLimit },
-      });
-      if (error) throw error;
-      const result = data as any;
+      while (true) {
+        const { data, error } = await cloud.functions.invoke("generate-reviews", {
+          body: { action: "catalog", limit: catalogLimit === 0 ? 0 : catalogLimit, batch_index: batchIndex },
+        });
+        if (error) throw error;
+        const result = data as any;
+
+        totalCreated += result.total_created ?? 0;
+        totalImages += result.total_images ?? 0;
+        totalProcessed += result.products_in_batch ?? 0;
+        totalEligible = result.total_eligible ?? totalEligible;
+
+        setCatalogProgress({
+          batch: batchIndex + 1,
+          created: totalCreated,
+          images: totalImages,
+          processed: totalProcessed,
+          total: totalEligible,
+          done: result.done,
+        });
+
+        if (result.done || !result.next_batch_index) break;
+        batchIndex = result.next_batch_index;
+      }
+
       toast({
-        title: "Geração catálogo concluída",
-        description: `${result.total_created ?? 0} reviews criados para ${result.products_with_reviews ?? 0} de ${result.products_processed ?? 0} produtos. Datas distribuídas entre 2020-2026.`,
+        title: "Pipeline concluída!",
+        description: `${totalCreated} reviews geradas (${totalImages} com imagem) para ${totalProcessed} produtos.`,
       });
       await load();
     } catch (e: any) {
@@ -454,9 +484,9 @@ export default function AdminReviews() {
                 <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <p className="font-semibold text-sm">Pipeline inteligente de reviews</p>
+                <p className="font-semibold text-sm">Gerar catálogo completo</p>
                 <p className="text-xs text-muted-foreground">
-                  Prioriza produtos com menos reviews • 3-8 reviews/produto • Ordem aleatória • Max 25/produto • Datas 2020-2026
+                  Distribuição inteligente: populares 80-150 • médios 30-80 • comuns 10-30 reviews • Max 150/produto • 10% com imagem
                 </p>
               </div>
             </div>
@@ -466,11 +496,11 @@ export default function AdminReviews() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="10">10 produtos</SelectItem>
                   <SelectItem value="50">50 produtos</SelectItem>
                   <SelectItem value="100">100 produtos</SelectItem>
                   <SelectItem value="200">200 produtos</SelectItem>
                   <SelectItem value="500">500 produtos</SelectItem>
-                  <SelectItem value="1000">1000 produtos</SelectItem>
                   <SelectItem value="0">Catálogo inteiro</SelectItem>
                 </SelectContent>
               </Select>
@@ -485,10 +515,29 @@ export default function AdminReviews() {
               </Button>
             </div>
           </div>
-          {catalogGenerating && (
+          {catalogGenerating && catalogProgress && (
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  Lote {catalogProgress.batch} • {catalogProgress.processed} de {catalogProgress.total} produtos
+                </span>
+                <span>
+                  {catalogProgress.created} reviews • {catalogProgress.images} com imagem
+                </span>
+              </div>
+              <Progress
+                value={catalogProgress.total > 0 ? (catalogProgress.processed / catalogProgress.total) * 100 : 0}
+                className="h-2"
+              />
+              <p className="text-[11px] text-muted-foreground animate-pulse">
+                Processando em lotes de 10 produtos… {catalogProgress.total - catalogProgress.processed} restantes
+              </p>
+            </div>
+          )}
+          {catalogGenerating && !catalogProgress && (
             <div className="mt-4 space-y-1.5">
               <p className="text-xs text-muted-foreground animate-pulse">
-                Gerando reviews para {catalogLimit === 0 ? "todo o catálogo" : `${catalogLimit} produtos`}… Isso pode levar alguns minutos.
+                Analisando catálogo e calculando distribuição inteligente…
               </p>
               <Progress className="h-1.5" />
             </div>

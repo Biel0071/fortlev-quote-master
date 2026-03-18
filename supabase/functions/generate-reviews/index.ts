@@ -25,9 +25,7 @@ function delay(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
 
 /* ---------- Image helpers ---------- */
 
-/** Get images from review_image_pool (real usage photos) first, then fallback to store_product_images */
-async function getReviewPoolImages(supa: any, productId: string): Promise<{ id: string; url: string; usage_count: number; source: "pool" | "product" }[]> {
-  // Priority 1: review_image_pool (real usage/installation photos)
+async function getReviewPoolImages(supa: any, productId: string) {
   const { data: poolImages } = await supa
     .from("review_image_pool")
     .select("id, image_url, usage_count")
@@ -35,17 +33,15 @@ async function getReviewPoolImages(supa: any, productId: string): Promise<{ id: 
     .order("usage_count", { ascending: true })
     .limit(50);
 
-  const pool = (poolImages ?? []).map((img: any) => ({
+  return (poolImages ?? []).map((img: any) => ({
     id: img.id,
     url: img.image_url as string,
     usage_count: img.usage_count ?? 0,
     source: "pool" as const,
   }));
-
-  return pool;
 }
 
-async function getProductImages(supa: any, supabaseUrl: string, productId: string): Promise<{ id: string; url: string; usage_count: number; source: "pool" | "product" }[]> {
+async function getProductImages(supa: any, supabaseUrl: string, productId: string) {
   const { data: storedImages } = await supa
     .from("store_product_images")
     .select("id, path, usage_count")
@@ -62,7 +58,6 @@ async function getProductImages(supa: any, supabaseUrl: string, productId: strin
   });
 }
 
-/** Get image URLs already used in reviews for this product to avoid duplicates */
 async function getAlreadyUsedImageUrls(supa: any, productId: string): Promise<Set<string>> {
   const { data: existingReviews } = await supa
     .from("product_reviews")
@@ -82,19 +77,78 @@ async function incrementPoolUsage(supa: any, imageId: string, source: "pool" | "
   try {
     if (source === "pool") {
       const { data } = await supa.from("review_image_pool").select("usage_count").eq("id", imageId).single();
-      const current = (data?.usage_count ?? 0) as number;
-      await supa.from("review_image_pool").update({ usage_count: current + 1 }).eq("id", imageId);
+      await supa.from("review_image_pool").update({ usage_count: ((data?.usage_count ?? 0) as number) + 1 }).eq("id", imageId);
     } else {
       const { data } = await supa.from("store_product_images").select("usage_count").eq("id", imageId).single();
-      const current = (data?.usage_count ?? 0) as number;
-      await supa.from("store_product_images").update({ usage_count: current + 1 }).eq("id", imageId);
+      await supa.from("store_product_images").update({ usage_count: ((data?.usage_count ?? 0) as number) + 1 }).eq("id", imageId);
     }
   } catch { /* best-effort */ }
+}
+
+/* ---------- Popularity tier ---------- */
+
+type PopularityTier = "popular" | "medium" | "common";
+
+function getPopularityTier(product: {
+  price?: number;
+  featured?: boolean;
+  best_seller?: boolean;
+  in_home_section?: boolean;
+  existing_reviews: number;
+}): PopularityTier {
+  const score =
+    (product.featured ? 3 : 0) +
+    (product.best_seller ? 3 : 0) +
+    (product.in_home_section ? 2 : 0) +
+    ((product.price ?? 0) > 200 ? 1 : 0) +
+    (product.existing_reviews > 5 ? 1 : 0);
+
+  if (score >= 4) return "popular";
+  if (score >= 2) return "medium";
+  return "common";
+}
+
+function getTargetReviewCount(tier: PopularityTier): number {
+  switch (tier) {
+    case "popular": return Math.floor(Math.random() * 71) + 80; // 80-150
+    case "medium": return Math.floor(Math.random() * 51) + 30;  // 30-80
+    case "common": return Math.floor(Math.random() * 21) + 10;  // 10-30
+  }
+}
+
+/* ---------- Rating distribution ---------- */
+// 5★=55%, 4★=25%, 3★=12%, 2★=5%, 1★=3%
+function pickRating(): number {
+  const r = Math.random() * 100;
+  if (r < 55) return 5;
+  if (r < 80) return 4;
+  if (r < 92) return 3;
+  if (r < 97) return 2;
+  return 1;
+}
+
+/* ---------- Date distribution ---------- */
+// 2023=20%, 2024=60%, 2025=20%
+function pickReviewDate(): Date {
+  const r = Math.random() * 100;
+  let year: number;
+  if (r < 20) year = 2023;
+  else if (r < 80) year = 2024;
+  else year = 2025;
+
+  const month = Math.floor(Math.random() * 12);
+  const day = Math.floor(Math.random() * 28) + 1;
+  const hour = Math.floor(Math.random() * 18) + 6;
+  const minute = Math.floor(Math.random() * 60);
+  return new Date(year, month, day, hour, minute);
 }
 
 /* ---------- Core review generation ---------- */
 
 type GenerationMode = "text" | "image" | "text_image";
+
+const MAX_REVIEWS_GLOBAL = 150;
+const MAX_AI_BATCH = 15; // max reviews per AI call to avoid token limits
 
 async function generateReviewsForProduct(
   supa: any,
@@ -103,7 +157,7 @@ async function generateReviewsForProduct(
   productId: string,
   count: number,
   mode: GenerationMode,
-  dateSpreadYears = 0,
+  useDateDistribution = false,
 ): Promise<{ reviews_created: number; images_attached: number; error?: string }> {
   const { data: product } = await supa
     .from("store_products")
@@ -119,172 +173,174 @@ async function generateReviewsForProduct(
     .select("id", { count: "exact", head: true })
     .eq("product_id", productId);
 
-  if ((existingCount ?? 0) >= 250) {
-    return { reviews_created: 0, images_attached: 0, error: "Max 250 reviews reached" };
+  if ((existingCount ?? 0) >= MAX_REVIEWS_GLOBAL) {
+    return { reviews_created: 0, images_attached: 0, error: "Max 150 reviews reached" };
   }
 
-  const remainingSlots = 250 - (existingCount ?? 0);
+  const remainingSlots = MAX_REVIEWS_GLOBAL - (existingCount ?? 0);
   const actualCount = Math.min(count, remainingSlots);
+  if (actualCount <= 0) return { reviews_created: 0, images_attached: 0, error: "No slots" };
 
-  // Get available images: prefer review_image_pool (real photos), fallback to store_product_images
+  // Get available images
   let allAvailableImages: { id: string; url: string; usage_count: number; source: "pool" | "product" }[] = [];
   if (mode === "image" || mode === "text_image") {
     const poolImages = await getReviewPoolImages(supa, productId);
     const catalogImages = await getProductImages(supa, supabaseUrl, productId);
-    // Combine: pool first (real photos), then catalog
     allAvailableImages = [...poolImages, ...catalogImages];
-    // Filter out images already used in existing reviews to avoid repeats
     const alreadyUsed = await getAlreadyUsedImageUrls(supa, productId);
     const unused = allAvailableImages.filter((img) => !alreadyUsed.has(img.url));
     allAvailableImages = unused.length > 0 ? unused : allAvailableImages;
   }
 
-  const prompt = `Você é um gerador de avaliações realistas de clientes para uma loja de materiais de construção.
+  // Generate in sub-batches if count > MAX_AI_BATCH
+  let totalCreated = 0;
+  let totalImages = 0;
+  let remaining = actualCount;
+
+  while (remaining > 0) {
+    const batchSize = Math.min(remaining, MAX_AI_BATCH);
+
+    // Pre-pick ratings for this batch to enforce distribution
+    const ratings = Array.from({ length: batchSize }, () => pickRating());
+    const ratingHint = ratings.map((r, i) => `Review ${i + 1}: ${r} estrelas`).join("\n");
+
+    const prompt = `Você é um gerador de avaliações realistas de clientes para uma loja de materiais de construção brasileira.
 
 Produto: ${product.name}
 Categoria: ${product.category || "Geral"}
 Preço: R$ ${product.price}
 Unidade: ${product.unit || "un"}
-Descrição: ${(product.description || "").slice(0, 500)}
+Descrição: ${(product.description || "").slice(0, 400)}
 
-Gere ${actualCount} avaliações REALISTAS de clientes brasileiros. Cada avaliação deve ser única e parecer autêntica.
+Gere exatamente ${batchSize} avaliações REALISTAS. Cada uma DEVE seguir a nota indicada abaixo:
+${ratingHint}
 
 Regras obrigatórias:
-- Ratings: distribuição realista (60% nota 5, 25% nota 4, 10% nota 3, 5% nota 2-1)
-- Nomes brasileiros diversos (homens e mulheres, diferentes regiões)
-- Cidades brasileiras variadas de todo o Brasil
-- Perspectivas: pedreiro, mestre de obras, engenheiro, DIY, dono de obra, empreiteiro, arquiteto
-- Variar comprimento: 30% curtos (1-2 linhas), 50% médios (3-5 linhas), 20% longos (6+ linhas)
-- Mencionar aspectos técnicos reais do produto quando possível
-- Incluir prós e contras em ~40% das avaliações (o resto null)
-- Usar linguagem natural, coloquial brasileira, sem ser formal demais
+- Use EXATAMENTE as notas acima para cada review na ordem
+- Nomes brasileiros diversos: João, Marcos, Carlos, Rafael, Juliana, Fernanda, Camila, André, Paulo, Ana, Maria, Pedro, Lucas, Beatriz, Renato, Patrícia, etc
+- Cidades variadas: São Paulo-SP, Rio de Janeiro-RJ, Belo Horizonte-MG, Salvador-BA, Curitiba-PR, Recife-PE, Fortaleza-CE, Goiânia-GO, Porto Alegre-RS, Manaus-AM, etc
+- Perspectivas: pedreiro, mestre de obras, dono de obra, empreiteiro, engenheiro, arquiteto, pessoa DIY
+- Variar comprimento: 30% curtos (1-2 frases), 50% médios (3-5 frases), 20% detalhados (6+ frases)
+- Reviews de 1-2 estrelas devem ter reclamações realistas (demora, defeito, tamanho errado)
+- Reviews de 3 estrelas devem ser neutras (ok mas com ressalvas)
+- Reviews de 4-5 estrelas devem ser positivas e específicas
+- Incluir prós e contras em ~40% (o resto null)
+- Linguagem natural, coloquial brasileira
 
 Retorne APENAS um JSON array sem markdown:
 [{"author_name":"Nome Sobrenome","author_location":"Cidade - UF","rating":5,"title":"Título curto","content":"Texto...","pros":"Pontos positivos ou null","cons":"Pontos negativos ou null","verified_purchase":true}]`;
 
-  const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${lovableApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
 
-  if (!aiResp.ok) {
-    const errText = await aiResp.text();
-    return { reviews_created: 0, images_attached: 0, error: `AI error ${aiResp.status}: ${errText.slice(0, 200)}` };
-  }
-
-  const aiData = await aiResp.json();
-  const rawContent = aiData.choices?.[0]?.message?.content ?? "[]";
-  const jsonMatch = rawContent.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) {
-    return { reviews_created: 0, images_attached: 0, error: "Failed to parse AI response" };
-  }
-
-  const reviews = JSON.parse(jsonMatch[0]) as Array<{
-    author_name: string;
-    author_location?: string;
-    rating: number;
-    title?: string;
-    content: string;
-    pros?: string;
-    cons?: string;
-    verified_purchase?: boolean;
-  }>;
-
-  const IMAGE_CHANCE = 0.3; // 30% of reviews get images when mode=text_image
-  let imagesAttached = 0;
-  const now = Date.now();
-  const insertedReviewIds: string[] = [];
-  let imageRoundRobinIdx = 0; // cycle through images to avoid repeats
-  const usedUrlsThisBatch = new Set<string>(); // track URLs used in this batch
-
-  for (const r of reviews) {
-    // Date spread: if dateSpread provided use wide range, otherwise recent 90 days
-    let created: Date;
-    if (dateSpreadYears > 0) {
-      // Spread between (now - dateSpreadYears) and now
-      const msRange = dateSpreadYears * 365 * 86400000;
-      created = new Date(now - Math.floor(Math.random() * msRange));
-    } else {
-      const daysAgo = Math.floor(Math.random() * 90);
-      const hoursAgo = Math.floor(Math.random() * 24);
-      created = new Date(now - daysAgo * 86400000 - hoursAgo * 3600000);
+    if (!aiResp.ok) {
+      if (aiResp.status === 429) {
+        await delay(5000);
+        continue; // retry
+      }
+      const errText = await aiResp.text();
+      return { reviews_created: totalCreated, images_attached: totalImages, error: `AI error ${aiResp.status}: ${errText.slice(0, 200)}` };
     }
 
-    // Determine if this review gets an image based on mode
-    let shouldHaveImage = false;
-    if (mode === "image" && allAvailableImages.length > 0) {
-      shouldHaveImage = true; // all reviews get images in "image" mode
-    } else if (mode === "text_image" && allAvailableImages.length > 0) {
-      shouldHaveImage = Math.random() < IMAGE_CHANCE; // 30% get images
+    const aiData = await aiResp.json();
+    const rawContent = aiData.choices?.[0]?.message?.content ?? "[]";
+    const jsonMatch = rawContent.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      remaining -= batchSize;
+      continue;
     }
 
-    const row = {
-      product_id: productId,
-      author_name: String(r.author_name || "Cliente").slice(0, 100),
-      author_location: r.author_location ? String(r.author_location).slice(0, 80) : null,
-      rating: Math.max(1, Math.min(5, Math.round(Number(r.rating) || 5))),
-      title: r.title ? String(r.title).slice(0, 200) : null,
-      content: String(r.content || "").slice(0, 2000),
-      pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
-      cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
-      verified_purchase: r.verified_purchase ?? true,
-      approved: mode === "text" ? true : !shouldHaveImage,
-      origin: "ai_generated",
-      created_at: created.toISOString(),
-    };
+    let reviews: any[];
+    try {
+      reviews = JSON.parse(jsonMatch[0]);
+    } catch {
+      remaining -= batchSize;
+      continue;
+    }
 
-    const { data: inserted, error: insertErr } = await supa
-      .from("product_reviews")
-      .insert(row)
-      .select("id")
-      .single();
+    const IMAGE_CHANCE = mode === "image" ? 1.0 : mode === "text_image" ? 0.1 : 0;
+    let imageRoundRobinIdx = 0;
+    const usedUrlsThisBatch = new Set<string>();
 
-    if (insertErr || !inserted) continue;
-    insertedReviewIds.push(inserted.id);
+    for (let idx = 0; idx < reviews.length; idx++) {
+      const r = reviews[idx];
+      const forcedRating = idx < ratings.length ? ratings[idx] : pickRating();
 
-    // Attach image: pick next unused image via round-robin
-    if (shouldHaveImage && allAvailableImages.length > 0) {
-      // Find next image not yet used in this batch
-      let img = allAvailableImages[imageRoundRobinIdx % allAvailableImages.length];
-      if (usedUrlsThisBatch.has(img.url) && allAvailableImages.length > 1) {
-        // Try to find an unused one
-        for (let attempt = 0; attempt < allAvailableImages.length; attempt++) {
-          const candidate = allAvailableImages[(imageRoundRobinIdx + attempt) % allAvailableImages.length];
-          if (!usedUrlsThisBatch.has(candidate.url)) {
-            img = candidate;
-            imageRoundRobinIdx = (imageRoundRobinIdx + attempt);
-            break;
+      const created = useDateDistribution ? pickReviewDate() : (() => {
+        const daysAgo = Math.floor(Math.random() * 90);
+        return new Date(Date.now() - daysAgo * 86400000 - Math.floor(Math.random() * 24) * 3600000);
+      })();
+
+      const shouldHaveImage = allAvailableImages.length > 0 && Math.random() < IMAGE_CHANCE;
+
+      const row = {
+        product_id: productId,
+        author_name: String(r.author_name || "Cliente").slice(0, 100),
+        author_location: r.author_location ? String(r.author_location).slice(0, 80) : null,
+        rating: Math.max(1, Math.min(5, forcedRating)),
+        title: r.title ? String(r.title).slice(0, 200) : null,
+        content: String(r.content || "").slice(0, 2000),
+        pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
+        cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
+        verified_purchase: r.verified_purchase ?? true,
+        approved: true,
+        origin: "ai_generated",
+        created_at: created.toISOString(),
+      };
+
+      const { data: inserted, error: insertErr } = await supa
+        .from("product_reviews")
+        .insert(row)
+        .select("id")
+        .single();
+
+      if (insertErr || !inserted) continue;
+      totalCreated++;
+
+      if (shouldHaveImage && allAvailableImages.length > 0) {
+        let img = allAvailableImages[imageRoundRobinIdx % allAvailableImages.length];
+        if (usedUrlsThisBatch.has(img.url) && allAvailableImages.length > 1) {
+          for (let attempt = 0; attempt < allAvailableImages.length; attempt++) {
+            const candidate = allAvailableImages[(imageRoundRobinIdx + attempt) % allAvailableImages.length];
+            if (!usedUrlsThisBatch.has(candidate.url)) {
+              img = candidate;
+              imageRoundRobinIdx = imageRoundRobinIdx + attempt;
+              break;
+            }
+          }
+          if (usedUrlsThisBatch.has(img.url)) {
+            usedUrlsThisBatch.clear();
+            img = allAvailableImages[imageRoundRobinIdx % allAvailableImages.length];
           }
         }
-        // If all used, reset tracking (allow second round)
-        if (usedUrlsThisBatch.has(img.url)) {
-          usedUrlsThisBatch.clear();
-          img = allAvailableImages[imageRoundRobinIdx % allAvailableImages.length];
-        }
-      }
-      
-      usedUrlsThisBatch.add(img.url);
-      imageRoundRobinIdx++;
 
-      await supa.from("review_images").insert({
-        review_id: inserted.id,
-        image_url: img.url,
-        sort_order: 0,
-      });
-      await incrementPoolUsage(supa, img.id, img.source);
-      img.usage_count++;
-      imagesAttached++;
+        usedUrlsThisBatch.add(img.url);
+        imageRoundRobinIdx++;
+
+        await supa.from("review_images").insert({
+          review_id: inserted.id,
+          image_url: img.url,
+          sort_order: 0,
+        });
+        await incrementPoolUsage(supa, img.id, img.source);
+        totalImages++;
+      }
     }
+
+    remaining -= batchSize;
+    if (remaining > 0) await delay(1000);
   }
 
-  return { reviews_created: insertedReviewIds.length, images_attached: imagesAttached };
+  return { reviews_created: totalCreated, images_attached: totalImages };
 }
 
 /* ---------- main ---------- */
@@ -308,7 +364,7 @@ serve(async (req) => {
     /* ============================================================ */
     if (action === "generate") {
       const productIds: string[] = body?.product_ids ?? [];
-      const count = Math.min(Math.max(1, Number(body?.count ?? 3)), 8);
+      const count = Math.min(Math.max(1, Number(body?.count ?? 3)), 15);
       const mode: GenerationMode = (["text", "image", "text_image"].includes(body?.mode) ? body.mode : "text") as GenerationMode;
 
       if (!productIds.length) throw new Error("No product_ids provided");
@@ -324,12 +380,10 @@ serve(async (req) => {
 
       for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
         const batch = productIds.slice(i, i + BATCH_SIZE);
-
         const batchPromises = batch.map(async (productId) => {
           const result = await generateReviewsForProduct(supa, SUPABASE_URL, LOVABLE_API_KEY, productId, count, mode);
           results.push({ product_id: productId, ...result });
         });
-
         await Promise.all(batchPromises);
         if (i + BATCH_SIZE < productIds.length) await delay(500);
       }
@@ -338,20 +392,13 @@ serve(async (req) => {
       const totalImages = results.reduce((s, r) => s + r.images_attached, 0);
       const totalErrors = results.filter((r) => r.error).length;
 
-      // Recalc rating summaries for products with new reviews
       for (const r of results) {
-        if (r.reviews_created > 0) {
-          await recalcRatingSummary(supa, r.product_id);
-        }
+        if (r.reviews_created > 0) await recalcRatingSummary(supa, r.product_id);
       }
 
       await logEvent(supa, totalErrors > 0 ? "warning" : "info",
         `Geração concluída: ${totalCreated} reviews, ${totalImages} imagens, ${totalErrors} erros (modo: ${mode})`, {
-          total_created: totalCreated,
-          total_images: totalImages,
-          total_errors: totalErrors,
-          mode,
-          results,
+          total_created: totalCreated, total_images: totalImages, total_errors: totalErrors, mode, results,
         });
 
       return new Response(JSON.stringify({ ok: true, results }), {
@@ -371,14 +418,9 @@ serve(async (req) => {
         .in("id", reviewIds);
       if (error) throw error;
 
-      // Recalculate rating summaries
       const { data: reviews } = await supa.from("product_reviews").select("product_id").in("id", reviewIds);
       const productIds = [...new Set((reviews ?? []).map((r: any) => r.product_id))];
-      for (const pid of productIds) {
-        await recalcRatingSummary(supa, pid);
-      }
-
-      await logEvent(supa, "info", `${reviewIds.length} reviews aprovados`, { review_ids: reviewIds.slice(0, 10) });
+      for (const pid of productIds) await recalcRatingSummary(supa, pid);
 
       return new Response(JSON.stringify({ ok: true, approved: reviewIds.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -392,12 +434,9 @@ serve(async (req) => {
       const reviewIds: string[] = body?.review_ids ?? [];
       if (!reviewIds.length) throw new Error("No review_ids");
 
-      // Delete associated images first
       await supa.from("review_images").delete().in("review_id", reviewIds);
       const { error } = await supa.from("product_reviews").delete().in("id", reviewIds);
       if (error) throw error;
-
-      await logEvent(supa, "info", `${reviewIds.length} reviews removidos`, { review_ids: reviewIds.slice(0, 10) });
 
       return new Response(JSON.stringify({ ok: true, deleted: reviewIds.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -405,116 +444,42 @@ serve(async (req) => {
     }
 
     /* ============================================================ */
-    /*  DAILY AUTO-GENERATE                                          */
-    /* ============================================================ */
-    if (action === "daily") {
-      await logEvent(supa, "info", "Job diário de reviews iniciado");
-
-      const { count: totalProducts } = await supa
-        .from("store_products")
-        .select("id", { count: "exact", head: true })
-        .eq("active", true)
-        .eq("status", "published");
-
-      if (!totalProducts || totalProducts === 0) {
-        await logEvent(supa, "warning", "Job diário: nenhum produto ativo encontrado");
-        return new Response(JSON.stringify({ ok: true, message: "No products" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const dailyTarget = Math.max(5, Math.ceil(totalProducts * 0.02));
-
-      const { data: candidates } = await supa
-        .from("store_products")
-        .select("id")
-        .eq("active", true)
-        .eq("status", "published")
-        .limit(dailyTarget * 3);
-
-      if (!candidates?.length) {
-        return new Response(JSON.stringify({ ok: true, message: "No candidates" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const productScores: { id: string; count: number }[] = [];
-      for (const c of candidates) {
-        const { count } = await supa
-          .from("product_reviews")
-          .select("id", { count: "exact", head: true })
-          .eq("product_id", c.id);
-        productScores.push({ id: c.id, count: count ?? 0 });
-      }
-
-      productScores.sort((a, b) => a.count - b.count);
-      const selected = productScores
-        .filter((p) => p.count < 250)
-        .slice(0, dailyTarget)
-        .map((p) => p.id);
-
-      if (!selected.length) {
-        await logEvent(supa, "info", "Job diário: todos os produtos já têm 250+ reviews");
-        return new Response(JSON.stringify({ ok: true, message: "All covered" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const reviewsPerProduct = Math.min(5, Math.max(3, Math.round(Math.random() * 2 + 3)));
-      const results: any[] = [];
-      const CHUNK = 10;
-
-      for (let i = 0; i < selected.length; i += CHUNK) {
-        const chunk = selected.slice(i, i + CHUNK);
-        for (const productId of chunk) {
-          try {
-            // Daily job uses "image" mode to attach real photos when available
-            const result = await generateReviewsForProduct(supa, SUPABASE_URL, LOVABLE_API_KEY, productId, reviewsPerProduct, "image");
-            results.push({ product_id: productId, ...result });
-          } catch { /* continue */ }
-        }
-        if (i + CHUNK < selected.length) await delay(1000);
-      }
-
-      const totalCreated = results.reduce((s: number, r: any) => s + (r.reviews_created ?? 0), 0);
-      const totalImages = results.reduce((s: number, r: any) => s + (r.images_attached ?? 0), 0);
-      await logEvent(supa, "info", `Job diário concluído: ${totalCreated} reviews, ${totalImages} imagens`, {
-        total_created: totalCreated,
-        total_images: totalImages,
-        products_processed: results.length,
-      });
-
-      return new Response(JSON.stringify({ ok: true, daily: true, total_created: totalCreated, total_images: totalImages, products: results.length }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    /* ============================================================ */
-    /*  CATALOG - Generate for entire catalog                        */
+    /*  CATALOG - Smart distribution pipeline                        */
     /* ============================================================ */
     if (action === "catalog") {
       const limit = body?.limit ?? 0; // 0 = all
-      const MAX_REVIEWS_PER_PRODUCT = 25;
-      await logEvent(supa, "info", `Pipeline catálogo iniciada (limit: ${limit || "all"})`, { limit });
+      const batchIndex = body?.batch_index ?? 0;
+      const PRODUCTS_PER_BATCH = 10;
 
-      // Step 1: Fetch ALL active products with their existing review count
-      // Use LEFT JOIN via product_rating_summary to prioritize products with fewer reviews
-      const allCandidates: { id: string; featured: boolean; best_seller: boolean; existing_reviews: number }[] = [];
+      await logEvent(supa, "info", `Pipeline catálogo batch ${batchIndex} (limit: ${limit || "all"})`, { limit, batchIndex });
+
+      // Fetch products with popularity signals
+      const allCandidates: {
+        id: string; featured: boolean; best_seller: boolean;
+        in_home_section: boolean; price: number; existing_reviews: number;
+      }[] = [];
+
       const PAGE_SIZE = 1000;
       let offset = 0;
       let hasMore = true;
 
+      // Get home section product IDs for popularity scoring
+      const { data: homeSections } = await supa
+        .from("home_sections")
+        .select("category_id")
+        .eq("active", true);
+      const homeCatIds = new Set((homeSections ?? []).map((s: any) => s.category_id));
+
       while (hasMore) {
         const { data: batch } = await supa
           .from("store_products")
-          .select("id, featured, best_seller")
+          .select("id, featured, best_seller, price, category_id")
           .eq("active", true)
           .eq("status", "published")
           .range(offset, offset + PAGE_SIZE - 1);
 
         if (!batch?.length) { hasMore = false; break; }
 
-        // Get review counts for this batch
         for (const p of batch) {
           const { count } = await supa
             .from("product_reviews")
@@ -524,6 +489,8 @@ serve(async (req) => {
             id: p.id,
             featured: p.featured ?? false,
             best_seller: p.best_seller ?? false,
+            in_home_section: homeCatIds.has(p.category_id),
+            price: p.price ?? 0,
             existing_reviews: count ?? 0,
           });
         }
@@ -534,100 +501,88 @@ serve(async (req) => {
       }
 
       if (!allCandidates.length) {
-        return new Response(JSON.stringify({ ok: true, message: "No products", total_created: 0 }), {
+        return new Response(JSON.stringify({ ok: true, message: "No products", total_created: 0, done: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Step 2: Filter out products that already have >= MAX_REVIEWS_PER_PRODUCT
-      const eligible = allCandidates.filter((p) => p.existing_reviews < MAX_REVIEWS_PER_PRODUCT);
+      // Assign tiers and target counts
+      const withTargets = allCandidates.map((p) => {
+        const tier = getPopularityTier(p);
+        const target = getTargetReviewCount(tier);
+        const needed = Math.max(0, Math.min(target, MAX_REVIEWS_GLOBAL) - p.existing_reviews);
+        return { ...p, tier, target, needed };
+      });
 
-      // Step 3: Sort by fewest reviews first, then shuffle within similar counts for variety
-      eligible.sort((a, b) => a.existing_reviews - b.existing_reviews);
+      // Filter eligible (those needing reviews)
+      const eligible = withTargets.filter((p) => p.needed > 0);
 
-      // Step 4: Apply Fisher-Yates shuffle to randomize (breaks alphabetical/creation order)
+      // Shuffle for variety
       for (let i = eligible.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
       }
 
-      // Re-sort so products with fewer reviews come first (stable priority)
-      eligible.sort((a, b) => a.existing_reviews - b.existing_reviews);
+      // Sort: most needed first
+      eligible.sort((a, b) => b.needed - a.needed);
 
-      // Step 5: Limit to requested amount
-      const selected = limit > 0 ? eligible.slice(0, limit) : eligible;
+      // Apply limit
+      const allSelected = limit > 0 ? eligible.slice(0, limit) : eligible;
 
-      if (!selected.length) {
-        await logEvent(supa, "info", "Pipeline catálogo: todos os produtos já têm reviews suficientes");
-        return new Response(JSON.stringify({ ok: true, message: "All products covered", total_created: 0 }), {
+      // Pick the batch slice
+      const batchStart = batchIndex * PRODUCTS_PER_BATCH;
+      const batchProducts = allSelected.slice(batchStart, batchStart + PRODUCTS_PER_BATCH);
+      const hasMoreBatches = batchStart + PRODUCTS_PER_BATCH < allSelected.length;
+
+      if (!batchProducts.length) {
+        return new Response(JSON.stringify({
+          ok: true, done: true, total_created: 0,
+          total_eligible: eligible.length, total_products: allCandidates.length,
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Step 6: Generate reviews in parallel chunks of 10
+      // Generate reviews for this batch
       const results: any[] = [];
       let totalCreated = 0;
       let totalImages = 0;
-      const CHUNK = 10;
 
-      for (let i = 0; i < selected.length; i += CHUNK) {
-        const chunk = selected.slice(i, i + CHUNK);
-
-        const chunkPromises = chunk.map(async (p) => {
-          try {
-            const remaining = MAX_REVIEWS_PER_PRODUCT - p.existing_reviews;
-            if (remaining <= 0) {
-              return { product_id: p.id, reviews_created: 0, images_attached: 0, error: "Max reached" };
-            }
-
-            // Balanced distribution: 3-8 reviews per product
-            const count = Math.min(
-              Math.floor(Math.random() * 6) + 3, // 3-8
-              remaining
-            );
-
-            // Use text mode with date spread 2020-2026 (6 years)
-            const result = await generateReviewsForProduct(
-              supa, SUPABASE_URL, LOVABLE_API_KEY, p.id, Math.min(count, 8), "text", 6
-            );
-
-            return { product_id: p.id, reviews_created: result.reviews_created, images_attached: result.images_attached };
-          } catch (e) {
-            return { product_id: p.id, reviews_created: 0, images_attached: 0, error: String(e) };
-          }
-        });
-
-        const chunkResults = await Promise.all(chunkPromises);
-        for (const r of chunkResults) {
-          results.push(r);
-          totalCreated += r.reviews_created;
-          totalImages += r.images_attached;
+      for (const p of batchProducts) {
+        try {
+          const result = await generateReviewsForProduct(
+            supa, SUPABASE_URL, LOVABLE_API_KEY,
+            p.id, p.needed, "text_image", true
+          );
+          results.push({ product_id: p.id, tier: p.tier, target: p.target, needed: p.needed, ...result });
+          totalCreated += result.reviews_created;
+          totalImages += result.images_attached;
+        } catch (e) {
+          results.push({ product_id: p.id, reviews_created: 0, images_attached: 0, error: String(e) });
         }
-
-        if (i + CHUNK < selected.length) await delay(500);
+        await delay(300);
       }
 
-      // Recalc rating summaries for all affected products
+      // Recalc ratings
       for (const r of results) {
-        if (r.reviews_created > 0) {
-          await recalcRatingSummary(supa, r.product_id);
-        }
+        if (r.reviews_created > 0) await recalcRatingSummary(supa, r.product_id);
       }
 
-      await logEvent(supa, "info", `Pipeline catálogo concluída: ${totalCreated} reviews para ${results.filter((r: any) => r.reviews_created > 0).length} de ${selected.length} produtos`, {
-        total_created: totalCreated,
-        total_images: totalImages,
-        products_processed: selected.length,
-        total_eligible: eligible.length,
+      await logEvent(supa, "info", `Pipeline batch ${batchIndex}: ${totalCreated} reviews para ${batchProducts.length} produtos`, {
+        total_created: totalCreated, total_images: totalImages, batch_index: batchIndex,
       });
 
       return new Response(JSON.stringify({
         ok: true,
+        done: !hasMoreBatches,
+        batch_index: batchIndex,
+        next_batch_index: hasMoreBatches ? batchIndex + 1 : null,
         total_created: totalCreated,
         total_images: totalImages,
-        products_processed: selected.length,
-        products_with_reviews: results.filter((r: any) => r.reviews_created > 0).length,
-        total_eligible: eligible.length,
+        products_in_batch: batchProducts.length,
+        total_eligible: allSelected.length,
+        total_products: allCandidates.length,
+        results,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -680,8 +635,7 @@ async function recalcRatingSummary(supa: any, productId: string) {
     if (!reviews?.length) {
       await supa.from("product_rating_summary").upsert({
         product_id: productId,
-        average_rating: 0,
-        total_reviews: 0,
+        average_rating: 0, total_reviews: 0,
         rating_1: 0, rating_2: 0, rating_3: 0, rating_4: 0, rating_5: 0,
         updated_at: new Date().toISOString(),
       }, { onConflict: "product_id" });

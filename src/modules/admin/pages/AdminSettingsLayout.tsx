@@ -8,7 +8,6 @@ const settingsItems = [
   { label: "Integrações", to: "/admin/configuracoes/integracoes", icon: Plug },
   { label: "Frete", to: "/admin/configuracoes/frete", icon: Truck },
   { label: "Pagamentos", to: "/admin/configuracoes/pagamentos", icon: CreditCard },
-  { label: "Cupons", to: "/admin/configuracoes/cupons", icon: TicketPercent },
 ];
 
 export default function AdminSettingsLayout() {

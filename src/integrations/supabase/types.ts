@@ -1294,10 +1294,41 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_blacklist: {
+        Row: {
+          created_at: string | null
+          id: string
+          reason: string | null
+          type: string
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          type: string
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          type?: string
+          value?: string
+        }
+        Relationships: []
+      }
       payment_checkouts: {
         Row: {
+          allowed_methods: string[] | null
+          checkout_url: string | null
           config_json: Json
           created_at: string
+          customer_email: string | null
+          customer_phone: string | null
+          description: string | null
+          expires_at: string | null
+          gateway_id: string | null
           id: string
           name: string
           price: number
@@ -1307,8 +1338,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allowed_methods?: string[] | null
+          checkout_url?: string | null
           config_json?: Json
           created_at?: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          description?: string | null
+          expires_at?: string | null
+          gateway_id?: string | null
           id?: string
           name: string
           price?: number
@@ -1318,8 +1356,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allowed_methods?: string[] | null
+          checkout_url?: string | null
           config_json?: Json
           created_at?: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          description?: string | null
+          expires_at?: string | null
+          gateway_id?: string | null
           id?: string
           name?: string
           price?: number
@@ -1330,6 +1375,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "payment_checkouts_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payment_checkouts_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -1338,44 +1390,221 @@ export type Database = {
           },
         ]
       }
+      payment_fraud_rules: {
+        Row: {
+          config_json: Json | null
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          rule_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          config_json?: Json | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          rule_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          config_json?: Json | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          rule_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       payment_gateways: {
         Row: {
           api_key_encrypted: string | null
+          api_url: string | null
           config_json: Json
           created_at: string
           id: string
+          mode: string | null
           name: string
           provider: string
+          rate_fixed: number | null
+          rate_percent: number | null
           secret_key_encrypted: string | null
           status: string
+          supported_currencies: string[] | null
+          supported_methods: string[] | null
           updated_at: string
           webhook_url: string | null
         }
         Insert: {
           api_key_encrypted?: string | null
+          api_url?: string | null
           config_json?: Json
           created_at?: string
           id?: string
+          mode?: string | null
           name: string
           provider?: string
+          rate_fixed?: number | null
+          rate_percent?: number | null
           secret_key_encrypted?: string | null
           status?: string
+          supported_currencies?: string[] | null
+          supported_methods?: string[] | null
           updated_at?: string
           webhook_url?: string | null
         }
         Update: {
           api_key_encrypted?: string | null
+          api_url?: string | null
           config_json?: Json
           created_at?: string
           id?: string
+          mode?: string | null
           name?: string
           provider?: string
+          rate_fixed?: number | null
+          rate_percent?: number | null
           secret_key_encrypted?: string | null
           status?: string
+          supported_currencies?: string[] | null
+          supported_methods?: string[] | null
           updated_at?: string
           webhook_url?: string | null
         }
         Relationships: []
+      }
+      payment_logs: {
+        Row: {
+          created_at: string | null
+          direction: string | null
+          duration_ms: number | null
+          gateway_id: string | null
+          id: string
+          method: string | null
+          request_body: Json | null
+          response_body: Json | null
+          status_code: number | null
+          url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          direction?: string | null
+          duration_ms?: number | null
+          gateway_id?: string | null
+          id?: string
+          method?: string | null
+          request_body?: Json | null
+          response_body?: Json | null
+          status_code?: number | null
+          url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          direction?: string | null
+          duration_ms?: number | null
+          gateway_id?: string | null
+          id?: string
+          method?: string | null
+          request_body?: Json | null
+          response_body?: Json | null
+          status_code?: number | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_logs_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_methods_config: {
+        Row: {
+          config_json: Json | null
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          method: string
+          updated_at: string | null
+        }
+        Insert: {
+          config_json?: Json | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          method: string
+          updated_at?: string | null
+        }
+        Update: {
+          config_json?: Json | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          method?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      payment_subscriptions: {
+        Row: {
+          created_at: string | null
+          customer_id: string | null
+          customer_name: string | null
+          gateway_id: string | null
+          id: string
+          next_billing_at: string | null
+          plan_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          gateway_id?: string | null
+          id?: string
+          next_billing_at?: string | null
+          plan_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          gateway_id?: string | null
+          id?: string
+          next_billing_at?: string | null
+          plan_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_subscriptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_subscriptions_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_transactions: {
         Row: {
@@ -2713,6 +2942,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string | null
+          frequency: string
+          gateway_id: string | null
+          id: string
+          name: string
+          price: number
+          status: string | null
+          trial_days: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          frequency?: string
+          gateway_id?: string | null
+          id?: string
+          name: string
+          price?: number
+          status?: string | null
+          trial_days?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          frequency?: string
+          gateway_id?: string | null
+          id?: string
+          name?: string
+          price?: number
+          status?: string | null
+          trial_days?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_plans_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_event_logs: {
         Row: {

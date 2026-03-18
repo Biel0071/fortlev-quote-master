@@ -85,6 +85,12 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     ],
   },
   {
+    label: "Pagamentos",
+    items: [
+      { title: "Gateway AllowPay", url: "/admin/payments", icon: CreditCard, page: "payments" },
+    ],
+  },
+  {
     label: "Inteligência",
     items: [
       { title: "Análise IA", url: "/admin/analise-ia", icon: Sparkles, page: "analise-ia" },

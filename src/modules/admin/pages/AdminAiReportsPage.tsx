@@ -74,11 +74,11 @@ export default function AdminAiReportsPage() {
 
       setAnalysis({ context, suggestions, generated_at: new Date().toISOString() });
 
-      await supabase.from("ai_project_reports").insert({
-        report_json: { context, suggestions },
+      await supabase.from("ai_project_reports").insert([{
+        report_json: { context, suggestions } as any,
         selected_scope: "vendas",
         mode: "auto",
-      });
+      }]);
 
       toast.success("Análise gerada!");
     } catch (e: any) {

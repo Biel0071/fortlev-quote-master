@@ -1,12 +1,13 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { QrCode, CreditCard, Receipt, Save, Shield } from "lucide-react";
+import { QrCode, CreditCard, Receipt, Save, Shield, Route, MessageSquare, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function AdminPaymentsMethods() {
   const [pix, setPix] = useState({
@@ -19,11 +20,101 @@ export default function AdminPaymentsMethods() {
     enabled: true, daysToExpire: "3", lateFee: "2", lateInterest: "1", instructions: "",
   });
 
+  const [routingThreshold, setRoutingThreshold] = useState("980");
+  const [loadingThreshold, setLoadingThreshold] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("payment_methods_config")
+      .select("config_json")
+      .eq("method", "routing_threshold")
+      .maybeSingle()
+      .then(({ data }) => {
+        const val = (data?.config_json as any)?.threshold;
+        if (typeof val === "number" && val > 0) setRoutingThreshold(String(val));
+        setLoadingThreshold(false);
+      });
+  }, []);
+
+  const handleSaveThreshold = async () => {
+    const val = Number(routingThreshold);
+    if (!Number.isFinite(val) || val <= 0) {
+      toast.error("Informe um valor válido maior que zero.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("payment_methods_config")
+      .update({ config_json: { threshold: val } as any })
+      .eq("method", "routing_threshold");
+
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+    } else {
+      toast.success("Limite de roteamento salvo com sucesso!");
+    }
+  };
+
   const handleSave = () => { toast.success("Configurações salvas"); };
 
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Métodos de Pagamento</h1>
+
+      {/* Routing threshold card */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Route className="h-4 w-4 text-primary" />
+            Roteamento de Pagamento
+          </CardTitle>
+          <CardDescription>
+            Define o valor limite para decidir como o pedido será processado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="rounded-lg border border-border bg-background p-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Zap className="h-4 w-4 text-green-600" />
+                Pedidos até o limite
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Geram cobrança PIX automática via gateway (AllowPay).
+                O cliente recebe o QR Code na hora.
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-background p-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <MessageSquare className="h-4 w-4 text-blue-600" />
+                Pedidos acima do limite
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Redirecionados para WhatsApp para fechamento manual
+                com um consultor.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-end gap-3">
+            <div className="space-y-2 flex-1 max-w-xs">
+              <Label>Valor limite (R$)</Label>
+              <Input
+                value={routingThreshold}
+                onChange={(e) => setRoutingThreshold(e.target.value)}
+                type="number"
+                min="1"
+                step="10"
+                placeholder="980"
+                disabled={loadingThreshold}
+              />
+            </div>
+            <Button onClick={handleSaveThreshold} size="sm" disabled={loadingThreshold}>
+              <Save className="h-4 w-4 mr-1" /> Salvar limite
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* PIX */}

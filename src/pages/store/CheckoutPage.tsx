@@ -16,11 +16,7 @@ import { cleanPhone, formatCurrency, formatWhatsappMask, isValidBrazilPhone } fr
 import { fetchCepData, formatAddress } from "@/utils/cepService";
 import { CheckoutIdentifyStep } from "@/components/store/checkout/CheckoutIdentifyStep";
 import { CheckoutDeliveryStep } from "@/components/store/checkout/CheckoutDeliveryStep";
-
-const WHATSAPP_ROUTE_LIMIT = (() => {
-  const parsed = Number(import.meta.env.VITE_WHATSAPP_ROUTE_LIMIT ?? 1000);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1000;
-})();
+import { useRoutingThreshold } from "@/hooks/useRoutingThreshold";
 
 const identifySchema = z.object({
   customerName: z.string().trim().min(2, "Nome obrigatório").max(120, "Nome muito longo"),
@@ -60,6 +56,7 @@ export default function CheckoutPage() {
   const leadTracker = useCheckoutSessionTracker();
   const { activeProducts } = useStoreProducts();
   const contact = useStoreContact();
+  const { threshold: WHATSAPP_ROUTE_LIMIT } = useRoutingThreshold();
 
   useDynamicSeo({
     title: `Finalizar sua compra | ${contact.storeName || "Materiais de Construção"}`,
@@ -401,7 +398,15 @@ export default function CheckoutPage() {
       });
 
       cart.clear();
-      nav("/checkout/pagamento", { state: { orderId: order.orderId } });
+      nav("/checkout/pagamento", {
+        state: {
+          orderId: order.orderId,
+          total: order.total,
+          customerName: identify.customerName,
+          customerEmail: customerEmail.trim(),
+          customerPhone: identify.customerPhone,
+        },
+      });
     } catch (e: any) {
       setPlacing(false);
       toast({ title: "Erro ao finalizar", description: e?.message ?? "Tente novamente.", variant: "destructive" });

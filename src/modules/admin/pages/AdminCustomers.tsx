@@ -33,12 +33,11 @@ import {
 /* ---------- types ---------- */
 type Session = {
   id: string;
-  session_id: string;
+  session_token: string;
   device: string;
   source: string;
   score: number;
   temperature: string;
-  status: string;
   total_pages: number;
   total_clicks: number;
   total_time_seconds: number;
@@ -52,6 +51,9 @@ type UserEvent = {
   id: string;
   type: string;
   session_id: string;
+  path: string | null;
+  product_id: string | null;
+  category_id: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
 };

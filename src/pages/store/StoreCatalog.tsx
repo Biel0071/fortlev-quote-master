@@ -16,7 +16,7 @@ import { useSearchParams } from "react-router-dom";
 export default function StoreCatalog() {
   const cart = useCart();
   const tracker = useVisitorTracker();
-  const { activeProducts, loading, error } = useStoreProducts();
+  const { activeProducts, loading, error, reload } = useStoreProducts();
   const { activeCategories } = useStoreCategories();
   const [cartOpen, setCartOpen] = useState(false);
   const [searchParams] = useSearchParams();

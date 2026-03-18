@@ -140,6 +140,54 @@ export default function AdminReviews() {
 
   useEffect(() => { load(); }, [load]);
 
+  /* ---------- daily engine helpers ---------- */
+  const loadDailyEngine = useCallback(async () => {
+    setDailyLoading(true);
+    const [cfgRes, histRes] = await Promise.all([
+      cloud.functions.invoke("daily-reviews-engine", { body: { action: "get_config" } }),
+      cloud.functions.invoke("daily-reviews-engine", { body: { action: "history" } }),
+    ]);
+    if (cfgRes.data && (cfgRes.data as any).ok) setDailyConfig((cfgRes.data as any).config);
+    if (histRes.data && (histRes.data as any).ok) setDailyRuns((histRes.data as any).runs ?? []);
+    setDailyLoading(false);
+  }, []);
+
+  useEffect(() => { loadDailyEngine(); }, [loadDailyEngine]);
+
+  const toggleDailyEngine = async () => {
+    if (!dailyConfig) return;
+    const newEnabled = !dailyConfig.enabled;
+    await cloud.functions.invoke("daily-reviews-engine", { body: { action: "update_config", enabled: newEnabled } });
+    setDailyConfig({ ...dailyConfig, enabled: newEnabled });
+    toast({ title: newEnabled ? "Engine ativada" : "Engine desativada" });
+  };
+
+  const updateDailyConfig = async (field: string, value: number) => {
+    if (!dailyConfig) return;
+    await cloud.functions.invoke("daily-reviews-engine", { body: { action: "update_config", [field]: value } });
+    setDailyConfig({ ...dailyConfig, [field]: value } as any);
+    toast({ title: "Configuração atualizada" });
+  };
+
+  const runDailyNow = async () => {
+    setDailyRunning(true);
+    try {
+      const { data, error } = await cloud.functions.invoke("daily-reviews-engine", { body: { action: "run" } });
+      if (error) throw error;
+      const result = data as any;
+      if (result.skipped) {
+        toast({ title: "Engine pulou execução", description: result.reason });
+      } else {
+        toast({ title: "Engine executada!", description: `${result.reviews_generated} reviews, ${result.images_attached} imagens, ${result.products_covered} produtos.` });
+        await load();
+      }
+      await loadDailyEngine();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
+    setDailyRunning(false);
+  };
+
   /* ---------- computed ---------- */
   const filtered = useMemo(() => {
     let result = reviews;

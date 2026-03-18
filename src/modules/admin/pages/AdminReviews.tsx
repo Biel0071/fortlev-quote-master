@@ -104,20 +104,20 @@ export default function AdminReviews() {
   /* ---------- data loading ---------- */
   const load = useCallback(async () => {
     setLoading(true);
-    const queries: Promise<any>[] = [
-      cloud.from("product_reviews").select("*, store_products(name)").order("created_at", { ascending: false }).limit(1000),
-      cloud.from("system_event_logs").select("*").in("source", ["review-system", "daily-reviews-engine"]).order("created_at", { ascending: false }).limit(50),
-      cloud.from("store_products").select("id", { count: "exact", head: true }).eq("active", true).eq("status", "published"),
-    ];
+    const reviewsQ = cloud.from("product_reviews").select("*, store_products(name)").order("created_at", { ascending: false }).limit(1000);
+    const logsQ = cloud.from("system_event_logs").select("*").in("source", ["review-system", "daily-reviews-engine"]).order("created_at", { ascending: false }).limit(50);
+    const productsQ = cloud.from("store_products").select("id", { count: "exact", head: true }).eq("active", true).eq("status", "published");
+
+    const [reviewsRes, logsRes, productsRes] = await Promise.all([reviewsQ, logsQ, productsQ]);
+
+    let imagesRes: any = null;
+    let poolStatsRes: any = null;
     if (REVIEWS_ENABLE_IMAGES) {
-      queries.push(
+      [imagesRes, poolStatsRes] = await Promise.all([
         cloud.from("review_images").select("review_id, image_url"),
         cloud.functions.invoke("search-review-images", { body: { action: "stats" } }),
-      );
+      ]);
     }
-
-    const results = await Promise.all(queries);
-    const [reviewsRes, logsRes, productsRes] = results;
 
     if (reviewsRes.error) toast({ title: "Erro", description: reviewsRes.error.message, variant: "destructive" });
 

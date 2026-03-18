@@ -490,6 +490,51 @@ export default function ProductPage() {
         )}
       </main>
 
+      {/* Sticky buy bar on mobile */}
+      {product && !loading && (
+        <div className="fixed inset-x-0 bottom-16 z-30 md:hidden border-t border-border bg-background/95 backdrop-blur-md px-3 py-2.5 safe-area-bottom">
+          <div className="flex items-center gap-3 max-w-lg mx-auto">
+            <div className="flex-1 min-w-0">
+              <div className="text-lg font-bold tracking-tight">{formatCurrency(effectivePrice)}</div>
+              {installments && <div className="text-[10px] text-muted-foreground truncate">{installments}</div>}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center rounded-lg border border-border bg-card">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 w-9 rounded-lg text-sm"
+                  onClick={() => setQty(Math.max(1, qty - 1))}
+                >−</Button>
+                <span className="min-w-6 text-center text-xs font-bold tabular-nums">{qty}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 w-9 rounded-lg text-sm"
+                  onClick={() => setQty(qty + 1)}
+                >+</Button>
+              </div>
+              <Button
+                className="h-10 rounded-xl px-5 text-sm font-semibold"
+                onClick={() => {
+                  trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: (product as any).id });
+                  tracker.track({ type: "add_cart", productId: (product as any).id, categoryId: (product as any).category_id ?? null });
+                  cart.add((product as any).id, Math.max(1, qty), {
+                    name: (product as any).name ?? "Produto",
+                    unitPrice: effectivePrice,
+                    unit: (product as any).unit ?? "un",
+                    imagePath: (product as any)?.images?.[0]?.path ?? null,
+                  });
+                  setCartOpen(true);
+                }}
+              >
+                Comprar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <StoreFooter footer={home.footer} pageLinks={pageLinks} />
     </div>
   );

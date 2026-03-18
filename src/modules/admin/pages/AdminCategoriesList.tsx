@@ -39,12 +39,29 @@ export default function AdminCategoriesList() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await cloud
-      .from("store_categories")
-      .select("id, name, slug, description, sort_order, featured, active, image_path")
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true });
-    setRows((data ?? []) as any);
+    const [catRes, countRes] = await Promise.all([
+      cloud
+        .from("store_categories")
+        .select("id, name, slug, description, sort_order, featured, active, image_path")
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
+      cloud
+        .from("store_products")
+        .select("id, category_id")
+        .eq("active", true),
+    ]);
+
+    const cats = (catRes.data ?? []) as Cat[];
+    const products = (countRes.data ?? []) as Array<{ id: string; category_id: string | null }>;
+
+    const countMap = new Map<string, number>();
+    for (const p of products) {
+      if (p.category_id) {
+        countMap.set(p.category_id, (countMap.get(p.category_id) ?? 0) + 1);
+      }
+    }
+
+    setRows(cats.map(c => ({ ...c, product_count: countMap.get(c.id) ?? 0 })));
     setLoading(false);
   };
 

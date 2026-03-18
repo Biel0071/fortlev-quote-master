@@ -28,8 +28,8 @@ type Cat = {
   featured: boolean;
   active: boolean;
   image_path: string | null;
+  product_count?: number;
 };
-
 export default function AdminCategoriesList() {
   const nav = useNavigate();
   const [loading, setLoading] = useState(true);

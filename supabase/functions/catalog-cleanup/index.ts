@@ -398,6 +398,62 @@ Ideal para residências, comércios e instalações industriais.
 **Capacidade:** ${capacity} litros`;
 }
 
+async function searchGoogleImages(query: string, apiKey: string, cx: string): Promise<{ url: string; title: string }[]> {
+  const googleUrl = new URL("https://www.googleapis.com/customsearch/v1");
+  googleUrl.searchParams.set("key", apiKey);
+  googleUrl.searchParams.set("cx", cx);
+  googleUrl.searchParams.set("q", query);
+  googleUrl.searchParams.set("searchType", "image");
+  googleUrl.searchParams.set("num", "10");
+  googleUrl.searchParams.set("start", "1");
+  googleUrl.searchParams.set("imgSize", "large");
+
+  try {
+    const resp = await fetch(googleUrl.toString());
+    if (!resp.ok) return [];
+    const payload = await resp.json();
+    return (Array.isArray(payload?.items) ? payload.items : []).map((item: any) => ({
+      url: item?.link || "",
+      title: item?.title || "",
+    })).filter((i: any) => i.url);
+  } catch { return []; }
+}
+
+async function downloadAndStoreImage(
+  supabase: any,
+  imageUrl: string,
+  productId: string,
+  index: number
+): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const resp = await fetch(imageUrl, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0" },
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok) return null;
+    const ct = resp.headers.get("content-type") || "";
+    if (!ct.includes("image")) return null;
+
+    const blob = await resp.blob();
+    if (blob.size < 5000) return null; // too small
+
+    const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+    const path = `${productId}/${index}.${ext}`;
+
+    const arrayBuffer = await blob.arrayBuffer();
+    const { error } = await supabase.storage
+      .from("product-images")
+      .upload(path, arrayBuffer, { contentType: ct, upsert: true });
+
+    if (error) return null;
+    return path;
+  } catch { return null; }
+}
+
 async function searchFortlevImages(
   supabase: any,
   productId: string,
@@ -405,44 +461,37 @@ async function searchFortlevImages(
   capacity: string
 ): Promise<{ saved: number; errors: string[] }> {
   const errors: string[] = [];
+  const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
+  const GOOGLE_CX = Deno.env.get("GOOGLE_CX");
+
+  if (!GOOGLE_API_KEY || !GOOGLE_CX) {
+    errors.push("GOOGLE_API_KEY or GOOGLE_CX not configured");
+    return { saved: 0, errors };
+  }
+
   const typeLabel = type.includes("tanque") ? "tanque polietileno" : "caixa d'água";
   const queries = [
-    `Fortlev ${typeLabel} ${capacity}L produto`,
-    `Fortlev ${capacity} litros ${typeLabel} polietileno`,
-    `caixa dagua fortlev ${capacity}L`,
+    `Fortlev ${typeLabel} ${capacity}L produto polietileno`,
+    `caixa d'água Fortlev ${capacity} litros`,
   ];
 
   const allImages: { url: string; title: string }[] = [];
 
   for (const q of queries) {
-    if (allImages.length >= 8) break;
-    try {
-      const qs = new URLSearchParams({ q, start: "1", source: "bing" });
-      const baseUrl = Deno.env.get("SUPABASE_URL")!;
-      const res = await fetch(`${baseUrl}/functions/v1/search-product-images?${qs}`, {
-        headers: {
-          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
-          apikey: Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        for (const img of data.images || []) {
-          allImages.push({ url: img.imageUrl || img.thumbnail, title: img.title || "" });
-        }
-      }
-    } catch (e) {
-      errors.push(`search error for "${q}": ${e.message}`);
+    if (allImages.length >= 10) break;
+    const results = await searchGoogleImages(q, GOOGLE_API_KEY, GOOGLE_CX);
+    for (const r of results) {
+      if (!allImages.some(i => i.url === r.url)) allImages.push(r);
     }
   }
 
-  // Filter: prefer images with fortlev/caixa/tanque in title or URL, but accept all from search
-  const validKeywords = ["fortlev", "caixa", "reservatorio", "tanque", "polietileno", "agua"];
-  const invalidKeywords = ["instalacao", "projeto", "banner", "logo", "sprite", "icon", "favicon"];
+  // Filter
+  const validKeywords = ["fortlev", "caixa", "reservatorio", "tanque", "polietileno", "agua", "litros"];
+  const invalidKeywords = ["banner", "logo", "sprite", "icon", "favicon", "carrinho"];
 
   const scored = allImages.map((img) => {
-    const text = norm(img.title + " " + (img.url || ""));
-    let score = 1; // base score: accept all search results
+    const text = norm(img.title + " " + img.url);
+    let score = 1;
     for (const kw of validKeywords) if (text.includes(kw)) score += 2;
     for (const kw of invalidKeywords) if (text.includes(kw)) score -= 5;
     return { ...img, score };
@@ -456,23 +505,23 @@ async function searchFortlevImages(
     return { saved: 0, errors };
   }
 
-  // Import images via search-product-images POST
-  try {
-    const baseUrl = Deno.env.get("SUPABASE_URL")!;
-    const res = await fetch(`${baseUrl}/functions/v1/search-product-images`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
-        apikey: Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        action: "import",
-        productId,
-        images: top.map((t) => ({ imageUrl: t.url, thumbnail: t.url, title: t.title })),
-      }),
-    });
-    const result = await res.json();
+  // Download and store images
+  let saved = 0;
+  for (let i = 0; i < top.length; i++) {
+    const path = await downloadAndStoreImage(supabase, top[i].url, productId, i);
+    if (path) {
+      await supabase.from("store_product_images").insert({
+        product_id: productId,
+        path,
+        sort_order: i,
+      });
+      saved++;
+    }
+  }
+
+  if (saved === 0) errors.push("All image downloads failed");
+  return { saved, errors };
+}
     return { saved: result.imported?.length || 0, errors };
   } catch (e) {
     errors.push(`import error: ${e.message}`);

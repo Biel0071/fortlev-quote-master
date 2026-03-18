@@ -68,23 +68,23 @@ function QtyStepper({
 }) {
   return (
     <div
-      className="flex items-center justify-between rounded-xl border border-border bg-card px-1 py-1"
+      className="flex items-center justify-between rounded-lg sm:rounded-xl border border-border bg-card px-0.5 sm:px-1 py-0.5 sm:py-1"
       aria-label={`Quantidade ${value}`}
     >
       <Button
         type="button"
         variant="ghost"
-        className="h-10 w-10 rounded-lg text-base"
+        className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg text-sm sm:text-base"
         onClick={() => onChange(Math.max(1, value - 1))}
         aria-label="Diminuir quantidade"
       >
         −
       </Button>
-      <div className="min-w-8 text-center text-sm font-bold tabular-nums">{value}</div>
+      <div className="min-w-6 sm:min-w-8 text-center text-xs sm:text-sm font-bold tabular-nums">{value}</div>
       <Button
         type="button"
         variant="ghost"
-        className="h-10 w-10 rounded-lg text-base"
+        className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg text-sm sm:text-base"
         onClick={() => onChange(value + 1)}
         aria-label="Aumentar quantidade"
       >
@@ -150,8 +150,8 @@ export function StoreProductCard({
       className="group flex flex-col h-full overflow-hidden rounded-2xl bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
       aria-label={`Abrir produto ${product?.name ?? ""}`}
     >
-      {/* Image — fixed aspect ratio, consistent sizing */}
-      <div className="relative aspect-square bg-white border-b border-border overflow-hidden flex items-center justify-center p-3">
+      {/* Image — fixed aspect ratio */}
+      <div className="relative aspect-square bg-white border-b border-border overflow-hidden flex items-center justify-center p-2 sm:p-3">
         {imgUrl ? (
           <img
             src={imgUrl}
@@ -164,38 +164,38 @@ export function StoreProductCard({
         )}
       </div>
 
-      {/* Content — flex-col to push button to bottom */}
-      <CardContent className="flex flex-col flex-1 p-3 sm:p-4 gap-2">
+      {/* Content */}
+      <CardContent className="flex flex-col flex-1 p-2.5 sm:p-4 gap-1.5 sm:gap-2 overflow-hidden">
         {/* Name + Stars */}
-        <div className="min-w-0 flex-shrink-0">
-          <h3 className="text-sm sm:text-[15px] font-semibold leading-snug line-clamp-2 min-h-[2.5em]">
+        <div className="min-w-0">
+          <h3 className="text-xs sm:text-[15px] font-semibold leading-snug line-clamp-2 min-h-[2.2em] sm:min-h-[2.5em]">
             {product?.name}
           </h3>
           <ProductCardRating productId={product?.id} />
         </div>
 
         {/* Price */}
-        <div className="min-w-0 flex-shrink-0 mt-auto pt-1">
+        <div className="min-w-0 mt-auto pt-0.5 sm:pt-1">
           {hasPromo && (
-            <div className="text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div>
+            <div className="text-[10px] sm:text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div>
           )}
-          <div className="text-lg font-extrabold tracking-tight leading-tight">{formatCurrency(effectivePrice)}</div>
+          <div className="text-base sm:text-lg font-extrabold tracking-tight leading-tight">{formatCurrency(effectivePrice)}</div>
           {installments && (
-            <div className="text-[11px] text-muted-foreground mt-0.5">{installments}</div>
+            <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">{installments}</div>
           )}
         </div>
 
-        {/* Qty + Add button — always at bottom */}
+        {/* Qty + Add button */}
         <div
-          className="flex-shrink-0 mt-2"
+          className="flex-shrink-0 mt-1.5 sm:mt-2"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5 sm:gap-2">
             <QtyStepper value={qty} onChange={setQty} />
             <Button
               variant="accent"
-              className={`h-11 sm:h-12 rounded-xl px-4 w-full text-sm sm:text-base font-semibold transition-transform ${addingFx ? "scale-[0.97]" : ""}`}
+              className={`h-10 sm:h-12 rounded-xl px-3 sm:px-4 w-full text-xs sm:text-base font-semibold transition-transform ${addingFx ? "scale-[0.97]" : ""}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setAddingFx(true);

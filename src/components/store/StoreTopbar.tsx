@@ -107,22 +107,25 @@ export function StoreTopbar({
               </div>
 
               <nav className="shrink-0 flex items-center gap-1" aria-label="Ações rápidas">
-                <Button asChild variant="ghost" size="icon" className="h-11 w-11 rounded-xl" aria-label="Perfil">
+                {/* Profile - hidden on mobile (in bottom nav) */}
+                <Button asChild variant="ghost" size="icon" className="hidden sm:flex h-11 w-11 rounded-xl" aria-label="Perfil">
                   <Link to="/conta">
                     <User className="h-5 w-5" />
                   </Link>
                 </Button>
 
-                <Button asChild variant="ghost" size="icon" className="h-11 w-11 rounded-xl" aria-label="Pedidos e rastreio">
+                {/* Orders - hidden on mobile */}
+                <Button asChild variant="ghost" size="icon" className="hidden sm:flex h-11 w-11 rounded-xl" aria-label="Pedidos e rastreio">
                   <Link to="/pedidos">
                     <PackageSearch className="h-5 w-5" />
                   </Link>
                 </Button>
 
+                {/* Cart - hidden on mobile (in bottom nav) */}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("relative h-11 w-11 rounded-xl transition-transform", cartPulse && "animate-bounce")}
+                  className={cn("hidden sm:flex relative h-11 w-11 rounded-xl transition-transform", cartPulse && "animate-bounce")}
                   aria-label={`Carrinho${cartCount > 0 ? ` com ${cartCount} itens` : ""}`}
                   onClick={() => {
                     if (onCartClick) {

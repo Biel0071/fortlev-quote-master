@@ -248,15 +248,42 @@ export default function AdminReviews() {
 
   const generateCatalog = async () => {
     setCatalogGenerating(true);
+    setCatalogProgress(null);
+    let batchIndex = 0;
+    let totalCreated = 0;
+    let totalImages = 0;
+    let totalProcessed = 0;
+    let totalEligible = 0;
+
     try {
-      const { data, error } = await cloud.functions.invoke("generate-reviews", {
-        body: { action: "catalog", limit: catalogLimit === 0 ? 0 : catalogLimit },
-      });
-      if (error) throw error;
-      const result = data as any;
+      while (true) {
+        const { data, error } = await cloud.functions.invoke("generate-reviews", {
+          body: { action: "catalog", limit: catalogLimit === 0 ? 0 : catalogLimit, batch_index: batchIndex },
+        });
+        if (error) throw error;
+        const result = data as any;
+
+        totalCreated += result.total_created ?? 0;
+        totalImages += result.total_images ?? 0;
+        totalProcessed += result.products_in_batch ?? 0;
+        totalEligible = result.total_eligible ?? totalEligible;
+
+        setCatalogProgress({
+          batch: batchIndex + 1,
+          created: totalCreated,
+          images: totalImages,
+          processed: totalProcessed,
+          total: totalEligible,
+          done: result.done,
+        });
+
+        if (result.done || !result.next_batch_index) break;
+        batchIndex = result.next_batch_index;
+      }
+
       toast({
-        title: "Geração catálogo concluída",
-        description: `${result.total_created ?? 0} reviews criados para ${result.products_with_reviews ?? 0} de ${result.products_processed ?? 0} produtos. Datas distribuídas entre 2020-2026.`,
+        title: "Pipeline concluída!",
+        description: `${totalCreated} reviews geradas (${totalImages} com imagem) para ${totalProcessed} produtos.`,
       });
       await load();
     } catch (e: any) {

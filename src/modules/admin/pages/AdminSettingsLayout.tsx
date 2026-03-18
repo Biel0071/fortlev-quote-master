@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from "react-router-dom";
-import { Users, Palette, Plug, Truck, CreditCard, TicketPercent } from "lucide-react";
+import { Users, Palette, Plug, Truck, CreditCard } from "lucide-react";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 const settingsItems = [

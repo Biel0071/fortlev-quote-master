@@ -25,60 +25,62 @@ import { cn } from "@/lib/utils";
 type NavItem = { label: string; to: string; icon: any };
 type NavGroup = { label: string; icon: any; items: NavItem[] };
 
+const BASE = "/admin/configuracoes/pagamentos";
+
 const NAV_GROUPS: NavGroup[] = [
   {
     label: "Gateways",
     icon: Server,
     items: [
-      { label: "Todos Gateways", to: "/admin/payments/gateways", icon: Server },
-      { label: "Adicionar Gateway", to: "/admin/payments/gateways/add", icon: Server },
+      { label: "Todos Gateways", to: `${BASE}/gateways`, icon: Server },
+      { label: "Adicionar Gateway", to: `${BASE}/gateways/add`, icon: Server },
     ],
   },
   {
     label: "Checkouts",
     icon: ShoppingCart,
     items: [
-      { label: "Checkouts", to: "/admin/payments/checkouts", icon: ShoppingCart },
+      { label: "Checkouts", to: `${BASE}/checkouts`, icon: ShoppingCart },
     ],
   },
   {
     label: "Métodos de Pagamento",
     icon: CreditCard,
     items: [
-      { label: "PIX", to: "/admin/payments/methods/pix", icon: QrCode },
-      { label: "Cartão", to: "/admin/payments/methods/card", icon: CardIcon },
-      { label: "Boleto", to: "/admin/payments/methods/boleto", icon: Receipt },
-      { label: "Split", to: "/admin/payments/methods/split", icon: Split },
+      { label: "PIX", to: `${BASE}/methods/pix`, icon: QrCode },
+      { label: "Cartão", to: `${BASE}/methods/card`, icon: CardIcon },
+      { label: "Boleto", to: `${BASE}/methods/boleto`, icon: Receipt },
+      { label: "Split", to: `${BASE}/methods/split`, icon: Split },
     ],
   },
   {
     label: "Antifraude",
     icon: Shield,
     items: [
-      { label: "Regras", to: "/admin/payments/antifraud/rules", icon: Shield },
+      { label: "Regras", to: `${BASE}/antifraud/rules`, icon: Shield },
     ],
   },
   {
     label: "Assinaturas",
     icon: Repeat,
     items: [
-      { label: "Planos", to: "/admin/payments/subscriptions/plans", icon: Repeat },
+      { label: "Planos", to: `${BASE}/subscriptions/plans`, icon: Repeat },
     ],
   },
   {
     label: "Webhooks",
     icon: Webhook,
     items: [
-      { label: "Eventos e Logs", to: "/admin/payments/webhooks/events", icon: Webhook },
+      { label: "Eventos e Logs", to: `${BASE}/webhooks/events`, icon: Webhook },
     ],
   },
   {
     label: "Desenvolvedor",
     icon: FileCode,
     items: [
-      { label: "API Keys", to: "/admin/payments/api/keys", icon: Key },
-      { label: "Documentação", to: "/admin/payments/api/docs", icon: BookOpen },
-      { label: "Sandbox", to: "/admin/payments/api/sandbox", icon: TestTube },
+      { label: "API Keys", to: `${BASE}/api/keys`, icon: Key },
+      { label: "Documentação", to: `${BASE}/api/docs`, icon: BookOpen },
+      { label: "Sandbox", to: `${BASE}/api/sandbox`, icon: TestTube },
     ],
   },
 ];

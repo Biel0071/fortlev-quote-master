@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   BarChart3,
   Box,
-  CreditCard,
   FileText,
   Home,
   Image as ImageIcon,
@@ -15,8 +14,6 @@ import {
   Star,
   Store,
   Tags,
-  TicketPercent,
-  Truck,
   Users,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";

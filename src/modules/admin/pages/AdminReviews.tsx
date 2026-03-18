@@ -612,6 +612,114 @@ export default function AdminReviews() {
         </CardContent>
       </Card>
 
+      {/* ====== Daily Reviews Engine ====== */}
+      <Card className="rounded-2xl border-2 border-amber-300/40 bg-amber-50/30 dark:bg-amber-950/10">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-amber-100 dark:bg-amber-900/30 p-2.5">
+                <Zap className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Engine de Reviews Diárias</p>
+                <p className="text-xs text-muted-foreground">
+                  Gera avaliações automaticamente todos os dias com distribuição natural.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 ml-auto">
+              {dailyConfig && (
+                <div className="flex items-center gap-2">
+                  <Switch checked={dailyConfig.enabled} onCheckedChange={toggleDailyEngine} />
+                  <Label className="text-xs">{dailyConfig.enabled ? "Ativa" : "Inativa"}</Label>
+                </div>
+              )}
+              <Button onClick={runDailyNow} disabled={dailyRunning || !dailyConfig?.enabled} size="sm" variant="outline" className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300">
+                {dailyRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                Executar agora
+              </Button>
+            </div>
+          </div>
+
+          {/* Config */}
+          {dailyConfig && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Min/dia</Label>
+                <Input type="number" value={dailyConfig.min_reviews_per_day} min={1} max={100}
+                  onChange={(e) => updateDailyConfig("min_reviews_per_day", Number(e.target.value))} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Max/dia</Label>
+                <Input type="number" value={dailyConfig.max_reviews_per_day} min={1} max={100}
+                  onChange={(e) => updateDailyConfig("max_reviews_per_day", Number(e.target.value))} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Max/produto/dia</Label>
+                <Input type="number" value={dailyConfig.max_reviews_per_product} min={1} max={10}
+                  onChange={(e) => updateDailyConfig("max_reviews_per_product", Number(e.target.value))} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">% com imagem</Label>
+                <Input type="number" value={dailyConfig.image_percentage} min={0} max={100}
+                  onChange={(e) => updateDailyConfig("image_percentage", Number(e.target.value))} className="h-8 text-sm" />
+              </div>
+            </div>
+          )}
+
+          {/* Today's stats from runs */}
+          {dailyRuns.length > 0 && (
+            <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+              <span className="font-medium text-foreground">Última execução:</span>
+              <span>{new Date(dailyRuns[0].created_at).toLocaleString("pt-BR")}</span>
+              <Badge variant="outline" className="text-[10px]">{dailyRuns[0].reviews_generated} reviews</Badge>
+              <Badge variant="outline" className="text-[10px]">{dailyRuns[0].images_attached} imagens</Badge>
+              <Badge variant="outline" className="text-[10px]">{dailyRuns[0].products_covered} produtos</Badge>
+            </div>
+          )}
+
+          {/* History toggle */}
+          <div>
+            <Button variant="ghost" size="sm" className="text-xs gap-1.5" onClick={() => setShowDailyHistory(!showDailyHistory)}>
+              <History className="h-3.5 w-3.5" />
+              Histórico ({dailyRuns.length} execuções)
+              {showDailyHistory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+
+            {showDailyHistory && dailyRuns.length > 0 && (
+              <div className="mt-2 border rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-2 font-medium">Data</th>
+                      <th className="text-right p-2 font-medium">Meta</th>
+                      <th className="text-right p-2 font-medium">Reviews</th>
+                      <th className="text-right p-2 font-medium">Imagens</th>
+                      <th className="text-right p-2 font-medium">Produtos</th>
+                      <th className="text-left p-2 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dailyRuns.map((run) => (
+                      <tr key={run.id} className="border-t">
+                        <td className="p-2">{new Date(run.created_at).toLocaleDateString("pt-BR")}</td>
+                        <td className="p-2 text-right">{run.target_count}</td>
+                        <td className="p-2 text-right font-medium">{run.reviews_generated}</td>
+                        <td className="p-2 text-right">{run.images_attached}</td>
+                        <td className="p-2 text-right">{run.products_covered}</td>
+                        <td className="p-2">
+                          <Badge variant={run.status === "completed" ? "default" : "destructive"} className="text-[10px]">{run.status}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ====== Search + Filters ====== */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">

@@ -16,11 +16,7 @@ import { cleanPhone, formatCurrency, formatWhatsappMask, isValidBrazilPhone } fr
 import { fetchCepData, formatAddress } from "@/utils/cepService";
 import { CheckoutIdentifyStep } from "@/components/store/checkout/CheckoutIdentifyStep";
 import { CheckoutDeliveryStep } from "@/components/store/checkout/CheckoutDeliveryStep";
-
-const WHATSAPP_ROUTE_LIMIT = (() => {
-  const parsed = Number(import.meta.env.VITE_WHATSAPP_ROUTE_LIMIT ?? 1000);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1000;
-})();
+import { useRoutingThreshold } from "@/hooks/useRoutingThreshold";
 
 const identifySchema = z.object({
   customerName: z.string().trim().min(2, "Nome obrigatório").max(120, "Nome muito longo"),

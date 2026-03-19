@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { QrCode, CreditCard, Receipt, Save, Shield, Route, MessageSquare, Zap } from "lucide-react";
+import { QrCode, CreditCard, Receipt, Save, Shield, Route, MessageSquare, Zap, Power } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 

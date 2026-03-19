@@ -21,18 +21,26 @@ export default function AdminPaymentsMethods() {
   });
 
   const [routingThreshold, setRoutingThreshold] = useState("980");
-  const [loadingThreshold, setLoadingThreshold] = useState(true);
+  const [gatewayEnabled, setGatewayEnabled] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(true);
 
   useEffect(() => {
     supabase
       .from("payment_methods_config")
-      .select("config_json")
-      .eq("method", "routing_threshold")
-      .maybeSingle()
+      .select("method, config_json")
+      .in("method", ["routing_threshold", "gateway_enabled"])
       .then(({ data }) => {
-        const val = (data?.config_json as any)?.threshold;
-        if (typeof val === "number" && val > 0) setRoutingThreshold(String(val));
-        setLoadingThreshold(false);
+        for (const row of data ?? []) {
+          const cfg = (row as any).config_json;
+          if (row.method === "routing_threshold") {
+            const val = cfg?.threshold;
+            if (typeof val === "number" && val > 0) setRoutingThreshold(String(val));
+          }
+          if (row.method === "gateway_enabled") {
+            setGatewayEnabled(cfg?.enabled === true);
+          }
+        }
+        setLoadingConfig(false);
       });
   }, []);
 

@@ -149,10 +149,10 @@ export default function AdminPaymentsMethods() {
                 min="1"
                 step="10"
                 placeholder="980"
-                disabled={loadingThreshold}
+                disabled={loadingConfig}
               />
             </div>
-            <Button onClick={handleSaveThreshold} size="sm" disabled={loadingThreshold}>
+            <Button onClick={handleSaveThreshold} size="sm" disabled={loadingConfig}>
               <Save className="h-4 w-4 mr-1" /> Salvar limite
             </Button>
           </div>

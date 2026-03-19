@@ -33,11 +33,12 @@ import {
 /* ---------- types ---------- */
 type Session = {
   id: string;
-  session_token: string;
+  session_id: string;
   device: string;
   source: string;
   score: number;
   temperature: string;
+  status: string;
   total_pages: number;
   total_clicks: number;
   total_time_seconds: number;

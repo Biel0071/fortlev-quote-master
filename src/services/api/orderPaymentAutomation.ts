@@ -1,8 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/utils/formatters";
 
-const WHATSAPP_NUMBER = "5511999999999"; // default, should come from store config
-
 export interface OrderPaymentResult {
   mode: "pix" | "whatsapp";
   transaction_id?: string;
@@ -11,19 +9,34 @@ export interface OrderPaymentResult {
   whatsapp_url?: string;
 }
 
-async function getRoutingThreshold(): Promise<number> {
+async function getRoutingConfig(): Promise<{ threshold: number; gatewayEnabled: boolean }> {
   const { data } = await supabase
     .from("payment_methods_config")
-    .select("config_json")
-    .eq("method", "routing_threshold")
-    .maybeSingle();
+    .select("method, config_json")
+    .in("method", ["routing_threshold", "gateway_enabled"]);
 
-  const val = (data?.config_json as any)?.threshold;
-  return typeof val === "number" && val > 0 ? val : 980;
+  let threshold = 980;
+  let gatewayEnabled = false;
+
+  for (const row of data ?? []) {
+    const cfg = (row as any).config_json;
+    if (row.method === "routing_threshold") {
+      const val = cfg?.threshold;
+      if (typeof val === "number" && val > 0) threshold = val;
+    }
+    if (row.method === "gateway_enabled") {
+      gatewayEnabled = cfg?.enabled === true;
+    }
+  }
+
+  return { threshold, gatewayEnabled };
 }
 
 /**
- * Auto-route payment: <=threshold → AllowPay PIX, >threshold → WhatsApp
+ * Auto-route payment:
+ * - Gateway disabled → always WhatsApp
+ * - Gateway enabled & <=threshold → AllowPay PIX
+ * - Gateway enabled & >threshold → WhatsApp
  */
 export async function processOrderPayment(order: {
   id: string;
@@ -34,9 +47,9 @@ export async function processOrderPayment(order: {
   items_summary?: string;
   city?: string;
 }): Promise<OrderPaymentResult> {
-  const THRESHOLD = await getRoutingThreshold();
+  const { threshold, gatewayEnabled } = await getRoutingConfig();
 
-  if (order.total <= THRESHOLD) {
+  if (gatewayEnabled && order.total <= threshold) {
     // Auto PIX via AllowPay
     const { data, error } = await supabase.functions.invoke("allowpay-create-payment", {
       body: {
@@ -61,7 +74,7 @@ export async function processOrderPayment(order: {
       payment_url: data?.payment_url,
     };
   } else {
-    // WhatsApp redirect for high-value orders
+    // WhatsApp redirect
     const message = [
       `Olá, recebemos seu pedido de orçamento.`,
       `Um consultor irá finalizar o atendimento.`,

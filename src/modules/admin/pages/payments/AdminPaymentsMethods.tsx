@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { QrCode, CreditCard, Receipt, Save, Shield, Route, MessageSquare, Zap } from "lucide-react";
+import { QrCode, CreditCard, Receipt, Save, Shield, Route, MessageSquare, Zap, Power } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,18 +21,26 @@ export default function AdminPaymentsMethods() {
   });
 
   const [routingThreshold, setRoutingThreshold] = useState("980");
-  const [loadingThreshold, setLoadingThreshold] = useState(true);
+  const [gatewayEnabled, setGatewayEnabled] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(true);
 
   useEffect(() => {
     supabase
       .from("payment_methods_config")
-      .select("config_json")
-      .eq("method", "routing_threshold")
-      .maybeSingle()
+      .select("method, config_json")
+      .in("method", ["routing_threshold", "gateway_enabled"])
       .then(({ data }) => {
-        const val = (data?.config_json as any)?.threshold;
-        if (typeof val === "number" && val > 0) setRoutingThreshold(String(val));
-        setLoadingThreshold(false);
+        for (const row of data ?? []) {
+          const cfg = (row as any).config_json;
+          if (row.method === "routing_threshold") {
+            const val = cfg?.threshold;
+            if (typeof val === "number" && val > 0) setRoutingThreshold(String(val));
+          }
+          if (row.method === "gateway_enabled") {
+            setGatewayEnabled(cfg?.enabled === true);
+          }
+        }
+        setLoadingConfig(false);
       });
   }, []);
 
@@ -55,14 +63,49 @@ export default function AdminPaymentsMethods() {
     }
   };
 
+  const handleToggleGateway = async (enabled: boolean) => {
+    setGatewayEnabled(enabled);
+    const { error } = await supabase
+      .from("payment_methods_config")
+      .update({ config_json: { enabled } as any })
+      .eq("method", "gateway_enabled");
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+      setGatewayEnabled(!enabled);
+    } else {
+      toast.success(enabled ? "Gateway de pagamento ativado!" : "Gateway desativado — todos os pedidos irão para WhatsApp.");
+    }
+  };
+
   const handleSave = () => { toast.success("Configurações salvas"); };
 
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Métodos de Pagamento</h1>
 
+      {/* Gateway master toggle */}
+      <Card className={gatewayEnabled ? "border-green-500/30 bg-green-500/5" : "border-orange-500/30 bg-orange-500/5"}>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Power className={`h-4 w-4 ${gatewayEnabled ? "text-green-600" : "text-orange-600"}`} />
+            Pagamento via Gateway
+          </CardTitle>
+          <CardDescription>
+            {gatewayEnabled
+              ? "Gateway ativo — pedidos dentro do limite geram cobrança PIX automática."
+              : "Gateway desativado — todos os pedidos são redirecionados para o WhatsApp."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <Switch checked={gatewayEnabled} onCheckedChange={handleToggleGateway} disabled={loadingConfig} />
+            <Label className="text-sm">{gatewayEnabled ? "Ativado" : "Desativado"}</Label>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Routing threshold card */}
-      <Card className="border-primary/30 bg-primary/5">
+      <Card className={`border-primary/30 bg-primary/5 ${!gatewayEnabled ? "opacity-50 pointer-events-none" : ""}`}>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Route className="h-4 w-4 text-primary" />
@@ -106,10 +149,10 @@ export default function AdminPaymentsMethods() {
                 min="1"
                 step="10"
                 placeholder="980"
-                disabled={loadingThreshold}
+                disabled={loadingConfig}
               />
             </div>
-            <Button onClick={handleSaveThreshold} size="sm" disabled={loadingThreshold}>
+            <Button onClick={handleSaveThreshold} size="sm" disabled={loadingConfig}>
               <Save className="h-4 w-4 mr-1" /> Salvar limite
             </Button>
           </div>

@@ -276,7 +276,7 @@ export default function CheckoutPage() {
       };
       const discount = await resolveCouponDiscount();
       const estimatedTotal = Math.max(0, computed.subtotal + computed.shipping.value - discount);
-      const routeType: "whatsapp" | "gateway" = estimatedTotal >= WHATSAPP_ROUTE_LIMIT ? "whatsapp" : "gateway";
+      const routeType: "whatsapp" | "gateway" = !gatewayEnabled || estimatedTotal >= WHATSAPP_ROUTE_LIMIT ? "whatsapp" : "gateway";
 
       leadTracker.pushSessionInBackground({
         name: identify.customerName,

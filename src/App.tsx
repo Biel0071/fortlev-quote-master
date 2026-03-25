@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import StoreHome from "./pages/store/StoreHome";
@@ -81,6 +81,11 @@ function InstitutionalRedirect() {
   return <Navigate to={`/p/${encodeURIComponent(slug)}`} replace />;
 }
 
+function CatalogRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/loja${search}`} replace />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -96,6 +101,8 @@ const App = () => (
 
             {/* E-commerce */}
             <Route path="/loja" element={<StoreCatalog />} />
+            <Route path="/catalogo" element={<CatalogRedirect />} />
+            <Route path="/catálogo" element={<CatalogRedirect />} />
             <Route path="/produto/:id" element={<ProductPage />} />
             <Route path="/carrinho" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />

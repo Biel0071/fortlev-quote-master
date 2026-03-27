@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, type CSSProperties } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Bolt,
   Boxes,
@@ -105,6 +105,7 @@ const CATEGORY_CAROUSEL_SPEED_FACTOR = 0.36;
 
 export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
   ({ categories, hideHeader = false }, ref) => {
+    const navigate = useNavigate();
     const [isPaused, setIsPaused] = useState(false);
     const [manualShift, setManualShift] = useState(0);
 
@@ -159,17 +160,21 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
       if (!hasLoop || e.button !== 0) return;
       dragRef.current = { active: true, startX: e.clientX, startShift: manualShift, moved: false };
       setIsPaused(true);
-      e.currentTarget.setPointerCapture(e.pointerId);
     };
 
     const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
       if (!dragRef.current.active) return;
       const delta = e.clientX - dragRef.current.startX;
       if (Math.abs(delta) > DRAG_CLICK_THRESHOLD) {
-        dragRef.current.moved = true;
+        if (!dragRef.current.moved) {
+          dragRef.current.moved = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }
       }
-      setManualShift(normalizeShift(dragRef.current.startShift + delta));
-      e.preventDefault();
+      if (dragRef.current.moved) {
+        setManualShift(normalizeShift(dragRef.current.startShift + delta));
+        e.preventDefault();
+      }
     };
 
     const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -263,7 +268,10 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
                         draggable={false}
                         onDragStart={(e) => e.preventDefault()}
                         onClick={(e) => {
-                          if (dragRef.current.moved) e.preventDefault();
+                          e.preventDefault();
+                          if (!dragRef.current.moved) {
+                            navigate(`/loja?categoria=${encodeURIComponent(c.slug)}`);
+                          }
                         }}
                       >
                         <CategoryAvatar name={c.name} img={img} Icon={Icon} />

@@ -105,6 +105,7 @@ const CATEGORY_CAROUSEL_SPEED_FACTOR = 0.36;
 
 export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
   ({ categories, hideHeader = false }, ref) => {
+    const navigate = useNavigate();
     const [isPaused, setIsPaused] = useState(false);
     const [manualShift, setManualShift] = useState(0);
 

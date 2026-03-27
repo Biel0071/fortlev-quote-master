@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, type CSSProperties } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Bolt,
   Boxes,

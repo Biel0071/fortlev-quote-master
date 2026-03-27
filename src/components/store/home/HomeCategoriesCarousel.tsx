@@ -160,17 +160,21 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
       if (!hasLoop || e.button !== 0) return;
       dragRef.current = { active: true, startX: e.clientX, startShift: manualShift, moved: false };
       setIsPaused(true);
-      e.currentTarget.setPointerCapture(e.pointerId);
     };
 
     const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
       if (!dragRef.current.active) return;
       const delta = e.clientX - dragRef.current.startX;
       if (Math.abs(delta) > DRAG_CLICK_THRESHOLD) {
-        dragRef.current.moved = true;
+        if (!dragRef.current.moved) {
+          dragRef.current.moved = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }
       }
-      setManualShift(normalizeShift(dragRef.current.startShift + delta));
-      e.preventDefault();
+      if (dragRef.current.moved) {
+        setManualShift(normalizeShift(dragRef.current.startShift + delta));
+        e.preventDefault();
+      }
     };
 
     const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {

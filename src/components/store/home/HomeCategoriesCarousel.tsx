@@ -264,7 +264,10 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
                         draggable={false}
                         onDragStart={(e) => e.preventDefault()}
                         onClick={(e) => {
-                          if (dragRef.current.moved) e.preventDefault();
+                          e.preventDefault();
+                          if (!dragRef.current.moved) {
+                            navigate(`/loja?categoria=${encodeURIComponent(c.slug)}`);
+                          }
                         }}
                       >
                         <CategoryAvatar name={c.name} img={img} Icon={Icon} />

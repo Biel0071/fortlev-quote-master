@@ -3,6 +3,7 @@ import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { CartDrawer } from "@/components/store/CartDrawer";
+import { AppDownloadBanner } from "@/components/store/AppDownloadBanner";
 import type { HomeFooter } from "@/hooks/useHomeContent";
 
 /**

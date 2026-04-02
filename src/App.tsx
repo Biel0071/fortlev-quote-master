@@ -7,6 +7,7 @@ import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import StoreHome from "./pages/store/StoreHome";
 import StoreCatalog from "./pages/store/StoreCatalog";
+import OffersPage from "./pages/store/OffersPage";
 import ProductPage from "./pages/store/ProductPage";
 import CartPage from "./pages/store/CartPage";
 import CheckoutPage from "./pages/store/CheckoutPage";

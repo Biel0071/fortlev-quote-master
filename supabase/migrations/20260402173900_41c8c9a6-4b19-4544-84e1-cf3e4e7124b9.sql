@@ -1,0 +1,1 @@
+UPDATE public.store_banners SET link_url = '/loja?q=caixa+d%27agua' WHERE id = '12d0864e-9de7-47e3-a85a-61c80ffafb9a';

@@ -104,6 +104,7 @@ const App = () => (
             <Route path="/loja" element={<StoreCatalog />} />
             <Route path="/catalogo" element={<CatalogRedirect />} />
             <Route path="/catálogo" element={<CatalogRedirect />} />
+            <Route path="/ofertas" element={<OffersPage />} />
             <Route path="/produto/:id" element={<ProductPage />} />
             <Route path="/carrinho" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />

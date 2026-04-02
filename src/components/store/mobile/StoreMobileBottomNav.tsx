@@ -13,10 +13,12 @@ export function StoreMobileBottomNav({
   const location = useLocation();
 
   const isHome = location.pathname === "/" || location.pathname === "/materiais";
+  const isOffers = location.pathname === "/ofertas";
   const isCart = location.pathname === "/carrinho";
 
   const items = [
-    { label: "Home", icon: Home, active: isHome, onClick: () => nav("/materiais") },
+    { label: "Home", icon: Home, active: isHome, onClick: () => nav("/") },
+    { label: "Ofertas", icon: Flame, active: isOffers, onClick: () => nav("/ofertas") },
     {
       label: "Carrinho",
       icon: ShoppingCart,

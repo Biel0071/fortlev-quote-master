@@ -33,6 +33,7 @@ export function StoreLayout({
 }) {
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden">
+      <AppDownloadBanner />
       <StoreTopbar
         cartCount={cartCount}
         onCartClick={onCartClick}

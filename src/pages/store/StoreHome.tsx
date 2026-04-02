@@ -18,6 +18,7 @@ import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
 import { useHomeMerchandising } from "@/hooks/useHomeMerchandising";
 import { HomeGuaranteesMiniBar } from "@/components/store/home/HomeGuaranteesMiniBar";
 import { createMicroLoader } from "@/utils/microLoader";
+import { AppDownloadBanner } from "@/components/store/AppDownloadBanner";
 
 function SectionSkeleton({ rows = 1 }: { rows?: number }) {
   return (

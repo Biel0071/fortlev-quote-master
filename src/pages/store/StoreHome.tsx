@@ -179,6 +179,7 @@ export default function StoreHome() {
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden">
+      <AppDownloadBanner />
       <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} footerStoreName={home.footer?.store_name ?? undefined} categories={activeCategories as any} />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />

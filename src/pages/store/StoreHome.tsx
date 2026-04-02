@@ -18,6 +18,7 @@ import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
 import { useHomeMerchandising } from "@/hooks/useHomeMerchandising";
 import { HomeGuaranteesMiniBar } from "@/components/store/home/HomeGuaranteesMiniBar";
 import { createMicroLoader } from "@/utils/microLoader";
+import { AppDownloadBanner } from "@/components/store/AppDownloadBanner";
 
 function SectionSkeleton({ rows = 1 }: { rows?: number }) {
   return (
@@ -178,6 +179,7 @@ export default function StoreHome() {
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden">
+      <AppDownloadBanner />
       <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} footerStoreName={home.footer?.store_name ?? undefined} categories={activeCategories as any} />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />

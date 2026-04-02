@@ -7,6 +7,7 @@ import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import StoreHome from "./pages/store/StoreHome";
 import StoreCatalog from "./pages/store/StoreCatalog";
+import OffersPage from "./pages/store/OffersPage";
 import ProductPage from "./pages/store/ProductPage";
 import CartPage from "./pages/store/CartPage";
 import CheckoutPage from "./pages/store/CheckoutPage";
@@ -103,6 +104,7 @@ const App = () => (
             <Route path="/loja" element={<StoreCatalog />} />
             <Route path="/catalogo" element={<CatalogRedirect />} />
             <Route path="/catálogo" element={<CatalogRedirect />} />
+            <Route path="/ofertas" element={<OffersPage />} />
             <Route path="/produto/:id" element={<ProductPage />} />
             <Route path="/carrinho" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />

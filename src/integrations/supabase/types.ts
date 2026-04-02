@@ -2914,12 +2914,15 @@ export type Database = {
           clicks: number
           created_at: string
           description: string | null
+          discount_percentage: number
           featured: boolean
           id: string
+          is_promotion: boolean
           min_stock: number
           name: string
           price: number
           promo_price: number
+          promotion_limit_per_customer: number | null
           sales: number
           sku: string | null
           source_id: string | null
@@ -2937,12 +2940,15 @@ export type Database = {
           clicks?: number
           created_at?: string
           description?: string | null
+          discount_percentage?: number
           featured?: boolean
           id?: string
+          is_promotion?: boolean
           min_stock?: number
           name: string
           price?: number
           promo_price?: number
+          promotion_limit_per_customer?: number | null
           sales?: number
           sku?: string | null
           source_id?: string | null
@@ -2960,12 +2966,15 @@ export type Database = {
           clicks?: number
           created_at?: string
           description?: string | null
+          discount_percentage?: number
           featured?: boolean
           id?: string
+          is_promotion?: boolean
           min_stock?: number
           name?: string
           price?: number
           promo_price?: number
+          promotion_limit_per_customer?: number | null
           sales?: number
           sku?: string | null
           source_id?: string | null

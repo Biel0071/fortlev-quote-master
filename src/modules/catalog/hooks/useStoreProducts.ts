@@ -39,7 +39,7 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
           const { data, error: fetchError } = await cloud
             .from("store_products")
             .select(
-              "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, store_product_images(id, product_id, path, sort_order)",
+              "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order)",
             )
             .order("name", { ascending: true })
             .range(from, from + PAGE_SIZE - 1);

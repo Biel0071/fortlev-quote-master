@@ -89,10 +89,10 @@ export default function OffersPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {heroProduct && (
+            {heroProducts.length > 0 && (
               <OfferHeroCard
-                product={heroProduct}
-                prices={getOfferPrices(heroProduct)}
+                products={heroProducts}
+                getOfferPrices={getOfferPrices}
                 onAdd={onAdd}
               />
             )}

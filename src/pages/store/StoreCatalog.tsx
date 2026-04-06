@@ -30,8 +30,9 @@ export default function StoreCatalog() {
     const selectedCategoryId =
       selectedSlug === "all" ? null : activeCategories.find((c) => c.slug === selectedSlug)?.id ?? null;
     const promoOnly = searchParams.get("promo") === "1";
+    const searchTerms = search ? expandSearchTerms(search) : [];
 
-    return activeProducts
+    const results = activeProducts
       .filter((p: any) => {
         if (selectedCategoryId && (p.category_id ?? null) !== selectedCategoryId) return false;
 
@@ -41,8 +42,8 @@ export default function StoreCatalog() {
           if (!(promo > 0 && promo < price)) return false;
         }
 
-        if (!search) return true;
-        return p.name.toLowerCase().includes(search) || (p.description ?? "").toLowerCase().includes(search);
+        if (searchTerms.length === 0) return true;
+        return smartMatch(p, searchTerms);
       })
       .slice()
       .sort((a: any, b: any) => {
@@ -60,6 +61,12 @@ export default function StoreCatalog() {
         }
         return String(a.name ?? "").localeCompare(String(b.name ?? ""));
       });
+
+    // Fallback: if search returned nothing, show all products (user never sees empty)
+    if (results.length === 0 && search) {
+      return activeProducts.slice(0, 20);
+    }
+    return results;
   }, [activeProducts, q, selectedSlug, activeCategories, searchParams]);
 
   return (

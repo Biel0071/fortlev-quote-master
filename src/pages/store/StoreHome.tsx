@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Flame } from "lucide-react";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";

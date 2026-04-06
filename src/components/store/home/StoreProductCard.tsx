@@ -194,7 +194,12 @@ export function StoreProductCard({
           {hasPromo && (
             <div className="text-[10px] sm:text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div>
           )}
-          <div className="text-base sm:text-lg font-extrabold tracking-tight leading-tight">{formatCurrency(effectivePrice)}</div>
+          <div className="text-base sm:text-lg font-extrabold tracking-tight leading-tight">
+            {formatCurrency(effectivePrice)}
+            {product?.unit && product.unit !== "un" && (
+              <span className="text-xs font-medium text-muted-foreground">/{product.unit}</span>
+            )}
+          </div>
           <div className="text-xs sm:text-sm font-bold text-pix mt-0.5">
             {formatCurrency(effectivePrice * 0.93)} no PIX
           </div>

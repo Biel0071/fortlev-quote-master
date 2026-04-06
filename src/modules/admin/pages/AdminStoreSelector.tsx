@@ -95,6 +95,12 @@ export default function AdminStoreSelector() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailStore, setDetailStore] = useState<StoreSummary | null>(null);
 
+  // Permissions dialog
+  const [permOpen, setPermOpen] = useState(false);
+  const [permStoreId, setPermStoreId] = useState<string | null>(null);
+  const [permModules, setPermModules] = useState<Record<string, boolean>>({});
+  const [savingPerm, setSavingPerm] = useState(false);
+
   useEffect(() => {
     if (permLoading) return;
     loadStores();

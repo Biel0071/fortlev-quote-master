@@ -119,16 +119,36 @@ export default function AdminAppMetrics() {
       const { data: urlData } = cloud.storage.from("apps").getPublicUrl(fileName);
       const publicUrl = urlData.publicUrl;
 
-      // Save to app_config
-      const { error: upsertError } = await cloud
-        .from("app_config")
-        .upsert({ key: "app_download_url", value: publicUrl, updated_at: new Date().toISOString() }, { onConflict: "key" });
-      if (upsertError) throw upsertError;
+      // Build display name from original file name (without extension)
+      const displayName = file.name.replace(/\.apk$/i, "");
+      const meta = {
+        originalName: file.name,
+        displayName: `${displayName}.apk`,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      // Save URL + metadata to app_config
+      await Promise.all([
+        cloud.from("app_config").upsert(
+          { key: "app_download_url", value: publicUrl, updated_at: new Date().toISOString() },
+          { onConflict: "key" }
+        ),
+        cloud.from("app_config").upsert(
+          { key: "app_apk_meta", value: JSON.stringify(meta), updated_at: new Date().toISOString() },
+          { onConflict: "key" }
+        ),
+      ]);
 
       setApkUrl(publicUrl);
+      setApkMeta(meta);
       toast.success("APK enviado com sucesso!");
       if (fileRef.current) fileRef.current.value = "";
     } catch (err: any) {
+      toast.error(`Erro ao enviar APK: ${err.message}`);
+    }
+    setUploading(false);
+  };
       toast.error(`Erro ao enviar APK: ${err.message}`);
     }
     setUploading(false);

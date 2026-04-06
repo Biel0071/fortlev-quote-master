@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { AppHeader } from "@/components/store/AppHeader";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { StoreFooter } from "@/components/store/StoreFooter";
@@ -30,18 +30,32 @@ export function StoreLayout({
   footerStoreName?: string;
   categories?: Array<{ id: string; name: string; slug: string }>;
 }) {
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerH, setHeaderH] = useState(0);
+
+  useEffect(() => {
+    if (!headerRef.current) return;
+    const ro = new ResizeObserver(([entry]) => setHeaderH(entry.contentRect.height));
+    ro.observe(headerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden">
-      <AppHeader
-        cartCount={cartCount}
-        onCartClick={onCartClick}
-        footerStoreName={footerStoreName}
-        categories={categories}
-      />
+      <div ref={headerRef} className="contents">
+        <AppHeader
+          cartCount={cartCount}
+          onCartClick={onCartClick}
+          footerStoreName={footerStoreName}
+          categories={categories}
+        />
+      </div>
       <CartDrawer open={cartOpen} onOpenChange={onCartOpenChange} />
       <StoreMobileChrome cartCount={cartCount} onCartClick={onCartClick} />
 
-      {children}
+      <div style={{ paddingTop: headerH }}>
+        {children}
+      </div>
 
       {footer !== undefined ? (
         <StoreFooter footer={footer ?? null} pageLinks={pageLinks ?? []} />

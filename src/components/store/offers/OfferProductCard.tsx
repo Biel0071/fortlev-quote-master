@@ -52,7 +52,8 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
           src={imageSrc}
           alt={product.name}
           className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
+         loading="lazy"
+          decoding="async"
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";
           }}

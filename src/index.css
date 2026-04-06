@@ -280,6 +280,11 @@
   50% { opacity: 0.55; }
 }
 
+@keyframes arrowBounce {
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0.6; transform: translateY(2px); }
+}
+
 /* Offer cards use hover scale only — no continuous animation */
 
 /* Hide scrollbar globally */

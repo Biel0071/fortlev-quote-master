@@ -131,7 +131,11 @@ export function StoreProductCard({
     return `ou 10x de ${formatCurrency(x)} sem juros`;
   }, [effectivePrice]);
 
-  const imgPath = product?.images?.[0]?.path ?? null;
+  const images = (product?.images ?? []) as Array<{ path: string | null }>;
+  const validImg = images.find(
+    (img) => img.path && !img.path.includes("placeholder") && !img.path.includes("default") && !img.path.includes("fallback")
+  );
+  const imgPath = validImg?.path ?? images[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);
   const imageSrc = imgUrl || "/placeholder.svg";
 
@@ -167,7 +171,8 @@ export function StoreProductCard({
           src={imageSrc}
           alt={product?.name ?? "Produto"}
           className="max-h-full max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.03]"
-          loading="lazy"
+         loading="lazy"
+          decoding="async"
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";
           }}

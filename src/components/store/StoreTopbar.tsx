@@ -118,14 +118,14 @@ export function StoreTopbar({
   return (
     <>
       <header className="sticky top-0 z-40 w-full overflow-x-hidden border-b border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/88">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-1.5 pb-2 sm:pt-3 sm:pb-4">
-          <div className="flex flex-col gap-1.5 sm:gap-3">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-1 pb-1.5 sm:pt-2 sm:pb-3">
+          <div className="flex flex-col gap-1 sm:gap-2">
             <div className="flex items-center justify-center">
               <Link to="/materiais" className="flex items-center justify-center" aria-label={brandLabel}>
                 <img
                   src={storeLogo}
                   alt={`${brandLabel} - logo`}
-                  className="h-[52px] w-[52px] sm:h-[100px] sm:w-[100px] object-contain"
+                  className="h-[40px] w-[40px] sm:h-[80px] sm:w-[80px] object-contain"
                   loading="eager"
                 />
               </Link>
@@ -303,7 +303,7 @@ export function StoreTopbar({
         </div>
       </header>
 
-      <div className={cn("w-full shrink-0", showCatalogChips ? "h-[176px] sm:h-[204px]" : "h-[132px] sm:h-[156px]")} aria-hidden="true" />
+      <div className={cn("w-full shrink-0", showCatalogChips ? "h-[148px] sm:h-[180px]" : "h-[108px] sm:h-[136px]")} aria-hidden="true" />
 
       <FloatingChat phoneDigits={contact.phoneDigits} />
     </>

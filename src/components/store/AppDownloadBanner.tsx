@@ -62,7 +62,7 @@ export function AppDownloadBanner() {
           : "opacity-0 max-h-0 -translate-y-2 overflow-hidden"
       }`}
     >
-      <div className="mx-auto relative flex items-center justify-center gap-2 px-10 py-2 sm:px-4">
+      <div className="mx-auto relative flex items-center justify-center gap-2 px-10 py-1 sm:py-1.5 sm:px-4">
         <a
           href={appUrl ?? "#"}
           target="_blank"

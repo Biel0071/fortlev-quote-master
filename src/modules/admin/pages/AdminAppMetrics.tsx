@@ -87,6 +87,16 @@ export default function AdminAppMetrics() {
         .eq("key", "app_download_url")
         .maybeSingle();
       if (configRow?.value) setApkUrl(configRow.value);
+
+      // Load APK metadata
+      const { data: metaRow } = await cloud
+        .from("app_config")
+        .select("value")
+        .eq("key", "app_apk_meta")
+        .maybeSingle();
+      if (metaRow?.value) {
+        try { setApkMeta(JSON.parse(metaRow.value)); } catch { /* ignore */ }
+      }
     } catch { /* silent */ }
     setLoading(false);
   };

@@ -202,8 +202,8 @@ export default function StoreHome() {
         )}
       </HomeSection>
 
-      {/* 🔥 Ofertas section */}
-      {phase.featured && offerIds.length > 0 ? (
+      {/* 🔥 Ofertas section — always shows thanks to fallback */}
+      {phase.featured && homeOffers.length > 0 ? (
         <HomeSection
           id="ofertas"
           title=""
@@ -219,7 +219,13 @@ export default function StoreHome() {
               Ver todas
             </Link>
           </div>
-          <HomeProductsByIds loading={loading} productIds={offerIds} products={activeProducts as any} onAdd={onAdd} limit={8} />
+          <HomeProductsByIds
+            loading={loading}
+            productIds={homeOffers.map((o) => o.id)}
+            products={homeOffers as any}
+            onAdd={onAdd}
+            limit={8}
+          />
         </HomeSection>
       ) : null}
 

@@ -632,6 +632,49 @@ export default function AdminStoreSelector() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Permissions Dialog */}
+      <Dialog open={permOpen} onOpenChange={setPermOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary" />
+              Permissões de Módulos
+            </DialogTitle>
+            <DialogDescription>
+              Ative ou desative módulos disponíveis para esta loja.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2 max-h-[50vh] overflow-y-auto">
+            {ALL_MODULES.map((mod) => (
+              <div
+                key={mod}
+                className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors"
+              >
+                <span className="text-sm font-medium">{MODULE_LABELS[mod]}</span>
+                <Button
+                  size="sm"
+                  variant={permModules[mod] ? "default" : "outline"}
+                  className="h-7 text-xs min-w-[70px]"
+                  onClick={() =>
+                    setPermModules((prev) => ({ ...prev, [mod]: !prev[mod] }))
+                  }
+                >
+                  {permModules[mod] ? "Ativo" : "Inativo"}
+                </Button>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPermOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSavePermissions} disabled={savingPerm}>
+              {savingPerm ? "Salvando..." : "Salvar Permissões"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

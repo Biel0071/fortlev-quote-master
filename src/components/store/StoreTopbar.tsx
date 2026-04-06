@@ -303,7 +303,7 @@ export function StoreTopbar({
         </div>
       </header>
 
-      <div className={cn("w-full shrink-0", showCatalogChips ? "h-[148px] sm:h-[180px]" : "h-[108px] sm:h-[136px]")} aria-hidden="true" />
+      <div className={cn("w-full shrink-0", showCatalogChips ? "h-[164px] sm:h-[192px]" : "h-[120px] sm:h-[148px]")} aria-hidden="true" />
 
       <FloatingChat phoneDigits={contact.phoneDigits} />
     </>

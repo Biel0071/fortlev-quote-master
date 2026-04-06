@@ -53,19 +53,17 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
           {product.name}
         </h3>
 
-        {rating ? (
-          <div className="flex items-center gap-1">
-            <div className="flex gap-0.5">
-              {Array.from({ length: 5 }, (_, i) => (
-                <Star
-                  key={i}
-                  className={`h-3 w-3 ${i < Math.round(rating.avg) ? "fill-current text-promo" : "fill-muted text-muted-foreground/40"}`}
-                />
-              ))}
-            </div>
-            <span className="text-[10px] text-muted-foreground">({rating.total})</span>
+        <div className="flex items-center gap-1">
+          <div className="flex gap-0.5">
+            {Array.from({ length: 5 }, (_, i) => (
+              <Star
+                key={i}
+                className={`h-3 w-3 ${i < Math.round(rating?.avg ?? 0) ? "fill-current text-promo" : "fill-muted text-muted-foreground/40"}`}
+              />
+            ))}
           </div>
-        ) : null}
+          <span className="text-[10px] text-muted-foreground">({rating?.total ?? 0})</span>
+        </div>
 
         <div className="mt-auto">
           <div className="text-[10px] sm:text-xs text-muted-foreground line-through">

@@ -53,6 +53,11 @@ import {
   AdminRecommendations,
   AdminShipping,
   AdminIntelligenceUnified,
+  // New modules
+  AdminConversionFunnel,
+  AdminClickMap,
+  AdminAppMetrics,
+  AdminAiInsights,
   // Payments
   AdminPaymentsLayout,
   AdminPaymentsOverview,
@@ -146,8 +151,10 @@ const App = () => (
               <Route path="relatorios-ia" element={<Navigate to="/admin/inteligencia-ia" replace />} />
               <Route path="analise-ia" element={<Navigate to="/admin/inteligencia-ia" replace />} />
               <Route path="produtos/recomendacoes" element={<AdminRecommendations />} />
-
-              <Route path="categorias" element={<AdminCategoriesList />} />
+              <Route path="funil" element={<AdminConversionFunnel />} />
+              <Route path="mapa-cliques" element={<AdminClickMap />} />
+              <Route path="app-metricas" element={<AdminAppMetrics />} />
+              <Route path="insights-ia" element={<AdminAiInsights />} />
               <Route path="categorias/nova" element={<AdminCategoryForm />} />
               <Route path="categorias/editar/:id" element={<AdminCategoryForm />} />
 

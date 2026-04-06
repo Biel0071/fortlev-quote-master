@@ -39,6 +39,10 @@ export { default as AdminRecommendations } from "./pages/AdminRecommendations";
 export { default as AdminShipping } from "./pages/AdminShipping";
 export { default as AdminAiReportsPage } from "./pages/AdminAiReportsPage";
 export { default as AdminIntelligenceUnified } from "./pages/AdminIntelligenceUnified";
+export { default as AdminConversionFunnel } from "./pages/AdminConversionFunnel";
+export { default as AdminClickMap } from "./pages/AdminClickMap";
+export { default as AdminAppMetrics } from "./pages/AdminAppMetrics";
+export { default as AdminAiInsights } from "./pages/AdminAiInsights";
 
 // Payments
 export { default as AdminPaymentsLayout } from "./pages/payments/AdminPaymentsLayout";

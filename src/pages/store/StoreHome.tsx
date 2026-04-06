@@ -228,7 +228,7 @@ export default function StoreHome() {
               <Flame className="h-3.5 w-3.5" />
               Ofertas do dia
             </span>
-            <Link to="/loja?promo=1" className="text-xs font-semibold text-muted-foreground underline underline-offset-4 ml-auto">
+            <Link to="/ofertas" className="text-xs font-semibold text-muted-foreground underline underline-offset-4 ml-auto">
               Ver todas
             </Link>
           </div>

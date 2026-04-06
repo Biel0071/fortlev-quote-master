@@ -12,7 +12,7 @@ import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { StoreProductCard } from "@/components/store/home/StoreProductCard";
 import { useSearchParams } from "react-router-dom";
-import { expandSearchTerms, smartMatch } from "@/utils/smartSearch";
+import { expandSearchTerms, smartMatch, smartScore } from "@/utils/smartSearch";
 
 export default function StoreCatalog() {
   const cart = useCart();
@@ -62,9 +62,28 @@ export default function StoreCatalog() {
         return String(a.name ?? "").localeCompare(String(b.name ?? ""));
       });
 
-    // Fallback: if search returned nothing, show all products (user never sees empty)
+    // Sort by relevance when searching
+    if (search && results.length > 0) {
+      results.sort((a: any, b: any) => {
+        const sa = smartScore(a, searchTerms);
+        const sb = smartScore(b, searchTerms);
+        if (sb !== sa) return sb - sa;
+        return String(a.name ?? "").localeCompare(String(b.name ?? ""));
+      });
+    }
+
+    // Fallback: show similar products with context
     if (results.length === 0 && search) {
-      return activeProducts.slice(0, 20);
+      // Try broader match: score all products and return top matches
+      const scored = activeProducts
+        .map((p: any) => ({ p, score: smartScore(p, searchTerms) }))
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 20)
+        .map((x) => x.p);
+      if (scored.length > 0) return scored;
+      // Last resort: featured products
+      return activeProducts.filter((p: any) => p.featured || p.best_seller).slice(0, 12);
     }
     return results;
   }, [activeProducts, q, selectedSlug, activeCategories, searchParams]);

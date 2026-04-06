@@ -29,9 +29,14 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
   if (!product) return null;
 
   const prices = getOfferPrices(product);
-  const imgPath = product?.images?.[0]?.path ?? null;
+  const images = (product?.images ?? []) as Array<{ path: string | null }>;
+  const validImg = images.find(
+    (img) => img.path && !img.path.includes("placeholder") && !img.path.includes("default")
+  );
+  const imgPath = validImg?.path ?? images[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);
   const imageSrc = imgUrl || "/placeholder.svg";
+  const unitLabel = product.unit && product.unit !== "un" ? `/${product.unit}` : "";
   const rating = useProductRatingSummary(product.id);
   const isMock = Boolean(product?.isMock);
 

@@ -111,6 +111,7 @@ export function StoreProductCard({
   const tracker = useVisitorTracker();
   const [qty, setQty] = useState(1);
   const [addingFx, setAddingFx] = useState(false);
+  const isMock = Boolean(product?.isMock);
 
   useEffect(() => {
     if (!addingFx) return;
@@ -134,22 +135,25 @@ export function StoreProductCard({
   const imgUrl = publicImageUrl("product-images", imgPath);
   const imageSrc = imgUrl || "/placeholder.svg";
 
+  const openProduct = () => {
+    if (isMock) return;
+    trackClickEvent({ sessionToken: tracker.sessionToken, type: "open_product", productId: product?.id });
+    nav(`/produto/${getProductSlug(product)}`);
+  };
+
   return (
     <Card
-      role="link"
-      tabIndex={0}
-      onClick={() => {
-        trackClickEvent({ sessionToken: tracker.sessionToken, type: "open_product", productId: product?.id });
-        nav(`/produto/${getProductSlug(product)}`);
-      }}
+      role={isMock ? undefined : "link"}
+      tabIndex={isMock ? -1 : 0}
+      onClick={openProduct}
       onKeyDown={(e) => {
+        if (isMock) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          trackClickEvent({ sessionToken: tracker.sessionToken, type: "open_product", productId: product?.id });
-          nav(`/produto/${getProductSlug(product)}`);
+          openProduct();
         }
       }}
-      className="group flex h-full w-full min-w-0 max-w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md"
+      className={`group flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md ${isMock ? "cursor-default" : "cursor-pointer"}`}
       aria-label={`Abrir produto ${product?.name ?? ""}`}
     >
       {/* Image — fixed aspect ratio */}

@@ -97,7 +97,7 @@ export function AppDownloadBanner() {
           className="mx-auto flex h-full w-full max-w-6xl items-center justify-center gap-2 px-3 text-center opacity-90 transition-opacity hover:opacity-100"
         >
           <Smartphone className="h-3 w-3" />
-          <span className="truncate whitespace-nowrap text-[11px] font-semibold sm:text-sm">
+          <span className="banner-text">
             📲 Instale o app e ganhe 10% OFF na primeira compra
           </span>
           <ChevronUp className="h-3 w-3" />
@@ -114,15 +114,8 @@ export function AppDownloadBanner() {
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15">
               <Smartphone className="h-3 w-3" />
             </span>
-            <span
-              className={cn(
-                "truncate whitespace-nowrap text-[11px] font-semibold tracking-wide sm:text-sm",
-                !downloadClicked && "animate-[pulseText_1.5s_ease-in-out_infinite]",
-              )}
-            >
-              {downloadClicked
-                ? "Instalação registrada — fale com a loja"
-                : "📲 Instale o app e ganhe 10% OFF na primeira compra"}
+            <span className={cn("banner-text tracking-wide", !downloadClicked && "animate-[pulseText_1.5s_ease-in-out_infinite]")}>
+              📲 Instale o app e ganhe 10% OFF na primeira compra
             </span>
           </div>
 

@@ -2894,6 +2894,41 @@ export type Database = {
         }
         Relationships: []
       }
+      store_permissions: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          module: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_permissions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_product_images: {
         Row: {
           created_at: string
@@ -3726,6 +3761,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      init_store_permissions: {
+        Args: { _store_id: string }
+        Returns: undefined
       }
       is_master: { Args: { _user_id: string }; Returns: boolean }
       recalculate_rating_summary: {

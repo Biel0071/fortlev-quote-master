@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { ALL_MODULES, MODULE_LABELS, type StoreModule } from "@/hooks/useStorePermissions";
 import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { useSession } from "@/hooks/useSession";
@@ -35,6 +36,7 @@ import {
   X,
   Check,
   Link2,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { AppStore } from "@/contexts/StoreContext";
@@ -73,7 +75,7 @@ export default function AdminStoreSelector() {
   const navigate = useNavigate();
   const { user } = useSession();
   const { isMaster, storeAccess, loading: permLoading } = useAdminPermissions();
-  const { setStore } = useStore();
+  const { setStore, setActiveStoreId } = useStore();
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [summaries, setSummaries] = useState<StoreSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +94,12 @@ export default function AdminStoreSelector() {
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailStore, setDetailStore] = useState<StoreSummary | null>(null);
+
+  // Permissions dialog
+  const [permOpen, setPermOpen] = useState(false);
+  const [permStoreId, setPermStoreId] = useState<string | null>(null);
+  const [permModules, setPermModules] = useState<Record<string, boolean>>({});
+  const [savingPerm, setSavingPerm] = useState(false);
 
   useEffect(() => {
     if (permLoading) return;
@@ -153,14 +161,9 @@ export default function AdminStoreSelector() {
     setLoading(false);
   };
 
-  const enterStore = (store: StoreRow) => {
-    const slugMap: Record<string, AppStore> = {
-      materiais: "materiais",
-      fortlev: "fortlev",
-      construcao: "construcao",
-    };
-    const appStore = slugMap[store.slug] ?? "materiais";
-    setStore(appStore);
+  const enterStore = (storeRow: StoreRow) => {
+    setStore(storeRow.slug);
+    setActiveStoreId(storeRow.id);
     navigate("/admin/dashboard");
   };
 
@@ -185,15 +188,19 @@ export default function AdminStoreSelector() {
       return;
     }
     setCreating(true);
-    const { error } = await cloud.from("stores").insert({
+    const { data: newStore, error } = await cloud.from("stores").insert({
       name: newStoreName.trim(),
       slug: newStoreSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, ""),
       active: true,
       domain: newStoreDomain.trim() || null,
-    });
+    }).select("id").single();
     if (error) {
       toast.error("Erro ao criar loja: " + error.message);
     } else {
+      // Initialize default permissions for the new store
+      if (newStore?.id) {
+        await cloud.rpc("init_store_permissions", { _store_id: newStore.id });
+      }
       toast.success("Loja criada com sucesso!");
       setCreateOpen(false);
       setNewStoreName("");
@@ -246,6 +253,39 @@ export default function AdminStoreSelector() {
   const openDetail = (summary: StoreSummary) => {
     setDetailStore(summary);
     setDetailOpen(true);
+  };
+
+  // --- Permissions ---
+  const openPermissions = async (storeId: string) => {
+    setPermStoreId(storeId);
+    // Init permissions if they don't exist yet
+    await cloud.rpc("init_store_permissions", { _store_id: storeId });
+    const { data } = await cloud
+      .from("store_permissions")
+      .select("module, enabled")
+      .eq("store_id", storeId);
+    const map: Record<string, boolean> = {};
+    (data ?? []).forEach((row: any) => {
+      map[row.module] = row.enabled;
+    });
+    setPermModules(map);
+    setPermOpen(true);
+  };
+
+  const handleSavePermissions = async () => {
+    if (!permStoreId) return;
+    setSavingPerm(true);
+    const updates = Object.entries(permModules).map(([module, enabled]) =>
+      cloud
+        .from("store_permissions")
+        .update({ enabled })
+        .eq("store_id", permStoreId)
+        .eq("module", module)
+    );
+    await Promise.all(updates);
+    toast.success("Permissões atualizadas!");
+    setPermOpen(false);
+    setSavingPerm(false);
   };
 
   if (loading || permLoading) {
@@ -411,6 +451,15 @@ export default function AdminStoreSelector() {
                       >
                         <Link2 className="w-4 h-4" />
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 w-9 p-0"
+                        title="Permissões"
+                        onClick={(e) => { e.stopPropagation(); openPermissions(store.id); }}
+                      >
+                        <Shield className="w-4 h-4" />
+                      </Button>
                     </>
                   )}
                 </div>
@@ -575,6 +624,49 @@ export default function AdminStoreSelector() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDetailOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Permissions Dialog */}
+      <Dialog open={permOpen} onOpenChange={setPermOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary" />
+              Permissões de Módulos
+            </DialogTitle>
+            <DialogDescription>
+              Ative ou desative módulos disponíveis para esta loja.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2 max-h-[50vh] overflow-y-auto">
+            {ALL_MODULES.map((mod) => (
+              <div
+                key={mod}
+                className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors"
+              >
+                <span className="text-sm font-medium">{MODULE_LABELS[mod]}</span>
+                <Button
+                  size="sm"
+                  variant={permModules[mod] ? "default" : "outline"}
+                  className="h-7 text-xs min-w-[70px]"
+                  onClick={() =>
+                    setPermModules((prev) => ({ ...prev, [mod]: !prev[mod] }))
+                  }
+                >
+                  {permModules[mod] ? "Ativo" : "Inativo"}
+                </Button>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPermOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSavePermissions} disabled={savingPerm}>
+              {savingPerm ? "Salvando..." : "Salvar Permissões"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

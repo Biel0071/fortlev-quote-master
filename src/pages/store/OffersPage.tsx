@@ -11,8 +11,11 @@ import { useDynamicSeo } from "@/hooks/useDynamicSeo";
 import { OfferHeroCard } from "@/components/store/offers/OfferHeroCard";
 import { OfferProductCard } from "@/components/store/offers/OfferProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Flame } from "lucide-react";
+import { Flame, ChevronLeft, ChevronRight } from "lucide-react";
 import { useOfferProducts } from "@/hooks/useOfferProducts";
+import { Button } from "@/components/ui/button";
+
+const ITEMS_PER_PAGE = 20;
 
 export default function OffersPage() {
   const cart = useCart();
@@ -21,12 +24,24 @@ export default function OffersPage() {
   const home = useHomeContent({ enabled: true });
   const [cartOpen, setCartOpen] = useState(false);
   const { offerProducts } = useOfferProducts(activeProducts);
+  const [page, setPage] = useState(1);
 
   useDynamicSeo({
     title: "Ofertas e Promoções | Materiais de Construção",
     description: "Confira as melhores ofertas em materiais de construção. Descontos imperdíveis!",
     canonicalPath: "/ofertas",
   });
+
+  const totalPages = Math.max(1, Math.ceil(offerProducts.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(page, totalPages);
+
+  const heroProducts = offerProducts.slice(0, 5);
+  const restProducts = offerProducts.slice(5);
+
+  const paginatedRest = restProducts.slice(
+    (safeCurrentPage - 1) * ITEMS_PER_PAGE,
+    safeCurrentPage * ITEMS_PER_PAGE,
+  );
 
   const getOfferPrices = (product: any) => ({
     originalPrice: product.price,
@@ -49,9 +64,6 @@ export default function OffersPage() {
     });
     setCartOpen(true);
   };
-
-  const heroProducts = offerProducts.slice(0, 5);
-  const restProducts = offerProducts.slice(5);
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">
@@ -84,7 +96,7 @@ export default function OffersPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {heroProducts.length > 0 && (
+            {safeCurrentPage === 1 && heroProducts.length > 0 && (
               <OfferHeroCard
                 products={heroProducts}
                 getOfferPrices={getOfferPrices}
@@ -92,9 +104,9 @@ export default function OffersPage() {
               />
             )}
 
-            {restProducts.length > 0 && (
+            {paginatedRest.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {restProducts.map((product) => (
+                {paginatedRest.map((product) => (
                   <OfferProductCard
                     key={product.id}
                     product={product}
@@ -102,6 +114,32 @@ export default function OffersPage() {
                     onAdd={onAdd}
                   />
                 ))}
+              </div>
+            )}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-4 pb-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={safeCurrentPage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium tabular-nums">
+                  {safeCurrentPage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={safeCurrentPage >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  aria-label="Próxima página"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             )}
           </div>

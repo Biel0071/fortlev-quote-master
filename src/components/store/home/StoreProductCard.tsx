@@ -133,7 +133,7 @@ export function StoreProductCard({
 
   const images = (product?.images ?? []) as Array<{ path: string | null }>;
   const validImg = images.find(
-    (img) => img.path && !img.path.includes("placeholder") && !img.path.includes("default") && !img.path.includes("fallback")
+    (img) => img.path && !img.path.includes("placeholder") && !img.path.includes("default") && !img.path.includes("fallback") && !img.path.includes("banner") && !img.path.includes("cover")
   );
   const imgPath = validImg?.path ?? images[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);

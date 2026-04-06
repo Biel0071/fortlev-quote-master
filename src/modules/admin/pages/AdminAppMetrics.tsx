@@ -226,11 +226,52 @@ export default function AdminAppMetrics() {
           </div>
 
           {apkUrl && (
-            <div className="rounded-xl bg-muted/50 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-green-600">
-                <CheckCircle2 className="h-4 w-4" /> APK disponível
+            <div className="rounded-xl bg-muted/50 p-5 space-y-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-green-600">
+                <CheckCircle2 className="h-4 w-4" /> APK instalado no sistema
               </div>
-              <div className="flex items-center gap-2">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {apkMeta && (
+                  <>
+                    <div className="flex items-start gap-2.5">
+                      <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Arquivo original</p>
+                        <p className="text-sm font-medium">{apkMeta.originalName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Tag className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Nome exibido no download</p>
+                        <p className="text-sm font-medium">{apkMeta.displayName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <HardDrive className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Tamanho</p>
+                        <p className="text-sm font-medium">{(apkMeta.size / (1024 * 1024)).toFixed(2)} MB</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Enviado em</p>
+                        <p className="text-sm font-medium">
+                          {new Date(apkMeta.uploadedAt).toLocaleString("pt-BR", {
+                            day: "2-digit", month: "2-digit", year: "numeric",
+                            hour: "2-digit", minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
                 <Link2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                 <a href={apkUrl} target="_blank" rel="noopener noreferrer"
                   className="text-xs text-primary underline truncate">

@@ -25,26 +25,30 @@ function InlineRating({ productId }: { productId: string }) {
     let alive = true;
     setResolved(false);
 
-    cloud
-      .from("product_rating_summary")
-      .select("average_rating, total_reviews")
-      .eq("product_id", productId)
-      .maybeSingle()
-      .then(({ data: d }) => {
+    void (async () => {
+      try {
+        const { data: d } = await cloud
+          .from("product_rating_summary")
+          .select("average_rating, total_reviews")
+          .eq("product_id", productId)
+          .maybeSingle();
+
         if (!alive) return;
+
         const row = d as any;
         if (row && Number(row.total_reviews ?? 0) > 0) {
           setData({ avg: Number(row.average_rating ?? 0), total: Number(row.total_reviews ?? 0) });
         } else {
           setData(null);
         }
-        setResolved(true);
-      })
-      .catch(() => {
+      } catch {
         if (!alive) return;
         setData(null);
+      } finally {
+        if (!alive) return;
         setResolved(true);
-      });
+      }
+    })();
 
     return () => {
       alive = false;

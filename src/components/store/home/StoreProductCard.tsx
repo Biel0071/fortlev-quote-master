@@ -127,7 +127,6 @@ export function StoreProductCard({
   const hasPromo = promo > 0 && basePrice > 0 && promo < basePrice;
 
   const effectivePrice = useMemo(() => (hasPromo ? promo : basePrice), [hasPromo, promo, basePrice]);
-  const imageSrc = imgUrl || "/placeholder.svg";
 
   const installments = useMemo(() => {
     if (!effectivePrice || effectivePrice <= 0) return null;
@@ -137,6 +136,7 @@ export function StoreProductCard({
 
   const imgPath = product?.images?.[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);
+  const imageSrc = imgUrl || "/placeholder.svg";
 
   return (
     <Card

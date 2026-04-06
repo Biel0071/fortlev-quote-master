@@ -4,7 +4,8 @@ export type TrackingCollectorEvent =
   | TrackEventInput
   | { type: "add_cart"; productId?: string | null; categoryId?: string | null; path?: string; metadata?: Record<string, unknown> }
   | { type: "remove_cart"; productId?: string | null; categoryId?: string | null; path?: string; metadata?: Record<string, unknown> }
-  | { type: "offer_click"; metadata?: Record<string, unknown>; path?: string };
+  | { type: "offer_click"; metadata?: Record<string, unknown>; path?: string }
+  | { type: "app_banner_click" | "app_popup_open" | "app_popup_confirm_whatsapp" | "app_download_continue" | "app_popup_already_installing"; path?: string; metadata?: Record<string, unknown> };
 
 const OFFICIAL_EVENT_TYPES = new Set<string>([
   "page_view",

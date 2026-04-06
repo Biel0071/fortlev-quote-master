@@ -59,6 +59,20 @@ async function resolveUserIdFromJwt(req: Request, supabaseUrl: string, anonKey: 
   }
 }
 
+async function hashIp(req: Request, consentOk: boolean): Promise<string | null> {
+  if (!consentOk) return null;
+  const forwarded = req.headers.get("x-forwarded-for");
+  const ip = forwarded?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? null;
+  if (!ip) return null;
+  try {
+    const data = new TextEncoder().encode(ip + "_salt_lgpd_v1");
+    const buf = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  } catch {
+    return null;
+  }
+}
+
 async function ensureSession(params: {
   supa: ReturnType<typeof createClient>;
   session_token: string;

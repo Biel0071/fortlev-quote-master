@@ -7,6 +7,10 @@ const SCORE_DELTA: Record<string, number> = {
   checkout_start: 30,
   request_quote: 50,
   banner_click: 3,
+  app_banner_click: 8,
+  app_popup_open: 5,
+  app_popup_confirm_whatsapp: 20,
+  app_download_continue: 12,
 };
 
 export function getScoreDelta(eventType: EventType) {

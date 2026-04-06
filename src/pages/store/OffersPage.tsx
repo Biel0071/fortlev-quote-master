@@ -71,7 +71,7 @@ export default function OffersPage() {
 
       <main className="flex-1 px-4 pb-24 pt-4 sm:px-6 sm:pt-6 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-2 mb-6">
-          <Flame className="h-6 w-6 text-orange-500" />
+          <Flame className="h-6 w-6 text-destructive" />
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Ofertas</h1>
           <span className="ml-auto text-xs text-muted-foreground">
             {offerProducts.length} {offerProducts.length === 1 ? "oferta" : "ofertas"}

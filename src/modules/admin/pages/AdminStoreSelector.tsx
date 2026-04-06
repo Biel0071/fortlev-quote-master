@@ -37,6 +37,7 @@ import {
   Check,
   Link2,
   Shield,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { AppStore } from "@/contexts/StoreContext";
 

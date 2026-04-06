@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, ChevronUp, Smartphone, MessageCircle } from "lucide-react";
+import { X, ChevronUp, ChevronRight, Smartphone, MessageCircle } from "lucide-react";
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { AppDownloadConfirmDialog } from "./AppDownloadConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -108,46 +108,38 @@ export function AppDownloadBanner() {
   return (
     <>
       <div className="w-full z-50 bg-primary text-primary-foreground" style={{ marginBottom: 0 }}>
-        <div className="mx-auto relative flex items-center justify-center gap-2.5 px-10 py-1.5 sm:px-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-foreground/15 transition-colors">
-              <Smartphone className="h-3.5 w-3.5" />
+        <div className="mx-auto relative flex items-center justify-between gap-2 px-9 py-1 sm:px-4">
+          <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap overflow-hidden">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15">
+              <Smartphone className="h-3 w-3" />
             </span>
             <span
               className={cn(
-                "min-w-0 text-xs font-semibold tracking-wide sm:text-sm",
+                "truncate text-[11px] font-semibold tracking-wide sm:text-xs",
                 !downloadClicked && "animate-[pulseText_2s_ease-in-out_infinite]",
               )}
             >
-              {downloadClicked ? (
-                "Instalação registrada. Fale com a loja para liberar seu desconto."
-              ) : (
-                <>
-                  Baixe o app e ganhe{" "}
-                  <span className="inline-flex items-center gap-0.5 rounded-md bg-primary-foreground/20 px-1.5 py-0.5 text-[11px] font-bold sm:text-xs">
-                    10% OFF
-                  </span>
-                </>
-              )}
+              {downloadClicked
+                ? "Instalação registrada — fale com a loja"
+                : "Baixe o app e ganhe 10% OFF"}
             </span>
           </div>
 
           {downloadClicked ? (
-            <Button
-              variant="whatsapp"
-              size="sm"
-              className="h-8 rounded-full px-3 text-[11px] font-semibold sm:text-xs"
+            <button
               onClick={handleWhatsAppClick}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white"
+              aria-label="Falar no WhatsApp"
             >
               <MessageCircle className="h-3.5 w-3.5" />
-              Falar no WhatsApp
-            </Button>
+            </button>
           ) : (
             <button
               onClick={handleBannerClick}
-              className="flex items-center gap-2 rounded-full border border-primary-foreground/20 px-3 py-1 text-[11px] font-semibold transition-colors hover:bg-primary-foreground/10 sm:text-xs"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary-foreground/30 transition-colors hover:bg-primary-foreground/10"
+              aria-label="Abrir app"
             >
-              Abrir app
+              <ChevronRight className="h-3.5 w-3.5" />
             </button>
           )}
 

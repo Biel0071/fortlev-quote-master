@@ -43,6 +43,7 @@ import { useSession } from "@/hooks/useSession";
 import { StoreSwitcher } from "@/components/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useStorePermissions } from "@/hooks/useStorePermissions";
 
 type SidebarItem = {
   title: string;
@@ -110,6 +111,7 @@ function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { canViewPage } = useAdminPermissions();
+  const { isPageAllowed } = useStorePermissions();
   const { label } = useStore();
   const nav = useNavigate();
   const location = useLocation();
@@ -133,7 +135,7 @@ function AdminSidebar() {
         {/* Grouped menu sections */}
         {SIDEBAR_SECTIONS.map((section) => {
           const visibleItems = section.items.filter((item) =>
-            item.page === "avaliacoes" || canViewPage(item.page)
+            (item.page === "avaliacoes" || canViewPage(item.page)) && isPageAllowed(item.page)
           );
           if (!visibleItems.length) return null;
 

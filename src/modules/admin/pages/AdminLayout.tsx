@@ -71,8 +71,6 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { title: "Orçamentos", url: "/admin/orcamentos", icon: FileText, page: "orcamentos" },
     ],
   },
-    ],
-  },
   {
     label: "Catálogo",
     items: [

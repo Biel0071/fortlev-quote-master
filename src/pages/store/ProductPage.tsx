@@ -3,10 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { Truck, CreditCard, ShieldCheck, BadgeCheck, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { StoreTopbar } from "@/components/store/StoreTopbar";
-import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
-import { CartDrawer } from "@/components/store/CartDrawer";
-import { StoreFooter } from "@/components/store/StoreFooter";
+import { StoreLayout } from "@/components/store/layout/StoreLayout";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
@@ -25,7 +22,7 @@ import { QuantitySelector } from "@/components/store/pdp/QuantitySelector";
 import { ShippingCalculator } from "@/components/store/pdp/ShippingCalculator";
 import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
 import { SmartUpsellCrossSell } from "@/components/store/pdp/SmartUpsellCrossSell";
-import { cloud } from "@/lib/cloud";
+import { getProductSlug } from "@/utils/productSlug";
 
 function parseInlineBold(text: string) {
   const parts = text.split(/\*\*(.*?)\*\*/g);
@@ -239,7 +236,7 @@ function splitDescription(markdown: string) {
 // Rating is now rendered inside ProductBadges component
 
 export default function ProductPage() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const cart = useCart();
   const tracker = useVisitorTracker();
   const { activeProducts, loading } = useStoreProducts();
@@ -253,7 +250,25 @@ export default function ProductPage() {
 
   const [cartOpen, setCartOpen] = useState(false);
 
-  const product = useMemo(() => activeProducts.find((p) => p.id === id), [activeProducts, id]);
+  const rawSlug = useMemo(() => String(slug ?? "").trim(), [slug]);
+  const productId = useMemo(() => {
+    if (!rawSlug) return "";
+    const parts = rawSlug.split("--").map((part) => part.trim()).filter(Boolean);
+    return parts.length > 1 ? parts[parts.length - 1] ?? "" : rawSlug;
+  }, [rawSlug]);
+  const fallbackNameSlug = useMemo(() => {
+    if (!rawSlug) return "";
+    const parts = rawSlug.split("--").map((part) => part.trim()).filter(Boolean);
+    return parts.length > 1 ? parts.slice(0, -1).join("--") : rawSlug;
+  }, [rawSlug]);
+
+  const product = useMemo(() => {
+    if (!rawSlug) return null;
+
+    return activeProducts.find((p) => String(p.id).trim() === productId)
+      ?? activeProducts.find((p) => getProductSlug({ name: p.name }) === fallbackNameSlug)
+      ?? null;
+  }, [activeProducts, fallbackNameSlug, productId, rawSlug]);
 
   const images = useMemo(() => {
     const list = (product as any)?.images ?? [];
@@ -270,6 +285,7 @@ export default function ProductPage() {
 
   const [activeImg, setActiveImg] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
+  const fallbackProductImage = "/placeholder.svg";
 
   const basePrice = useMemo(() => Number((product as any)?.price ?? 0), [product]);
   const promoPrice = useMemo(() => Number((product as any)?.promo_price ?? 0), [product]);
@@ -305,25 +321,29 @@ export default function ProductPage() {
   const descriptionParts = useMemo(() => splitDescription(descriptionMd), [descriptionMd]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!product?.id) return;
     const key = "store_product_views_v1";
     const prev = Number(sessionStorage.getItem(key) || "0");
     const next = prev + 1;
     sessionStorage.setItem(key, String(next));
-    window.dispatchEvent(new CustomEvent("store:product-visit", { detail: { productId: id, count: next } }));
-  }, [id]);
+    window.dispatchEvent(new CustomEvent("store:product-visit", { detail: { productId: product.id, count: next } }));
+  }, [product?.id]);
 
   useEffect(() => {
-    const first = images?.[0]?.path ? publicImageUrl("product-images", images[0].path) : null;
+    const first = images?.[0]?.path ? publicImageUrl("product-images", images[0].path) : fallbackProductImage;
     setActiveImg(first);
   }, [images]);
 
   return (
-    <div className="flex min-w-0 w-full flex-col bg-background overflow-x-clip">
-      <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
-      <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
-      <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
-
+    <StoreLayout
+      cartCount={cart.totalItems}
+      onCartClick={() => setCartOpen(true)}
+      cartOpen={cartOpen}
+      onCartOpenChange={setCartOpen}
+      footer={home.footer}
+      pageLinks={pageLinks}
+      footerStoreName={home.footer?.store_name ?? undefined}
+    >
       <main className="mx-auto w-full max-w-6xl min-w-0 overflow-x-clip px-4 py-4 pb-32 md:pb-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-6">
         <Button asChild variant="outline" className="h-9 sm:h-10 rounded-xl w-fit text-xs sm:text-sm gap-1.5 border-border/60 text-muted-foreground hover:text-foreground">
           <Link to="/loja">
@@ -342,11 +362,15 @@ export default function ProductPage() {
             <div className="min-w-0 max-w-full overflow-hidden lg:col-span-7">
               <Card className="rounded-2xl sm:rounded-3xl overflow-hidden border-border bg-card shadow-sm">
                 <div className="aspect-square sm:aspect-[4/3] bg-white flex items-center justify-center p-4">
-                  {activeImg ? (
-                    <img src={activeImg} alt={product.name} className="max-h-full max-w-full object-contain" loading="eager" />
-                  ) : (
-                    <div className="h-full w-full bg-muted rounded-lg animate-pulse" />
-                  )}
+                  <img
+                    src={activeImg || fallbackProductImage}
+                    alt={product.name}
+                    className="max-h-full max-w-full object-contain"
+                    loading="eager"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = fallbackProductImage;
+                    }}
+                  />
                 </div>
                 {images.length > 1 ? (
                   <CardContent className="min-w-0 p-3 sm:p-4">
@@ -362,6 +386,12 @@ export default function ProductPage() {
 
               <div className="min-w-0 max-w-full">
                 <h1 className="text-xl sm:text-[28px] font-bold tracking-tight leading-tight break-words [overflow-wrap:anywhere]">{product.name}</h1>
+
+                {product.category ? (
+                  <div className="mt-1 text-xs font-medium text-muted-foreground break-words [overflow-wrap:anywhere]">
+                    Categoria: {product.category}
+                  </div>
+                ) : null}
 
                 <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground break-words [overflow-wrap:anywhere]">
                   {Number((product as any).stock ?? 0) <= Number((product as any).min_stock ?? 0) ? (
@@ -535,7 +565,6 @@ export default function ProductPage() {
         </div>
       )}
 
-      <StoreFooter footer={home.footer} pageLinks={pageLinks} />
-    </div>
+    </StoreLayout>
   );
 }

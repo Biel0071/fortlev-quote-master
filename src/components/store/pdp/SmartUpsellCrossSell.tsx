@@ -84,6 +84,27 @@ function isUpsellCandidate(current: EnrichedProduct, candidate: EnrichedProduct)
   return effectiveCandidate > effectiveCurrent;
 }
 
+function getEffectivePrice(product: EnrichedProduct): number {
+  return (product.promo_price && product.promo_price > 0 && product.price > product.promo_price)
+    ? product.promo_price
+    : product.price;
+}
+
+function getNameSimilarityScore(currentName: string, candidateName: string): number {
+  const currentTokens = new Set(
+    currentName
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((token) => token.length > 2),
+  );
+
+  return candidateName
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((token) => token.length > 2)
+    .reduce((score, token) => score + (currentTokens.has(token) ? 1 : 0), 0);
+}
+
 function SuggestionCard({
   product,
   currentProduct,
@@ -98,27 +119,26 @@ function SuggestionCard({
   const imgUrl = product.images?.[0]?.path
     ? publicImageUrl("product-images", product.images[0].path)
     : null;
+  const imageSrc = imgUrl || "/placeholder.svg";
 
-  const effectivePrice = (product.promo_price && product.promo_price > 0 && product.price > product.promo_price)
-    ? product.promo_price
-    : product.price;
+  const effectivePrice = getEffectivePrice(product);
 
-  const currentEffective = (currentProduct.promo_price && currentProduct.promo_price > 0)
-    ? currentProduct.promo_price
-    : currentProduct.price;
+  const currentEffective = getEffectivePrice(currentProduct);
 
   const priceDiff = effectivePrice - currentEffective;
 
   return (
     <Card className="rounded-2xl border-border bg-card shadow-sm overflow-hidden flex flex-col">
       <div className="aspect-square bg-muted/20 relative">
-        {imgUrl ? (
-          <img src={imgUrl} alt={product.name} className="h-full w-full object-contain p-2" loading="lazy" />
-        ) : (
-          <div className="h-full w-full bg-muted/30 flex items-center justify-center text-muted-foreground text-xs">
-            Sem imagem
-          </div>
-        )}
+        <img
+          src={imageSrc}
+          alt={product.name}
+          className="h-full w-full object-contain p-2"
+          loading="lazy"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";
+          }}
+        />
         {type === "upsell" && (
           <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
             <ArrowUpRight className="h-3 w-3" /> Upgrade
@@ -242,16 +262,30 @@ export function SmartUpsellCrossSell({
       }
     }
 
-    // Auto related by category
-    if (related.length < 4 && product.category_id) {
-      const sameCat = others
-        .filter((p) => !usedIds.has(p.id) && (p as any).category_id === product.category_id)
-        .sort((a, b) => ((b as any).sales ?? 0) + ((b as any).views ?? 0) - ((a as any).sales ?? 0) - ((a as any).views ?? 0));
-      
-      for (const p of sameCat) {
+    // Auto related by same category or similar name, prioritizing popularity and price proximity
+    if (related.length < 4) {
+      const rankedRelated = others
+        .filter((p) => !usedIds.has(p.id))
+        .map((p) => {
+          const sameCategory = product.category_id && (p as any).category_id === product.category_id ? 1 : 0;
+          const similarity = getNameSimilarityScore(product.name, p.name);
+          const popularity = Number((p as any).sales ?? 0) * 10 + Number((p as any).views ?? 0);
+          const priceDistance = Math.abs(getEffectivePrice(p as any) - getEffectivePrice(product as any));
+
+          return { product: p, sameCategory, similarity, popularity, priceDistance };
+        })
+        .filter((entry) => entry.sameCategory > 0 || entry.similarity > 0)
+        .sort((a, b) => {
+          if (b.sameCategory !== a.sameCategory) return b.sameCategory - a.sameCategory;
+          if (b.similarity !== a.similarity) return b.similarity - a.similarity;
+          if (b.popularity !== a.popularity) return b.popularity - a.popularity;
+          return a.priceDistance - b.priceDistance;
+        });
+
+      for (const { product: relatedProduct } of rankedRelated) {
         if (related.length >= 4) break;
-        related.push(p as any);
-        usedIds.add(p.id);
+        related.push(relatedProduct as any);
+        usedIds.add(relatedProduct.id);
       }
     }
 

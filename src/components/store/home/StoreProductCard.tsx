@@ -26,7 +26,7 @@ function useProductRating(productId: string) {
       .from("product_rating_summary")
       .select("average_rating, total_reviews")
       .eq("product_id", productId)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         const d = data as any;
         const val = d && d.total_reviews > 0 ? { avg: d.average_rating, total: d.total_reviews } : null;
@@ -97,7 +97,11 @@ function QtyStepper({
 
 function ProductCardRating({ productId }: { productId: string }) {
   const rating = useProductRating(productId);
-  return <MiniStars avg={rating?.avg ?? 0} total={rating?.total ?? 0} />;
+  if (!rating) {
+    return <span className="mt-1 inline-flex text-[11px] text-muted-foreground">Sem avaliações ainda</span>;
+  }
+
+  return <MiniStars avg={rating.avg} total={rating.total} />;
 }
 
 export function StoreProductCard({
@@ -132,6 +136,7 @@ export function StoreProductCard({
 
   const imgPath = product?.images?.[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);
+  const imageSrc = imgUrl || "/placeholder.svg";
 
   return (
     <Card
@@ -153,16 +158,15 @@ export function StoreProductCard({
     >
       {/* Image — fixed aspect ratio */}
       <div className="relative aspect-square overflow-hidden border-b border-border bg-background flex items-center justify-center p-2 sm:p-3">
-        {imgUrl ? (
-          <img
-            src={imgUrl}
-            alt={product?.name ?? "Produto"}
-            className="max-h-full max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.03]"
-            loading="lazy"
-          />
-        ) : (
-          <div className="h-full w-full rounded-lg bg-muted animate-pulse" />
-        )}
+        <img
+          src={imageSrc}
+          alt={product?.name ?? "Produto"}
+          className="max-h-full max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+          loading="lazy"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";
+          }}
+        />
       </div>
 
       {/* Content */}

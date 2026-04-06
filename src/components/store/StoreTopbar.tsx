@@ -120,12 +120,12 @@ export function StoreTopbar({
       <header className="w-full overflow-x-hidden border-b border-border bg-background">
         <div className="mx-auto max-w-6xl px-4 py-0.5 sm:px-6 sm:py-1">
           <div className="flex flex-col gap-1">
-            <div className="mt-1 flex items-center justify-center">
-              <Link to="/materiais" className="flex items-center justify-center" aria-label={brandLabel}>
+            <div className="flex items-center justify-center">
+              <Link to="/" className="flex items-center justify-center" aria-label={brandLabel}>
                 <img
                   src={storeLogo}
                   alt={`${brandLabel} - logo`}
-                  className="h-[84px] w-[84px] sm:h-[88px] sm:w-[88px] object-contain"
+                  className="h-10 w-10 sm:h-[72px] sm:w-[72px] object-contain"
                   loading="eager"
                 />
               </Link>

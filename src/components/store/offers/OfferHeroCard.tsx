@@ -31,6 +31,7 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
   const prices = getOfferPrices(product);
   const imgPath = product?.images?.[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);
+  const imageSrc = imgUrl || "/placeholder.svg";
   const rating = useProductRatingSummary(product.id);
 
   return (
@@ -54,18 +55,15 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
         <div className="flex flex-col sm:flex-row">
           {/* Image */}
           <div className="aspect-square sm:aspect-auto sm:w-1/2 flex items-center justify-center p-6 bg-muted/30">
-            {imgUrl ? (
-              <img
-                src={imgUrl}
-                alt={product.name}
-                className="max-h-64 max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
-                loading="eager"
-              />
-            ) : (
-              <div className="h-48 w-48 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-sm font-medium">
-                {product.name?.slice(0, 20)}
-              </div>
-            )}
+            <img
+              src={imageSrc}
+              alt={product.name}
+              className="max-h-64 max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+              loading="eager"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";
+              }}
+            />
           </div>
 
           {/* Info */}
@@ -74,7 +72,7 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
               {product.name}
             </h2>
 
-            {rating && (
+            {rating ? (
               <div className="flex items-center gap-1.5">
                 <div className="flex gap-0.5">
                   {Array.from({ length: 5 }, (_, i) => (
@@ -88,6 +86,8 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
                   {rating.avg} ({rating.total})
                 </span>
               </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">Sem avaliações ainda</div>
             )}
 
             <div>

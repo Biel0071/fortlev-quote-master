@@ -52,24 +52,26 @@ export default function OffersPage() {
     setCartOpen(true);
   };
 
-  const heroProduct = offerProducts[0] ?? null;
-  const restProducts = offerProducts.slice(1);
+  const heroProducts = offerProducts.slice(0, 5);
+  const restProducts = offerProducts.slice(5);
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">
-      <AppDownloadBanner />
-      <StoreTopbar
-        cartCount={cart.totalItems}
-        onCartClick={() => setCartOpen(true)}
-        footerStoreName={home.footer?.store_name ?? undefined}
-        categories={activeCategories as any}
-      />
+      <div className="sticky top-0 z-50 bg-background">
+        <AppDownloadBanner />
+        <StoreTopbar
+          cartCount={cart.totalItems}
+          onCartClick={() => setCartOpen(true)}
+          footerStoreName={home.footer?.store_name ?? undefined}
+          categories={activeCategories as any}
+        />
+      </div>
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
       <main className="flex-1 px-4 pb-24 pt-4 sm:px-6 sm:pt-6 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-2 mb-6">
-          <Flame className="h-6 w-6 text-orange-500" />
+          <Flame className="h-6 w-6 text-destructive" />
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Ofertas</h1>
           <span className="ml-auto text-xs text-muted-foreground">
             {offerProducts.length} {offerProducts.length === 1 ? "oferta" : "ofertas"}
@@ -87,10 +89,10 @@ export default function OffersPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {heroProduct && (
+            {heroProducts.length > 0 && (
               <OfferHeroCard
-                product={heroProduct}
-                prices={getOfferPrices(heroProduct)}
+                products={heroProducts}
+                getOfferPrices={getOfferPrices}
                 onAdd={onAdd}
               />
             )}

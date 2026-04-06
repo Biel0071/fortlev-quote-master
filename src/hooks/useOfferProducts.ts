@@ -49,6 +49,18 @@ function fuzzyMatch(productName: string, terms: string[]): boolean {
   return terms.some((t) => norm.includes(normalizeText(t)));
 }
 
+/** Deterministic simulated rating based on product name hash */
+function deterministicRating(name: string): { avg: number; total: number } {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+  }
+  const abs = Math.abs(hash);
+  const avg = 4.2 + ((abs % 8) / 10); // 4.2 to 4.9
+  const total = 30 + (abs % 671); // 30 to 700
+  return { avg: Math.round(avg * 10) / 10, total };
+}
+
 export type OfferProduct = {
   id: string;
   name: string;
@@ -59,6 +71,7 @@ export type OfferProduct = {
   images: Array<{ path: string | null }>;
   active: boolean;
   _isOffer: true;
+  rating: { avg: number; total: number };
   // passthrough fields from real product
   best_seller?: boolean;
   category?: string | null;
@@ -102,6 +115,7 @@ export function useOfferProducts(activeProducts: any[]): {
           images: match.images ?? [],
           active: true,
           _isOffer: true,
+          rating: deterministicRating(match.name ?? seed.fallbackName),
           best_seller: match.best_seller,
           category: match.category,
           description: match.description,
@@ -118,6 +132,7 @@ export function useOfferProducts(activeProducts: any[]): {
           images: [],
           active: true,
           _isOffer: true,
+          rating: deterministicRating(seed.fallbackName),
         });
       }
     }

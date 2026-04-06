@@ -126,17 +126,21 @@ export default function AdminStoreSelector() {
 
   const loadStores = async () => {
     setLoading(true);
-    // Master sees ALL stores (active + inactive); others only active
     const query = cloud
       .from("stores")
-      .select("id, name, slug, active, domain, favicon_path")
+      .select("id, name, slug, active, domain, favicon_path, plan_id, segment, suspended")
       .order("name");
 
     if (!isMaster) {
       query.eq("active", true);
     }
 
-    const { data } = await query;
+    const [{ data }, { data: plansData }] = await Promise.all([
+      query,
+      cloud.from("store_plans").select("id, name, slug, modules").order("sort_order"),
+    ]);
+
+    const allPlans = (plansData as PlanRow[]) ?? [];
 
     let available = (data as StoreRow[]) ?? [];
 
@@ -152,7 +156,6 @@ export default function AdminStoreSelector() {
       return;
     }
 
-    // Load summaries + domains
     const storeIds = available.map((s) => s.id);
     const { data: domains } = await cloud
       .from("store_domains")
@@ -161,18 +164,21 @@ export default function AdminStoreSelector() {
 
     const allDomains = (domains as StoreDomain[]) ?? [];
 
-    // Fetch real counts
     const [{ count: orderCount }, { count: productCount }] = await Promise.all([
       cloud.from("store_orders").select("*", { count: "exact", head: true }),
       cloud.from("store_products").select("*", { count: "exact", head: true }).eq("active", true),
     ]);
 
-    const sums: StoreSummary[] = available.map((store) => ({
-      store,
-      // Assign real counts to the active "construcao" store (main store with data)
-      orderCount: store.slug === "construcao" ? (orderCount ?? 0) : 0,
-      productCount: store.slug === "construcao" ? (productCount ?? 0) : 0,
-      domains: allDomains.filter((d) => d.store_id === store.id),
+    const sums: StoreSummary[] = available.map((store) => {
+      const plan = allPlans.find((p) => p.id === store.plan_id);
+      return {
+        store,
+        orderCount: store.slug === "construcao" ? (orderCount ?? 0) : 0,
+        productCount: store.slug === "construcao" ? (productCount ?? 0) : 0,
+        domains: allDomains.filter((d) => d.store_id === store.id),
+        planName: plan?.name ?? "Sem plano",
+      };
+    });
     }));
 
     setSummaries(sums);

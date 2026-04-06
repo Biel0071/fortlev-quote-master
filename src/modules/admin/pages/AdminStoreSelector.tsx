@@ -60,6 +60,9 @@ type StoreRow = {
   active: boolean;
   domain: string | null;
   favicon_path: string | null;
+  plan_id: string | null;
+  segment: string | null;
+  suspended: boolean;
 };
 
 type StoreDomain = {
@@ -70,11 +73,14 @@ type StoreDomain = {
   verified: boolean;
 };
 
+type PlanRow = { id: string; name: string; slug: string; modules: string[] };
+
 type StoreSummary = {
   store: StoreRow;
   orderCount: number;
   productCount: number;
   domains: StoreDomain[];
+  planName: string;
 };
 
 type SeoData = {

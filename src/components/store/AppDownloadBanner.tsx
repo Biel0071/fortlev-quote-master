@@ -86,8 +86,8 @@ export function AppDownloadBanner() {
 
   return (
     <>
-      <div className="w-full z-50 bg-primary text-primary-foreground">
-        <div className="mx-auto relative flex items-center justify-center gap-2.5 px-10 py-2 sm:py-1.5 sm:px-4">
+      <div className="w-full z-50 bg-primary text-primary-foreground" style={{ marginBottom: 0 }}>
+        <div className="mx-auto relative flex items-center justify-center gap-2.5 px-10 py-1.5 sm:py-1.5 sm:px-4">
           <button
             onClick={handleBannerClick}
             className="flex items-center gap-2 bg-transparent border-none cursor-pointer group"
@@ -95,7 +95,7 @@ export function AppDownloadBanner() {
             <span className="flex items-center justify-center h-7 w-7 rounded-full bg-primary-foreground/15 group-hover:bg-primary-foreground/25 transition-colors">
               <Smartphone className="h-3.5 w-3.5" />
             </span>
-            <span className="text-xs sm:text-sm font-semibold tracking-wide">
+            <span className="text-xs sm:text-sm font-semibold tracking-wide animate-[pulseText_2s_ease-in-out_infinite]">
               Baixe o app e ganhe{" "}
               <span className="inline-flex items-center gap-0.5 bg-primary-foreground/20 px-1.5 py-0.5 rounded-md text-[11px] sm:text-xs font-bold">
                 10% OFF

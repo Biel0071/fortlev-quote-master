@@ -179,7 +179,6 @@ export default function AdminStoreSelector() {
         planName: plan?.name ?? "Sem plano",
       };
     });
-    }));
 
     setSummaries(sums);
     setLoading(false);

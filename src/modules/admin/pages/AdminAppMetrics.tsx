@@ -1,22 +1,41 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cloud } from "@/lib/cloud";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Download, MousePointerClick, Smartphone, RefreshCw, TrendingUp,
-  BarChart3, Upload, Link2, CheckCircle2, Loader2, FileText,
-  HardDrive, Calendar, Tag, ExternalLink,
+  Download,
+  MousePointerClick,
+  Smartphone,
+  RefreshCw,
+  TrendingUp,
+  BarChart3,
+  Upload,
+  Loader2,
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { toast } from "sonner";
 
-/* ── helpers ── */
+const APK_URL_STORAGE_KEY = "app_download_url";
+const APK_META_STORAGE_KEY = "app_apk_meta";
+const MAX_APK_SIZE_BYTES = 100 * 1024 * 1024;
+
 const fmtMB = (bytes: number) => (bytes / (1024 * 1024)).toFixed(2);
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
 interface ApkMeta {
@@ -24,6 +43,35 @@ interface ApkMeta {
   displayName: string;
   size: number;
   uploadedAt: string;
+}
+
+function readLocalValue(key: string) {
+  try {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalValue(key: string, value: string) {
+  try {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(key, value);
+  } catch {
+    // ignore fallback storage errors
+  }
+}
+
+function parseLocalMeta(value: string | null) {
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value) as ApkMeta;
+  } catch (error) {
+    console.error("Erro ao parsear meta local", error);
+    return null;
+  }
 }
 
 export default function AdminAppMetrics() {
@@ -38,16 +86,30 @@ export default function AdminAppMetrics() {
   const [apkMeta, setApkMeta] = useState<ApkMeta | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  /* ── load metrics + apk info ── */
+  const saveConfig = async (key: string, value: string) => {
+    const { error } = await cloud
+      .from("app_config")
+      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+
+    if (error) {
+      console.error("[APP_CONFIG_ERROR]", key, error);
+      return false;
+    }
+
+    console.log("[APP_CONFIG_OK]", key);
+    return true;
+  };
+
   const load = async () => {
     setLoading(true);
+
     try {
       const [
         { data: bannerEvents },
         { data: trackingAppClicks },
         { data: sessions },
-        { data: configRow },
-        { data: metaRow },
+        { data: configRow, error: configError },
+        { data: metaRow, error: metaError },
       ] = await Promise.all([
         cloud.from("visitor_events").select("id, metadata, created_at").eq("type", "banner_click").limit(1000),
         cloud.from("tracking_events").select("id, metadata, created_at").eq("type", "banner_click").limit(500),
@@ -58,32 +120,37 @@ export default function AdminAppMetrics() {
 
       const allBanner = bannerEvents ?? [];
       const appBanner = allBanner.filter(
-        (e: any) => e.metadata?.click_type === "app_download_click" || e.metadata?.banner_type === "app",
+        (event: any) =>
+          event.metadata?.click_type === "app_download_click" || event.metadata?.banner_type === "app",
       );
+
       setBannerClicks(allBanner.length);
 
-      const extraApp = (trackingAppClicks ?? []).filter(
-        (e: any) => e.metadata?.click_type === "app_download_click",
+      const extraAppClicks = (trackingAppClicks ?? []).filter(
+        (event: any) => event.metadata?.click_type === "app_download_click",
       );
-      setAppDownloadClicks(appBanner.length + extraApp.length);
+      setAppDownloadClicks(appBanner.length + extraAppClicks.length);
 
       const fromApp = (sessions ?? []).filter(
-        (s: any) => s.utm_source === "app" || (s.referrer || "").includes("app"),
+        (session: any) => session.utm_source === "app" || (session.referrer || "").includes("app"),
       );
       setAppSessions(fromApp.length);
 
-      // daily chart (7 days)
       const now = new Date();
       const dailyMap: Record<string, number> = {};
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        dailyMap[d.toISOString().split("T")[0]] = 0;
+      for (let i = 6; i >= 0; i -= 1) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        dailyMap[date.toISOString().split("T")[0]] = 0;
       }
-      [...allBanner, ...(trackingAppClicks ?? [])].forEach((e: any) => {
-        const day = e.created_at?.split("T")[0];
-        if (day && dailyMap[day] !== undefined) dailyMap[day]++;
+
+      [...allBanner, ...(trackingAppClicks ?? [])].forEach((event: any) => {
+        const day = event.created_at?.split("T")[0];
+        if (day && dailyMap[day] !== undefined) {
+          dailyMap[day] += 1;
+        }
       });
+
       setDailyClicks(
         Object.entries(dailyMap).map(([date, clicks]) => ({
           date: new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
@@ -91,50 +158,77 @@ export default function AdminAppMetrics() {
         })),
       );
 
-      console.log("[AppMetrics] app_download_url:", configRow);
-      console.log("[AppMetrics] app_apk_meta:", metaRow);
-      if (configRow?.value) setApkUrl(configRow.value);
+      const localUrl = readLocalValue(APK_URL_STORAGE_KEY);
+      const localMeta = readLocalValue(APK_META_STORAGE_KEY);
+
+      console.log("LOAD URL", configRow);
+      console.log("LOAD META", metaRow);
+
+      if (configError) {
+        console.error("[APP_CONFIG_LOAD_ERROR]", configError);
+      }
+
+      if (metaError) {
+        console.error("[APP_CONFIG_META_LOAD_ERROR]", metaError);
+      }
+
+      setApkUrl(configRow?.value ?? localUrl ?? null);
+
       if (metaRow?.value) {
         try {
-          const parsed = JSON.parse(metaRow.value);
-          console.log("[AppMetrics] parsed meta:", parsed);
-          setApkMeta(parsed);
-        } catch (e) {
-          console.error("[AppMetrics] Erro ao parsear meta:", e);
+          setApkMeta(JSON.parse(metaRow.value) as ApkMeta);
+        } catch (error) {
+          console.error("Erro ao parsear meta", error);
+          setApkMeta(parseLocalMeta(localMeta));
         }
+      } else {
+        setApkMeta(parseLocalMeta(localMeta));
       }
-    } catch (err) {
-      console.error("[AppMetrics] load error:", err);
+    } catch (error) {
+      console.error("[AppMetrics] load error:", error);
+      const localUrl = readLocalValue(APK_URL_STORAGE_KEY);
+      const localMeta = readLocalValue(APK_META_STORAGE_KEY);
+      setApkUrl(localUrl);
+      setApkMeta(parseLocalMeta(localMeta));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
-  /* ── upload APK ── */
   const handleApkUpload = async () => {
     const file = fileRef.current?.files?.[0];
-    if (!file) { toast.error("Selecione um arquivo .apk"); return; }
-    if (!file.name.toLowerCase().endsWith(".apk")) {
-      toast.error("Apenas arquivos .apk são aceitos");
+
+    if (!file) {
+      toast.error("Selecione um arquivo .apk");
       return;
     }
-    if (file.size > 100 * 1024 * 1024) {
+
+    if (!file.name.toLowerCase().endsWith(".apk")) {
+      toast.error("Selecione um arquivo .apk");
+      return;
+    }
+
+    if (file.size > MAX_APK_SIZE_BYTES) {
       toast.error("Tamanho máximo: 100 MB");
       return;
     }
 
     setUploading(true);
+
     try {
       const fileName = `app-${Date.now()}.apk`;
-      const { error: uploadError } = await cloud.storage
-        .from("apps")
-        .upload(fileName, file, { upsert: true });
-      if (uploadError) throw uploadError;
+      const { error: uploadError } = await cloud.storage.from("apps").upload(fileName, file, { upsert: true });
+
+      if (uploadError) {
+        throw uploadError;
+      }
 
       const { data: urlData } = cloud.storage.from("apps").getPublicUrl(fileName);
       const publicUrl = urlData.publicUrl;
-
       const meta: ApkMeta = {
         originalName: file.name,
         displayName: file.name,
@@ -142,77 +236,98 @@ export default function AdminAppMetrics() {
         uploadedAt: new Date().toISOString(),
       };
 
-      const ts = new Date().toISOString();
-      const [r1, r2] = await Promise.all([
-        cloud.from("app_config").upsert(
-          { key: "app_download_url", value: publicUrl, updated_at: ts },
-          { onConflict: "key" },
-        ),
-        cloud.from("app_config").upsert(
-          { key: "app_apk_meta", value: JSON.stringify(meta), updated_at: ts },
-          { onConflict: "key" },
-        ),
-      ]);
-      console.log("[AppMetrics] save results:", { r1: r1.error, r2: r2.error });
-      if (r1.error) throw r1.error;
-      if (r2.error) throw r2.error;
+      console.log("UPLOAD OK", publicUrl);
+      console.log("META", meta);
+
+      const savedUrl = await saveConfig("app_download_url", publicUrl);
+      const savedMeta = await saveConfig("app_apk_meta", JSON.stringify(meta));
+
+      if (!savedUrl || !savedMeta) {
+        console.warn("Salvando localStorage como fallback");
+      }
+
+      writeLocalValue(APK_URL_STORAGE_KEY, publicUrl);
+      writeLocalValue(APK_META_STORAGE_KEY, JSON.stringify(meta));
 
       setApkUrl(publicUrl);
       setApkMeta(meta);
-      console.log("[AppMetrics] upload ok:", { publicUrl, meta });
-      toast.success("APK enviado com sucesso!");
-      if (fileRef.current) fileRef.current.value = "";
-    } catch (err: any) {
-      console.error("[AppMetrics] upload error:", err);
-      toast.error(`Erro ao enviar APK: ${err.message ?? "Falha desconhecida"}`);
+      toast.success("APK enviado com sucesso");
+
+      if (fileRef.current) {
+        fileRef.current.value = "";
+      }
+    } catch (error: any) {
+      console.error("[AppMetrics] upload error:", error);
+      toast.error(`Erro ao enviar APK: ${error?.message ?? "Falha desconhecida"}`);
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const conversionRate = bannerClicks > 0 ? ((appDownloadClicks / bannerClicks) * 100).toFixed(1) : "0";
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      {/* header */}
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6 sm:px-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <Smartphone className="h-6 w-6 text-primary" /> Métricas do Aplicativo
           </h1>
           <p className="text-sm text-muted-foreground">Downloads, cliques e sessões do app</p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading} className="gap-1.5">
+        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading} className="gap-1.5">
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
         </Button>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { icon: <MousePointerClick className="h-4 w-4" />, label: "Cliques no Banner", value: bannerClicks, color: "" },
-          { icon: <Download className="h-4 w-4" />, label: "Downloads (cliques)", value: appDownloadClicks, color: "text-green-600" },
-          { icon: <TrendingUp className="h-4 w-4" />, label: "Taxa Conversão", value: `${conversionRate}%`, color: "text-primary" },
-          { icon: <Smartphone className="h-4 w-4" />, label: "Sessões do App", value: appSessions, color: "text-blue-600" },
-        ].map((c, i) => (
-          <Card key={i} className="rounded-2xl">
-            <CardContent className="pt-4 pb-3 px-4">
-              <div className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1">{c.icon} {c.label}</div>
-              <div className={`text-3xl font-bold ${c.color}`}>{loading ? "—" : c.value}</div>
+          {
+            icon: <MousePointerClick className="h-4 w-4" />,
+            label: "Cliques no Banner",
+            value: bannerClicks,
+            color: "text-foreground",
+          },
+          {
+            icon: <Download className="h-4 w-4" />,
+            label: "Downloads (cliques)",
+            value: appDownloadClicks,
+            color: "text-primary",
+          },
+          {
+            icon: <TrendingUp className="h-4 w-4" />,
+            label: "Taxa Conversão",
+            value: `${conversionRate}%`,
+            color: "text-primary",
+          },
+          {
+            icon: <Smartphone className="h-4 w-4" />,
+            label: "Sessões do App",
+            value: appSessions,
+            color: "text-foreground",
+          },
+        ].map((card, index) => (
+          <Card key={index} className="rounded-2xl">
+            <CardContent className="px-4 pt-4 pb-3">
+              <div className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                {card.icon}
+                {card.label}
+              </div>
+              <div className={`text-3xl font-bold ${card.color}`}>{loading ? "—" : card.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* chart */}
       <Card className="rounded-2xl">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <BarChart3 className="h-4 w-4 text-primary" /> Cliques no Banner (7 dias)
           </CardTitle>
         </CardHeader>
         <CardContent>
           {dailyClicks.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Sem dados</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Sem dados</p>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={dailyClicks}>
@@ -227,15 +342,14 @@ export default function AdminAppMetrics() {
         </CardContent>
       </Card>
 
-      {/* APK upload */}
       <Card className="rounded-2xl border-2 border-dashed border-primary/20">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Upload className="h-4 w-4 text-primary" /> Upload de APK
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Input ref={fileRef} type="file" accept=".apk" className="flex-1" disabled={uploading} />
             <Button onClick={handleApkUpload} disabled={uploading} className="gap-1.5">
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
@@ -243,44 +357,52 @@ export default function AdminAppMetrics() {
             </Button>
           </div>
 
-          {/* APK info panel */}
-          {apkUrl && (
-            <div className="rounded-xl bg-muted/50 p-5 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-green-600">
-                <CheckCircle2 className="h-4 w-4" /> APK instalado no sistema
-              </div>
+          {(apkUrl || apkMeta) && (
+            <div className="mt-4 rounded-xl border border-border bg-card p-4">
+              <h3 className="mb-3 font-semibold text-foreground">📦 APK instalado</h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {apkMeta && (
-                  <>
-                    <InfoRow icon={FileText} label="Arquivo original" value={apkMeta.originalName} />
-                    <InfoRow icon={Tag} label="Nome exibido no download" value={apkMeta.displayName} />
-                    <InfoRow icon={HardDrive} label="Tamanho" value={`${fmtMB(apkMeta.size)} MB`} />
-                    <InfoRow icon={Calendar} label="Enviado em" value={fmtDate(apkMeta.uploadedAt)} />
-                  </>
-                )}
-              </div>
+              {apkMeta && (
+                <div className="space-y-2 text-sm text-foreground">
+                  <div>
+                    <b>Arquivo:</b> {apkMeta.originalName}
+                  </div>
+                  <div>
+                    <b>Nome:</b> {apkMeta.displayName}
+                  </div>
+                  <div>
+                    <b>Tamanho:</b> {fmtMB(apkMeta.size)} MB
+                  </div>
+                  <div>
+                    <b>Enviado:</b> {fmtDate(apkMeta.uploadedAt)}
+                  </div>
+                </div>
+              )}
 
-              <div className="flex items-center gap-2 pt-1">
-                <Link2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                <a href={apkUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline truncate">
-                  {apkUrl}
-                </a>
-                <a href={apkUrl} target="_blank" rel="noopener noreferrer" title="Abrir link">
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-primary transition-colors" />
-                </a>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Este link é usado automaticamente no banner de download do app.
+              {apkUrl && (
+                <div className="mt-3">
+                  <a
+                    href={apkUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary underline"
+                  >
+                    Baixar APK
+                  </a>
+                </div>
+              )}
+
+              <p className="mt-2 text-xs text-muted-foreground">
+                Este link é usado automaticamente no banner do app.
               </p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* info */}
       <Card className="rounded-2xl">
-        <CardHeader><CardTitle className="text-base">Sobre as métricas</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Sobre as métricas</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>• <strong>Cliques no Banner:</strong> Total de vezes que o banner de download do app foi clicado.</p>
           <p>• <strong>Downloads:</strong> Cliques específicos no link de download do APK.</p>
@@ -288,19 +410,6 @@ export default function AdminAppMetrics() {
           <p>• <strong>Sessões do App:</strong> Visitantes que chegaram ao site via aplicativo (utm_source=app).</p>
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-/* ── small reusable row ── */
-function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-2.5">
-      <Icon className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div>
-        <p className="text-[11px] text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium">{value}</p>
-      </div>
     </div>
   );
 }

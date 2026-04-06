@@ -34,7 +34,11 @@ Deno.serve(async (req) => {
     if (metaRow?.value) {
       try {
         const meta = JSON.parse(metaRow.value);
-        if (meta.displayName) displayName = meta.displayName;
+        if (meta.appName && meta.version) {
+          displayName = `${meta.appName}-v${meta.version}.apk`;
+        } else if (meta.displayName) {
+          displayName = meta.displayName;
+        }
       } catch { /* ignore */ }
     }
 

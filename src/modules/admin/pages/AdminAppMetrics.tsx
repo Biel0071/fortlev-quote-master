@@ -357,45 +357,36 @@ export default function AdminAppMetrics() {
             </Button>
           </div>
 
-          {(apkUrl || apkMeta) && (
-            <div className="mt-4 rounded-xl border border-border bg-card p-4">
-              <h3 className="mb-3 font-semibold text-foreground">📦 APK instalado</h3>
+          <div className="mt-4 rounded-xl border border-border bg-card p-4">
+            <h3 className="mb-3 font-semibold text-foreground">📦 APK instalado</h3>
 
-              {apkMeta && (
-                <div className="space-y-2 text-sm text-foreground">
-                  <div>
-                    <b>Arquivo:</b> {apkMeta.originalName}
+            {apkUrl || apkMeta ? (
+              <>
+                {apkMeta && (
+                  <div className="space-y-2 text-sm text-foreground">
+                    <div><b>Arquivo:</b> {apkMeta.originalName}</div>
+                    <div><b>Nome:</b> {apkMeta.displayName}</div>
+                    <div><b>Tamanho:</b> {fmtMB(apkMeta.size)} MB</div>
+                    <div><b>Enviado:</b> {fmtDate(apkMeta.uploadedAt)}</div>
                   </div>
-                  <div>
-                    <b>Nome:</b> {apkMeta.displayName}
-                  </div>
-                  <div>
-                    <b>Tamanho:</b> {fmtMB(apkMeta.size)} MB
-                  </div>
-                  <div>
-                    <b>Enviado:</b> {fmtDate(apkMeta.uploadedAt)}
-                  </div>
-                </div>
-              )}
+                )}
 
-              {apkUrl && (
-                <div className="mt-3">
-                  <a
-                    href={apkUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary underline"
-                  >
-                    Baixar APK
-                  </a>
-                </div>
-              )}
+                {apkUrl && (
+                  <div className="mt-3">
+                    <a href={apkUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+                      Baixar APK
+                    </a>
+                  </div>
+                )}
 
-              <p className="mt-2 text-xs text-muted-foreground">
-                Este link é usado automaticamente no banner do app.
-              </p>
-            </div>
-          )}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Este link é usado automaticamente no banner do app.
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhum APK enviado ainda.</p>
+            )}
+          </div>
         </CardContent>
       </Card>
 

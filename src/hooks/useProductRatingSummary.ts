@@ -28,12 +28,14 @@ export function useProductRatingSummary(productId?: string | null) {
 
     let alive = true;
 
-    cloud
-      .from("product_rating_summary")
-      .select("average_rating, total_reviews")
-      .eq("product_id", productId)
-      .maybeSingle()
-      .then(({ data }) => {
+    (async () => {
+      try {
+        const { data } = await cloud
+          .from("product_rating_summary")
+          .select("average_rating, total_reviews")
+          .eq("product_id", productId)
+          .maybeSingle();
+
         if (!alive) return;
 
         const row = data as { average_rating?: number | null; total_reviews?: number | null } | null;
@@ -46,12 +48,12 @@ export function useProductRatingSummary(productId?: string | null) {
 
         ratingCache.set(productId, next);
         setRating(next);
-      })
-      .catch(() => {
+      } catch {
         if (!alive) return;
         ratingCache.set(productId, null);
         setRating(null);
-      });
+      }
+    })();
 
     return () => {
       alive = false;

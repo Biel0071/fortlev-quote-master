@@ -21,7 +21,7 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
     if (products.length <= 1) return;
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % products.length);
-    }, 4000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [products.length]);
 

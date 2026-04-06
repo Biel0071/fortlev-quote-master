@@ -99,6 +99,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <CookieConsentBanner />
           <Routes>
             {/* Loja Materiais (HOME/vitrine) */}

@@ -53,6 +53,11 @@ import {
   AdminRecommendations,
   AdminShipping,
   AdminIntelligenceUnified,
+  // New modules
+  AdminConversionFunnel,
+  AdminClickMap,
+  AdminAppMetrics,
+  AdminAiInsights,
   // Payments
   AdminPaymentsLayout,
   AdminPaymentsOverview,

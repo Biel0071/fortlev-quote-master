@@ -98,7 +98,7 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
               <div className="text-xs text-muted-foreground mt-0.5">
                 ou 10x de {formatCurrency(prices.promoPrice / 10)} sem juros
               </div>
-              <div className="text-sm font-bold text-green-600 mt-0.5">
+              <div className="text-sm font-bold text-pix mt-0.5">
                 {formatCurrency(prices.promoPrice * 0.93)} no PIX
               </div>
             </div>

@@ -74,7 +74,7 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
           <div className="text-base sm:text-lg font-extrabold text-destructive">
             {formatCurrency(prices.promoPrice)}
           </div>
-          <div className="text-xs font-bold text-green-600 mt-0.5">
+          <div className="text-xs font-bold text-pix mt-0.5">
             {formatCurrency(prices.promoPrice * 0.93)} no PIX
           </div>
         </div>

@@ -55,6 +55,10 @@ export default {
           DEFAULT: "hsl(var(--whatsapp))",
           foreground: "hsl(var(--whatsapp-foreground))",
         },
+        pix: {
+          DEFAULT: "hsl(var(--pix))",
+          foreground: "hsl(var(--pix-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

@@ -91,11 +91,21 @@ export default function AdminAppMetrics() {
         })),
       );
 
+      console.log("[AppMetrics] app_download_url:", configRow);
+      console.log("[AppMetrics] app_apk_meta:", metaRow);
       if (configRow?.value) setApkUrl(configRow.value);
       if (metaRow?.value) {
-        try { setApkMeta(JSON.parse(metaRow.value)); } catch { /* ignore */ }
+        try {
+          const parsed = JSON.parse(metaRow.value);
+          console.log("[AppMetrics] parsed meta:", parsed);
+          setApkMeta(parsed);
+        } catch (e) {
+          console.error("[AppMetrics] Erro ao parsear meta:", e);
+        }
       }
-    } catch { /* silent */ }
+    } catch (err) {
+      console.error("[AppMetrics] load error:", err);
+    }
     setLoading(false);
   };
 

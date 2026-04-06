@@ -175,15 +175,15 @@ export default function StoreHome() {
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
   return (
-    <div className="flex flex-col bg-background w-full overflow-x-hidden">
-      <div className="sticky top-0 z-50 bg-background">
+    <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">
+      <div className="fixed top-0 left-0 right-0 z-[9999] bg-background">
         <AppDownloadBanner />
         <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} footerStoreName={home.footer?.store_name ?? undefined} categories={activeCategories as any} />
       </div>
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <div className="w-full overflow-hidden">
+      <div className="w-full overflow-hidden" style={{ marginTop: 120 }}>
         <HomeHeroCarousel banners={home.banners} loading={home.loading} />
       </div>
 

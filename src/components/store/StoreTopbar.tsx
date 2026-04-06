@@ -125,7 +125,7 @@ export function StoreTopbar({
                 <img
                   src={storeLogo}
                   alt={`${brandLabel} - logo`}
-                  className="h-[44px] w-[44px] sm:h-[72px] sm:w-[72px] object-contain"
+                  className="h-[44px] w-auto sm:h-[72px] sm:w-auto object-contain scale-[1.75] origin-center"
                   loading="eager"
                 />
               </Link>

@@ -57,7 +57,7 @@ export default function OffersPage() {
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">
-      <div className="sticky top-0 z-50 bg-background">
+      <div className="fixed top-0 left-0 right-0 z-[9999] bg-background">
         <AppDownloadBanner />
         <StoreTopbar
           cartCount={cart.totalItems}
@@ -69,7 +69,7 @@ export default function OffersPage() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="flex-1 px-4 pb-24 pt-4 sm:px-6 sm:pt-6 max-w-5xl mx-auto w-full">
+      <main className="flex-1 px-4 pb-24 sm:px-6 max-w-5xl mx-auto w-full" style={{ marginTop: 120 }}>
         <div className="flex items-center gap-2 mb-6">
           <Flame className="h-6 w-6 text-destructive" />
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Ofertas</h1>

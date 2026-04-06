@@ -25,7 +25,7 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
       role="link"
       tabIndex={0}
       onClick={() => nav(`/produto/${getProductSlug(product)}`)}
-      className="card-oferta group flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+      className="card-oferta group flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-transform duration-300 hover:scale-[1.03] hover:shadow-md"
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden border-b border-border bg-muted/30 flex items-center justify-center p-3">

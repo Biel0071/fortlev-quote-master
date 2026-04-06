@@ -30,26 +30,25 @@ export function StoreLayout({
   footerStoreName?: string;
   categories?: Array<{ id: string; name: string; slug: string }>;
 }) {
-  const headerRef = useRef<HTMLDivElement>(null);
   const [headerH, setHeaderH] = useState(0);
 
   useEffect(() => {
-    if (!headerRef.current) return;
+    const el = document.getElementById("app-header-root");
+    if (!el) return;
     const ro = new ResizeObserver(([entry]) => setHeaderH(entry.contentRect.height));
-    ro.observe(headerRef.current);
+    ro.observe(el);
+    setHeaderH(el.getBoundingClientRect().height);
     return () => ro.disconnect();
   }, []);
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden">
-      <div ref={headerRef} className="contents">
-        <AppHeader
-          cartCount={cartCount}
-          onCartClick={onCartClick}
-          footerStoreName={footerStoreName}
-          categories={categories}
-        />
-      </div>
+      <AppHeader
+        cartCount={cartCount}
+        onCartClick={onCartClick}
+        footerStoreName={footerStoreName}
+        categories={categories}
+      />
       <CartDrawer open={cartOpen} onOpenChange={onCartOpenChange} />
       <StoreMobileChrome cartCount={cartCount} onCartClick={onCartClick} />
 

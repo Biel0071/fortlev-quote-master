@@ -140,33 +140,24 @@ export default function StoreHome() {
 
   const topClickedIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
-
-    // Real click-based ranking
     const clicked = list
       .filter((p) => Number(p?.clicks ?? 0) > 0)
       .sort((a, b) => Number(b.clicks ?? 0) - Number(a.clicks ?? 0))
       .slice(0, 20)
       .map((p) => p.id) as string[];
-
-    // If we have enough real data (5+), use it
     if (clicked.length >= 5) return clicked.slice(0, 8);
-
-    // Otherwise fallback to curated best-sellers list
     const curatedBestSellers = [
-      "31f0affc-e596-413e-b113-9c17ef3ecab2", // Caixa 1000L FORTLEV
-      "1f6a420a-b46b-4d75-b888-8aa6c1e4ee2a", // Caixa 2000L FORTLEV
-      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3", // Caixa 3000L FORTLEV
-      "8b13a472-154d-422b-b567-fb8c726eaada", // Caixa 5000L FORTLEV
-      "a787085e-0984-481a-9644-61c08f796870", // Caixa 10000L FORTLEV
-      "978068df-f401-4997-803b-81354d216453", // Caixa 500L FORTLEV
-      "38c51f55-fbf0-41c4-b223-b9993e7efb40", // LIZ CP4
-      "fef0b373-84d1-4ba7-b341-13f03cbcef38", // Bloco 20
+      "31f0affc-e596-413e-b113-9c17ef3ecab2",
+      "1f6a420a-b46b-4d75-b888-8aa6c1e4ee2a",
+      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3",
+      "8b13a472-154d-422b-b567-fb8c726eaada",
+      "a787085e-0984-481a-9644-61c08f796870",
+      "978068df-f401-4997-803b-81354d216453",
+      "38c51f55-fbf0-41c4-b223-b9993e7efb40",
+      "fef0b373-84d1-4ba7-b341-13f03cbcef38",
     ];
-
     const existingIds = new Set(list.map((p) => p.id));
     const validCurated = curatedBestSellers.filter((id) => existingIds.has(id));
-
-    // Merge: real clicks first, then curated to fill remaining slots
     const seen = new Set(clicked);
     const merged = [...clicked];
     for (const id of validCurated) {
@@ -176,6 +167,24 @@ export default function StoreHome() {
       }
     }
     return merged;
+  }, [activeProducts]);
+
+  // Offers: products with active promo_price, sorted by discount %
+  const offerIds = useMemo(() => {
+    const list = (activeProducts ?? []) as any[];
+    return list
+      .filter((p) => {
+        const price = Number(p?.price ?? 0);
+        const promo = Number(p?.promo_price ?? 0);
+        return promo > 0 && price > 0 && promo < price;
+      })
+      .sort((a, b) => {
+        const aOff = (Number(a.price) - Number(a.promo_price)) / Number(a.price);
+        const bOff = (Number(b.price) - Number(b.promo_price)) / Number(b.price);
+        return bOff - aOff;
+      })
+      .slice(0, 8)
+      .map((p) => p.id) as string[];
   }, [activeProducts]);
 
   return (

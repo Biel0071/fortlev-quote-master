@@ -118,14 +118,14 @@ export function StoreTopbar({
   return (
     <>
       <header className="sticky top-0 z-40 w-full overflow-x-hidden border-b border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/88">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-2 pb-3 sm:pt-3 sm:pb-4">
-          <div className="flex flex-col gap-2 sm:gap-3">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-1.5 pb-2 sm:pt-3 sm:pb-4">
+          <div className="flex flex-col gap-1.5 sm:gap-3">
             <div className="flex items-center justify-center">
               <Link to="/materiais" className="flex items-center justify-center" aria-label={brandLabel}>
                 <img
                   src={storeLogo}
                   alt={`${brandLabel} - logo`}
-                  className="h-[84px] w-[84px] sm:h-[120px] sm:w-[120px] object-contain"
+                  className="h-[52px] w-[52px] sm:h-[100px] sm:w-[100px] object-contain"
                   loading="eager"
                 />
               </Link>

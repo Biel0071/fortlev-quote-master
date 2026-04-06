@@ -12,6 +12,7 @@ import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { StoreProductCard } from "@/components/store/home/StoreProductCard";
 import { useSearchParams } from "react-router-dom";
+import { expandSearchTerms, smartMatch } from "@/utils/smartSearch";
 
 export default function StoreCatalog() {
   const cart = useCart();

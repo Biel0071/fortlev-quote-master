@@ -11,6 +11,7 @@ import { useHomeContent } from "@/hooks/useHomeContent";
 import { useStorePages } from "@/hooks/useStorePages";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
+import { getProductImageUrl } from "@/utils/productImage";
 import { generateStandardProductDescription } from "@/utils/productDescription";
 import { trackClickEvent } from "@/utils/clickTracking";
 import { cn } from "@/lib/utils";

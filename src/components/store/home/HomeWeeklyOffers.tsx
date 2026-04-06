@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { StoreProduct } from "@/types/store";
 import { formatCurrency } from "@/utils/formatters";
-import { publicImageUrl } from "@/utils/storage";
+import { getProductImageUrl } from "@/utils/productImage";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 

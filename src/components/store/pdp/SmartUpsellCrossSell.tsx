@@ -4,6 +4,7 @@ import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useCart } from "@/hooks/useCart";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
+import { getProductImageUrl } from "@/utils/productImage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShoppingCart, ArrowUpRight } from "lucide-react";

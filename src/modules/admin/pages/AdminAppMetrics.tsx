@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, MousePointerClick, Smartphone, RefreshCw, TrendingUp, BarChart3, Upload, Link2, CheckCircle2, Loader2 } from "lucide-react";
+import { Download, MousePointerClick, Smartphone, RefreshCw, TrendingUp, BarChart3, Upload, Link2, CheckCircle2, Loader2, FileText, HardDrive, Calendar, Tag } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 

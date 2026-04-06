@@ -12,7 +12,10 @@ import {
   BarChart3,
   Upload,
   Loader2,
+  Save,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   BarChart,
   Bar,

@@ -242,3 +242,22 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
 }
+
+@keyframes pulseOffer {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+.card-oferta {
+  animation: pulseOffer 2s infinite;
+}
+
+/* Hide scrollbar globally */
+::-webkit-scrollbar {
+  display: none;
+}
+
+html, body {
+  scrollbar-width: none;
+}

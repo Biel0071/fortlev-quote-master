@@ -152,7 +152,7 @@ export function useVisitorTracker() {
       collectAndTrackEvent({
         sessionToken: token,
         consentGiven: consent,
-        event: { type, path: window.location.pathname, metadata: { source: "app_banner" } },
+        event: { type: type as any, path: window.location.pathname, metadata: { source: "app_banner" } },
       }).catch(() => {});
     };
 

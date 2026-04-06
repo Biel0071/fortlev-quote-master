@@ -55,3 +55,6 @@ export { default as AdminPaymentsAntifraud } from "./pages/payments/AdminPayment
 export { default as AdminPaymentsSubscriptions } from "./pages/payments/AdminPaymentsSubscriptions";
 export { default as AdminPaymentsWebhooks } from "./pages/payments/AdminPaymentsWebhooks";
 export { default as AdminPaymentsApi } from "./pages/payments/AdminPaymentsApi";
+
+// Master
+export { default as AdminMasterDashboard } from "./pages/AdminMasterDashboard";

@@ -70,6 +70,7 @@ import {
   AdminPaymentsSubscriptions,
   AdminPaymentsWebhooks,
   AdminPaymentsApi,
+  AdminMasterDashboard,
 } from "@/modules/admin";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";

@@ -456,6 +456,15 @@ export default function AdminStoreSelector() {
                       >
                         <Link2 className="w-4 h-4" />
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 w-9 p-0"
+                        title="Permissões"
+                        onClick={(e) => { e.stopPropagation(); openPermissions(store.id); }}
+                      >
+                        <Shield className="w-4 h-4" />
+                      </Button>
                     </>
                   )}
                 </div>

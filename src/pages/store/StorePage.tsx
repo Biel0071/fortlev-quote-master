@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StoreTopbar } from "@/components/store/StoreTopbar";
+import { AppHeader } from "@/components/store/AppHeader";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStorePages } from "@/hooks/useStorePages";
@@ -169,10 +169,10 @@ export default function StorePage() {
 
   return (
     <div className="flex flex-col bg-background">
-      <StoreTopbar cartCount={cart.totalItems} />
+      <AppHeader cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="mx-auto w-full max-w-[880px] px-4 sm:px-6 py-12 pb-24 md:pb-14 space-y-10">
+      <main className="main-content mx-auto w-full max-w-[880px] px-4 sm:px-6 py-12 pb-24 md:pb-14 space-y-10">
         <Button asChild variant="ghost" className="w-fit">
           <Link to="/">← Voltar para a loja</Link>
         </Button>

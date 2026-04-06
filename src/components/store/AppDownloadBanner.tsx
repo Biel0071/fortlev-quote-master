@@ -120,7 +120,7 @@ export function AppDownloadBanner() {
             >
               {downloadClicked
                 ? "Instalação registrada — fale com a loja"
-                : "Baixe o app e ganhe 10% OFF"}
+                : "📲 Instale o app e ganhe 10% OFF na primeira compra"}
             </span>
           </div>
 

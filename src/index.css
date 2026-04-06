@@ -243,15 +243,7 @@
   50% { opacity: 0.55; }
 }
 
-@keyframes pulseOffer {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.02); }
-  100% { transform: scale(1); }
-}
-
-.card-oferta {
-  animation: pulseOffer 2s infinite;
-}
+/* Offer cards use hover scale only — no continuous animation */
 
 /* Hide scrollbar globally */
 ::-webkit-scrollbar {

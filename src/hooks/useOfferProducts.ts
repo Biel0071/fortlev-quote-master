@@ -154,36 +154,8 @@ export function useOfferProducts(activeProducts: any[]): {
         };
       });
 
-    if (prioritized.length > 0 || remaining.length > 0) {
-      return [...prioritized, ...remaining];
-    }
-
-    // 3) Fallback: top products with generated markup
-    return (activeProducts ?? [])
-      .filter((p: any) => Number(p?.price ?? 0) > 0)
-      .sort((a: any, b: any) => Number(b.sales ?? 0) - Number(a.sales ?? 0))
-      .slice(0, 24)
-      .map((p: any) => {
-        const markup = deterministicMarkup(p?.name ?? "produto");
-        const promoPrice = roundMoney(Number(p.price));
-        const originalPrice = roundMoney(promoPrice * (1 + markup));
-        return {
-          ...p,
-          id: p.id,
-          name: p.name,
-          price: originalPrice,
-          promo_price: promoPrice,
-          discountPct: Math.max(1, Math.round(((originalPrice - promoPrice) / originalPrice) * 100)),
-          unit: p.unit ?? "un",
-          images: p.images ?? [],
-          active: Boolean(p.active),
-          _isOffer: true as const,
-          best_seller: p.best_seller,
-          featured: p.featured,
-          category: p.category,
-          description: p.description,
-        };
-      });
+    // Only return seed-matched and real promo products — no fallback
+    return [...prioritized, ...remaining];
   }, [activeProducts]);
 
   return { offerProducts };

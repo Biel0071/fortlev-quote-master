@@ -13,21 +13,49 @@ function pctOff(base: number, promo: number) {
 
 function InlineRating({ productId }: { productId: string }) {
   const [data, setData] = useState<{ avg: number; total: number } | null>(null);
+  const [resolved, setResolved] = useState(false);
 
   useEffect(() => {
-    if (!productId) return;
+    if (!productId) {
+      setResolved(true);
+      setData(null);
+      return;
+    }
+
+    let alive = true;
+    setResolved(false);
+
     cloud
       .from("product_rating_summary")
       .select("average_rating, total_reviews")
       .eq("product_id", productId)
-      .single()
+      .maybeSingle()
       .then(({ data: d }) => {
+        if (!alive) return;
         const row = d as any;
-        if (row && row.total_reviews > 0) setData({ avg: row.average_rating, total: row.total_reviews });
+        if (row && Number(row.total_reviews ?? 0) > 0) {
+          setData({ avg: Number(row.average_rating ?? 0), total: Number(row.total_reviews ?? 0) });
+        } else {
+          setData(null);
+        }
+        setResolved(true);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setData(null);
+        setResolved(true);
       });
+
+    return () => {
+      alive = false;
+    };
   }, [productId]);
 
-  if (!data) return null;
+  if (!resolved) return null;
+
+  if (!data) {
+    return <span className="text-xs text-muted-foreground">Sem avaliações ainda</span>;
+  }
 
   return (
     <div className="flex items-center gap-1">
@@ -35,7 +63,7 @@ function InlineRating({ productId }: { productId: string }) {
         {Array.from({ length: 5 }, (_, i) => (
           <Star
             key={i}
-            className={`h-3.5 w-3.5 ${i < Math.round(data.avg) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"}`}
+            className={`h-3.5 w-3.5 ${i < Math.round(data.avg) ? "fill-primary text-primary" : "text-muted-foreground/20"}`}
           />
         ))}
       </div>

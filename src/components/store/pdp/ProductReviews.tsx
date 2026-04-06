@@ -66,7 +66,7 @@ export function ProductReviews({ productId }: { productId: string }) {
       setLoading(true);
       const [{ data: revs }, { data: summ }] = await Promise.all([
         cloud.from("product_reviews").select("*").eq("product_id", productId).eq("approved", true).order("created_at", { ascending: false }).limit(100),
-        cloud.from("product_rating_summary").select("*").eq("product_id", productId).single(),
+        cloud.from("product_rating_summary").select("*").eq("product_id", productId).maybeSingle(),
       ]);
 
       const reviewsList = (revs ?? []) as Review[];
@@ -153,7 +153,7 @@ export function ProductReviews({ productId }: { productId: string }) {
           {reviews.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-6 text-center">
               <MessageSquareOff className="h-8 w-8 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">Este produto ainda não possui comentários.</p>
+              <p className="text-sm text-muted-foreground">Sem avaliações ainda.</p>
               <p className="text-xs text-muted-foreground/70">Seja o primeiro a avaliar!</p>
             </div>
           )}

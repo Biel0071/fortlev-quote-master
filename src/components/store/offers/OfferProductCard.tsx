@@ -17,6 +17,7 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
   const nav = useNavigate();
   const imgPath = product?.images?.[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);
+  const imageSrc = imgUrl || "/placeholder.svg";
   const rating = useProductRatingSummary(product.id);
 
   return (
@@ -36,18 +37,15 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
             Top
           </span>
         )}
-        {imgUrl ? (
-          <img
-            src={imgUrl}
-            alt={product.name}
-            className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div className="h-full w-full rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-[10px] text-center px-2 font-medium">
-            {product.name?.slice(0, 30)}
-          </div>
-        )}
+        <img
+          src={imageSrc}
+          alt={product.name}
+          className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";
+          }}
+        />
       </div>
 
       <CardContent className="flex flex-1 flex-col gap-1.5 p-2.5 sm:p-4">
@@ -55,7 +53,7 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
           {product.name}
         </h3>
 
-        {rating && (
+        {rating ? (
           <div className="flex items-center gap-1">
             <div className="flex gap-0.5">
               {Array.from({ length: 5 }, (_, i) => (
@@ -67,6 +65,8 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
             </div>
             <span className="text-[10px] text-muted-foreground">({rating.total})</span>
           </div>
+        ) : (
+          <span className="text-[10px] text-muted-foreground">Sem avaliações ainda</span>
         )}
 
         <div className="mt-auto">

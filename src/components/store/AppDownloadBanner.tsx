@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { X, ChevronUp, ChevronRight, Smartphone, MessageCircle } from "lucide-react";
+import { X, ChevronUp, Download, Smartphone, MessageCircle } from "lucide-react";
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { AppDownloadConfirmDialog } from "./AppDownloadConfirmDialog";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "APP_BANNER_DISMISSED_AT";
@@ -108,14 +107,14 @@ export function AppDownloadBanner() {
   return (
     <>
       <div className="w-full z-50 bg-primary text-primary-foreground" style={{ marginBottom: 0 }}>
-        <div className="mx-auto relative flex items-center justify-between gap-2 px-9 py-1 sm:px-4">
-          <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap overflow-hidden">
+        <div className="mx-auto grid grid-cols-[1fr_auto_auto] items-center gap-1 px-2 py-1 sm:px-4">
+          <div className="flex min-w-0 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15">
               <Smartphone className="h-3 w-3" />
             </span>
             <span
               className={cn(
-                "truncate text-[11px] font-semibold tracking-wide sm:text-xs",
+                "truncate whitespace-nowrap text-[11px] font-semibold tracking-wide sm:text-xs",
                 !downloadClicked && "animate-[pulseText_2s_ease-in-out_infinite]",
               )}
             >
@@ -137,15 +136,15 @@ export function AppDownloadBanner() {
             <button
               onClick={handleBannerClick}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary-foreground/30 transition-colors hover:bg-primary-foreground/10"
-              aria-label="Abrir app"
+                aria-label="Baixar app"
             >
-              <ChevronRight className="h-3.5 w-3.5" />
+                <Download className="h-3.5 w-3.5" />
             </button>
           )}
 
           <button
             onClick={dismiss}
-            className="absolute right-2 top-1/2 -translate-y-1/2 shrink-0 rounded-full p-1 opacity-70 hover:opacity-100 transition-opacity"
+            className="shrink-0 rounded-full p-1 opacity-70 transition-opacity hover:opacity-100"
             aria-label="Fechar"
           >
             <X className="h-3.5 w-3.5" />

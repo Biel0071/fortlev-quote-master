@@ -130,10 +130,10 @@ export function AppDownloadBanner() {
           ) : (
             <button
               onClick={handleBannerClick}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary-foreground/30 transition-colors hover:bg-primary-foreground/10"
-                aria-label="Baixar app"
+              className="shrink-0 p-1 transition-opacity hover:opacity-80"
+              aria-label="Baixar app"
             >
-                <Download className="h-3.5 w-3.5" />
+              <Download className="h-4 w-4 animate-[arrowBounce_1.8s_ease-in-out_infinite]" />
             </button>
           )}
 

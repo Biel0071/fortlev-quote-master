@@ -140,6 +140,26 @@ export function useVisitorTracker() {
     window.addEventListener("store:product-visit", handler as any);
   }, []);
 
+  // Listen for app banner tracking events
+  useEffect(() => {
+    const handler = (e: any) => {
+      const type = e?.detail?.type as string | undefined;
+      if (!type) return;
+
+      const { sessionToken: token, consentOk: consent } = trackerRuntime;
+      if (!token) return;
+
+      collectAndTrackEvent({
+        sessionToken: token,
+        consentGiven: consent,
+        event: { type, path: window.location.pathname, metadata: { source: "app_banner" } },
+      }).catch(() => {});
+    };
+
+    window.addEventListener("store:track-app-event", handler as any);
+    return () => window.removeEventListener("store:track-app-event", handler as any);
+  }, []);
+
   const api = useMemo(
     () => ({
       consent,

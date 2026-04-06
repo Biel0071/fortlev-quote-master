@@ -132,11 +132,12 @@ export function StoreProductCard({
   }, [effectivePrice]);
 
   const images = (product?.images ?? []) as Array<{ path: string | null }>;
+  const invalidTerms = ["placeholder", "default", "fallback", "banner", "cover", "render", "house", "background", "hero", "slide"];
   const validImg = images.find(
-    (img) => img.path && !img.path.includes("placeholder") && !img.path.includes("default") && !img.path.includes("fallback") && !img.path.includes("banner") && !img.path.includes("cover")
+    (img) => img.path && !invalidTerms.some((t) => img.path!.toLowerCase().includes(t))
   );
-  const imgPath = validImg?.path ?? images[0]?.path ?? null;
-  const imgUrl = publicImageUrl("product-images", imgPath);
+  const imgPath = validImg?.path ?? null;
+  const imgUrl = imgPath ? publicImageUrl("product-images", imgPath) : null;
   const imageSrc = imgUrl || "/placeholder.svg";
 
   const openProduct = () => {

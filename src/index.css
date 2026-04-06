@@ -120,6 +120,10 @@
     --whatsapp: 142 70% 45%;
     --whatsapp-foreground: 0 0% 100%;
 
+    /* PIX discount */
+    --pix: 142 60% 45%;
+    --pix-foreground: 0 0% 100%;
+
     --sidebar-accent: 210 40% 15%;
     --sidebar-accent-foreground: 210 20% 95%;
     --sidebar-border: 210 40% 18%;

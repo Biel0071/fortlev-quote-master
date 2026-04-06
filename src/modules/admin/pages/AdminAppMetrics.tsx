@@ -433,16 +433,20 @@ export default function AdminAppMetrics() {
                 )}
 
                 {apkUrl && (
-                  <div className="mt-3 flex items-center gap-3">
-                    <a href={apkUrl} download={apkMeta?.displayName || undefined} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
-                      Baixar APK
-                    </a>
-                    <Button variant="outline" size="sm" onClick={handleSaveToSystem} disabled={uploading} className="gap-1.5">
-                      <Save className="h-3.5 w-3.5" /> Salvar no sistema
-                    </Button>
+                  <div className="mt-3 flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                      <a href={`https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/download-app`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+                        Baixar APK (link profissional)
+                      </a>
+                      <Button variant="outline" size="sm" onClick={handleSaveToSystem} disabled={uploading} className="gap-1.5">
+                        <Save className="h-3.5 w-3.5" /> Salvar no sistema
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Link direto: <code className="bg-muted px-1 rounded text-[10px]">{`https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/download-app`}</code>
+                    </p>
                   </div>
                 )}
-
                 <p className="mt-2 text-xs text-muted-foreground">
                   Este link é usado automaticamente no banner do app.
                 </p>

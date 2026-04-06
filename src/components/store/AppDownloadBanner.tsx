@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { X, Download } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 const DISMISS_KEY = "app_banner_dismissed_at";
 const DISMISS_HOURS = 24;
-const APP_URL_STORAGE_KEY = "app_download_url";
+
+function getDownloadUrl() {
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+  if (!projectId) return null;
+  return `https://${projectId}.supabase.co/functions/v1/download-app`;
+}
 
 function readLocalValue(key: string) {
   try {
@@ -29,35 +33,8 @@ export function AppDownloadBanner() {
   }, []);
 
   useEffect(() => {
-    let active = true;
-
-    const localUrl = readLocalValue(APP_URL_STORAGE_KEY);
-    if (localUrl) {
-      setAppUrl(localUrl);
-    }
-
-    const loadAppUrl = async () => {
-      const { data, error } = await supabase
-        .from("app_config")
-        .select("value")
-        .eq("key", "app_download_url")
-        .maybeSingle();
-
-      if (error) {
-        console.error("[AppBanner] load error", error);
-        return;
-      }
-
-      if (active && data?.value) {
-        setAppUrl(data.value);
-      }
-    };
-
-    void loadAppUrl();
-
-    return () => {
-      active = false;
-    };
+    const url = getDownloadUrl();
+    if (url) setAppUrl(url);
   }, []);
 
   const dismiss = () => {

@@ -118,9 +118,9 @@ export function StoreTopbar({
   return (
     <>
       <header className="sticky top-0 z-40 w-full overflow-x-hidden border-b border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/88">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-1 pb-1.5 sm:pt-3 sm:pb-3">
-          <div className="flex flex-col gap-1.5 sm:gap-2.5">
-            <div className="flex items-center justify-center pt-0.5">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-0.5 pb-1 sm:pt-3 sm:pb-3">
+          <div className="flex flex-col gap-1 sm:gap-2.5">
+            <div className="flex items-center justify-center">
               <Link to="/materiais" className="flex items-center justify-center" aria-label={brandLabel}>
                 <img
                   src={storeLogo}

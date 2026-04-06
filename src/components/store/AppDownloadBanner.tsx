@@ -56,13 +56,13 @@ export function AppDownloadBanner() {
 
   return (
     <div
-      className={`relative z-[51] w-full bg-gradient-to-r from-[hsl(222,70%,22%)] via-[hsl(222,65%,30%)] to-[hsl(222,60%,38%)] text-white shadow-md transition-all duration-300 ease-out ${
+      className={`w-full z-40 bg-gradient-to-r from-[hsl(222,70%,22%)] via-[hsl(222,65%,30%)] to-[hsl(222,60%,38%)] text-white shadow-md transition-all duration-300 ease-out ${
         visible
-          ? "opacity-100 max-h-12 translate-y-0"
+          ? "opacity-100 min-h-[40px] translate-y-0"
           : "opacity-0 max-h-0 -translate-y-2 overflow-hidden"
       }`}
     >
-      <div className="mx-auto relative flex items-center justify-center gap-2 px-10 py-1.5 sm:px-4">
+      <div className="mx-auto relative flex items-center justify-center gap-2 px-10 py-2 sm:px-4">
         <a
           href={appUrl ?? "#"}
           target="_blank"

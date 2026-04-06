@@ -260,6 +260,39 @@ export default function AdminStoreSelector() {
     setDetailOpen(true);
   };
 
+  // --- Permissions ---
+  const openPermissions = async (storeId: string) => {
+    setPermStoreId(storeId);
+    // Init permissions if they don't exist yet
+    await cloud.rpc("init_store_permissions", { _store_id: storeId });
+    const { data } = await cloud
+      .from("store_permissions")
+      .select("module, enabled")
+      .eq("store_id", storeId);
+    const map: Record<string, boolean> = {};
+    (data ?? []).forEach((row: any) => {
+      map[row.module] = row.enabled;
+    });
+    setPermModules(map);
+    setPermOpen(true);
+  };
+
+  const handleSavePermissions = async () => {
+    if (!permStoreId) return;
+    setSavingPerm(true);
+    const updates = Object.entries(permModules).map(([module, enabled]) =>
+      cloud
+        .from("store_permissions")
+        .update({ enabled })
+        .eq("store_id", permStoreId)
+        .eq("module", module)
+    );
+    await Promise.all(updates);
+    toast.success("Permissões atualizadas!");
+    setPermOpen(false);
+    setSavingPerm(false);
+  };
+
   if (loading || permLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">

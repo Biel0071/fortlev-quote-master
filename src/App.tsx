@@ -128,6 +128,7 @@ const App = () => (
             {/* Admin (protegido) */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminStoreSelector />} />
+              <Route path="master" element={<AdminMasterDashboard />} />
               <Route path="dashboard" element={<AdminDashboardShell />}>
                 <Route index element={<AdminDashboardOverview />} />
                 <Route path="orcamentos" element={<AdminDashboardQuotations />} />

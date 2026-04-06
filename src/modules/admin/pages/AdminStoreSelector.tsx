@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { ALL_MODULES, MODULE_LABELS, type StoreModule } from "@/hooks/useStorePermissions";
 import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { useSession } from "@/hooks/useSession";
@@ -35,7 +36,7 @@ import {
   X,
   Check,
   Link2,
-} from "lucide-react";
+  Shield,
 import { toast } from "sonner";
 import type { AppStore } from "@/contexts/StoreContext";
 

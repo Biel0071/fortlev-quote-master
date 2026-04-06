@@ -71,6 +71,7 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
               alt={product.name}
               className="max-h-64 max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
               loading="eager"
+              decoding="async"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";
               }}

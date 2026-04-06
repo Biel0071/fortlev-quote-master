@@ -18,6 +18,12 @@ export default function AdminAppMetrics() {
   // APK upload state
   const [uploading, setUploading] = useState(false);
   const [apkUrl, setApkUrl] = useState<string | null>(null);
+  const [apkMeta, setApkMeta] = useState<{
+    originalName: string;
+    displayName: string;
+    size: number;
+    uploadedAt: string;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {

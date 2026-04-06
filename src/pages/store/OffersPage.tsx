@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
@@ -14,6 +14,7 @@ import { OfferProductCard } from "@/components/store/offers/OfferProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Flame } from "lucide-react";
 import { AppDownloadBanner } from "@/components/store/AppDownloadBanner";
+import { useOfferProducts } from "@/hooks/useOfferProducts";
 
 export default function OffersPage() {
   const cart = useCart();
@@ -21,6 +22,7 @@ export default function OffersPage() {
   const { activeCategories } = useStoreCategories();
   const home = useHomeContent({ enabled: true });
   const [cartOpen, setCartOpen] = useState(false);
+  const { offerProducts } = useOfferProducts(activeProducts);
 
   useDynamicSeo({
     title: "Ofertas e Promoções | Materiais de Construção",
@@ -28,45 +30,30 @@ export default function OffersPage() {
     canonicalPath: "/ofertas",
   });
 
-  // Unified offer criteria: promo_price > 0 && promo_price < price
-  const promoProducts = useMemo(() => {
-    return (activeProducts as any[])
-      .filter((p) => {
-        const price = Number(p?.price ?? 0);
-        const promo = Number(p?.promo_price ?? 0);
-        return promo > 0 && price > 0 && promo < price;
-      })
-      .map((p) => {
-        const price = Number(p.price);
-        const promo = Number(p.promo_price);
-        const discountPct = Math.round(((price - promo) / price) * 100);
-        return { ...p, _discountPct: discountPct };
-      })
-      .sort((a, b) => b._discountPct - a._discountPct);
-  }, [activeProducts]);
-
   const getOfferPrices = (product: any) => ({
-    originalPrice: Number(product.price),
-    promoPrice: Number(product.promo_price),
-    discountPct: product._discountPct ?? Math.round(((Number(product.price) - Number(product.promo_price)) / Number(product.price)) * 100),
+    originalPrice: product.price,
+    promoPrice: product.promo_price,
+    discountPct: product.discountPct,
   });
 
   const onAdd = (productId: string, qty: number) => {
-    const product: any = activeProducts.find((item: any) => item.id === productId);
-    const price = Number(product?.price ?? 0);
-    const promo = Number(product?.promo_price ?? 0);
-    const effectivePrice = promo > 0 && promo < price ? promo : price;
+    const product = offerProducts.find((p) => p.id === productId) ??
+      (activeProducts as any[]).find((p: any) => p.id === productId);
+    if (!product) return;
+    const effectivePrice = product.promo_price > 0 && product.promo_price < product.price
+      ? product.promo_price
+      : product.price;
     cart.add(productId, qty, {
-      name: product?.name ?? "Produto",
+      name: product.name ?? "Produto",
       unitPrice: effectivePrice,
-      unit: product?.unit ?? "un",
-      imagePath: product?.images?.[0]?.path ?? null,
+      unit: product.unit ?? "un",
+      imagePath: product.images?.[0]?.path ?? null,
     });
     setCartOpen(true);
   };
 
-  const heroProduct = promoProducts[0] ?? null;
-  const restProducts = promoProducts.slice(1);
+  const heroProduct = offerProducts[0] ?? null;
+  const restProducts = offerProducts.slice(1);
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">
@@ -85,7 +72,7 @@ export default function OffersPage() {
           <Flame className="h-6 w-6 text-orange-500" />
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Ofertas</h1>
           <span className="ml-auto text-xs text-muted-foreground">
-            {promoProducts.length} {promoProducts.length === 1 ? "oferta" : "ofertas"}
+            {offerProducts.length} {offerProducts.length === 1 ? "oferta" : "ofertas"}
           </span>
         </div>
 
@@ -97,14 +84,6 @@ export default function OffersPage() {
                 <Skeleton key={i} className="h-72 rounded-2xl" />
               ))}
             </div>
-          </div>
-        ) : promoProducts.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card p-12 text-center space-y-3">
-            <p className="text-lg font-semibold">Nenhuma oferta disponível no momento</p>
-            <p className="text-muted-foreground text-sm">Volte em breve para conferir novas promoções!</p>
-            <Link to="/loja" className="inline-block mt-2 text-sm font-semibold text-primary underline underline-offset-4">
-              Ver catálogo completo
-            </Link>
           </div>
         ) : (
           <div className="space-y-4">

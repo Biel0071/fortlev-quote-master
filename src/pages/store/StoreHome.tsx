@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Flame } from "lucide-react";
+import { useOfferProducts } from "@/hooks/useOfferProducts";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
@@ -56,6 +57,7 @@ export default function StoreHome() {
   const { activeCategories, loading: categoriesLoading } = useStoreCategories({ enabled: phase.categories });
   const { activeProducts, loading: productsLoading } = useStoreProducts({ enabled: phase.featured || phase.additional });
   const merch = useHomeMerchandising({ enabled: phase.additional });
+  const { offerProducts: offerList } = useOfferProducts(activeProducts);
 
   const [cartOpen, setCartOpen] = useState(false);
   const [pageLinks, setPageLinks] = useState<Array<{ title: string; slug: string }>>([]);
@@ -169,23 +171,8 @@ export default function StoreHome() {
     return merged;
   }, [activeProducts]);
 
-  // Offers: products with active promo_price, sorted by discount %
-  const offerIds = useMemo(() => {
-    const list = (activeProducts ?? []) as any[];
-    return list
-      .filter((p) => {
-        const price = Number(p?.price ?? 0);
-        const promo = Number(p?.promo_price ?? 0);
-        return promo > 0 && price > 0 && promo < price;
-      })
-      .sort((a, b) => {
-        const aOff = (Number(a.price) - Number(a.promo_price)) / Number(a.price);
-        const bOff = (Number(b.price) - Number(b.promo_price)) / Number(b.price);
-        return bOff - aOff;
-      })
-      .slice(0, 8)
-      .map((p) => p.id) as string[];
-  }, [activeProducts]);
+  // Offer products from the new hook (always populated)
+  const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden">
@@ -215,8 +202,8 @@ export default function StoreHome() {
         )}
       </HomeSection>
 
-      {/* 🔥 Ofertas section */}
-      {phase.featured && offerIds.length > 0 ? (
+      {/* 🔥 Ofertas section — always shows thanks to fallback */}
+      {phase.featured && homeOffers.length > 0 ? (
         <HomeSection
           id="ofertas"
           title=""
@@ -232,7 +219,13 @@ export default function StoreHome() {
               Ver todas
             </Link>
           </div>
-          <HomeProductsByIds loading={loading} productIds={offerIds} products={activeProducts as any} onAdd={onAdd} limit={8} />
+          <HomeProductsByIds
+            loading={loading}
+            productIds={homeOffers.map((o) => o.id)}
+            products={homeOffers as any}
+            onAdd={onAdd}
+            limit={8}
+          />
         </HomeSection>
       ) : null}
 

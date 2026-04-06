@@ -193,15 +193,19 @@ export default function AdminStoreSelector() {
       return;
     }
     setCreating(true);
-    const { error } = await cloud.from("stores").insert({
+    const { data: newStore, error } = await cloud.from("stores").insert({
       name: newStoreName.trim(),
       slug: newStoreSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, ""),
       active: true,
       domain: newStoreDomain.trim() || null,
-    });
+    }).select("id").single();
     if (error) {
       toast.error("Erro ao criar loja: " + error.message);
     } else {
+      // Initialize default permissions for the new store
+      if (newStore?.id) {
+        await cloud.rpc("init_store_permissions", { _store_id: newStore.id });
+      }
       toast.success("Loja criada com sucesso!");
       setCreateOpen(false);
       setNewStoreName("");

@@ -125,7 +125,7 @@ export function StoreTopbar({
                 <img
                   src={storeLogo}
                   alt={`${brandLabel} - logo`}
-                  className="h-[48px] w-[48px] sm:h-[88px] sm:w-[88px] object-contain"
+                  className="h-[84px] w-[84px] sm:h-[88px] sm:w-[88px] object-contain"
                   loading="eager"
                 />
               </Link>
@@ -209,7 +209,7 @@ export function StoreTopbar({
                           </SheetClose>
                           <SheetClose asChild>
                             <Button asChild variant="outline" className="h-11 justify-start rounded-xl transition-all hover:translate-x-0.5">
-                              <Link to="/loja?promo=1" className="flex items-center gap-2">
+                              <Link to="/ofertas" className="flex items-center gap-2">
                                 <Tag className="h-[18px] w-[18px]" />
                                 <span>Ofertas</span>
                               </Link>

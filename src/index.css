@@ -11,6 +11,7 @@
 @layer base {
   :root {
     /* Global theme (Grey / Blue / Orange) */
+    --store-header-offset: 120px;
     --background: 210 20% 97%;
     --foreground: 222 47% 11%;
 
@@ -195,6 +196,32 @@
 
   .animate-scale-in {
     animation: scaleIn 0.3s ease-out forwards;
+  }
+
+  .banner-top {
+    @apply h-10 w-full bg-primary text-primary-foreground;
+  }
+
+  .header-main {
+    @apply w-full bg-background;
+  }
+
+  .main-content {
+    padding-top: var(--store-header-offset);
+    scroll-padding-top: calc(var(--store-header-offset) + 1rem);
+  }
+
+  .logo {
+    @apply block h-[44px] w-auto object-contain;
+    transform: scale(1.4);
+    transform-origin: center;
+  }
+}
+
+@media (min-width: 640px) {
+  .logo {
+    height: 64px;
+    transform: none;
   }
 }
 

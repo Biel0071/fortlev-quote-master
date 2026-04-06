@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { StoreTopbar } from "@/components/store/StoreTopbar";
+import { AppHeader } from "@/components/store/AppHeader";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
@@ -13,7 +12,6 @@ import { OfferHeroCard } from "@/components/store/offers/OfferHeroCard";
 import { OfferProductCard } from "@/components/store/offers/OfferProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Flame } from "lucide-react";
-import { AppDownloadBanner } from "@/components/store/AppDownloadBanner";
 import { useOfferProducts } from "@/hooks/useOfferProducts";
 
 export default function OffersPage() {
@@ -57,19 +55,16 @@ export default function OffersPage() {
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">
-      <div className="fixed top-0 left-0 right-0 z-[9999] bg-background">
-        <AppDownloadBanner />
-        <StoreTopbar
-          cartCount={cart.totalItems}
-          onCartClick={() => setCartOpen(true)}
-          footerStoreName={home.footer?.store_name ?? undefined}
-          categories={activeCategories as any}
-        />
-      </div>
+      <AppHeader
+        cartCount={cart.totalItems}
+        onCartClick={() => setCartOpen(true)}
+        footerStoreName={home.footer?.store_name ?? undefined}
+        categories={activeCategories as any}
+      />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="flex-1 px-4 pb-24 sm:px-6 max-w-5xl mx-auto w-full" style={{ marginTop: 120 }}>
+      <main className="main-content flex-1 px-4 pb-24 sm:px-6 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-2 mb-6">
           <Flame className="h-6 w-6 text-destructive" />
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Ofertas</h1>

@@ -91,13 +91,15 @@ export function AppDownloadBanner() {
 
   if (mode === "compact") {
     return (
-      <div className="w-full z-50 bg-primary text-primary-foreground">
+      <div className="banner-top">
         <button
           onClick={expand}
-          className="w-full flex items-center justify-center gap-1.5 py-0.5 text-[10px] font-medium opacity-80 hover:opacity-100 transition-opacity"
+          className="mx-auto flex h-full w-full max-w-6xl items-center justify-center gap-2 px-3 text-center opacity-90 transition-opacity hover:opacity-100"
         >
           <Smartphone className="h-3 w-3" />
-          <span>{downloadClicked ? "Falar no WhatsApp" : "10% OFF no app"}</span>
+          <span className="truncate whitespace-nowrap text-[11px] font-semibold sm:text-sm">
+            📲 Instale o app e ganhe 10% OFF na primeira compra
+          </span>
           <ChevronUp className="h-3 w-3" />
         </button>
       </div>
@@ -106,16 +108,16 @@ export function AppDownloadBanner() {
 
   return (
     <>
-      <div className="w-full z-50 bg-primary text-primary-foreground" style={{ marginBottom: 0 }}>
-        <div className="mx-auto grid grid-cols-[1fr_auto_auto] items-center gap-1 px-2 py-1 sm:px-4">
-          <div className="flex min-w-0 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap">
+      <div className="banner-top">
+        <div className="mx-auto grid h-full max-w-6xl grid-cols-[1fr_auto_auto] items-center gap-2 px-2 sm:px-4">
+          <div className="flex min-w-0 items-center justify-center gap-2 overflow-hidden text-center whitespace-nowrap">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15">
               <Smartphone className="h-3 w-3" />
             </span>
             <span
               className={cn(
-                "truncate whitespace-nowrap text-[11px] font-semibold tracking-wide sm:text-xs",
-                !downloadClicked && "animate-[pulseText_2s_ease-in-out_infinite]",
+                "truncate whitespace-nowrap text-[11px] font-semibold tracking-wide sm:text-sm",
+                !downloadClicked && "animate-[pulseText_1.5s_ease-in-out_infinite]",
               )}
             >
               {downloadClicked
@@ -127,7 +129,7 @@ export function AppDownloadBanner() {
           {downloadClicked ? (
             <button
               onClick={handleWhatsAppClick}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-whatsapp text-whatsapp-foreground"
               aria-label="Falar no WhatsApp"
             >
               <MessageCircle className="h-3.5 w-3.5" />

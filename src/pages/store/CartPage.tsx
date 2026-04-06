@@ -1,8 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
+import { AppHeader } from "@/components/store/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { CartQuantityStepper } from "@/components/store/cart/CartQuantityStepper";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
@@ -20,10 +20,10 @@ export default function CartPage() {
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden">
-      <StoreTopbar cartCount={cart.totalItems} />
+      <AppHeader cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pb-20 md:pb-8 space-y-4 sm:space-y-6 min-w-0">
+      <main className="main-content max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pb-20 md:pb-8 space-y-4 sm:space-y-6 min-w-0">
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-3xl font-semibold tracking-tight">Carrinho</h1>
@@ -110,7 +110,7 @@ export default function CartPage() {
               })}
             </section>
 
-            <aside className="lg:sticky lg:top-28">
+            <aside className="lg:sticky" style={{ top: "calc(var(--store-header-offset, 120px) + 1rem)" }}>
               <Card className="rounded-2xl border-border/80">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg">Resumo do pedido</CardTitle>

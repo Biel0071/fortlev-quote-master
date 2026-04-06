@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { StoreTopbar } from "@/components/store/StoreTopbar";
+import { AppHeader } from "@/components/store/AppHeader";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { toast } from "@/hooks/use-toast";
 import { useStoreContact } from "@/hooks/useStoreContact";
@@ -415,10 +415,10 @@ export default function CheckoutPage() {
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden">
-      <StoreTopbar cartCount={cart.totalItems} />
+      <AppHeader cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="mx-auto w-full max-w-4xl px-3 sm:px-6 py-6 sm:py-8 pb-20 md:pb-8 min-w-0">
+      <main className="main-content mx-auto w-full max-w-4xl px-3 sm:px-6 py-6 sm:py-8 pb-20 md:pb-8 min-w-0">
         <nav aria-label="breadcrumb" className="mb-4 text-sm text-muted-foreground">
           Carrinho <span className="mx-1">/</span> <span className="font-medium text-foreground">Finalizar sua compra</span>
         </nav>

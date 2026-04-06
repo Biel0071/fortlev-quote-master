@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { AppHeader } from "@/components/store/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StoreTopbar } from "@/components/store/StoreTopbar";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { CartDrawer } from "@/components/store/CartDrawer";
 import { useCart } from "@/hooks/useCart";
@@ -90,17 +90,15 @@ export default function StoreCatalog() {
 
   return (
     <div className="flex flex-col w-full overflow-x-hidden bg-background">
-      <div className="sticky top-0 z-50 bg-background">
-        <StoreTopbar
-          cartCount={cart.totalItems}
-          onCartClick={() => setCartOpen(true)}
-          categories={activeCategories as any}
-        />
-      </div>
+      <AppHeader
+        cartCount={cart.totalItems}
+        onCartClick={() => setCartOpen(true)}
+        categories={activeCategories as any}
+      />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="mx-auto w-full max-w-6xl min-w-0 overflow-x-hidden px-4 sm:px-6 py-4 sm:py-6 pb-28 md:pb-10 space-y-4 sm:space-y-5">
+      <main className="main-content mx-auto w-full max-w-6xl min-w-0 overflow-x-hidden px-4 sm:px-6 py-4 sm:py-6 pb-28 md:pb-10 space-y-4 sm:space-y-5">
         <header className="flex items-end justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Catálogo</h1>

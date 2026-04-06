@@ -37,9 +37,47 @@ const OFFER_SEEDS: Array<{
   { searchTerms: ["ac3", "ac 3", "argamassa ac3"], promoPrice: 19.90, originalPrice: 25 },
 ];
 
+const OFFER_PRODUCTS = [
+  "caixa dagua 3000",
+  "caixa d agua 3000",
+  "fortlev 1000",
+  "fortlev 2000",
+  "fortlev 5000",
+  "kmr 10000",
+  "kmr 10.000",
+  "tijolo 12 furos",
+  "tijolo 9 furos",
+  "tijolo 8 furos",
+  "bloco 20",
+  "bloco 15",
+  "bloco 10",
+  "caminhao areia",
+  "caminhao de areia",
+  "areia m3",
+  "areia metro",
+  "caminhao brita",
+  "caminhao de brita",
+  "brita m3",
+  "brita metro",
+  "nacional cp4",
+  "cimento cp4",
+  "liz cp4",
+  "liz cp2",
+  "churrasqueira trio",
+  "betoneira 400",
+  "ac1",
+  "ac2",
+  "ac3",
+];
+
 function fuzzyMatch(productName: string, terms: string[]): boolean {
   const norm = normalizeText(productName);
   return terms.some((t) => norm.includes(normalizeText(t)));
+}
+
+function isAllowedOfferProduct(productName: string): boolean {
+  const norm = normalizeText(productName);
+  return OFFER_PRODUCTS.some((name) => norm.includes(normalizeText(name)));
 }
 
 function fuzzyScore(productName: string, terms: string[]): number {
@@ -55,16 +93,6 @@ function fuzzyScore(productName: string, terms: string[]): number {
 
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
-}
-
-/** Deterministic markup based on product name hash — between 15% and 35% */
-function deterministicMarkup(name: string): number {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
-  }
-  const normalized = (Math.abs(hash) % 2001) / 2000;
-  return 0.15 + normalized * 0.20;
 }
 
 export type OfferProduct = {
@@ -92,7 +120,12 @@ export function useOfferProducts(activeProducts: any[]): {
     // 1) Match seeds to real products with fixed pricing
     const prioritized = OFFER_SEEDS.map((seed) => {
       const match = (activeProducts ?? [])
-        .filter((p: any) => !usedIds.has(p.id) && Number(p?.price ?? 0) > 0 && fuzzyMatch(p.name ?? "", seed.searchTerms))
+        .filter((p: any) =>
+          !usedIds.has(p.id)
+          && Number(p?.price ?? 0) > 0
+          && isAllowedOfferProduct(p.name ?? "")
+          && fuzzyMatch(p.name ?? "", seed.searchTerms)
+        )
         .sort((a: any, b: any) => fuzzyScore(b.name ?? "", seed.searchTerms) - fuzzyScore(a.name ?? "", seed.searchTerms))[0];
 
       if (!match) return null;
@@ -118,44 +151,7 @@ export function useOfferProducts(activeProducts: any[]): {
       };
     }).filter(Boolean) as OfferProduct[];
 
-    // 2) Fill remaining slots with other promotional products
-    const remaining = (activeProducts ?? [])
-      .filter((p: any) => {
-        if (usedIds.has(p.id)) return false;
-        const price = Number(p?.price ?? 0);
-        const promo = Number(p?.promo_price ?? 0);
-        return price > 0 && promo > 0 && promo < price;
-      })
-      .sort((a: any, b: any) => {
-        const dA = Math.round(((Number(a.price) - Number(a.promo_price)) / Number(a.price)) * 100);
-        const dB = Math.round(((Number(b.price) - Number(b.promo_price)) / Number(b.price)) * 100);
-        if (dB !== dA) return dB - dA;
-        return Number(b.sales ?? 0) - Number(a.sales ?? 0);
-      })
-      .slice(0, 24 - prioritized.length)
-      .map((p: any) => {
-        const price = Number(p.price);
-        const promo = Number(p.promo_price);
-        return {
-          ...p,
-          id: p.id,
-          name: p.name,
-          price: roundMoney(price),
-          promo_price: roundMoney(promo),
-          discountPct: Math.max(1, Math.round(((price - promo) / price) * 100)),
-          unit: p.unit ?? "un",
-          images: p.images ?? [],
-          active: Boolean(p.active),
-          _isOffer: true as const,
-          best_seller: p.best_seller,
-          featured: p.featured,
-          category: p.category,
-          description: p.description,
-        };
-      });
-
-    // Only return seed-matched and real promo products — no fallback
-    return [...prioritized, ...remaining];
+    return prioritized;
   }, [activeProducts]);
 
   return { offerProducts };

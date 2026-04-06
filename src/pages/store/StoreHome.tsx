@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Flame } from "lucide-react";
 import { useOfferProducts } from "@/hooks/useOfferProducts";
-import { StoreTopbar } from "@/components/store/StoreTopbar";
+import { AppHeader } from "@/components/store/AppHeader";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
@@ -20,7 +20,6 @@ import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
 import { useHomeMerchandising } from "@/hooks/useHomeMerchandising";
 import { HomeGuaranteesMiniBar } from "@/components/store/home/HomeGuaranteesMiniBar";
 import { createMicroLoader } from "@/utils/microLoader";
-import { AppDownloadBanner } from "@/components/store/AppDownloadBanner";
 
 function SectionSkeleton({ rows = 1 }: { rows?: number }) {
   return (
@@ -176,14 +175,16 @@ export default function StoreHome() {
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">
-      <div className="fixed top-0 left-0 right-0 z-[9999] bg-background">
-        <AppDownloadBanner />
-        <StoreTopbar cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} footerStoreName={home.footer?.store_name ?? undefined} categories={activeCategories as any} />
-      </div>
+      <AppHeader
+        cartCount={cart.totalItems}
+        onCartClick={() => setCartOpen(true)}
+        footerStoreName={home.footer?.store_name ?? undefined}
+        categories={activeCategories as any}
+      />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <div className="w-full overflow-hidden" style={{ marginTop: 120 }}>
+      <div className="main-content w-full overflow-hidden">
         <HomeHeroCarousel banners={home.banners} loading={home.loading} />
       </div>
 

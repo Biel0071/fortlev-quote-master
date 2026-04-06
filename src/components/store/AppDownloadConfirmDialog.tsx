@@ -1,4 +1,4 @@
-import { Download, MessageCircle, CheckCircle2, X } from "lucide-react";
+import { MessageCircle, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,8 @@ interface Props {
   apkUrl: string | null;
   whatsappLink: string;
   onTrack: (event: string) => void;
+  onDownloadClick?: () => void;
+  onWhatsAppClick?: () => void;
 }
 
 export function AppDownloadConfirmDialog({
@@ -21,9 +23,12 @@ export function AppDownloadConfirmDialog({
   apkUrl,
   whatsappLink,
   onTrack,
+  onDownloadClick,
+  onWhatsAppClick,
 }: Props) {
   const handleWhatsApp = () => {
     onTrack("app_popup_confirm_whatsapp");
+    onWhatsAppClick?.();
     const msg = encodeURIComponent(
       "Quero 10% OFF - instalei (ou estou instalando) o aplicativo."
     );
@@ -33,6 +38,7 @@ export function AppDownloadConfirmDialog({
 
   const handleContinueDownload = () => {
     onTrack("app_download_continue");
+    onDownloadClick?.();
     if (apkUrl) window.open(apkUrl, "_blank", "noopener,noreferrer");
   };
 
@@ -68,7 +74,8 @@ export function AppDownloadConfirmDialog({
         <div className="mt-5 flex flex-col gap-2.5">
           <Button
             onClick={handleWhatsApp}
-            className="h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-2"
+            variant="whatsapp"
+            className="h-12 rounded-xl font-semibold gap-2"
           >
             <MessageCircle className="h-5 w-5" />
             Confirmar no WhatsApp
@@ -78,6 +85,7 @@ export function AppDownloadConfirmDialog({
             variant="outline"
             onClick={() => {
               onTrack("app_popup_already_installing");
+              onDownloadClick?.();
               onOpenChange(false);
             }}
             className="h-11 rounded-xl font-medium"

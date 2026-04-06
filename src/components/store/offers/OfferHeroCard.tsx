@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
 import { ShoppingCart, Star } from "lucide-react";
+import { useProductRatingSummary } from "@/hooks/useProductRatingSummary";
+import { getProductSlug } from "@/utils/productSlug";
 
 type Props = {
   products: any[];
@@ -29,13 +31,13 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
   const prices = getOfferPrices(product);
   const imgPath = product?.images?.[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);
-  const rating = product.rating;
+  const rating = useProductRatingSummary(product.id);
 
   return (
     <div className="relative">
       <div
         className="relative rounded-2xl border border-border bg-card overflow-hidden shadow-md cursor-pointer group"
-        onClick={() => nav(`/produto/${product.id}`)}
+        onClick={() => nav(`/produto/${getProductSlug(product)}`)}
       >
         {/* Badge */}
         <div className="absolute top-3 left-3 z-10 flex gap-2">
@@ -78,7 +80,7 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
                   {Array.from({ length: 5 }, (_, i) => (
                     <Star
                       key={i}
-                      className={`h-4 w-4 ${i < Math.round(rating.avg) ? "fill-yellow-400 text-yellow-400" : "fill-muted text-muted-foreground/40"}`}
+                      className={`h-4 w-4 ${i < Math.round(rating.avg) ? "fill-current text-promo" : "fill-muted text-muted-foreground/40"}`}
                     />
                   ))}
                 </div>

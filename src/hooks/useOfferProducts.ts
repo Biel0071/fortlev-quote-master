@@ -1,37 +1,33 @@
 import { useMemo } from "react";
 import { normalizeText } from "@/utils/normalize";
 
-/** Hardcoded offer catalog — promo_price is the FINAL price the customer pays */
 const OFFER_SEEDS: Array<{
   searchTerms: string[];
-  promoPrice: number;
-  unit: string;
-  fallbackName: string;
 }> = [
-  { searchTerms: ["caixa d agua 3000", "caixa dagua 3000", "reservatorio 3000"], promoPrice: 849, unit: "un", fallbackName: "Caixa d'Água 3000L" },
-  { searchTerms: ["tijolo 12 furos"], promoPrice: 1020, unit: "mil", fallbackName: "Tijolo 12 Furos (milheiro)" },
-  { searchTerms: ["tijolo 9 furos"], promoPrice: 950, unit: "mil", fallbackName: "Tijolo 9 Furos (milheiro)" },
-  { searchTerms: ["tijolo 8 furos"], promoPrice: 880, unit: "mil", fallbackName: "Tijolo 8 Furos (milheiro)" },
-  { searchTerms: ["telha", "telhas"], promoPrice: 249, unit: "mil", fallbackName: "Telhas (milheiro)" },
-  { searchTerms: ["kmr 10000", "kmr 10.000"], promoPrice: 3389, unit: "un", fallbackName: "KMR 10000L" },
-  { searchTerms: ["fortlev 5000"], promoPrice: 1985.89, unit: "un", fallbackName: "Caixa d'Água 5000L Fortlev" },
-  { searchTerms: ["fortlev 2000"], promoPrice: 489.99, unit: "un", fallbackName: "Caixa d'Água 2000L Fortlev" },
-  { searchTerms: ["fortlev 1000"], promoPrice: 279.90, unit: "un", fallbackName: "Caixa d'Água 1000L Fortlev" },
-  { searchTerms: ["nacional cp4", "cp iv", "cp4"], promoPrice: 24, unit: "sc", fallbackName: "Cimento Nacional CP4" },
-  { searchTerms: ["liz cp4"], promoPrice: 23.90, unit: "sc", fallbackName: "Cimento Liz CP4" },
-  { searchTerms: ["liz cp2"], promoPrice: 22.40, unit: "sc", fallbackName: "Cimento Liz CP2" },
-  { searchTerms: ["churrasqueira trio"], promoPrice: 1089.90, unit: "un", fallbackName: "Churrasqueira Trio" },
-  { searchTerms: ["caminhao brita 9", "caminhão brita"], promoPrice: 1050, unit: "cam", fallbackName: "Caminhão de Brita 9m³" },
-  { searchTerms: ["brita m3", "brita metro"], promoPrice: 140, unit: "m³", fallbackName: "Brita m³" },
-  { searchTerms: ["bloco 20"], promoPrice: 2200, unit: "mil", fallbackName: "Bloco 20 (1000 un)" },
-  { searchTerms: ["bloco 15"], promoPrice: 1700, unit: "mil", fallbackName: "Bloco 15 (1000 un)" },
-  { searchTerms: ["bloco 10"], promoPrice: 1300, unit: "mil", fallbackName: "Bloco 10 (1000 un)" },
-  { searchTerms: ["betoneira csm 400", "betoneira 400"], promoPrice: 2999, unit: "un", fallbackName: "Betoneira CSM 400L" },
-  { searchTerms: ["ac3", "ac 3", "argamassa ac3"], promoPrice: 19.90, unit: "sc", fallbackName: "Argamassa AC3" },
-  { searchTerms: ["ac2", "ac 2", "argamassa ac2"], promoPrice: 17.30, unit: "sc", fallbackName: "Argamassa AC2" },
-  { searchTerms: ["ac1", "ac 1", "argamassa ac1"], promoPrice: 14.80, unit: "sc", fallbackName: "Argamassa AC1" },
-  { searchTerms: ["caminhao areia 9", "caminhão areia"], promoPrice: 780, unit: "cam", fallbackName: "Caminhão de Areia 9m³" },
-  { searchTerms: ["areia m3", "areia metro"], promoPrice: 109.90, unit: "m³", fallbackName: "Areia m³" },
+  { searchTerms: ["caixa d agua 3000", "caixa dagua 3000", "reservatorio 3000"] },
+  { searchTerms: ["tijolo 12 furos"] },
+  { searchTerms: ["tijolo 9 furos"] },
+  { searchTerms: ["tijolo 8 furos"] },
+  { searchTerms: ["telha", "telhas"] },
+  { searchTerms: ["kmr 10000", "kmr 10.000"] },
+  { searchTerms: ["fortlev 5000"] },
+  { searchTerms: ["fortlev 2000"] },
+  { searchTerms: ["fortlev 1000"] },
+  { searchTerms: ["nacional cp4", "cp iv", "cp4"] },
+  { searchTerms: ["liz cp4"] },
+  { searchTerms: ["liz cp2"] },
+  { searchTerms: ["churrasqueira trio"] },
+  { searchTerms: ["caminhao brita 9", "caminhão brita"] },
+  { searchTerms: ["brita m3", "brita metro"] },
+  { searchTerms: ["bloco 20"] },
+  { searchTerms: ["bloco 15"] },
+  { searchTerms: ["bloco 10"] },
+  { searchTerms: ["betoneira csm 400", "betoneira 400"] },
+  { searchTerms: ["ac3", "ac 3", "argamassa ac3"] },
+  { searchTerms: ["ac2", "ac 2", "argamassa ac2"] },
+  { searchTerms: ["ac1", "ac 1", "argamassa ac1"] },
+  { searchTerms: ["caminhao areia 9", "caminhão areia"] },
+  { searchTerms: ["areia m3", "areia metro"] },
 ];
 
 /** Deterministic markup based on product name hash — between 15% and 35% */
@@ -49,16 +45,51 @@ function fuzzyMatch(productName: string, terms: string[]): boolean {
   return terms.some((t) => norm.includes(normalizeText(t)));
 }
 
-/** Deterministic simulated rating based on product name hash */
-function deterministicRating(name: string): { avg: number; total: number } {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+function fuzzyScore(productName: string, terms: string[]): number {
+  const norm = normalizeText(productName);
+  return terms.reduce((score, term) => {
+    const normalizedTerm = normalizeText(term);
+    if (norm === normalizedTerm) return score + 20;
+    if (norm.startsWith(normalizedTerm)) return score + 12;
+    if (norm.includes(normalizedTerm)) return score + 8;
+    return score;
+  }, 0);
+}
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function resolveOfferPricing(product: any) {
+  const currentPrice = Number(product?.price ?? 0);
+  const promoPrice = Number(product?.promo_price ?? 0);
+  const storedDiscount = Number(product?.discount_percentage ?? 0);
+
+  if (promoPrice > 0 && currentPrice > 0 && promoPrice < currentPrice) {
+    return {
+      originalPrice: roundMoney(currentPrice),
+      promoPrice: roundMoney(promoPrice),
+      discountPct: Math.max(1, Math.round(((currentPrice - promoPrice) / currentPrice) * 100)),
+    };
   }
-  const abs = Math.abs(hash);
-  const avg = 4.2 + ((abs % 8) / 10); // 4.2 to 4.9
-  const total = 30 + (abs % 671); // 30 to 700
-  return { avg: Math.round(avg * 10) / 10, total };
+
+  if (currentPrice <= 0) return null;
+
+  if (Boolean(product?.is_promotion) || storedDiscount > 0) {
+    const markup = storedDiscount > 0
+      ? Math.max(0.15, Math.min(0.35, storedDiscount / 100))
+      : deterministicMarkup(product?.name ?? "produto");
+    const originalPrice = roundMoney(currentPrice * (1 + markup));
+    const discountPct = Math.max(1, Math.round(((originalPrice - currentPrice) / originalPrice) * 100));
+
+    return {
+      originalPrice,
+      promoPrice: roundMoney(currentPrice),
+      discountPct,
+    };
+  }
+
+  return null;
 }
 
 export type OfferProduct = {
@@ -71,74 +102,120 @@ export type OfferProduct = {
   images: Array<{ path: string | null }>;
   active: boolean;
   _isOffer: true;
-  rating: { avg: number; total: number };
   // passthrough fields from real product
   best_seller?: boolean;
+  featured?: boolean;
   category?: string | null;
   description?: string | null;
 };
 
-/**
- * Matches the hardcoded offer seeds against real store products.
- * Always returns at least the fallback list — never empty.
- */
 export function useOfferProducts(activeProducts: any[]): {
   offerProducts: OfferProduct[];
 } {
   const offerProducts = useMemo(() => {
-    const result: OfferProduct[] = [];
+    const promotionPool = (activeProducts ?? [])
+      .map((product: any) => {
+        const pricing = resolveOfferPricing(product);
+        return pricing ? { product, pricing } : null;
+      })
+      .filter(Boolean) as Array<{ product: any; pricing: NonNullable<ReturnType<typeof resolveOfferPricing>> }>;
+
     const usedIds = new Set<string>();
 
-    for (const seed of OFFER_SEEDS) {
-      // Try to find a matching real product
-      const match = activeProducts.find(
-        (p: any) =>
-          !usedIds.has(p.id) && fuzzyMatch(p.name ?? "", seed.searchTerms),
-      );
+    const prioritized = OFFER_SEEDS.map((seed) => {
+      const match = promotionPool
+        .filter(({ product }) => !usedIds.has(product.id) && fuzzyMatch(product.name ?? "", seed.searchTerms))
+        .sort((a, b) => {
+          const scoreDiff = fuzzyScore(b.product.name ?? "", seed.searchTerms) - fuzzyScore(a.product.name ?? "", seed.searchTerms);
+          if (scoreDiff !== 0) return scoreDiff;
+          return b.pricing.discountPct - a.pricing.discountPct;
+        })[0];
 
-      const promoPrice = seed.promoPrice;
-      const markup = match
-        ? deterministicMarkup(match.name ?? seed.fallbackName)
-        : deterministicMarkup(seed.fallbackName);
-      const originalPrice = Math.round(promoPrice * (1 + markup) * 100) / 100;
-      const discountPct = Math.round(((originalPrice - promoPrice) / originalPrice) * 100);
+      if (!match) return null;
 
-      if (match) {
-        usedIds.add(match.id);
-        result.push({
-          id: match.id,
-          name: match.name,
-          price: originalPrice,
-          promo_price: promoPrice,
-          discountPct,
-          unit: match.unit ?? seed.unit,
-          images: match.images ?? [],
-          active: true,
-          _isOffer: true,
-          rating: deterministicRating(match.name ?? seed.fallbackName),
-          best_seller: match.best_seller,
-          category: match.category,
-          description: match.description,
-        });
-      } else {
-        // Fallback — synthetic product
-        result.push({
-          id: `offer_fb_${normalizeText(seed.fallbackName).replace(/\s+/g, "_")}`,
-          name: seed.fallbackName,
-          price: originalPrice,
-          promo_price: promoPrice,
-          discountPct,
-          unit: seed.unit,
-          images: [],
-          active: true,
-          _isOffer: true,
-          rating: deterministicRating(seed.fallbackName),
-        });
-      }
+      usedIds.add(match.product.id);
+
+      return {
+        ...match.product,
+        id: match.product.id,
+        name: match.product.name,
+        price: match.pricing.originalPrice,
+        promo_price: match.pricing.promoPrice,
+        discountPct: match.pricing.discountPct,
+        unit: match.product.unit ?? "un",
+        images: match.product.images ?? [],
+        active: Boolean(match.product.active),
+        _isOffer: true as const,
+        best_seller: match.product.best_seller,
+        featured: match.product.featured,
+        category: match.product.category,
+        description: match.product.description,
+      };
+    }).filter(Boolean) as OfferProduct[];
+
+    const remainingPromotions = promotionPool
+      .filter(({ product }) => !usedIds.has(product.id))
+      .sort((a, b) => {
+        const discountDiff = b.pricing.discountPct - a.pricing.discountPct;
+        if (discountDiff !== 0) return discountDiff;
+        const sellerDiff = Number(b.product.best_seller ?? false) - Number(a.product.best_seller ?? false);
+        if (sellerDiff !== 0) return sellerDiff;
+        const featuredDiff = Number(b.product.featured ?? false) - Number(a.product.featured ?? false);
+        if (featuredDiff !== 0) return featuredDiff;
+        return Number(b.product.sales ?? 0) - Number(a.product.sales ?? 0);
+      })
+      .map(({ product, pricing }) => ({
+        ...product,
+        id: product.id,
+        name: product.name,
+        price: pricing.originalPrice,
+        promo_price: pricing.promoPrice,
+        discountPct: pricing.discountPct,
+        unit: product.unit ?? "un",
+        images: product.images ?? [],
+        active: Boolean(product.active),
+        _isOffer: true as const,
+        best_seller: product.best_seller,
+        featured: product.featured,
+        category: product.category,
+        description: product.description,
+      }));
+
+    if (prioritized.length > 0 || remainingPromotions.length > 0) {
+      return [...prioritized, ...remainingPromotions].slice(0, 24);
     }
 
-    // Sort by discount percentage descending
-    return result.sort((a, b) => b.discountPct - a.discountPct);
+    return (activeProducts ?? [])
+      .filter((product: any) => Number(product?.price ?? 0) > 0)
+      .sort((a: any, b: any) => {
+        const sellerDiff = Number(b.best_seller ?? false) - Number(a.best_seller ?? false);
+        if (sellerDiff !== 0) return sellerDiff;
+        const featuredDiff = Number(b.featured ?? false) - Number(a.featured ?? false);
+        if (featuredDiff !== 0) return featuredDiff;
+        return Number(b.sales ?? 0) - Number(a.sales ?? 0);
+      })
+      .slice(0, 24)
+      .map((product: any) => {
+        const markup = deterministicMarkup(product?.name ?? "produto");
+        const promoPrice = roundMoney(Number(product?.price ?? 0));
+        const originalPrice = roundMoney(promoPrice * (1 + markup));
+        return {
+          ...product,
+          id: product.id,
+          name: product.name,
+          price: originalPrice,
+          promo_price: promoPrice,
+          discountPct: Math.max(1, Math.round(((originalPrice - promoPrice) / originalPrice) * 100)),
+          unit: product.unit ?? "un",
+          images: product.images ?? [],
+          active: Boolean(product.active),
+          _isOffer: true as const,
+          best_seller: product.best_seller,
+          featured: product.featured,
+          category: product.category,
+          description: product.description,
+        };
+      });
   }, [activeProducts]);
 
   return { offerProducts };

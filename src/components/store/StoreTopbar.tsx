@@ -117,10 +117,10 @@ export function StoreTopbar({
 
   return (
     <>
-      <header className="w-full overflow-x-hidden border-b border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/88">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-0 pb-0.5 sm:pt-3 sm:pb-3">
-          <div className="flex flex-col gap-0.5 sm:gap-2.5">
-            <div className="flex items-center justify-center">
+      <header className="w-full overflow-x-hidden border-b border-border bg-background">
+        <div className="mx-auto max-w-6xl px-4 py-0.5 sm:px-6 sm:py-1">
+          <div className="flex flex-col gap-1">
+            <div className="mt-1 flex items-center justify-center">
               <Link to="/materiais" className="flex items-center justify-center" aria-label={brandLabel}>
                 <img
                   src={storeLogo}
@@ -277,7 +277,7 @@ export function StoreTopbar({
             </div>
 
             {showCatalogChips ? (
-              <div className="-mx-1 px-1 overflow-x-auto pb-1 scrollbar-none" style={{ scrollbarWidth: "none" }}>
+              <div className="-mx-1 overflow-x-auto px-1 pb-0.5 scrollbar-none" style={{ scrollbarWidth: "none" }}>
                 <div className="flex w-max gap-2">
                   {catalogChips.map((category) => {
                     const active = category.slug === selectedCategorySlug;
@@ -302,8 +302,6 @@ export function StoreTopbar({
           </div>
         </div>
       </header>
-
-      <div className={cn("w-full shrink-0", showCatalogChips ? "h-[152px] sm:h-[192px]" : "h-[112px] sm:h-[148px]")} aria-hidden="true" />
 
       <FloatingChat phoneDigits={contact.phoneDigits} />
     </>

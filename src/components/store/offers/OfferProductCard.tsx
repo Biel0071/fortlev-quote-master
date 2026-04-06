@@ -65,9 +65,7 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
             </div>
             <span className="text-[10px] text-muted-foreground">({rating.total})</span>
           </div>
-        ) : (
-          <span className="text-[10px] text-muted-foreground">Sem avaliações ainda</span>
-        )}
+        ) : null}
 
         <div className="mt-auto">
           <div className="text-[10px] sm:text-xs text-muted-foreground line-through">
@@ -75,6 +73,9 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
           </div>
           <div className="text-base sm:text-lg font-extrabold text-destructive">
             {formatCurrency(prices.promoPrice)}
+          </div>
+          <div className="text-xs font-bold text-pix mt-0.5">
+            {formatCurrency(prices.promoPrice * 0.93)} no PIX
           </div>
         </div>
 

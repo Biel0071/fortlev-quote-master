@@ -57,9 +57,7 @@ function InlineRating({ productId }: { productId: string }) {
 
   if (!resolved) return null;
 
-  if (!data) {
-    return <span className="text-xs text-muted-foreground">Sem avaliações ainda</span>;
-  }
+  if (!data) return null;
 
   return (
     <div className="flex items-center gap-1">

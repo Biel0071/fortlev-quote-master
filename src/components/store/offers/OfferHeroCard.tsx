@@ -86,9 +86,7 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
                   {rating.avg} ({rating.total})
                 </span>
               </div>
-            ) : (
-              <div className="text-xs text-muted-foreground">Sem avaliações ainda</div>
-            )}
+            ) : null}
 
             <div>
               <div className="text-sm text-muted-foreground line-through">
@@ -99,6 +97,9 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
                 ou 10x de {formatCurrency(prices.promoPrice / 10)} sem juros
+              </div>
+              <div className="text-sm font-bold text-pix mt-0.5">
+                {formatCurrency(prices.promoPrice * 0.93)} no PIX
               </div>
             </div>
 

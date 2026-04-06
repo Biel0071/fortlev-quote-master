@@ -97,10 +97,7 @@ function QtyStepper({
 
 function ProductCardRating({ productId }: { productId: string }) {
   const rating = useProductRating(productId);
-  if (!rating) {
-    return <span className="mt-1 inline-flex text-[11px] text-muted-foreground">Sem avaliações ainda</span>;
-  }
-
+  if (!rating) return null;
   return <MiniStars avg={rating.avg} total={rating.total} />;
 }
 
@@ -158,6 +155,11 @@ export function StoreProductCard({
     >
       {/* Image — fixed aspect ratio */}
       <div className="relative aspect-square overflow-hidden border-b border-border bg-background flex items-center justify-center p-2 sm:p-3">
+        {hasPromo && (
+          <span className="absolute top-2 left-2 z-10 rounded-full bg-destructive px-2 py-0.5 text-[10px] sm:text-xs font-bold text-destructive-foreground shadow-sm">
+            -{Math.round(((basePrice - promo) / basePrice) * 100)}%
+          </span>
+        )}
         <img
           src={imageSrc}
           alt={product?.name ?? "Produto"}
@@ -185,6 +187,9 @@ export function StoreProductCard({
             <div className="text-[10px] sm:text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div>
           )}
           <div className="text-base sm:text-lg font-extrabold tracking-tight leading-tight">{formatCurrency(effectivePrice)}</div>
+          <div className="text-xs sm:text-sm font-bold text-pix mt-0.5">
+            {formatCurrency(effectivePrice * 0.93)} no PIX
+          </div>
           {installments && (
             <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">{installments}</div>
           )}

@@ -17,7 +17,7 @@ export function AppHeader({
   showBanner = true,
 }: AppHeaderProps) {
   return (
-    <div id="app-header-root" className="fixed top-0 left-0 right-0 z-[999] w-full bg-background">
+    <div id="app-header-root" className="fixed top-0 left-0 right-0 z-[9999] w-full bg-background">
       <div className="flex flex-col gap-0">
         {showBanner ? <AppDownloadBanner /> : null}
         <StoreTopbar

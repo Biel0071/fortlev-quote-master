@@ -57,6 +57,7 @@ export default function StoreHome() {
   const { activeCategories, loading: categoriesLoading } = useStoreCategories({ enabled: phase.categories });
   const { activeProducts, loading: productsLoading } = useStoreProducts({ enabled: phase.featured || phase.additional });
   const merch = useHomeMerchandising({ enabled: phase.additional });
+  const { offerProducts: offerList } = useOfferProducts(activeProducts);
 
   const [cartOpen, setCartOpen] = useState(false);
   const [pageLinks, setPageLinks] = useState<Array<{ title: string; slug: string }>>([]);

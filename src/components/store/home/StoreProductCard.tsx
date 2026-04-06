@@ -97,8 +97,7 @@ function QtyStepper({
 
 function ProductCardRating({ productId }: { productId: string }) {
   const rating = useProductRating(productId);
-  if (!rating) return null;
-  return <MiniStars avg={rating.avg} total={rating.total} />;
+  return <MiniStars avg={rating?.avg ?? 0} total={rating?.total ?? 0} />;
 }
 
 export function StoreProductCard({
@@ -157,7 +156,7 @@ export function StoreProductCard({
       <div className="relative aspect-square overflow-hidden border-b border-border bg-background flex items-center justify-center p-2 sm:p-3">
         {hasPromo && (
           <span className="absolute top-2 left-2 z-10 rounded-full bg-destructive px-2 py-0.5 text-[10px] sm:text-xs font-bold text-destructive-foreground shadow-sm">
-            -{Math.round(((basePrice - promo) / basePrice) * 100)}%
+            -{Math.floor(((basePrice - promo) / basePrice) * 100)}%
           </span>
         )}
         <img

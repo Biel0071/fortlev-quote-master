@@ -20,12 +20,12 @@ export function AppDownloadBanner() {
 
   useEffect(() => {
     supabase
-      .from("store_settings")
+      .from("app_config")
       .select("value")
       .eq("key", "app_download_url")
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.value) setAppUrl(data.value as string);
+        if (data?.value) setAppUrl(data.value);
       });
   }, []);
 

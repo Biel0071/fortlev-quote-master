@@ -115,6 +115,7 @@ export function useOfferProducts(activeProducts: any[]): {
           images: match.images ?? [],
           active: true,
           _isOffer: true,
+          rating: deterministicRating(match.name ?? seed.fallbackName),
           best_seller: match.best_seller,
           category: match.category,
           description: match.description,

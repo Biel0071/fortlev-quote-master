@@ -52,8 +52,8 @@ export default function OffersPage() {
     setCartOpen(true);
   };
 
-  const heroProduct = offerProducts[0] ?? null;
-  const restProducts = offerProducts.slice(1);
+  const heroProducts = offerProducts.slice(0, 5);
+  const restProducts = offerProducts.slice(5);
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">

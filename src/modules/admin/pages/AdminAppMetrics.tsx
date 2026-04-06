@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, MousePointerClick, Smartphone, RefreshCw, TrendingUp, BarChart3, Upload, Link2, CheckCircle2, Loader2 } from "lucide-react";
+import { Download, MousePointerClick, Smartphone, RefreshCw, TrendingUp, BarChart3, Upload, Link2, CheckCircle2, Loader2, FileText, HardDrive, Calendar, Tag } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 
@@ -18,6 +18,12 @@ export default function AdminAppMetrics() {
   // APK upload state
   const [uploading, setUploading] = useState(false);
   const [apkUrl, setApkUrl] = useState<string | null>(null);
+  const [apkMeta, setApkMeta] = useState<{
+    originalName: string;
+    displayName: string;
+    size: number;
+    uploadedAt: string;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -81,6 +87,16 @@ export default function AdminAppMetrics() {
         .eq("key", "app_download_url")
         .maybeSingle();
       if (configRow?.value) setApkUrl(configRow.value);
+
+      // Load APK metadata
+      const { data: metaRow } = await cloud
+        .from("app_config")
+        .select("value")
+        .eq("key", "app_apk_meta")
+        .maybeSingle();
+      if (metaRow?.value) {
+        try { setApkMeta(JSON.parse(metaRow.value)); } catch { /* ignore */ }
+      }
     } catch { /* silent */ }
     setLoading(false);
   };
@@ -103,13 +119,29 @@ export default function AdminAppMetrics() {
       const { data: urlData } = cloud.storage.from("apps").getPublicUrl(fileName);
       const publicUrl = urlData.publicUrl;
 
-      // Save to app_config
-      const { error: upsertError } = await cloud
-        .from("app_config")
-        .upsert({ key: "app_download_url", value: publicUrl, updated_at: new Date().toISOString() }, { onConflict: "key" });
-      if (upsertError) throw upsertError;
+      // Build display name from original file name (without extension)
+      const displayName = file.name.replace(/\.apk$/i, "");
+      const meta = {
+        originalName: file.name,
+        displayName: `${displayName}.apk`,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      // Save URL + metadata to app_config
+      await Promise.all([
+        cloud.from("app_config").upsert(
+          { key: "app_download_url", value: publicUrl, updated_at: new Date().toISOString() },
+          { onConflict: "key" }
+        ),
+        cloud.from("app_config").upsert(
+          { key: "app_apk_meta", value: JSON.stringify(meta), updated_at: new Date().toISOString() },
+          { onConflict: "key" }
+        ),
+      ]);
 
       setApkUrl(publicUrl);
+      setApkMeta(meta);
       toast.success("APK enviado com sucesso!");
       if (fileRef.current) fileRef.current.value = "";
     } catch (err: any) {
@@ -194,11 +226,52 @@ export default function AdminAppMetrics() {
           </div>
 
           {apkUrl && (
-            <div className="rounded-xl bg-muted/50 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-green-600">
-                <CheckCircle2 className="h-4 w-4" /> APK disponível
+            <div className="rounded-xl bg-muted/50 p-5 space-y-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-green-600">
+                <CheckCircle2 className="h-4 w-4" /> APK instalado no sistema
               </div>
-              <div className="flex items-center gap-2">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {apkMeta && (
+                  <>
+                    <div className="flex items-start gap-2.5">
+                      <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Arquivo original</p>
+                        <p className="text-sm font-medium">{apkMeta.originalName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Tag className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Nome exibido no download</p>
+                        <p className="text-sm font-medium">{apkMeta.displayName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <HardDrive className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Tamanho</p>
+                        <p className="text-sm font-medium">{(apkMeta.size / (1024 * 1024)).toFixed(2)} MB</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Enviado em</p>
+                        <p className="text-sm font-medium">
+                          {new Date(apkMeta.uploadedAt).toLocaleString("pt-BR", {
+                            day: "2-digit", month: "2-digit", year: "numeric",
+                            hour: "2-digit", minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
                 <Link2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                 <a href={apkUrl} target="_blank" rel="noopener noreferrer"
                   className="text-xs text-primary underline truncate">

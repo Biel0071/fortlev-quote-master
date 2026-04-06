@@ -215,6 +215,27 @@ export default function StoreHome() {
         )}
       </HomeSection>
 
+      {/* 🔥 Ofertas section */}
+      {phase.featured && offerIds.length > 0 ? (
+        <HomeSection
+          id="ofertas"
+          title=""
+          tone="plain"
+          className="pt-2 pb-2 sm:pt-4 sm:pb-4"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground animate-pulse">
+              <Flame className="h-3.5 w-3.5" />
+              Ofertas do dia
+            </span>
+            <Link to="/loja?promo=1" className="text-xs font-semibold text-muted-foreground underline underline-offset-4 ml-auto">
+              Ver todas
+            </Link>
+          </div>
+          <HomeProductsByIds loading={loading} productIds={offerIds} products={activeProducts as any} onAdd={onAdd} limit={8} />
+        </HomeSection>
+      ) : null}
+
       <HomeSection
         id="destaques"
         title="Produtos em destaque"

@@ -69,7 +69,6 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     items: [
       { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag, page: "pedidos" },
       { title: "Orçamentos", url: "/admin/orcamentos", icon: FileText, page: "orcamentos" },
-      { title: "Clientes", url: "/admin/clientes", icon: Users, page: "clientes" },
     ],
   },
   {
@@ -90,11 +89,12 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     label: "Inteligência",
     items: [
-      { title: "Análise e Relatórios IA", url: "/admin/inteligencia-ia", icon: Sparkles, page: "inteligencia-ia" },
+      { title: "Análise de Clientes", url: "/admin/clientes", icon: Users, page: "clientes" },
       { title: "Funil de Conversão", url: "/admin/funil", icon: Target, page: "funil" },
       { title: "Mapa de Cliques", url: "/admin/mapa-cliques", icon: MapPin, page: "mapa-cliques" },
-      { title: "Insights IA", url: "/admin/insights-ia", icon: Brain, page: "insights-ia" },
       { title: "Métricas do App", url: "/admin/app-metricas", icon: Smartphone, page: "app-metricas" },
+      { title: "Insights IA", url: "/admin/insights-ia", icon: Brain, page: "insights-ia" },
+      { title: "Análise e Relatórios IA", url: "/admin/inteligencia-ia", icon: Sparkles, page: "inteligencia-ia" },
     ],
   },
   {

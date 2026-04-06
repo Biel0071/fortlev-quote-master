@@ -90,11 +90,13 @@ export default function StoreCatalog() {
 
   return (
     <div className="flex flex-col w-full overflow-x-hidden bg-background">
-      <StoreTopbar
-        cartCount={cart.totalItems}
-        onCartClick={() => setCartOpen(true)}
-        categories={activeCategories as any}
-      />
+      <div className="sticky top-0 z-50 bg-background">
+        <StoreTopbar
+          cartCount={cart.totalItems}
+          onCartClick={() => setCartOpen(true)}
+          categories={activeCategories as any}
+        />
+      </div>
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 

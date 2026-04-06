@@ -34,7 +34,7 @@ export function StoreMobileBottomNav({
   return (
     <nav
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 md:hidden",
+        "fixed inset-x-0 bottom-0 z-50 md:hidden",
         "border-t border-border bg-background/95 backdrop-blur-md",
       )}
       role="navigation"

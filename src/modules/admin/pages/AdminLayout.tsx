@@ -69,7 +69,8 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     items: [
       { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag, page: "pedidos" },
       { title: "Orçamentos", url: "/admin/orcamentos", icon: FileText, page: "orcamentos" },
-      { title: "Clientes", url: "/admin/clientes", icon: Users, page: "clientes" },
+    ],
+  },
     ],
   },
   {

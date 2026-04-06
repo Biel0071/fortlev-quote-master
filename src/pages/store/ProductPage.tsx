@@ -330,7 +330,7 @@ export default function ProductPage() {
   }, [product?.id]);
 
   useEffect(() => {
-    const first = images?.[0]?.path ? publicImageUrl("product-images", images[0].path) : fallbackProductImage;
+    const first = getProductImageUrl(images, fallbackProductImage);
     setActiveImg(first);
   }, [images]);
 

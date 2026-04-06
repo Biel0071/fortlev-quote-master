@@ -54,8 +54,7 @@ function OfferCard({
   const effective = hasPromo ? promo : basePrice;
   const off = hasPromo ? percentOff(basePrice, promo) : 0;
 
-  const imgPath = product?.images?.[0]?.path ?? null;
-  const imgUrl = publicImageUrl("product-images", imgPath);
+  const imgUrl = getProductImageUrl(product?.images);
 
   // Installments hint: fixed 10x (sem juros)
   const installments = useMemo(() => {

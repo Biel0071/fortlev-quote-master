@@ -116,10 +116,7 @@ function SuggestionCard({
   type: "upsell" | "cross_sell" | "related";
   onAdd: () => void;
 }) {
-  const imgUrl = product.images?.[0]?.path
-    ? publicImageUrl("product-images", product.images[0].path)
-    : null;
-  const imageSrc = imgUrl || "/placeholder.svg";
+  const imageSrc = getProductImageUrl(product.images);
 
   const effectivePrice = getEffectivePrice(product);
 

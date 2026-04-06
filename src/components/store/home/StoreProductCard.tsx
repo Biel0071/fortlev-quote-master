@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { trackClickEvent } from "@/utils/clickTracking";
 import { formatCurrency } from "@/utils/formatters";
-import { publicImageUrl } from "@/utils/storage";
+import { getProductImageUrl } from "@/utils/productImage";
 import { cloud } from "@/lib/cloud";
 import { getProductSlug } from "@/utils/productSlug";
 
@@ -131,14 +131,7 @@ export function StoreProductCard({
     return `ou 10x de ${formatCurrency(x)} sem juros`;
   }, [effectivePrice]);
 
-  const images = (product?.images ?? []) as Array<{ path: string | null }>;
-  const invalidTerms = ["placeholder", "default", "fallback", "banner", "cover", "render", "house", "background", "hero", "slide"];
-  const validImg = images.find(
-    (img) => img.path && !invalidTerms.some((t) => img.path!.toLowerCase().includes(t))
-  );
-  const imgPath = validImg?.path ?? null;
-  const imgUrl = imgPath ? publicImageUrl("product-images", imgPath) : null;
-  const imageSrc = imgUrl || "/placeholder.svg";
+  const imageSrc = getProductImageUrl(product?.images);
 
   const openProduct = () => {
     if (isMock) return;

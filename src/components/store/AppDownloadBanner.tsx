@@ -49,8 +49,8 @@ export function AppDownloadBanner() {
   if (!visible) return null;
 
   return (
-    <div className="sticky top-0 z-50 w-full bg-gradient-to-r from-[hsl(222,70%,22%)] via-[hsl(222,65%,30%)] to-[hsl(222,60%,38%)] text-white shadow-md">
-      <div className="mx-auto relative flex items-center justify-center gap-2 px-3 py-1.5">
+    <div className="relative z-[51] w-full bg-gradient-to-r from-[hsl(222,70%,22%)] via-[hsl(222,65%,30%)] to-[hsl(222,60%,38%)] text-white shadow-md">
+      <div className="mx-auto relative flex items-center justify-center gap-2 px-8 py-1.5 sm:px-3">
         <a
           href={appUrl ?? "#"}
           target="_blank"

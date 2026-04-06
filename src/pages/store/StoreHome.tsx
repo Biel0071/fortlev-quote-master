@@ -171,23 +171,8 @@ export default function StoreHome() {
     return merged;
   }, [activeProducts]);
 
-  // Offers: products with active promo_price, sorted by discount %
-  const offerIds = useMemo(() => {
-    const list = (activeProducts ?? []) as any[];
-    return list
-      .filter((p) => {
-        const price = Number(p?.price ?? 0);
-        const promo = Number(p?.promo_price ?? 0);
-        return promo > 0 && price > 0 && promo < price;
-      })
-      .sort((a, b) => {
-        const aOff = (Number(a.price) - Number(a.promo_price)) / Number(a.price);
-        const bOff = (Number(b.price) - Number(b.promo_price)) / Number(b.price);
-        return bOff - aOff;
-      })
-      .slice(0, 8)
-      .map((p) => p.id) as string[];
-  }, [activeProducts]);
+  // Offer products from the new hook (always populated)
+  const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden">

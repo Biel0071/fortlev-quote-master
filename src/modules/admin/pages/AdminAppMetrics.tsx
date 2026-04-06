@@ -44,6 +44,7 @@ const fmtDate = (iso: string) =>
 interface ApkMeta {
   originalName: string;
   displayName: string;
+  appName: string;
   size: number;
   uploadedAt: string;
 }
@@ -88,6 +89,10 @@ export default function AdminAppMetrics() {
   const [apkUrl, setApkUrl] = useState<string | null>(null);
   const [apkMeta, setApkMeta] = useState<ApkMeta | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [appName, setAppName] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [persistToSystem, setPersistToSystem] = useState(true);
 
   const saveConfig = async (key: string, value: string) => {
     const { error } = await cloud
@@ -202,6 +207,14 @@ export default function AdminAppMetrics() {
     void load();
   }, []);
 
+  const handleFileSelect = () => {
+    const file = fileRef.current?.files?.[0];
+    if (file) {
+      setDisplayName(file.name);
+      if (!appName) setAppName(file.name.replace(/\.apk$/i, ""));
+    }
+  };
+
   const handleApkUpload = async () => {
     const file = fileRef.current?.files?.[0];
 
@@ -223,18 +236,26 @@ export default function AdminAppMetrics() {
     setUploading(true);
 
     try {
-      const fileName = `app-${Date.now()}.apk`;
-      const { error: uploadError } = await cloud.storage.from("apps").upload(fileName, file, { upsert: true });
+      const finalDisplayName = displayName || file.name;
+      const finalAppName = appName || file.name.replace(/\.apk$/i, "");
 
-      if (uploadError) {
-        throw uploadError;
+      let publicUrl = "";
+
+      if (persistToSystem) {
+        const fileName = `app-${Date.now()}.apk`;
+        const { error: uploadError } = await cloud.storage.from("apps").upload(fileName, file, { upsert: true });
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = cloud.storage.from("apps").getPublicUrl(fileName);
+        publicUrl = urlData.publicUrl;
+      } else {
+        publicUrl = URL.createObjectURL(file);
       }
 
-      const { data: urlData } = cloud.storage.from("apps").getPublicUrl(fileName);
-      const publicUrl = urlData.publicUrl;
       const meta: ApkMeta = {
         originalName: file.name,
-        displayName: file.name,
+        displayName: finalDisplayName,
+        appName: finalAppName,
         size: file.size,
         uploadedAt: new Date().toISOString(),
       };
@@ -242,11 +263,12 @@ export default function AdminAppMetrics() {
       console.log("UPLOAD OK", publicUrl);
       console.log("META", meta);
 
-      const savedUrl = await saveConfig("app_download_url", publicUrl);
-      const savedMeta = await saveConfig("app_apk_meta", JSON.stringify(meta));
-
-      if (!savedUrl || !savedMeta) {
-        console.warn("Salvando localStorage como fallback");
+      if (persistToSystem) {
+        const savedUrl = await saveConfig("app_download_url", publicUrl);
+        const savedMeta = await saveConfig("app_apk_meta", JSON.stringify(meta));
+        if (!savedUrl || !savedMeta) {
+          console.warn("Salvando localStorage como fallback");
+        }
       }
 
       writeLocalValue(APK_URL_STORAGE_KEY, publicUrl);
@@ -254,14 +276,33 @@ export default function AdminAppMetrics() {
 
       setApkUrl(publicUrl);
       setApkMeta(meta);
-      toast.success("APK enviado com sucesso");
+      toast.success(persistToSystem ? "APK enviado e salvo no sistema" : "APK carregado (somente local)");
 
-      if (fileRef.current) {
-        fileRef.current.value = "";
-      }
+      if (fileRef.current) fileRef.current.value = "";
     } catch (error: any) {
       console.error("[AppMetrics] upload error:", error);
       toast.error(`Erro ao enviar APK: ${error?.message ?? "Falha desconhecida"}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSaveToSystem = async () => {
+    if (!apkUrl || !apkMeta) {
+      toast.error("Nenhum APK carregado para salvar");
+      return;
+    }
+    setUploading(true);
+    try {
+      const savedUrl = await saveConfig("app_download_url", apkUrl);
+      const savedMeta = await saveConfig("app_apk_meta", JSON.stringify(apkMeta));
+      if (savedUrl && savedMeta) {
+        toast.success("Configurações salvas no sistema");
+      } else {
+        toast.error("Falha ao salvar no sistema (verifique permissões)");
+      }
+    } catch (e: any) {
+      toast.error("Erro ao salvar: " + (e?.message ?? ""));
     } finally {
       setUploading(false);
     }
@@ -352,33 +393,53 @@ export default function AdminAppMetrics() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="appName" className="text-xs font-medium">Nome do App</Label>
+              <Input id="appName" placeholder="Ex: Fortlev App" value={appName} onChange={(e) => setAppName(e.target.value)} disabled={uploading} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="displayName" className="text-xs font-medium">Nome do arquivo para download</Label>
+              <Input id="displayName" placeholder="Ex: fortlev-app.apk" value={displayName} onChange={(e) => setDisplayName(e.target.value)} disabled={uploading} />
+            </div>
+          </div>
+
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Input ref={fileRef} type="file" accept=".apk" className="flex-1" disabled={uploading} />
+            <Input ref={fileRef} type="file" accept=".apk" className="flex-1" disabled={uploading} onChange={handleFileSelect} />
             <Button onClick={handleApkUpload} disabled={uploading} className="gap-1.5">
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
               {uploading ? "Enviando..." : "Enviar APK"}
             </Button>
           </div>
 
-          <div className="mt-4 rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2">
+            <Checkbox id="persist" checked={persistToSystem} onCheckedChange={(v) => setPersistToSystem(Boolean(v))} disabled={uploading} />
+            <Label htmlFor="persist" className="text-sm cursor-pointer">Salvar APK no sistema (storage + banco)</Label>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4">
             <h3 className="mb-3 font-semibold text-foreground">📦 APK instalado</h3>
 
             {apkUrl || apkMeta ? (
               <>
                 {apkMeta && (
                   <div className="space-y-2 text-sm text-foreground">
-                    <div><b>Arquivo:</b> {apkMeta.originalName}</div>
-                    <div><b>Nome:</b> {apkMeta.displayName}</div>
+                    {apkMeta.appName && <div><b>App:</b> {apkMeta.appName}</div>}
+                    <div><b>Arquivo original:</b> {apkMeta.originalName}</div>
+                    <div><b>Nome download:</b> {apkMeta.displayName}</div>
                     <div><b>Tamanho:</b> {fmtMB(apkMeta.size)} MB</div>
                     <div><b>Enviado:</b> {fmtDate(apkMeta.uploadedAt)}</div>
                   </div>
                 )}
 
                 {apkUrl && (
-                  <div className="mt-3">
-                    <a href={apkUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+                  <div className="mt-3 flex items-center gap-3">
+                    <a href={apkUrl} download={apkMeta?.displayName || undefined} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
                       Baixar APK
                     </a>
+                    <Button variant="outline" size="sm" onClick={handleSaveToSystem} disabled={uploading} className="gap-1.5">
+                      <Save className="h-3.5 w-3.5" /> Salvar no sistema
+                    </Button>
                   </div>
                 )}
 

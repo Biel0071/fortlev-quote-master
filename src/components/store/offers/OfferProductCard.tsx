@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
 import { ShoppingCart, Star } from "lucide-react";
+import { useProductRatingSummary } from "@/hooks/useProductRatingSummary";
+import { getProductSlug } from "@/utils/productSlug";
 
 type Props = {
   product: any;
@@ -15,13 +17,13 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
   const nav = useNavigate();
   const imgPath = product?.images?.[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);
-  const rating = product.rating;
+  const rating = useProductRatingSummary(product.id);
 
   return (
     <Card
       role="link"
       tabIndex={0}
-      onClick={() => nav(`/produto/${product.id}`)}
+      onClick={() => nav(`/produto/${getProductSlug(product)}`)}
       className="group flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
     >
       {/* Image */}
@@ -59,7 +61,7 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
               {Array.from({ length: 5 }, (_, i) => (
                 <Star
                   key={i}
-                  className={`h-3 w-3 ${i < Math.round(rating.avg) ? "fill-yellow-400 text-yellow-400" : "fill-muted text-muted-foreground/40"}`}
+                  className={`h-3 w-3 ${i < Math.round(rating.avg) ? "fill-current text-promo" : "fill-muted text-muted-foreground/40"}`}
                 />
               ))}
             </div>

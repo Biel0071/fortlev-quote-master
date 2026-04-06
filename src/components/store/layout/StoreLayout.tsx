@@ -1,9 +1,8 @@
 import { ReactNode } from "react";
-import { StoreTopbar } from "@/components/store/StoreTopbar";
+import { AppHeader } from "@/components/store/AppHeader";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { CartDrawer } from "@/components/store/CartDrawer";
-import { AppDownloadBanner } from "@/components/store/AppDownloadBanner";
 import type { HomeFooter } from "@/hooks/useHomeContent";
 
 /**
@@ -33,8 +32,7 @@ export function StoreLayout({
 }) {
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden">
-      <AppDownloadBanner />
-      <StoreTopbar
+      <AppHeader
         cartCount={cartCount}
         onCartClick={onCartClick}
         footerStoreName={footerStoreName}

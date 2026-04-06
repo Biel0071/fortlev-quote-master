@@ -8,6 +8,7 @@ import { trackClickEvent } from "@/utils/clickTracking";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
 import { cloud } from "@/lib/cloud";
+import { getProductSlug } from "@/utils/productSlug";
 
 // Shared cache so we don't re-fetch per card
 const ratingsCache = new Map<string, { avg: number; total: number } | null>();
@@ -138,13 +139,13 @@ export function StoreProductCard({
       tabIndex={0}
       onClick={() => {
         trackClickEvent({ sessionToken: tracker.sessionToken, type: "open_product", productId: product?.id });
-        nav(`/produto/${product?.id}`);
+        nav(`/produto/${getProductSlug(product)}`);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           trackClickEvent({ sessionToken: tracker.sessionToken, type: "open_product", productId: product?.id });
-          nav(`/produto/${product?.id}`);
+          nav(`/produto/${getProductSlug(product)}`);
         }
       }}
       className="group flex h-full w-full min-w-0 max-w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md"

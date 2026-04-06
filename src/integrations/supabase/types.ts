@@ -2929,6 +2929,45 @@ export type Database = {
           },
         ]
       }
+      store_plans: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          modules: string[]
+          name: string
+          price_monthly: number
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          modules?: string[]
+          name: string
+          price_monthly?: number
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          modules?: string[]
+          name?: string
+          price_monthly?: number
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       store_product_images: {
         Row: {
           created_at: string
@@ -3086,7 +3125,10 @@ export type Database = {
           id: string
           name: string
           owner_id: string | null
+          plan_id: string | null
+          segment: string | null
           slug: string
+          suspended: boolean
           updated_at: string
         }
         Insert: {
@@ -3097,7 +3139,10 @@ export type Database = {
           id?: string
           name: string
           owner_id?: string | null
+          plan_id?: string | null
+          segment?: string | null
           slug: string
+          suspended?: boolean
           updated_at?: string
         }
         Update: {
@@ -3108,10 +3153,21 @@ export type Database = {
           id?: string
           name?: string
           owner_id?: string | null
+          plan_id?: string | null
+          segment?: string | null
           slug?: string
+          suspended?: boolean
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stores_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "store_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_plans: {
         Row: {
@@ -3713,6 +3769,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_plan_permissions: {
+        Args: { _plan_id: string; _store_id: string }
+        Returns: undefined
+      }
       bulk_import_products: { Args: { _data: Json }; Returns: number }
       check_rate_limit: {
         Args: {

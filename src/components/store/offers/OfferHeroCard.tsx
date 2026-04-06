@@ -33,12 +33,18 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
   const imgUrl = publicImageUrl("product-images", imgPath);
   const imageSrc = imgUrl || "/placeholder.svg";
   const rating = useProductRatingSummary(product.id);
+  const isMock = Boolean(product?.isMock);
+
+  const openProduct = () => {
+    if (isMock) return;
+    nav(`/produto/${getProductSlug(product)}`);
+  };
 
   return (
     <div className="relative">
       <div
-        className="relative rounded-2xl border border-border bg-card overflow-hidden shadow-md cursor-pointer group"
-        onClick={() => nav(`/produto/${getProductSlug(product)}`)}
+        className={`relative rounded-2xl border border-border bg-card overflow-hidden shadow-md group ${isMock ? "cursor-default" : "cursor-pointer"}`}
+        onClick={openProduct}
       >
         {/* Badge */}
         <div className="absolute top-3 left-3 z-10 flex gap-2">

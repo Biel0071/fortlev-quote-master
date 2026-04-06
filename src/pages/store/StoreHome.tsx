@@ -91,7 +91,8 @@ export default function StoreHome() {
   const loading = productsLoading || categoriesLoading || home.loading || merch.loading;
 
   const onAdd = (productId: string, qty: number) => {
-    const product: any = activeProducts.find((item: any) => item.id === productId);
+    const product: any = offerList.find((item: any) => item.id === productId)
+      ?? activeProducts.find((item: any) => item.id === productId);
     const basePrice = Number(product?.price ?? 0);
     const promoPrice = Number(product?.promo_price ?? 0);
     const effectivePrice = promoPrice > 0 && promoPrice < basePrice ? promoPrice : basePrice;

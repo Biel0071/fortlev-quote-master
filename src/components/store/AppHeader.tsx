@@ -17,8 +17,8 @@ export function AppHeader({
   showBanner = true,
 }: AppHeaderProps) {
   return (
-    <div className="sticky top-0 z-[999] w-full bg-background">
-      <div className="flex flex-col gap-1">
+    <div className="fixed top-0 left-0 right-0 z-[999] w-full bg-background">
+      <div className="flex flex-col gap-0">
         {showBanner ? <AppDownloadBanner /> : null}
         <StoreTopbar
           cartCount={cartCount}

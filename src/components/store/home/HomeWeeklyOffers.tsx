@@ -90,7 +90,12 @@ function OfferCard({
 
         <div className="mt-auto">
           {hasPromo ? <div className="text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div> : null}
-          <div className="text-lg font-extrabold tracking-tight">{formatCurrency(effective)}</div>
+          <div className="text-lg font-extrabold tracking-tight">
+            {formatCurrency(effective)}
+            {product?.unit && product.unit !== "un" && (
+              <span className="text-xs font-medium text-muted-foreground">/{product.unit}</span>
+            )}
+          </div>
           {installments ? <div className="text-xs text-muted-foreground">{installments}</div> : null}
 
           <div className="mt-3 flex items-center gap-2">

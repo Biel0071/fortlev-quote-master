@@ -4,6 +4,7 @@ import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useCart } from "@/hooks/useCart";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
+import { getProductImageUrl } from "@/utils/productImage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShoppingCart, ArrowUpRight } from "lucide-react";
@@ -116,10 +117,7 @@ function SuggestionCard({
   type: "upsell" | "cross_sell" | "related";
   onAdd: () => void;
 }) {
-  const imgUrl = product.images?.[0]?.path
-    ? publicImageUrl("product-images", product.images[0].path)
-    : null;
-  const imageSrc = imgUrl || "/placeholder.svg";
+  const imageSrc = getProductImageUrl(product.images);
 
   const effectivePrice = getEffectivePrice(product);
 

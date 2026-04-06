@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/utils/formatters";
-import { publicImageUrl } from "@/utils/storage";
+import { getProductImageUrl } from "@/utils/productImage";
 import { ShoppingCart, Star } from "lucide-react";
 import { useProductRatingSummary } from "@/hooks/useProductRatingSummary";
 import { getProductSlug } from "@/utils/productSlug";
@@ -29,13 +29,7 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
   if (!product) return null;
 
   const prices = getOfferPrices(product);
-  const images = (product?.images ?? []) as Array<{ path: string | null }>;
-  const validImg = images.find(
-    (img) => img.path && !img.path.includes("placeholder") && !img.path.includes("default")
-  );
-  const imgPath = validImg?.path ?? images[0]?.path ?? null;
-  const imgUrl = publicImageUrl("product-images", imgPath);
-  const imageSrc = imgUrl || "/placeholder.svg";
+  const imageSrc = getProductImageUrl(product?.images);
   const unitLabel = product.unit && product.unit !== "un" ? `/${product.unit}` : "";
   const rating = useProductRatingSummary(product.id);
   const isMock = Boolean(product?.isMock);

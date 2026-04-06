@@ -149,10 +149,6 @@ export default function AdminAppMetrics() {
     }
     setUploading(false);
   };
-      toast.error(`Erro ao enviar APK: ${err.message}`);
-    }
-    setUploading(false);
-  };
 
   const conversionRate = bannerClicks > 0 ? ((appDownloadClicks / bannerClicks) * 100).toFixed(1) : "0";
 

@@ -15,9 +15,14 @@ type Props = {
 
 export function OfferProductCard({ product, prices, onAdd }: Props) {
   const nav = useNavigate();
-  const imgPath = product?.images?.[0]?.path ?? null;
+  const images = (product?.images ?? []) as Array<{ path: string | null }>;
+  const validImg = images.find(
+    (img) => img.path && !img.path.includes("placeholder") && !img.path.includes("default")
+  );
+  const imgPath = validImg?.path ?? images[0]?.path ?? null;
   const imgUrl = publicImageUrl("product-images", imgPath);
   const imageSrc = imgUrl || "/placeholder.svg";
+  const unitLabel = product.unit && product.unit !== "un" ? `/${product.unit}` : "";
   const rating = useProductRatingSummary(product.id);
   const isMock = Boolean(product?.isMock);
 
@@ -76,7 +81,7 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
             {formatCurrency(prices.originalPrice)}
           </div>
           <div className="text-base sm:text-lg font-extrabold text-destructive">
-            {formatCurrency(prices.promoPrice)}
+            {formatCurrency(prices.promoPrice)}{unitLabel}
           </div>
           <div className="text-xs font-bold text-pix mt-0.5">
             {formatCurrency(prices.promoPrice * 0.93)} no PIX

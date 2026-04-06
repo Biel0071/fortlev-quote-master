@@ -98,7 +98,7 @@ export function AppDownloadBanner() {
         >
           <Smartphone className="h-3 w-3" />
           <span className="banner-text">
-            📲 Instale o app e ganhe 10% OFF na primeira compra
+            Instale o App e ganhe 10% OFF!
           </span>
           <ChevronUp className="h-3 w-3" />
         </button>
@@ -115,7 +115,7 @@ export function AppDownloadBanner() {
               <Smartphone className="h-3 w-3" />
             </span>
             <span className={cn("banner-text tracking-wide", !downloadClicked && "animate-[pulseText_1.5s_ease-in-out_infinite]")}>
-              📲 Instale o app e ganhe 10% OFF na primeira compra
+              Instale o App e ganhe 10% OFF!
             </span>
           </div>
 

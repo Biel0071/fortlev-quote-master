@@ -75,7 +75,7 @@ export default function AdminStoreSelector() {
   const navigate = useNavigate();
   const { user } = useSession();
   const { isMaster, storeAccess, loading: permLoading } = useAdminPermissions();
-  const { setStore } = useStore();
+  const { setStore, setActiveStoreId } = useStore();
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [summaries, setSummaries] = useState<StoreSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,14 +161,9 @@ export default function AdminStoreSelector() {
     setLoading(false);
   };
 
-  const enterStore = (store: StoreRow) => {
-    const slugMap: Record<string, AppStore> = {
-      materiais: "materiais",
-      fortlev: "fortlev",
-      construcao: "construcao",
-    };
-    const appStore = slugMap[store.slug] ?? "materiais";
-    setStore(appStore);
+  const enterStore = (storeRow: StoreRow) => {
+    setStore(storeRow.slug);
+    setActiveStoreId(storeRow.id);
     navigate("/admin/dashboard");
   };
 

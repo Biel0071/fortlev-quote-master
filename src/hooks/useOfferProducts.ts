@@ -132,6 +132,7 @@ export function useOfferProducts(activeProducts: any[]): {
           images: [],
           active: true,
           _isOffer: true,
+          rating: deterministicRating(seed.fallbackName),
         });
       }
     }

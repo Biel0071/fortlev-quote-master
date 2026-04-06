@@ -447,8 +447,6 @@ export default function AdminAppMetrics() {
                     </p>
                   </div>
                 )}
-                )}
-
                 <p className="mt-2 text-xs text-muted-foreground">
                   Este link é usado automaticamente no banner do app.
                 </p>

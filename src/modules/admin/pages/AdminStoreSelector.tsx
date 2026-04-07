@@ -11,6 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +45,10 @@ import {
   Check,
   Link2,
   Shield,
+  Sparkles,
+  BarChart3,
+  Pause,
+  Play,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { AppStore } from "@/contexts/StoreContext";
@@ -48,6 +60,9 @@ type StoreRow = {
   active: boolean;
   domain: string | null;
   favicon_path: string | null;
+  plan_id: string | null;
+  segment: string | null;
+  suspended: boolean;
 };
 
 type StoreDomain = {
@@ -58,11 +73,14 @@ type StoreDomain = {
   verified: boolean;
 };
 
+type PlanRow = { id: string; name: string; slug: string; modules: string[] };
+
 type StoreSummary = {
   store: StoreRow;
   orderCount: number;
   productCount: number;
   domains: StoreDomain[];
+  planName: string;
 };
 
 type SeoData = {
@@ -85,7 +103,19 @@ export default function AdminStoreSelector() {
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreSlug, setNewStoreSlug] = useState("");
   const [newStoreDomain, setNewStoreDomain] = useState("");
+  const [newStorePlan, setNewStorePlan] = useState("");
+  const [newStoreSegment, setNewStoreSegment] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // AI Creation
+  const [aiCreateOpen, setAiCreateOpen] = useState(false);
+  const [aiName, setAiName] = useState("");
+  const [aiSegment, setAiSegment] = useState("");
+  const [aiStyle, setAiStyle] = useState("moderno");
+  const [aiPlanSlug, setAiPlanSlug] = useState("basico");
+  const [aiCreating, setAiCreating] = useState(false);
+
+  const [plans, setPlans] = useState<PlanRow[]>([]);
 
   const [seoOpen, setSeoOpen] = useState(false);
   const [seoStoreId, setSeoStoreId] = useState<string | null>(null);
@@ -108,17 +138,22 @@ export default function AdminStoreSelector() {
 
   const loadStores = async () => {
     setLoading(true);
-    // Master sees ALL stores (active + inactive); others only active
     const query = cloud
       .from("stores")
-      .select("id, name, slug, active, domain, favicon_path")
+      .select("id, name, slug, active, domain, favicon_path, plan_id, segment, suspended")
       .order("name");
 
     if (!isMaster) {
       query.eq("active", true);
     }
 
-    const { data } = await query;
+    const [{ data }, { data: plansData }] = await Promise.all([
+      query,
+      cloud.from("store_plans").select("id, name, slug, modules").order("sort_order"),
+    ]);
+
+    const allPlans = (plansData as PlanRow[]) ?? [];
+    setPlans(allPlans);
 
     let available = (data as StoreRow[]) ?? [];
 
@@ -134,7 +169,6 @@ export default function AdminStoreSelector() {
       return;
     }
 
-    // Load summaries + domains
     const storeIds = available.map((s) => s.id);
     const { data: domains } = await cloud
       .from("store_domains")
@@ -143,19 +177,21 @@ export default function AdminStoreSelector() {
 
     const allDomains = (domains as StoreDomain[]) ?? [];
 
-    // Fetch real counts
     const [{ count: orderCount }, { count: productCount }] = await Promise.all([
       cloud.from("store_orders").select("*", { count: "exact", head: true }),
       cloud.from("store_products").select("*", { count: "exact", head: true }).eq("active", true),
     ]);
 
-    const sums: StoreSummary[] = available.map((store) => ({
-      store,
-      // Assign real counts to the active "construcao" store (main store with data)
-      orderCount: store.slug === "construcao" ? (orderCount ?? 0) : 0,
-      productCount: store.slug === "construcao" ? (productCount ?? 0) : 0,
-      domains: allDomains.filter((d) => d.store_id === store.id),
-    }));
+    const sums: StoreSummary[] = available.map((store) => {
+      const plan = allPlans.find((p) => p.id === store.plan_id);
+      return {
+        store,
+        orderCount: store.slug === "construcao" ? (orderCount ?? 0) : 0,
+        productCount: store.slug === "construcao" ? (productCount ?? 0) : 0,
+        domains: allDomains.filter((d) => d.store_id === store.id),
+        planName: plan?.name ?? "Sem plano",
+      };
+    });
 
     setSummaries(sums);
     setLoading(false);
@@ -188,27 +224,67 @@ export default function AdminStoreSelector() {
       return;
     }
     setCreating(true);
+    const planObj = plans.find((p) => p.slug === newStorePlan);
     const { data: newStore, error } = await cloud.from("stores").insert({
       name: newStoreName.trim(),
       slug: newStoreSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, ""),
       active: true,
       domain: newStoreDomain.trim() || null,
+      segment: newStoreSegment.trim() || null,
+      plan_id: planObj?.id ?? null,
     }).select("id").single();
     if (error) {
       toast.error("Erro ao criar loja: " + error.message);
     } else {
-      // Initialize default permissions for the new store
       if (newStore?.id) {
-        await cloud.rpc("init_store_permissions", { _store_id: newStore.id });
+        if (planObj) {
+          await cloud.rpc("apply_plan_permissions", { _store_id: newStore.id, _plan_id: planObj.id });
+        } else {
+          await cloud.rpc("init_store_permissions", { _store_id: newStore.id });
+        }
       }
       toast.success("Loja criada com sucesso!");
       setCreateOpen(false);
       setNewStoreName("");
       setNewStoreSlug("");
       setNewStoreDomain("");
+      setNewStorePlan("");
+      setNewStoreSegment("");
       loadStores();
     }
     setCreating(false);
+  };
+
+  // --- AI Create Store ---
+  const handleAiCreateStore = async () => {
+    if (!aiName.trim() || !aiSegment.trim()) {
+      toast.error("Nome e segmento são obrigatórios");
+      return;
+    }
+    setAiCreating(true);
+    try {
+      const { data, error } = await cloud.functions.invoke("ai-create-store", {
+        body: {
+          name: aiName.trim(),
+          segment: aiSegment.trim(),
+          style: aiStyle,
+          plan_slug: aiPlanSlug,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(
+        `Loja criada! ${data.categories_created} categorias e ${data.products_created} produtos gerados.`
+      );
+      setAiCreateOpen(false);
+      setAiName("");
+      setAiSegment("");
+      loadStores();
+    } catch (e: any) {
+      toast.error("Erro ao criar loja com IA: " + (e.message ?? "Erro desconhecido"));
+    } finally {
+      setAiCreating(false);
+    }
   };
 
   // --- SEO ---
@@ -332,9 +408,17 @@ export default function AdminStoreSelector() {
           </p>
         </div>
         {isMaster && (
-          <Button onClick={() => setCreateOpen(true)} className="gap-2 shrink-0">
-            <Plus className="w-4 h-4" /> Nova Loja
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" onClick={() => navigate("/admin/master")} className="gap-2">
+              <BarChart3 className="w-4 h-4" /> Dashboard Global
+            </Button>
+            <Button variant="secondary" onClick={() => setAiCreateOpen(true)} className="gap-2">
+              <Sparkles className="w-4 h-4" /> Criar com IA
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" /> Nova Loja
+            </Button>
+          </div>
         )}
       </div>
 
@@ -406,18 +490,22 @@ export default function AdminStoreSelector() {
 
                 {/* Stats */}
                 {isMaster && summary && (
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border">
-                    <div className="text-center">
-                      <div className="text-sm font-bold">{summary.orderCount}</div>
-                      <div className="text-[10px] text-muted-foreground">Pedidos</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm font-bold">{summary.productCount}</div>
-                      <div className="text-[10px] text-muted-foreground">Produtos</div>
-                    </div>
-                    <div className="text-center">
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px]">{summary.planName}</Badge>
+                      {store.segment && <Badge variant="secondary" className="text-[10px]">{store.segment}</Badge>}
+                      {store.suspended && <Badge variant="destructive" className="text-[10px]">Suspensa</Badge>}
                       <Badge variant={store.active ? "default" : "secondary"} className="text-[10px]">{store.active ? "Ativa" : "Inativa"}</Badge>
-                      <div className="text-[10px] text-muted-foreground">Status</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center">
+                        <div className="text-sm font-bold">{summary.orderCount}</div>
+                        <div className="text-[10px] text-muted-foreground">Pedidos</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-bold">{summary.productCount}</div>
+                        <div className="text-[10px] text-muted-foreground">Produtos</div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -504,6 +592,19 @@ export default function AdminStoreSelector() {
                 onChange={(e) => setNewStoreDomain(e.target.value)}
                 placeholder="www.minhaloja.com.br"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Segmento</Label>
+              <Input value={newStoreSegment} onChange={(e) => setNewStoreSegment(e.target.value)} placeholder="construção, moda, bebidas..." />
+            </div>
+            <div className="space-y-2">
+              <Label>Plano</Label>
+              <Select value={newStorePlan} onValueChange={setNewStorePlan}>
+                <SelectTrigger><SelectValue placeholder="Selecione um plano" /></SelectTrigger>
+                <SelectContent>
+                  {plans.map((p) => (<SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -666,6 +767,53 @@ export default function AdminStoreSelector() {
             </Button>
             <Button onClick={handleSavePermissions} disabled={savingPerm}>
               {savingPerm ? "Salvando..." : "Salvar Permissões"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Create Store Dialog */}
+      <Dialog open={aiCreateOpen} onOpenChange={setAiCreateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /> Criar Loja com IA</DialogTitle>
+            <DialogDescription>A IA vai gerar categorias, produtos e tema automaticamente.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Nome da loja</Label>
+              <Input value={aiName} onChange={(e) => setAiName(e.target.value)} placeholder="Bruna Atacadista" />
+            </div>
+            <div className="space-y-2">
+              <Label>Segmento / Nicho</Label>
+              <Input value={aiSegment} onChange={(e) => setAiSegment(e.target.value)} placeholder="moda feminina, construção, bebidas..." />
+            </div>
+            <div className="space-y-2">
+              <Label>Estilo</Label>
+              <Select value={aiStyle} onValueChange={setAiStyle}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="moderno">Moderno</SelectItem>
+                  <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="popular">Popular</SelectItem>
+                  <SelectItem value="atacado">Atacado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Plano</Label>
+              <Select value={aiPlanSlug} onValueChange={setAiPlanSlug}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {plans.map((p) => (<SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAiCreateOpen(false)}>Cancelar</Button>
+            <Button onClick={handleAiCreateStore} disabled={aiCreating} className="gap-2">
+              {aiCreating ? "Gerando com IA..." : <><Sparkles className="w-4 h-4" /> Criar Loja</>}
             </Button>
           </DialogFooter>
         </DialogContent>

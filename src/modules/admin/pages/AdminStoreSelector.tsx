@@ -103,7 +103,19 @@ export default function AdminStoreSelector() {
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreSlug, setNewStoreSlug] = useState("");
   const [newStoreDomain, setNewStoreDomain] = useState("");
+  const [newStorePlan, setNewStorePlan] = useState("");
+  const [newStoreSegment, setNewStoreSegment] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // AI Creation
+  const [aiCreateOpen, setAiCreateOpen] = useState(false);
+  const [aiName, setAiName] = useState("");
+  const [aiSegment, setAiSegment] = useState("");
+  const [aiStyle, setAiStyle] = useState("moderno");
+  const [aiPlanSlug, setAiPlanSlug] = useState("basico");
+  const [aiCreating, setAiCreating] = useState(false);
+
+  const [plans, setPlans] = useState<PlanRow[]>([]);
 
   const [seoOpen, setSeoOpen] = useState(false);
   const [seoStoreId, setSeoStoreId] = useState<string | null>(null);

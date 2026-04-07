@@ -408,9 +408,17 @@ export default function AdminStoreSelector() {
           </p>
         </div>
         {isMaster && (
-          <Button onClick={() => setCreateOpen(true)} className="gap-2 shrink-0">
-            <Plus className="w-4 h-4" /> Nova Loja
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" onClick={() => navigate("/admin/master")} className="gap-2">
+              <BarChart3 className="w-4 h-4" /> Dashboard Global
+            </Button>
+            <Button variant="secondary" onClick={() => setAiCreateOpen(true)} className="gap-2">
+              <Sparkles className="w-4 h-4" /> Criar com IA
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" /> Nova Loja
+            </Button>
+          </div>
         )}
       </div>
 

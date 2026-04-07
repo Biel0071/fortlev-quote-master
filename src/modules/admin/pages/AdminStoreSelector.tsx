@@ -490,18 +490,22 @@ export default function AdminStoreSelector() {
 
                 {/* Stats */}
                 {isMaster && summary && (
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border">
-                    <div className="text-center">
-                      <div className="text-sm font-bold">{summary.orderCount}</div>
-                      <div className="text-[10px] text-muted-foreground">Pedidos</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm font-bold">{summary.productCount}</div>
-                      <div className="text-[10px] text-muted-foreground">Produtos</div>
-                    </div>
-                    <div className="text-center">
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px]">{summary.planName}</Badge>
+                      {store.segment && <Badge variant="secondary" className="text-[10px]">{store.segment}</Badge>}
+                      {store.suspended && <Badge variant="destructive" className="text-[10px]">Suspensa</Badge>}
                       <Badge variant={store.active ? "default" : "secondary"} className="text-[10px]">{store.active ? "Ativa" : "Inativa"}</Badge>
-                      <div className="text-[10px] text-muted-foreground">Status</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center">
+                        <div className="text-sm font-bold">{summary.orderCount}</div>
+                        <div className="text-[10px] text-muted-foreground">Pedidos</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-bold">{summary.productCount}</div>
+                        <div className="text-[10px] text-muted-foreground">Produtos</div>
+                      </div>
                     </div>
                   </div>
                 )}

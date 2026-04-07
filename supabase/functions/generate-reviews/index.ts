@@ -639,37 +639,42 @@ serve(async (req) => {
 
 async function recalcRatingSummary(supa: any, productId: string) {
   try {
-    const { data: reviews } = await supa
-      .from("product_reviews")
-      .select("rating")
-      .eq("product_id", productId)
-      .eq("approved", true);
+    await supa.rpc("recalculate_rating_summary", { _product_id: productId });
+  } catch {
+    // Fallback to manual calc
+    try {
+      const { data: reviews } = await supa
+        .from("product_reviews")
+        .select("rating")
+        .eq("product_id", productId)
+        .eq("approved", true);
 
-    if (!reviews?.length) {
+      if (!reviews?.length) {
+        await supa.from("product_rating_summary").upsert({
+          product_id: productId,
+          average_rating: 0, total_reviews: 0,
+          rating_1: 0, rating_2: 0, rating_3: 0, rating_4: 0, rating_5: 0,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "product_id" });
+        return;
+      }
+
+      const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
+      let sum = 0;
+      for (const r of reviews) {
+        const rating = Math.max(1, Math.min(5, r.rating));
+        counts[rating]++;
+        sum += rating;
+      }
+
       await supa.from("product_rating_summary").upsert({
         product_id: productId,
-        average_rating: 0, total_reviews: 0,
-        rating_1: 0, rating_2: 0, rating_3: 0, rating_4: 0, rating_5: 0,
+        average_rating: +(sum / reviews.length).toFixed(2),
+        total_reviews: reviews.length,
+        rating_1: counts[1], rating_2: counts[2], rating_3: counts[3],
+        rating_4: counts[4], rating_5: counts[5],
         updated_at: new Date().toISOString(),
       }, { onConflict: "product_id" });
-      return;
-    }
-
-    const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
-    let sum = 0;
-    for (const r of reviews) {
-      const rating = Math.max(1, Math.min(5, r.rating));
-      counts[rating]++;
-      sum += rating;
-    }
-
-    await supa.from("product_rating_summary").upsert({
-      product_id: productId,
-      average_rating: +(sum / reviews.length).toFixed(2),
-      total_reviews: reviews.length,
-      rating_1: counts[1], rating_2: counts[2], rating_3: counts[3],
-      rating_4: counts[4], rating_5: counts[5],
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "product_id" });
-  } catch { /* best-effort */ }
+    } catch { /* best-effort */ }
+  }
 }

@@ -179,6 +179,7 @@ serve(async (req) => {
 
       // Pick top N products to process this run
       const selected = scored.slice(0, MAX_PRODUCTS_PER_RUN);
+      console.log(`[engine] Scored: ${scored.length}, Selected: ${selected.length}, Top scores: ${selected.slice(0,3).map(s => `${s.name}(rc=${s.reviewCount},s=${s.score.toFixed(1)})`).join(', ')}`);
       if (!selected.length) {
         return new Response(JSON.stringify({ ok: true, skipped: true, reason: "No eligible products" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }

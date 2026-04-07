@@ -3,12 +3,18 @@ import { X, ChevronUp, Download, Smartphone, MessageCircle } from "lucide-react"
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { AppDownloadConfirmDialog } from "./AppDownloadConfirmDialog";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/contexts/StoreContext";
 
 const DISMISS_KEY = "APP_BANNER_DISMISSED_AT";
 const DOWNLOAD_CLICKED_KEY = "app_download_clicked";
 const REEXPAND_MS = 15_000;
 
-function getDownloadUrl() {
+function getDownloadUrl(storeId: string | null) {
+  // Always use current domain origin for multi-store support
+  const base = `${window.location.origin}/functions/v1/download-app`;
+  if (storeId) return `${base}?store_id=${storeId}`;
+
+  // Fallback: use Supabase project URL directly
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
   if (!projectId) return null;
   return `https://${projectId}.supabase.co/functions/v1/download-app`;
@@ -18,7 +24,8 @@ export function AppDownloadBanner() {
   const [mode, setMode] = useState<"full" | "compact">("full");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [downloadClicked, setDownloadClicked] = useState(false);
-  const appUrl = getDownloadUrl();
+  const { activeStoreId } = useStore();
+  const appUrl = getDownloadUrl(activeStoreId);
   const contact = useStoreContact();
   const waLink = contact.phoneDigits
     ? `https://wa.me/55${contact.phoneDigits}`

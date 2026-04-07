@@ -593,6 +593,19 @@ export default function AdminStoreSelector() {
                 placeholder="www.minhaloja.com.br"
               />
             </div>
+            <div className="space-y-2">
+              <Label>Segmento</Label>
+              <Input value={newStoreSegment} onChange={(e) => setNewStoreSegment(e.target.value)} placeholder="construção, moda, bebidas..." />
+            </div>
+            <div className="space-y-2">
+              <Label>Plano</Label>
+              <Select value={newStorePlan} onValueChange={setNewStorePlan}>
+                <SelectTrigger><SelectValue placeholder="Selecione um plano" /></SelectTrigger>
+                <SelectContent>
+                  {plans.map((p) => (<SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
@@ -754,6 +767,53 @@ export default function AdminStoreSelector() {
             </Button>
             <Button onClick={handleSavePermissions} disabled={savingPerm}>
               {savingPerm ? "Salvando..." : "Salvar Permissões"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Create Store Dialog */}
+      <Dialog open={aiCreateOpen} onOpenChange={setAiCreateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /> Criar Loja com IA</DialogTitle>
+            <DialogDescription>A IA vai gerar categorias, produtos e tema automaticamente.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Nome da loja</Label>
+              <Input value={aiName} onChange={(e) => setAiName(e.target.value)} placeholder="Bruna Atacadista" />
+            </div>
+            <div className="space-y-2">
+              <Label>Segmento / Nicho</Label>
+              <Input value={aiSegment} onChange={(e) => setAiSegment(e.target.value)} placeholder="moda feminina, construção, bebidas..." />
+            </div>
+            <div className="space-y-2">
+              <Label>Estilo</Label>
+              <Select value={aiStyle} onValueChange={setAiStyle}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="moderno">Moderno</SelectItem>
+                  <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="popular">Popular</SelectItem>
+                  <SelectItem value="atacado">Atacado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Plano</Label>
+              <Select value={aiPlanSlug} onValueChange={setAiPlanSlug}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {plans.map((p) => (<SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAiCreateOpen(false)}>Cancelar</Button>
+            <Button onClick={handleAiCreateStore} disabled={aiCreating} className="gap-2">
+              {aiCreating ? "Gerando com IA..." : <><Sparkles className="w-4 h-4" /> Criar Loja</>}
             </Button>
           </DialogFooter>
         </DialogContent>

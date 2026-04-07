@@ -274,6 +274,19 @@ Retorne APENAS um JSON array sem markdown:
     for (let idx = 0; idx < reviews.length; idx++) {
       const r = reviews[idx];
       const forcedRating = idx < ratings.length ? ratings[idx] : pickRating();
+      const contentStr = String(r.content || "").slice(0, 2000);
+
+      // Deduplication check
+      if (contentStr.length >= 20) {
+        const snippet = contentStr.slice(0, 60);
+        const { data: dupeCheck } = await supa
+          .from("product_reviews")
+          .select("id")
+          .eq("product_id", productId)
+          .ilike("content", `${snippet}%`)
+          .limit(1);
+        if (dupeCheck?.length) continue;
+      }
 
       const created = useDateDistribution ? pickReviewDate() : (() => {
         const daysAgo = Math.floor(Math.random() * 90);
@@ -288,7 +301,7 @@ Retorne APENAS um JSON array sem markdown:
         author_location: r.author_location ? String(r.author_location).slice(0, 80) : null,
         rating: Math.max(1, Math.min(5, forcedRating)),
         title: r.title ? String(r.title).slice(0, 200) : null,
-        content: String(r.content || "").slice(0, 2000),
+        content: contentStr,
         pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
         cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
         verified_purchase: r.verified_purchase ?? true,
@@ -626,37 +639,42 @@ serve(async (req) => {
 
 async function recalcRatingSummary(supa: any, productId: string) {
   try {
-    const { data: reviews } = await supa
-      .from("product_reviews")
-      .select("rating")
-      .eq("product_id", productId)
-      .eq("approved", true);
+    await supa.rpc("recalculate_rating_summary", { _product_id: productId });
+  } catch {
+    // Fallback to manual calc
+    try {
+      const { data: reviews } = await supa
+        .from("product_reviews")
+        .select("rating")
+        .eq("product_id", productId)
+        .eq("approved", true);
 
-    if (!reviews?.length) {
+      if (!reviews?.length) {
+        await supa.from("product_rating_summary").upsert({
+          product_id: productId,
+          average_rating: 0, total_reviews: 0,
+          rating_1: 0, rating_2: 0, rating_3: 0, rating_4: 0, rating_5: 0,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "product_id" });
+        return;
+      }
+
+      const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
+      let sum = 0;
+      for (const r of reviews) {
+        const rating = Math.max(1, Math.min(5, r.rating));
+        counts[rating]++;
+        sum += rating;
+      }
+
       await supa.from("product_rating_summary").upsert({
         product_id: productId,
-        average_rating: 0, total_reviews: 0,
-        rating_1: 0, rating_2: 0, rating_3: 0, rating_4: 0, rating_5: 0,
+        average_rating: +(sum / reviews.length).toFixed(2),
+        total_reviews: reviews.length,
+        rating_1: counts[1], rating_2: counts[2], rating_3: counts[3],
+        rating_4: counts[4], rating_5: counts[5],
         updated_at: new Date().toISOString(),
       }, { onConflict: "product_id" });
-      return;
-    }
-
-    const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
-    let sum = 0;
-    for (const r of reviews) {
-      const rating = Math.max(1, Math.min(5, r.rating));
-      counts[rating]++;
-      sum += rating;
-    }
-
-    await supa.from("product_rating_summary").upsert({
-      product_id: productId,
-      average_rating: +(sum / reviews.length).toFixed(2),
-      total_reviews: reviews.length,
-      rating_1: counts[1], rating_2: counts[2], rating_3: counts[3],
-      rating_4: counts[4], rating_5: counts[5],
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "product_id" });
-  } catch { /* best-effort */ }
+    } catch { /* best-effort */ }
+  }
 }

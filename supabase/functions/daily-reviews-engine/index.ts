@@ -21,7 +21,6 @@ function pickRating(): number {
 
 const MAX_TOTAL_PER_PRODUCT = 150;
 
-/* ---------- Pick a realistic timestamp for today within start/end hours ---------- */
 function pickTodayTimestamp(startHour: number, endHour: number): Date {
   const now = new Date();
   const hour = startHour + Math.random() * (endHour - startHour);
@@ -29,7 +28,6 @@ function pickTodayTimestamp(startHour: number, endHour: number): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(hour), minute, Math.floor(Math.random() * 60));
 }
 
-/* ---------- Get pool/product images ---------- */
 async function getAvailableImages(supa: any, supabaseUrl: string, productId: string) {
   const [poolRes, prodRes] = await Promise.all([
     supa.from("review_image_pool").select("id, image_url, usage_count").eq("product_id", productId).order("usage_count", { ascending: true }).limit(30),
@@ -56,22 +54,48 @@ async function incrementUsage(supa: any, id: string, source: "pool" | "product")
   } catch { /* best-effort */ }
 }
 
+/* ---------- Deduplication: check if similar content already exists ---------- */
+async function isDuplicate(supa: any, productId: string, content: string): Promise<boolean> {
+  if (!content || content.length < 20) return false;
+  const snippet = content.slice(0, 60);
+  const { data } = await supa
+    .from("product_reviews")
+    .select("id")
+    .eq("product_id", productId)
+    .ilike("content", `${snippet}%`)
+    .limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
 /* ---------- Recalc rating summary ---------- */
 async function recalcRatingSummary(supa: any, productId: string) {
   try {
-    const { data: reviews } = await supa.from("product_reviews").select("rating").eq("product_id", productId).eq("approved", true);
-    if (!reviews?.length) return;
-    const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    let sum = 0;
-    for (const r of reviews) { const rt = Math.max(1, Math.min(5, r.rating)); counts[rt]++; sum += rt; }
-    await supa.from("product_rating_summary").upsert({
-      product_id: productId,
-      average_rating: +(sum / reviews.length).toFixed(2),
-      total_reviews: reviews.length,
-      rating_1: counts[1], rating_2: counts[2], rating_3: counts[3], rating_4: counts[4], rating_5: counts[5],
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "product_id" });
-  } catch { /* best-effort */ }
+    // Use the DB function for atomicity
+    await supa.rpc("recalculate_rating_summary", { _product_id: productId });
+  } catch {
+    // Fallback to manual calc
+    try {
+      const { data: reviews } = await supa.from("product_reviews").select("rating").eq("product_id", productId).eq("approved", true);
+      if (!reviews?.length) {
+        await supa.from("product_rating_summary").upsert({
+          product_id: productId, average_rating: 0, total_reviews: 0,
+          rating_1: 0, rating_2: 0, rating_3: 0, rating_4: 0, rating_5: 0,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "product_id" });
+        return;
+      }
+      const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      let sum = 0;
+      for (const r of reviews) { const rt = Math.max(1, Math.min(5, r.rating)); counts[rt]++; sum += rt; }
+      await supa.from("product_rating_summary").upsert({
+        product_id: productId,
+        average_rating: +(sum / reviews.length).toFixed(2),
+        total_reviews: reviews.length,
+        rating_1: counts[1], rating_2: counts[2], rating_3: counts[3], rating_4: counts[4], rating_5: counts[5],
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "product_id" });
+    } catch { /* best-effort */ }
+  }
 }
 
 /* ---------- Main ---------- */
@@ -91,9 +115,7 @@ serve(async (req) => {
     try { body = await req.json(); } catch { /* empty body ok for cron */ }
     const action = String(body?.action ?? "run");
 
-    /* ============================================================ */
-    /*  GET CONFIG                                                   */
-    /* ============================================================ */
+    /* GET CONFIG */
     if (action === "get_config") {
       const { data } = await supa.from("reviews_daily_engine").select("*").limit(1).single();
       return new Response(JSON.stringify({ ok: true, config: data }), {
@@ -101,9 +123,7 @@ serve(async (req) => {
       });
     }
 
-    /* ============================================================ */
-    /*  UPDATE CONFIG                                                */
-    /* ============================================================ */
+    /* UPDATE CONFIG */
     if (action === "update_config") {
       const updates: any = {};
       if (body.enabled !== undefined) updates.enabled = Boolean(body.enabled);
@@ -125,9 +145,7 @@ serve(async (req) => {
       });
     }
 
-    /* ============================================================ */
-    /*  GET HISTORY                                                  */
-    /* ============================================================ */
+    /* HISTORY */
     if (action === "history") {
       const { data } = await supa.from("reviews_daily_runs").select("*").order("created_at", { ascending: false }).limit(30);
       return new Response(JSON.stringify({ ok: true, runs: data ?? [] }), {
@@ -135,9 +153,24 @@ serve(async (req) => {
       });
     }
 
-    /* ============================================================ */
-    /*  RUN - the main daily engine                                  */
-    /* ============================================================ */
+    /* SYNC ALL - recalculate all rating summaries */
+    if (action === "sync_all") {
+      const { data: productIds } = await supa
+        .from("product_reviews")
+        .select("product_id")
+        .eq("approved", true);
+
+      const uniqueIds = [...new Set((productIds ?? []).map((r: any) => r.product_id))];
+      for (const pid of uniqueIds) {
+        await recalcRatingSummary(supa, pid);
+      }
+
+      return new Response(JSON.stringify({ ok: true, synced: uniqueIds.length }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    /* RUN - the main daily engine */
     if (action === "run") {
       // 1. Get config
       const { data: config } = await supa.from("reviews_daily_engine").select("*").limit(1).single();
@@ -156,7 +189,7 @@ serve(async (req) => {
         });
       }
 
-      // 3. Calculate today's target (random between min and max)
+      // 3. Calculate today's target
       const minR = config.min_reviews_per_day ?? 5;
       const maxR = config.max_reviews_per_day ?? 40;
       const todayTarget = Math.floor(Math.random() * (maxR - minR + 1)) + minR;
@@ -180,14 +213,14 @@ serve(async (req) => {
         });
       }
 
-      // Get review counts per product
+      // Get review counts per product in batch
       const productReviewCounts: Record<string, number> = {};
       for (const p of products) {
         const { count } = await supa.from("product_reviews").select("id", { count: "exact", head: true }).eq("product_id", p.id);
         productReviewCounts[p.id] = count ?? 0;
       }
 
-      // Filter out products at 150 limit
+      // Filter out products at limit
       const eligible = products.filter((p: any) => (productReviewCounts[p.id] ?? 0) < MAX_TOTAL_PER_PRODUCT);
       if (!eligible.length) {
         await supa.from("reviews_daily_runs").insert({ run_date: today, target_count: todayTarget, status: "completed", error_message: "All products at limit" });
@@ -196,29 +229,24 @@ serve(async (req) => {
         });
       }
 
-      // 5. Score products for selection priority
-      // Prioritize: few reviews, popular, recent
+      // 5. Score products
       const scored = eligible.map((p: any) => {
         const reviewCount = productReviewCounts[p.id] ?? 0;
         let score = 0;
-        // Fewer reviews = higher priority
         if (reviewCount < 5) score += 10;
         else if (reviewCount < 15) score += 7;
         else if (reviewCount < 30) score += 4;
         else score += 1;
-        // Popularity
         if (p.featured) score += 3;
         if (p.best_seller) score += 3;
         if ((p.views ?? 0) > 50) score += 2;
-        if ((p.price ?? 0) > 200) score += 1;
-        // Add randomness
         score += Math.random() * 5;
         return { ...p, score, reviewCount };
       });
 
       scored.sort((a: any, b: any) => b.score - a.score);
 
-      // 6. Distribute reviews across products (max maxPerProduct each)
+      // 6. Distribute reviews
       const assignments: { product: any; count: number }[] = [];
       let remaining = todayTarget;
 
@@ -238,109 +266,113 @@ serve(async (req) => {
         });
       }
 
-      // 7. Generate reviews with AI in batches
+      // 7. Generate reviews
       let totalCreated = 0;
       let totalImages = 0;
+      let totalDuplicatesSkipped = 0;
       const productsCovered = new Set<string>();
-      const BATCH = 5;
 
-      for (let i = 0; i < assignments.length; i += BATCH) {
-        const batch = assignments.slice(i, i + BATCH);
-        
-        for (const { product, count } of batch) {
-          const ratings = Array.from({ length: count }, () => pickRating());
-          const ratingHint = ratings.map((r, idx) => `Review ${idx + 1}: ${r} estrelas`).join("\n");
+      for (const { product, count } of assignments) {
+        const ratings = Array.from({ length: count }, () => pickRating());
+        const ratingHint = ratings.map((r, idx) => `Review ${idx + 1}: ${r} estrelas`).join("\n");
 
-          const prompt = `Você é um gerador de avaliações realistas de clientes para uma loja de materiais de construção brasileira.
+        const prompt = `Você é um gerador de avaliações realistas de clientes para uma loja de materiais de construção brasileira.
 
 Produto: ${product.name}
 Categoria: ${product.category || "Geral"}
 Preço: R$ ${product.price}
 Unidade: ${product.unit || "un"}
 
-Gere exatamente ${count} avaliações REALISTAS. Cada uma DEVE seguir a nota indicada:
+Gere exatamente ${count} avaliações ÚNICAS e REALISTAS. Cada uma DEVE seguir a nota indicada:
 ${ratingHint}
 
 Regras:
 - Use EXATAMENTE as notas acima para cada review na ordem
-- Nomes brasileiros diversos: João, Marcos, Carlos, Rafael, Juliana, Fernanda, Camila, André, Paulo, Ana, Maria, Pedro, Lucas, Beatriz, Renato, Patrícia, Roberto, Michele, Thiago, Aline
-- Cidades variadas: São Paulo-SP, Rio de Janeiro-RJ, Belo Horizonte-MG, Salvador-BA, Curitiba-PR, Recife-PE, Fortaleza-CE, Goiânia-GO, Porto Alegre-RS, Manaus-AM, Brasília-DF, Campinas-SP
-- Variar comprimento: 30% curtos (1-2 frases), 50% médios (3-5 frases), 20% detalhados (6+ frases)
-- Reviews de 1-2 estrelas: reclamações realistas
-- Reviews de 3 estrelas: neutras
-- Reviews de 4-5 estrelas: positivas e específicas
+- Nomes brasileiros diversos (nunca repita nomes usados antes)
+- Cidades variadas do Brasil
+- Variar comprimento: 30% curtos (1-2 frases), 50% médios (3-5 frases), 20% detalhados
+- Reviews de 1-2★: reclamações realistas (demora, defeito, tamanho errado)
+- Reviews de 3★: neutras (ok mas com ressalvas)
+- Reviews de 4-5★: positivas e específicas sobre o produto
 - Linguagem natural, coloquial brasileira
+- NUNCA repetir frases ou estruturas entre reviews
 
 Retorne APENAS um JSON array:
 [{"author_name":"Nome","author_location":"Cidade - UF","rating":5,"title":"Título","content":"Texto...","pros":"positivo ou null","cons":"negativo ou null"}]`;
 
-          try {
-            const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-              method: "POST",
-              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ model: "google/gemini-2.5-flash", messages: [{ role: "user", content: prompt }] }),
-            });
+        try {
+          const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "google/gemini-2.5-flash", messages: [{ role: "user", content: prompt }] }),
+          });
 
-            if (!aiResp.ok) {
-              if (aiResp.status === 429) { await delay(5000); continue; }
-              await aiResp.text();
+          if (!aiResp.ok) {
+            if (aiResp.status === 429) { await delay(5000); continue; }
+            await aiResp.text();
+            continue;
+          }
+
+          const aiData = await aiResp.json();
+          const raw = aiData.choices?.[0]?.message?.content ?? "[]";
+          const match = raw.match(/\[[\s\S]*\]/);
+          if (!match) continue;
+
+          let reviews: any[];
+          try { reviews = JSON.parse(match[0]); } catch { continue; }
+
+          const availableImages = await getAvailableImages(supa, SUPABASE_URL, product.id);
+          let imgIdx = 0;
+
+          for (let idx = 0; idx < reviews.length; idx++) {
+            const r = reviews[idx];
+            const content = String(r.content || "").slice(0, 2000);
+
+            // Deduplication check
+            if (await isDuplicate(supa, product.id, content)) {
+              totalDuplicatesSkipped++;
               continue;
             }
 
-            const aiData = await aiResp.json();
-            const raw = aiData.choices?.[0]?.message?.content ?? "[]";
-            const match = raw.match(/\[[\s\S]*\]/);
-            if (!match) continue;
+            const timestamp = pickTodayTimestamp(startHour, endHour);
+            const shouldImage = availableImages.length > 0 && Math.random() < imageChance;
 
-            let reviews: any[];
-            try { reviews = JSON.parse(match[0]); } catch { continue; }
+            const row = {
+              product_id: product.id,
+              author_name: String(r.author_name || "Cliente").slice(0, 100),
+              author_location: r.author_location ? String(r.author_location).slice(0, 80) : null,
+              rating: Math.max(1, Math.min(5, idx < ratings.length ? ratings[idx] : pickRating())),
+              title: r.title ? String(r.title).slice(0, 200) : null,
+              content,
+              pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
+              cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
+              verified_purchase: true,
+              approved: true,
+              origin: "ai_generated",
+              created_at: timestamp.toISOString(),
+            };
 
-            // Get images for this product
-            const availableImages = await getAvailableImages(supa, SUPABASE_URL, product.id);
-            let imgIdx = 0;
+            const { data: inserted, error: insertErr } = await supa.from("product_reviews").insert(row).select("id").single();
+            if (insertErr || !inserted) continue;
+            totalCreated++;
+            productsCovered.add(product.id);
 
-            for (let idx = 0; idx < reviews.length; idx++) {
-              const r = reviews[idx];
-              const timestamp = pickTodayTimestamp(startHour, endHour);
-              const shouldImage = availableImages.length > 0 && Math.random() < imageChance;
-
-              const row = {
-                product_id: product.id,
-                author_name: String(r.author_name || "Cliente").slice(0, 100),
-                author_location: r.author_location ? String(r.author_location).slice(0, 80) : null,
-                rating: Math.max(1, Math.min(5, idx < ratings.length ? ratings[idx] : pickRating())),
-                title: r.title ? String(r.title).slice(0, 200) : null,
-                content: String(r.content || "").slice(0, 2000),
-                pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
-                cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
-                verified_purchase: true,
-                approved: true,
-                origin: "ai_generated",
-                created_at: timestamp.toISOString(),
-              };
-
-              const { data: inserted, error: insertErr } = await supa.from("product_reviews").insert(row).select("id").single();
-              if (insertErr || !inserted) continue;
-              totalCreated++;
-              productsCovered.add(product.id);
-
-              if (shouldImage) {
-                const img = availableImages[imgIdx % availableImages.length];
-                imgIdx++;
-                await supa.from("review_images").insert({ review_id: inserted.id, image_url: img.url, sort_order: 0 });
-                await incrementUsage(supa, img.id, img.source);
-                totalImages++;
-              }
+            if (shouldImage) {
+              const img = availableImages[imgIdx % availableImages.length];
+              imgIdx++;
+              await supa.from("review_images").insert({ review_id: inserted.id, image_url: img.url, sort_order: 0 });
+              await incrementUsage(supa, img.id, img.source);
+              totalImages++;
             }
-          } catch (e) {
-            console.error(`Error generating for ${product.name}:`, e);
           }
+        } catch (e) {
+          console.error(`Error generating for ${product.name}:`, e);
         }
 
-        if (i + BATCH < assignments.length) await delay(1000);
+        await delay(500);
       }
 
-      // 8. Recalc ratings for covered products
+      // 8. Recalc ratings for ALL covered products
       for (const pid of productsCovered) {
         await recalcRatingSummary(supa, pid);
       }
@@ -359,8 +391,8 @@ Retorne APENAS um JSON array:
         level: "info",
         event_type: "daily_review_engine",
         source: "daily-reviews-engine",
-        message: `Engine diária: ${totalCreated} reviews (${totalImages} imgs) para ${productsCovered.size} produtos (meta: ${todayTarget})`,
-        metadata: { reviews_generated: totalCreated, images_attached: totalImages, products_covered: productsCovered.size, target: todayTarget },
+        message: `Engine diária: ${totalCreated} reviews (${totalImages} imgs) para ${productsCovered.size} produtos (meta: ${todayTarget}, dupes: ${totalDuplicatesSkipped})`,
+        metadata: { reviews_generated: totalCreated, images_attached: totalImages, products_covered: productsCovered.size, target: todayTarget, duplicates_skipped: totalDuplicatesSkipped },
       });
 
       return new Response(JSON.stringify({
@@ -369,6 +401,7 @@ Retorne APENAS um JSON array:
         images_attached: totalImages,
         products_covered: productsCovered.size,
         target_count: todayTarget,
+        duplicates_skipped: totalDuplicatesSkipped,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

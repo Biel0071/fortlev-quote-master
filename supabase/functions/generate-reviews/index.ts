@@ -274,6 +274,19 @@ Retorne APENAS um JSON array sem markdown:
     for (let idx = 0; idx < reviews.length; idx++) {
       const r = reviews[idx];
       const forcedRating = idx < ratings.length ? ratings[idx] : pickRating();
+      const contentStr = String(r.content || "").slice(0, 2000);
+
+      // Deduplication check
+      if (contentStr.length >= 20) {
+        const snippet = contentStr.slice(0, 60);
+        const { data: dupeCheck } = await supa
+          .from("product_reviews")
+          .select("id")
+          .eq("product_id", productId)
+          .ilike("content", `${snippet}%`)
+          .limit(1);
+        if (dupeCheck?.length) continue;
+      }
 
       const created = useDateDistribution ? pickReviewDate() : (() => {
         const daysAgo = Math.floor(Math.random() * 90);
@@ -288,7 +301,7 @@ Retorne APENAS um JSON array sem markdown:
         author_location: r.author_location ? String(r.author_location).slice(0, 80) : null,
         rating: Math.max(1, Math.min(5, forcedRating)),
         title: r.title ? String(r.title).slice(0, 200) : null,
-        content: String(r.content || "").slice(0, 2000),
+        content: contentStr,
         pros: r.pros && r.pros !== "null" ? String(r.pros).slice(0, 500) : null,
         cons: r.cons && r.cons !== "null" ? String(r.cons).slice(0, 500) : null,
         verified_purchase: r.verified_purchase ?? true,

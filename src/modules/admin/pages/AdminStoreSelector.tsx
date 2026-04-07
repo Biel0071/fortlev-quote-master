@@ -224,27 +224,67 @@ export default function AdminStoreSelector() {
       return;
     }
     setCreating(true);
+    const planObj = plans.find((p) => p.slug === newStorePlan);
     const { data: newStore, error } = await cloud.from("stores").insert({
       name: newStoreName.trim(),
       slug: newStoreSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, ""),
       active: true,
       domain: newStoreDomain.trim() || null,
+      segment: newStoreSegment.trim() || null,
+      plan_id: planObj?.id ?? null,
     }).select("id").single();
     if (error) {
       toast.error("Erro ao criar loja: " + error.message);
     } else {
-      // Initialize default permissions for the new store
       if (newStore?.id) {
-        await cloud.rpc("init_store_permissions", { _store_id: newStore.id });
+        if (planObj) {
+          await cloud.rpc("apply_plan_permissions", { _store_id: newStore.id, _plan_id: planObj.id });
+        } else {
+          await cloud.rpc("init_store_permissions", { _store_id: newStore.id });
+        }
       }
       toast.success("Loja criada com sucesso!");
       setCreateOpen(false);
       setNewStoreName("");
       setNewStoreSlug("");
       setNewStoreDomain("");
+      setNewStorePlan("");
+      setNewStoreSegment("");
       loadStores();
     }
     setCreating(false);
+  };
+
+  // --- AI Create Store ---
+  const handleAiCreateStore = async () => {
+    if (!aiName.trim() || !aiSegment.trim()) {
+      toast.error("Nome e segmento são obrigatórios");
+      return;
+    }
+    setAiCreating(true);
+    try {
+      const { data, error } = await cloud.functions.invoke("ai-create-store", {
+        body: {
+          name: aiName.trim(),
+          segment: aiSegment.trim(),
+          style: aiStyle,
+          plan_slug: aiPlanSlug,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(
+        `Loja criada! ${data.categories_created} categorias e ${data.products_created} produtos gerados.`
+      );
+      setAiCreateOpen(false);
+      setAiName("");
+      setAiSegment("");
+      loadStores();
+    } catch (e: any) {
+      toast.error("Erro ao criar loja com IA: " + (e.message ?? "Erro desconhecido"));
+    } finally {
+      setAiCreating(false);
+    }
   };
 
   // --- SEO ---

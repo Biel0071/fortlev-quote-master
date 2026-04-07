@@ -218,7 +218,7 @@ Retorne APENAS JSON array:
             body: JSON.stringify({ model: "google/gemini-2.5-flash-lite", messages: [{ role: "user", content: prompt }] }),
           });
 
-          if (!aiResp.ok) { await aiResp.text(); continue; }
+          if (!aiResp.ok) { const errText = await aiResp.text(); console.error(`[engine] AI error ${aiResp.status} for ${product.name}: ${errText.slice(0,200)}`); continue; }
 
           const aiData = await aiResp.json();
           const raw = aiData.choices?.[0]?.message?.content ?? "[]";

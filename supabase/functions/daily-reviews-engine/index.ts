@@ -136,26 +136,24 @@ serve(async (req) => {
       const endHour = config.end_hour ?? 22;
       const imageChance = (config.image_percentage ?? 10) / 100;
 
-      // Get review counts per product using a single aggregation query
-      const { data: reviewCounts } = await supa.rpc("recalculate_rating_summary" as any, {} as any).throwOnError().then(() => null).catch(() => null) ?? { data: null };
-
-      // Get products that have room for more reviews (use summary table for speed)
+      // Get review counts from summary table for products that already have reviews
       const { data: summaries } = await supa
         .from("product_rating_summary")
         .select("product_id, total_reviews")
         .lt("total_reviews", MAX_TOTAL_PER_PRODUCT);
 
-      const productsWithReviews = new Set((summaries ?? []).map((s: any) => s.product_id));
       const reviewCountMap: Record<string, number> = {};
       for (const s of (summaries ?? [])) reviewCountMap[s.product_id] = s.total_reviews;
 
-      // Get a sample of active products, prioritizing those with fewer reviews
+      // Get a sample of active products
       const { data: products } = await supa
         .from("store_products")
         .select("id, name, category, description, price, unit, featured, best_seller")
         .eq("active", true)
         .eq("status", "published")
         .limit(200);
+
+      console.log(`[engine] Found ${products?.length ?? 0} products, ${summaries?.length ?? 0} with summaries`);
 
       if (!products?.length) {
         return new Response(JSON.stringify({ ok: true, skipped: true, reason: "No products" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

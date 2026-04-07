@@ -153,6 +153,7 @@ export default function AdminStoreSelector() {
     ]);
 
     const allPlans = (plansData as PlanRow[]) ?? [];
+    setPlans(allPlans);
 
     let available = (data as StoreRow[]) ?? [];
 

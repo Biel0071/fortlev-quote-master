@@ -2411,6 +2411,53 @@ export type Database = {
         }
         Relationships: []
       }
+      store_apps: {
+        Row: {
+          active: boolean
+          app_name: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          store_id: string
+          updated_at: string
+          version: string | null
+        }
+        Insert: {
+          active?: boolean
+          app_name?: string
+          created_at?: string
+          file_name?: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          store_id: string
+          updated_at?: string
+          version?: string | null
+        }
+        Update: {
+          active?: boolean
+          app_name?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          store_id?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_apps_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_banners: {
         Row: {
           active: boolean

@@ -584,6 +584,7 @@ export type Database = {
         Row: {
           company_info_json: Json
           created_at: string
+          created_via_token: boolean
           customer_json: Json
           delivery_date: string
           discount: number
@@ -594,6 +595,7 @@ export type Database = {
           observations: string
           payment_method: string
           show_client_data: boolean
+          source_token_id: string | null
           status: string
           subtotal: number
           total: number
@@ -603,6 +605,7 @@ export type Database = {
         Insert: {
           company_info_json?: Json
           created_at?: string
+          created_via_token?: boolean
           customer_json?: Json
           delivery_date?: string
           discount?: number
@@ -613,6 +616,7 @@ export type Database = {
           observations?: string
           payment_method?: string
           show_client_data?: boolean
+          source_token_id?: string | null
           status?: string
           subtotal?: number
           total?: number
@@ -622,6 +626,7 @@ export type Database = {
         Update: {
           company_info_json?: Json
           created_at?: string
+          created_via_token?: boolean
           customer_json?: Json
           delivery_date?: string
           discount?: number
@@ -632,13 +637,22 @@ export type Database = {
           observations?: string
           payment_method?: string
           show_client_data?: boolean
+          source_token_id?: string | null
           status?: string
           subtotal?: number
           total?: number
           updated_at?: string
           validity?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "construction_quotations_source_token_id_fkey"
+            columns: ["source_token_id"]
+            isOneToOne: false
+            referencedRelation: "quotation_access_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cookie_consent: {
         Row: {
@@ -839,6 +853,7 @@ export type Database = {
           branding_json: Json | null
           company_info_json: Json
           created_at: string
+          created_via_token: boolean
           customer_json: Json
           delivery_time: string
           discount: number
@@ -849,6 +864,7 @@ export type Database = {
           observations: string
           payment_conditions_json: Json
           show_client_data: boolean
+          source_token_id: string | null
           status: string
           subtotal: number
           taxes_json: Json | null
@@ -860,6 +876,7 @@ export type Database = {
           branding_json?: Json | null
           company_info_json?: Json
           created_at?: string
+          created_via_token?: boolean
           customer_json?: Json
           delivery_time?: string
           discount?: number
@@ -870,6 +887,7 @@ export type Database = {
           observations?: string
           payment_conditions_json?: Json
           show_client_data?: boolean
+          source_token_id?: string | null
           status?: string
           subtotal?: number
           taxes_json?: Json | null
@@ -881,6 +899,7 @@ export type Database = {
           branding_json?: Json | null
           company_info_json?: Json
           created_at?: string
+          created_via_token?: boolean
           customer_json?: Json
           delivery_time?: string
           discount?: number
@@ -891,6 +910,7 @@ export type Database = {
           observations?: string
           payment_conditions_json?: Json
           show_client_data?: boolean
+          source_token_id?: string | null
           status?: string
           subtotal?: number
           taxes_json?: Json | null
@@ -898,7 +918,15 @@ export type Database = {
           updated_at?: string
           validity?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fortlev_quotations_source_token_id_fkey"
+            columns: ["source_token_id"]
+            isOneToOne: false
+            referencedRelation: "quotation_access_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       home_benefits: {
         Row: {
@@ -2046,6 +2074,62 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotation_access_tokens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          last_access_at: string | null
+          max_requests_per_hour: number
+          responsible_name: string | null
+          starts_at: string
+          status: string
+          store_id: string
+          token_hash: string
+          token_preview: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          id?: string
+          last_access_at?: string | null
+          max_requests_per_hour?: number
+          responsible_name?: string | null
+          starts_at?: string
+          status?: string
+          store_id: string
+          token_hash: string
+          token_preview: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          last_access_at?: string | null
+          max_requests_per_hour?: number
+          responsible_name?: string | null
+          starts_at?: string
+          status?: string
+          store_id?: string
+          token_hash?: string
+          token_preview?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_access_tokens_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -3406,6 +3490,60 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      token_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip: string | null
+          metadata: Json
+          quotation_id: string | null
+          quotation_type: string | null
+          store_id: string
+          token_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          metadata?: Json
+          quotation_id?: string | null
+          quotation_type?: string | null
+          store_id: string
+          token_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          metadata?: Json
+          quotation_id?: string | null
+          quotation_type?: string | null
+          store_id?: string
+          token_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "token_logs_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "quotation_access_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tracking_events: {
         Row: {

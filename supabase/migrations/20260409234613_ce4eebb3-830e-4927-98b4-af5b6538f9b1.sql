@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.validate_public_quotation_token(text, text, text, text);

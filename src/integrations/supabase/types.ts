@@ -4155,46 +4155,28 @@ export type Database = {
           ok: boolean
         }[]
       }
-      validate_public_quotation_token:
-        | {
-            Args: {
-              _access_scope?: string
-              _ip?: string
-              _raw_token: string
-              _user_agent?: string
-            }
-            Returns: {
-              access_scope: string
-              expires_at: string
-              max_uses: number
-              store_id: string
-              token_id: string
-              token_name: string
-              uses_count: number
-            }[]
-          }
-        | {
-            Args: {
-              _access_scope?: string
-              _device_hash?: string
-              _ip?: string
-              _raw_token: string
-              _store_slug?: string
-              _user_agent?: string
-            }
-            Returns: {
-              access_scope: string
-              device_bound: boolean
-              expires_at: string
-              is_first_access: boolean
-              max_uses: number
-              store_id: string
-              store_slug: string
-              token_id: string
-              token_name: string
-              uses_count: number
-            }[]
-          }
+      validate_public_quotation_token: {
+        Args: {
+          _access_scope?: string
+          _device_hash?: string
+          _ip?: string
+          _raw_token: string
+          _store_slug?: string
+          _user_agent?: string
+        }
+        Returns: {
+          access_scope: string
+          device_bound: boolean
+          expires_at: string
+          is_first_access: boolean
+          max_uses: number
+          store_id: string
+          store_slug: string
+          token_id: string
+          token_name: string
+          uses_count: number
+        }[]
+      }
     }
     Enums: {
       admin_role: "master" | "admin" | "operator" | "gerente" | "visualizador"

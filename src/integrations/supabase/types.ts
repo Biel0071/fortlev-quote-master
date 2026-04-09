@@ -2080,49 +2080,70 @@ export type Database = {
       }
       quotation_access_tokens: {
         Row: {
+          access_scope: string
           created_at: string
           created_by: string | null
           expires_at: string
           id: string
           last_access_at: string | null
           max_requests_per_hour: number
+          max_uses: number | null
+          name: string
           responsible_name: string | null
+          revoked_at: string | null
+          revoked_by: string | null
           starts_at: string
           status: string
           store_id: string
+          token: string | null
           token_hash: string
           token_preview: string
           updated_at: string
+          uses_count: number
         }
         Insert: {
+          access_scope?: string
           created_at?: string
           created_by?: string | null
           expires_at: string
           id?: string
           last_access_at?: string | null
           max_requests_per_hour?: number
+          max_uses?: number | null
+          name: string
           responsible_name?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           starts_at?: string
           status?: string
           store_id: string
+          token?: string | null
           token_hash: string
           token_preview: string
           updated_at?: string
+          uses_count?: number
         }
         Update: {
+          access_scope?: string
           created_at?: string
           created_by?: string | null
           expires_at?: string
           id?: string
           last_access_at?: string | null
           max_requests_per_hour?: number
+          max_uses?: number | null
+          name?: string
           responsible_name?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           starts_at?: string
           status?: string
           store_id?: string
+          token?: string | null
           token_hash?: string
           token_preview?: string
           updated_at?: string
+          uses_count?: number
         }
         Relationships: [
           {
@@ -3500,6 +3521,7 @@ export type Database = {
           metadata: Json
           quotation_id: string | null
           quotation_type: string | null
+          source: string | null
           store_id: string
           token_id: string
           user_agent: string | null
@@ -3512,6 +3534,7 @@ export type Database = {
           metadata?: Json
           quotation_id?: string | null
           quotation_type?: string | null
+          source?: string | null
           store_id: string
           token_id: string
           user_agent?: string | null
@@ -3524,6 +3547,7 @@ export type Database = {
           metadata?: Json
           quotation_id?: string | null
           quotation_type?: string | null
+          source?: string | null
           store_id?: string
           token_id?: string
           user_agent?: string | null
@@ -3973,6 +3997,30 @@ export type Database = {
         Returns: string
       }
       count_products_for_ai_generation: { Args: never; Returns: number }
+      create_quotation_access_token: {
+        Args: {
+          _access_scope: string
+          _expires_at: string
+          _max_uses?: number
+          _name: string
+          _raw_token: string
+          _starts_at?: string
+          _store_id: string
+        }
+        Returns: {
+          access_scope: string
+          created_at: string
+          expires_at: string
+          id: string
+          max_uses: number
+          name: string
+          starts_at: string
+          status: string
+          store_id: string
+          token_preview: string
+          uses_count: number
+        }[]
+      }
       create_store_order: {
         Args: {
           _address: string
@@ -4007,13 +4055,32 @@ export type Database = {
         }
         Returns: boolean
       }
+      hash_access_token: { Args: { _raw_token: string }; Returns: string }
       init_store_permissions: {
         Args: { _store_id: string }
         Returns: undefined
       }
       is_master: { Args: { _user_id: string }; Returns: boolean }
+      log_token_action: {
+        Args: {
+          _action: string
+          _ip?: string
+          _metadata?: Json
+          _quotation_id?: string
+          _quotation_type?: string
+          _raw_token: string
+          _source?: string
+          _store_id: string
+          _user_agent?: string
+        }
+        Returns: string
+      }
       recalculate_rating_summary: {
         Args: { _product_id: string }
+        Returns: undefined
+      }
+      revoke_quotation_access_token: {
+        Args: { _token_id: string }
         Returns: undefined
       }
       upsert_checkout_session: {
@@ -4063,6 +4130,23 @@ export type Database = {
           eligible_subtotal: number
           message: string
           ok: boolean
+        }[]
+      }
+      validate_public_quotation_token: {
+        Args: {
+          _access_scope?: string
+          _ip?: string
+          _raw_token: string
+          _user_agent?: string
+        }
+        Returns: {
+          access_scope: string
+          expires_at: string
+          max_uses: number
+          store_id: string
+          token_id: string
+          token_name: string
+          uses_count: number
         }[]
       }
     }

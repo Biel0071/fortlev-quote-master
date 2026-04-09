@@ -43,6 +43,7 @@ import {
   AdminDashboardQuotations,
   AdminQuotations,
   AdminQuotationsOverview,
+  AdminQuotationTokens,
   AdminBulkImageSearch,
   AdminStoreSelector,
   AdminProductsImport,
@@ -77,6 +78,7 @@ import SignupPage from "./pages/auth/SignupPage";
 
 import QuotationsIndex from "@/modules/checkout/pages/QuotationsIndex";
 import Construction from "@/modules/checkout/pages/Construction";
+import PublicQuotationAccess from "./pages/store/PublicQuotationAccess";
 
 import FortlevOverview from "./pages/dashboard/FortlevOverview";
 import ConstructionOverview from "./pages/dashboard/ConstructionOverview";
@@ -141,6 +143,7 @@ const App = () => (
                 <Route index element={<AdminQuotationsOverview />} />
                 <Route path="fortlev" element={<FortlevOverview />} />
                 <Route path="construcao" element={<ConstructionOverview />} />
+                <Route path="tokens" element={<AdminQuotationTokens />} />
               </Route>
 
               <Route path="produtos" element={<AdminProductsList />} />
@@ -213,6 +216,7 @@ const App = () => (
             {/* Sistemas de Orçamento */}
             <Route path="/construcao" element={<Construction />} />
             <Route path="/orcamentos" element={<QuotationsIndex />} />
+            <Route path="/orcamento-publico" element={<PublicQuotationAccess />} />
 
             <Route path="/dashboard" element={<Navigate to="/admin/orcamentos" replace />} />
             <Route path="/dashboard/*" element={<Navigate to="/admin/orcamentos" replace />} />

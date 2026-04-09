@@ -4061,6 +4061,20 @@ export type Database = {
         Returns: undefined
       }
       is_master: { Args: { _user_id: string }; Returns: boolean }
+      log_token_action: {
+        Args: {
+          _action: string
+          _ip?: string
+          _metadata?: Json
+          _quotation_id?: string
+          _quotation_type?: string
+          _raw_token: string
+          _source?: string
+          _store_id: string
+          _user_agent?: string
+        }
+        Returns: string
+      }
       recalculate_rating_summary: {
         Args: { _product_id: string }
         Returns: undefined

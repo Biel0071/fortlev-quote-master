@@ -2095,6 +2095,7 @@ export type Database = {
           starts_at: string
           status: string
           store_id: string
+          token: string | null
           token_hash: string
           token_preview: string
           updated_at: string
@@ -2116,6 +2117,7 @@ export type Database = {
           starts_at?: string
           status?: string
           store_id: string
+          token?: string | null
           token_hash: string
           token_preview: string
           updated_at?: string
@@ -2137,6 +2139,7 @@ export type Database = {
           starts_at?: string
           status?: string
           store_id?: string
+          token?: string | null
           token_hash?: string
           token_preview?: string
           updated_at?: string

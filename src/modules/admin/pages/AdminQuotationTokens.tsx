@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Eye, ShieldPlus, Ban } from "lucide-react";
+import { Copy, Eye, ShieldPlus, Ban, Lock, RotateCcw } from "lucide-react";
 import { cloud } from "@/lib/cloud";
 import { useStore } from "@/contexts/StoreContext";
 import { toast } from "@/hooks/use-toast";
@@ -17,17 +17,20 @@ type TokenRow = {
   name: string;
   token_preview: string;
   token: string | null;
-  status: "active" | "revoked";
+  status: "active" | "revoked" | "blocked";
   access_scope: "fortlev" | "construction" | "both";
   expires_at: string;
   created_at: string;
   last_access_at: string | null;
+  last_ip: string | null;
+  device_hash: string | null;
   uses_count: number;
   max_uses: number | null;
 };
 
 type TokenLog = {
   id: string;
+  token_id: string;
   action: string;
   ip: string | null;
   quotation_type: string | null;
@@ -40,7 +43,8 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString("pt-BR");
 }
 
-function getTokenStatus(token: TokenRow): "active" | "expired" | "revoked" {
+function getTokenStatus(token: TokenRow): "active" | "expired" | "revoked" | "blocked" {
+  if (token.status === "blocked") return "blocked";
   if (token.status === "revoked") return "revoked";
   if (new Date(token.expires_at).getTime() <= Date.now()) return "expired";
   return "active";
@@ -55,6 +59,7 @@ export default function AdminQuotationTokens() {
   const [logsOpen, setLogsOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [activeStoreSlug, setActiveStoreSlug] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [scope, setScope] = useState<"fortlev" | "construction" | "both">("both");
@@ -79,10 +84,10 @@ export default function AdminQuotationTokens() {
   const loadData = async () => {
     if (!activeStoreId) return;
     setLoading(true);
-    const [{ data: tokenRows, error: tokenErr }, { data: logRows }] = await Promise.all([
+    const [{ data: tokenRows, error: tokenErr }, { data: logRows }, { data: storeRow }] = await Promise.all([
       cloud
         .from("quotation_access_tokens")
-        .select("id,store_id,name,token_preview,token,status,access_scope,expires_at,created_at,last_access_at,uses_count,max_uses")
+        .select("id,store_id,name,token_preview,token,status,access_scope,expires_at,created_at,last_access_at,last_ip,device_hash,uses_count,max_uses")
         .eq("store_id", activeStoreId)
         .order("created_at", { ascending: false }),
       cloud
@@ -91,6 +96,11 @@ export default function AdminQuotationTokens() {
         .eq("store_id", activeStoreId)
         .order("created_at", { ascending: false })
         .limit(1000),
+      cloud
+        .from("stores")
+        .select("slug")
+        .eq("id", activeStoreId)
+        .maybeSingle(),
     ]);
 
     if (tokenErr) {
@@ -99,6 +109,7 @@ export default function AdminQuotationTokens() {
 
     setTokens((tokenRows as TokenRow[]) ?? []);
     setLogs((logRows as TokenLog[]) ?? []);
+    setActiveStoreSlug((storeRow as { slug?: string } | null)?.slug ?? null);
     setLoading(false);
   };
 
@@ -133,7 +144,8 @@ export default function AdminQuotationTokens() {
       return;
     }
 
-    const link = `${window.location.origin}/orcamento-publico?token=${encodeURIComponent(raw)}`;
+    const safeSlug = activeStoreSlug || "loja";
+    const link = `${window.location.origin}/orcamento/${encodeURIComponent(safeSlug)}/${encodeURIComponent(raw)}`;
     setLastCreatedLink(link);
     toast({ title: "Token criado", description: "Link público pronto para uso" });
     setCreateOpen(false);
@@ -156,12 +168,33 @@ export default function AdminQuotationTokens() {
     await loadData();
   };
 
+  const blockToken = async (id: string) => {
+    const { error } = await cloud.rpc("block_quotation_access_token", { _token_id: id, _reason: "Bloqueado pelo admin" });
+    if (error) {
+      toast({ title: "Erro ao bloquear", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Token bloqueado" });
+    await loadData();
+  };
+
+  const resetToken = async (id: string) => {
+    const { error } = await cloud.rpc("reset_quotation_access_token", { _token_id: id });
+    if (error) {
+      toast({ title: "Erro ao resetar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Token resetado" });
+    await loadData();
+  };
+
   const copyTokenLink = async (token: TokenRow) => {
     if (!token.token) {
       toast({ title: "Token completo indisponível", variant: "destructive" });
       return;
     }
-    const link = `${window.location.origin}/orcamento-publico?token=${encodeURIComponent(token.token)}`;
+    const safeSlug = activeStoreSlug || "loja";
+    const link = `${window.location.origin}/orcamento/${encodeURIComponent(safeSlug)}/${encodeURIComponent(token.token)}`;
     await navigator.clipboard.writeText(link);
     toast({ title: "Link copiado" });
   };
@@ -200,6 +233,8 @@ export default function AdminQuotationTokens() {
                   <TableHead>Criado em</TableHead>
                   <TableHead>Último uso</TableHead>
                   <TableHead>Total acessos</TableHead>
+                  <TableHead>IP</TableHead>
+                  <TableHead>Dispositivo</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -214,6 +249,8 @@ export default function AdminQuotationTokens() {
                       <TableCell>
                         {s === "active" ? (
                           <Badge>ativo</Badge>
+                        ) : s === "blocked" ? (
+                          <Badge variant="destructive">bloqueado</Badge>
                         ) : s === "expired" ? (
                           <Badge variant="secondary">expirado</Badge>
                         ) : (
@@ -224,13 +261,21 @@ export default function AdminQuotationTokens() {
                       <TableCell>{formatDate(t.created_at)}</TableCell>
                       <TableCell>{formatDate(metric?.last ?? t.last_access_at)}</TableCell>
                       <TableCell>{metric?.accesses ?? t.uses_count}</TableCell>
+                      <TableCell>{t.last_ip ?? "—"}</TableCell>
+                      <TableCell>{t.device_hash ? `${t.device_hash.slice(0, 10)}...` : "—"}</TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button variant="outline" size="sm" onClick={() => copyTokenLink(t)}>
                             <Copy className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => openLogs(t)}>
                             <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => resetToken(t.id)}>
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => blockToken(t.id)}>
+                            <Lock className="h-4 w-4" />
                           </Button>
                           <Button variant="destructive" size="sm" onClick={() => revokeToken(t.id)}>
                             <Ban className="h-4 w-4" />

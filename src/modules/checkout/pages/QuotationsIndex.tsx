@@ -12,6 +12,7 @@ import { Customer, CompanyInfo, PaymentConditions, QuotationItem, Quotation } fr
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
+import { cloud } from '@/lib/cloud';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Pencil, FileText, Loader2 } from 'lucide-react';

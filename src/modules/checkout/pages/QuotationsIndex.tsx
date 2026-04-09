@@ -12,6 +12,7 @@ import { Customer, CompanyInfo, PaymentConditions, QuotationItem, Quotation } fr
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
+import { cloud } from '@/lib/cloud';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Pencil, FileText, Loader2 } from 'lucide-react';
@@ -20,6 +21,7 @@ const QuotationsIndex = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit');
+  const publicToken = searchParams.get('token');
 
   const { quotations, loading, saveQuotation, updateQuotation, generateQuotationNumber } = useQuotations();
 
@@ -72,6 +74,20 @@ const QuotationsIndex = () => {
   const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
   const total = subtotal - discount + freight;
 
+  const getTokenContext = () => {
+    if (!publicToken) return null;
+    const raw = localStorage.getItem('public_quotation_token_ctx');
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as { token?: string; tokenId?: string; storeId?: string };
+      if (!parsed?.tokenId || !parsed?.storeId) return null;
+      if (parsed?.token && parsed.token !== publicToken) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  };
+
   const handleAddItem = (item: QuotationItem) => {
     setItems(prev => [...prev, item]);
     toast({ title: 'Item adicionado', description: `${item.product.capacity}${item.product.unit} adicionado ao orçamento` });
@@ -120,14 +136,54 @@ const QuotationsIndex = () => {
   const handleGeneratePDF = () => {
     if (!validateForm()) return;
     const q = createQuotation();
-    saveAndExecute(q, () => downloadPDF(q));
+    const tokenCtx = getTokenContext();
+    const row = {
+      ...q,
+      created_via_token: Boolean(tokenCtx),
+      source_token_id: tokenCtx?.tokenId ?? null,
+    } as any;
+    saveAndExecute(row, () => downloadPDF(q));
+
+    if (tokenCtx) {
+      cloud.rpc('log_token_action', {
+        _raw_token: publicToken,
+        _store_id: tokenCtx.storeId,
+        _action: 'created_quotation',
+        _quotation_type: 'fortlev',
+        _quotation_id: q.id,
+        _ip: null,
+        _user_agent: navigator.userAgent,
+        _source: 'public',
+      });
+    }
+
     toast({ title: 'PDF gerado!', description: `Orçamento ${q.number} salvo` });
   };
 
   const handleGeneratePNG = async () => {
     if (!validateForm()) return;
     const q = createQuotation();
-    if (editingQuotationId) updateQuotation(editingQuotationId, q); else saveQuotation(q);
+    const tokenCtx = getTokenContext();
+    const row = {
+      ...q,
+      created_via_token: Boolean(tokenCtx),
+      source_token_id: tokenCtx?.tokenId ?? null,
+    } as any;
+    if (editingQuotationId) updateQuotation(editingQuotationId, row); else saveQuotation(row);
+
+    if (tokenCtx) {
+      cloud.rpc('log_token_action', {
+        _raw_token: publicToken,
+        _store_id: tokenCtx.storeId,
+        _action: 'created_quotation',
+        _quotation_type: 'fortlev',
+        _quotation_id: q.id,
+        _ip: null,
+        _user_agent: navigator.userAgent,
+        _source: 'public',
+      });
+    }
+
     await downloadPNG(q);
     toast({ title: 'PNG gerado!', description: `Orçamento ${q.number} salvo` });
     resetForm();
@@ -136,7 +192,28 @@ const QuotationsIndex = () => {
   const handleSendWhatsApp = () => {
     if (!validateForm()) return;
     const q = createQuotation();
-    saveAndExecute({ ...q, status: 'sent' }, () => openWhatsApp(q));
+    const tokenCtx = getTokenContext();
+    const row = {
+      ...q,
+      status: 'sent',
+      created_via_token: Boolean(tokenCtx),
+      source_token_id: tokenCtx?.tokenId ?? null,
+    } as any;
+    saveAndExecute(row, () => openWhatsApp(q));
+
+    if (tokenCtx) {
+      cloud.rpc('log_token_action', {
+        _raw_token: publicToken,
+        _store_id: tokenCtx.storeId,
+        _action: 'created_quotation',
+        _quotation_type: 'fortlev',
+        _quotation_id: q.id,
+        _ip: null,
+        _user_agent: navigator.userAgent,
+        _source: 'public',
+      });
+    }
+
     toast({ title: 'Orçamento enviado!', description: `Aberto no WhatsApp` });
   };
 

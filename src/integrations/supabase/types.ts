@@ -2081,11 +2081,16 @@ export type Database = {
       quotation_access_tokens: {
         Row: {
           access_scope: string
+          blocked_reason: string | null
           created_at: string
           created_by: string | null
+          device_hash: string | null
           expires_at: string
+          first_access_at: string | null
           id: string
           last_access_at: string | null
+          last_ip: string | null
+          last_user_agent: string | null
           max_requests_per_hour: number
           max_uses: number | null
           name: string
@@ -2103,11 +2108,16 @@ export type Database = {
         }
         Insert: {
           access_scope?: string
+          blocked_reason?: string | null
           created_at?: string
           created_by?: string | null
+          device_hash?: string | null
           expires_at: string
+          first_access_at?: string | null
           id?: string
           last_access_at?: string | null
+          last_ip?: string | null
+          last_user_agent?: string | null
           max_requests_per_hour?: number
           max_uses?: number | null
           name: string
@@ -2125,11 +2135,16 @@ export type Database = {
         }
         Update: {
           access_scope?: string
+          blocked_reason?: string | null
           created_at?: string
           created_by?: string | null
+          device_hash?: string | null
           expires_at?: string
+          first_access_at?: string | null
           id?: string
           last_access_at?: string | null
+          last_ip?: string | null
+          last_user_agent?: string | null
           max_requests_per_hour?: number
           max_uses?: number | null
           name?: string
@@ -3982,6 +3997,10 @@ export type Database = {
         Args: { _plan_id: string; _store_id: string }
         Returns: undefined
       }
+      block_quotation_access_token: {
+        Args: { _reason?: string; _token_id: string }
+        Returns: undefined
+      }
       bulk_import_products: { Args: { _data: Json }; Returns: number }
       check_rate_limit: {
         Args: {
@@ -4079,6 +4098,10 @@ export type Database = {
         Args: { _product_id: string }
         Returns: undefined
       }
+      reset_quotation_access_token: {
+        Args: { _token_id: string }
+        Returns: undefined
+      }
       revoke_quotation_access_token: {
         Args: { _token_id: string }
         Returns: undefined
@@ -4132,23 +4155,46 @@ export type Database = {
           ok: boolean
         }[]
       }
-      validate_public_quotation_token: {
-        Args: {
-          _access_scope?: string
-          _ip?: string
-          _raw_token: string
-          _user_agent?: string
-        }
-        Returns: {
-          access_scope: string
-          expires_at: string
-          max_uses: number
-          store_id: string
-          token_id: string
-          token_name: string
-          uses_count: number
-        }[]
-      }
+      validate_public_quotation_token:
+        | {
+            Args: {
+              _access_scope?: string
+              _ip?: string
+              _raw_token: string
+              _user_agent?: string
+            }
+            Returns: {
+              access_scope: string
+              expires_at: string
+              max_uses: number
+              store_id: string
+              token_id: string
+              token_name: string
+              uses_count: number
+            }[]
+          }
+        | {
+            Args: {
+              _access_scope?: string
+              _device_hash?: string
+              _ip?: string
+              _raw_token: string
+              _store_slug?: string
+              _user_agent?: string
+            }
+            Returns: {
+              access_scope: string
+              device_bound: boolean
+              expires_at: string
+              is_first_access: boolean
+              max_uses: number
+              store_id: string
+              store_slug: string
+              token_id: string
+              token_name: string
+              uses_count: number
+            }[]
+          }
     }
     Enums: {
       admin_role: "master" | "admin" | "operator" | "gerente" | "visualizador"

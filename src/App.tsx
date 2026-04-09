@@ -216,6 +216,7 @@ const App = () => (
             {/* Sistemas de Orçamento */}
             <Route path="/construcao" element={<Construction />} />
             <Route path="/orcamentos" element={<QuotationsIndex />} />
+            <Route path="/orcamento/:slug/:token" element={<PublicQuotationAccess />} />
             <Route path="/orcamento-publico" element={<PublicQuotationAccess />} />
 
             <Route path="/dashboard" element={<Navigate to="/admin/orcamentos" replace />} />

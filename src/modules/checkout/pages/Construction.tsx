@@ -10,6 +10,7 @@ import type { Customer, CompanyInfo, PaymentConditions, Quotation, QuotationItem
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
+import { cloud } from '@/lib/cloud';
 import { FilePlus, LayoutDashboard, Pencil, Building2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -23,6 +24,7 @@ import { ConstructionQuotationsDashboard } from '@/components/construction/Const
 const ConstructionPage = () => {
   const { quotations, saveQuotation, updateQuotation, deleteQuotation, duplicateQuotation, generateQuotationNumber } = useConstructionQuotations();
   const [searchParams] = useSearchParams();
+  const publicToken = searchParams.get('token');
   const returnPath = '/admin/orcamentos/construcao';
   const [activeTab, setActiveTab] = useState<'new' | 'saved'>('new');
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
@@ -66,6 +68,20 @@ const ConstructionPage = () => {
 
   const subtotal = useMemo(() => items.reduce((acc, item) => acc + item.subtotal, 0), [items]);
   const total = subtotal - discount + freight;
+
+  const getTokenContext = () => {
+    if (!publicToken) return null;
+    const raw = localStorage.getItem('public_quotation_token_ctx');
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as { token?: string; tokenId?: string; storeId?: string };
+      if (!parsed?.tokenId || !parsed?.storeId) return null;
+      if (parsed?.token && parsed.token !== publicToken) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  };
 
   const handleAddItem = (item: ConstructionQuotationItem) => {
     setItems((prev) => [...prev, item]);
@@ -203,7 +219,12 @@ const ConstructionPage = () => {
     };
 
     const qDoc = createQuotation(meta, items);
-    const qSaved = createConstructionQuotation(meta, items);
+    const tokenCtx = getTokenContext();
+    const qSaved = {
+      ...createConstructionQuotation(meta, items),
+      created_via_token: Boolean(tokenCtx),
+      source_token_id: tokenCtx?.tokenId ?? null,
+    } as any;
 
     if (editingQuotationId) {
       updateQuotation(editingQuotationId, qSaved);
@@ -212,6 +233,20 @@ const ConstructionPage = () => {
     }
 
     downloadPDF(qDoc);
+
+    if (tokenCtx) {
+      cloud.rpc('log_token_action', {
+        _raw_token: publicToken,
+        _store_id: tokenCtx.storeId,
+        _action: 'created_quotation',
+        _quotation_type: 'construction',
+        _quotation_id: meta.id,
+        _ip: null,
+        _user_agent: navigator.userAgent,
+        _source: 'public',
+      });
+    }
+
     toast({ title: 'PDF gerado com sucesso!', description: `Orçamento ${meta.number} gerado` });
     resetForm();
   };
@@ -225,7 +260,12 @@ const ConstructionPage = () => {
     };
 
     const qDoc = createQuotation(meta, items);
-    const qSaved = createConstructionQuotation(meta, items);
+    const tokenCtx = getTokenContext();
+    const qSaved = {
+      ...createConstructionQuotation(meta, items),
+      created_via_token: Boolean(tokenCtx),
+      source_token_id: tokenCtx?.tokenId ?? null,
+    } as any;
 
     if (editingQuotationId) {
       updateQuotation(editingQuotationId, qSaved);
@@ -234,6 +274,20 @@ const ConstructionPage = () => {
     }
 
     await downloadPNG(qDoc);
+
+    if (tokenCtx) {
+      cloud.rpc('log_token_action', {
+        _raw_token: publicToken,
+        _store_id: tokenCtx.storeId,
+        _action: 'created_quotation',
+        _quotation_type: 'construction',
+        _quotation_id: meta.id,
+        _ip: null,
+        _user_agent: navigator.userAgent,
+        _source: 'public',
+      });
+    }
+
     toast({ title: 'PNG gerado com sucesso!' });
     resetForm();
   };
@@ -247,7 +301,12 @@ const ConstructionPage = () => {
     };
 
     const qDoc = createQuotation(meta, items);
-    const qSaved = createConstructionQuotation(meta, items);
+    const tokenCtx = getTokenContext();
+    const qSaved = {
+      ...createConstructionQuotation(meta, items),
+      created_via_token: Boolean(tokenCtx),
+      source_token_id: tokenCtx?.tokenId ?? null,
+    } as any;
 
     if (editingQuotationId) {
       updateQuotation(editingQuotationId, { ...qSaved, status: 'sent' });
@@ -256,6 +315,20 @@ const ConstructionPage = () => {
     }
 
     openWhatsApp(qDoc);
+
+    if (tokenCtx) {
+      cloud.rpc('log_token_action', {
+        _raw_token: publicToken,
+        _store_id: tokenCtx.storeId,
+        _action: 'created_quotation',
+        _quotation_type: 'construction',
+        _quotation_id: meta.id,
+        _ip: null,
+        _user_agent: navigator.userAgent,
+        _source: 'public',
+      });
+    }
+
     toast({ title: 'WhatsApp aberto!' });
     resetForm();
   };

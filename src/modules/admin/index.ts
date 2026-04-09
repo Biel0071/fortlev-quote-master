@@ -9,6 +9,7 @@ export { default as AdminDashboardTracking } from "./pages/AdminDashboardTrackin
 export { default as AdminDashboardQuotations } from "./pages/AdminDashboardQuotations";
 export { default as AdminQuotations } from "./pages/AdminQuotations";
 export { default as AdminQuotationsOverview } from "./pages/AdminQuotationsOverview";
+export { default as AdminQuotationTokens } from "./pages/AdminQuotationTokens";
 export { default as AdminHome } from "./pages/AdminHome";
 export { default as AdminProductsList } from "./pages/AdminProductsList";
 export { default as AdminProductForm } from "./pages/AdminProductForm";

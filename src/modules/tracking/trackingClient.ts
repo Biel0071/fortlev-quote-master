@@ -6,15 +6,19 @@ export type EventType =
   | "product_view"
   | "search"
   | "add_to_cart"
+  | "click"
   | "banner_click"
   | "checkout_start"
+  | "purchase"
   | "request_quote"
   | "scroll"
   | "chat_open"
   | "chat_close"
   | "chat_message_sent"
   | "whatsapp_click"
-  | "category_click";
+  | "category_click"
+  | "link_click"
+  | "download_apk";
 
 export type TrackEventInput = {
   type: EventType;

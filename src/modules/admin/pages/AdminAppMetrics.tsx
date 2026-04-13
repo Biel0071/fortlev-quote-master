@@ -61,6 +61,8 @@ interface ShortLinkRow {
   clicks: number;
   created_at: string;
   active: boolean;
+  link_type?: "apk" | "product" | "page";
+  metadata?: Record<string, unknown>;
 }
 
 interface ShortenerTokenRow {
@@ -449,13 +451,15 @@ export default function AdminAppMetrics() {
     }
 
     const original = shortUrlInput.trim();
-    if (!original) {
+    if (!original && !professionalDownloadUrl) {
       toast.error("Informe a URL original");
       return;
     }
 
+    const finalOriginal = original || professionalDownloadUrl;
+
     try {
-      const parsed = new URL(original);
+      const parsed = new URL(finalOriginal);
       if (!(parsed.protocol === "https:" || parsed.protocol === "http:")) {
         toast.error("URL deve começar com http:// ou https://");
         return;
@@ -468,16 +472,19 @@ export default function AdminAppMetrics() {
     setCreatingShortLink(true);
     try {
       const slug = sanitizeSlug(shortSlugInput) || randomSlug();
+      const isApkLink = !!apkToken && finalOriginal.includes(`/api/apk/${apkToken}`);
       const { data, error } = await cloud
         .from("app_short_links")
         .insert({
           store_id: activeStoreId,
           slug,
-          original_url: original,
+          original_url: finalOriginal,
           created_via: "admin",
+          link_type: isApkLink ? "apk" : "page",
+          metadata: isApkLink ? { apk_token: apkToken } : {},
           active: true,
         })
-        .select("id, slug, original_url, clicks, created_at, active")
+        .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
         .single();
 
       if (error) {

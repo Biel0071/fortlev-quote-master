@@ -11,6 +11,9 @@ type CreateBody = {
   original_url?: string;
   slug?: string;
   title?: string;
+  campaign_origin?: string;
+  link_type?: "apk" | "product" | "page";
+  metadata?: Record<string, unknown>;
 };
 
 const sanitizeSlug = (value: string) =>
@@ -23,6 +26,8 @@ const sanitizeSlug = (value: string) =>
     .slice(0, 40);
 
 const randomSlug = () => Math.random().toString(36).slice(2, 9);
+
+const safeText = (value: unknown, max = 120) => String(value ?? "").trim().slice(0, max);
 
 const hashToken = async (raw: string) => {
   const data = new TextEncoder().encode(raw);
@@ -59,6 +64,14 @@ Deno.serve(async (req) => {
     const storeId = String(body.store_id ?? "").trim();
     const originalUrl = String(body.original_url ?? "").trim();
     const title = String(body.title ?? "").trim() || null;
+    const campaignOrigin = safeText(body.campaign_origin ?? "", 120) || null;
+    const linkType = ["apk", "product", "page"].includes(String(body.link_type ?? "").trim())
+      ? (String(body.link_type).trim() as "apk" | "product" | "page")
+      : "page";
+    const metadata =
+      body.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)
+        ? body.metadata
+        : {};
 
     if (!token || token.length < 16) {
       return new Response(JSON.stringify({ error: "invalid_token" }), {
@@ -74,9 +87,15 @@ Deno.serve(async (req) => {
       });
     }
 
+    let finalOriginalUrl = originalUrl;
+    if (linkType === "apk" && !finalOriginalUrl) {
+      const origin = req.headers.get("origin") ?? new URL(req.url).origin;
+      finalOriginalUrl = `${origin}/functions/v1/download-app?store_id=${encodeURIComponent(storeId)}`;
+    }
+
     let parsedUrl: URL;
     try {
-      parsedUrl = new URL(originalUrl);
+      parsedUrl = new URL(finalOriginalUrl);
     } catch {
       return new Response(JSON.stringify({ error: "invalid_url" }), {
         status: 400,
@@ -99,7 +118,7 @@ Deno.serve(async (req) => {
 
     const { data: tokenRow } = await cloud
       .from("app_shortener_tokens")
-      .select("id")
+      .select("id, token_prefix")
       .eq("store_id", storeId)
       .eq("token_hash", tokenHash)
       .eq("active", true)
@@ -122,9 +141,13 @@ Deno.serve(async (req) => {
         .insert({
           store_id: storeId,
           slug,
-          original_url: originalUrl,
+          original_url: finalOriginalUrl,
           title,
           created_via: "script",
+          link_type: linkType,
+          campaign_origin: campaignOrigin,
+          token_id: tokenRow.id,
+          metadata,
           active: true,
         })
         .select("id, slug")
@@ -166,6 +189,9 @@ Deno.serve(async (req) => {
       JSON.stringify({
         id: created.id,
         slug: created.slug,
+        campaign_origin: campaignOrigin,
+        link_type: linkType,
+        token_prefix: tokenRow.token_prefix,
         short_url: `${origin}/r/${created.slug}`,
       }),
       {

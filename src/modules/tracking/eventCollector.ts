@@ -12,8 +12,10 @@ const OFFICIAL_EVENT_TYPES = new Set<string>([
   "product_view",
   "search",
   "add_to_cart",
+  "click",
   "banner_click",
   "checkout_start",
+  "purchase",
   "request_quote",
   "scroll",
   "chat_open",
@@ -21,6 +23,8 @@ const OFFICIAL_EVENT_TYPES = new Set<string>([
   "chat_message_sent",
   "whatsapp_click",
   "category_click",
+  "link_click",
+  "download_apk",
 ]);
 
 export function normalizeCollectedEvent(event: TrackingCollectorEvent): TrackEventInput {

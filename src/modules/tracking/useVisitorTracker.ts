@@ -10,6 +10,7 @@ const TOKEN_KEY_TEMP = "tracking_session_token_temp_v1";
 
 const startedSessions = new Set<string>();
 const trackedPageViews = new Set<string>();
+const autoTrackedProductViews = new Set<string>();
 
 let trackerRuntime = {
   sessionToken: "",
@@ -18,6 +19,7 @@ let trackerRuntime = {
 
 let scrollListenerInitialized = false;
 let productVisitListenerInitialized = false;
+let clickListenerInitialized = false;
 
 function ensureToken(persist: boolean) {
   const key = persist ? TOKEN_KEY_PERSIST : TOKEN_KEY_TEMP;
@@ -72,6 +74,24 @@ export function useVisitorTracker() {
       event: { type: "page_view", path },
     }).catch(() => {});
 
+    if (location.pathname.startsWith("/produto/")) {
+      const maybeId = location.pathname.split("--").pop() ?? "";
+      const autoKey = `${sessionToken}:${location.pathname}`;
+      if (!autoTrackedProductViews.has(autoKey)) {
+        autoTrackedProductViews.add(autoKey);
+        collectAndTrackEvent({
+          sessionToken,
+          consentGiven: consentOk,
+          event: {
+            type: "product_view",
+            productId: maybeId || null,
+            path,
+            metadata: { source: "auto_from_page_view" },
+          },
+        }).catch(() => {});
+      }
+    }
+
     return () => {
       const duration = Math.max(0, Math.round((Date.now() - started) / 1000));
       collectAndTrackEvent({
@@ -82,6 +102,40 @@ export function useVisitorTracker() {
       trackedPageViews.delete(pageKey);
     };
   }, [location.key, location.pathname, location.search, location.hash, sessionToken, consentOk]);
+
+  useEffect(() => {
+    if (clickListenerInitialized) return;
+    clickListenerInitialized = true;
+
+    let lastClickAt = 0;
+    const onClick = (evt: MouseEvent) => {
+      const { sessionToken: token, consentOk: consent } = trackerRuntime;
+      if (!token || !consent) return;
+
+      const now = Date.now();
+      if (now - lastClickAt < 1500) return;
+      lastClickAt = now;
+
+      const target = evt.target as HTMLElement | null;
+      const clickable = target?.closest("button,a,[role='button']") as HTMLElement | null;
+      const label = clickable?.getAttribute("aria-label") || clickable?.textContent?.trim()?.slice(0, 80) || "click";
+
+      collectAndTrackEvent({
+        sessionToken: token,
+        consentGiven: consent,
+        event: {
+          type: "click",
+          path: window.location.pathname + window.location.search + window.location.hash,
+          metadata: {
+            label,
+            tag: clickable?.tagName?.toLowerCase() ?? "unknown",
+          },
+        },
+      }).catch(() => {});
+    };
+
+    window.addEventListener("click", onClick, true);
+  }, []);
 
   useEffect(() => {
     if (scrollListenerInitialized) return;

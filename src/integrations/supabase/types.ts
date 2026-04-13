@@ -267,6 +267,143 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_summary: {
+        Row: {
+          conversions: number
+          created_at: string
+          events: number
+          hot_leads: number
+          id: string
+          metrics_json: Json
+          revenue: number
+          sessions: number
+          store_id: string
+          summary_date: string
+          updated_at: string
+        }
+        Insert: {
+          conversions?: number
+          created_at?: string
+          events?: number
+          hot_leads?: number
+          id?: string
+          metrics_json?: Json
+          revenue?: number
+          sessions?: number
+          store_id: string
+          summary_date: string
+          updated_at?: string
+        }
+        Update: {
+          conversions?: number
+          created_at?: string
+          events?: number
+          hot_leads?: number
+          id?: string
+          metrics_json?: Json
+          revenue?: number
+          sessions?: number
+          store_id?: string
+          summary_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_summary_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      apk_downloads: {
+        Row: {
+          browser: string | null
+          city: string | null
+          country: string | null
+          device: string | null
+          downloaded_at: string
+          id: string
+          ip_hash: string | null
+          last_seen_at: string | null
+          latitude: number | null
+          longitude: number | null
+          metadata: Json
+          region: string | null
+          returned_at: string | null
+          session_token: string | null
+          short_link_id: string | null
+          source_campaign: string | null
+          status: string
+          store_id: string
+          user_agent: string | null
+          utm_campaign: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          device?: string | null
+          downloaded_at?: string
+          id?: string
+          ip_hash?: string | null
+          last_seen_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          metadata?: Json
+          region?: string | null
+          returned_at?: string | null
+          session_token?: string | null
+          short_link_id?: string | null
+          source_campaign?: string | null
+          status?: string
+          store_id: string
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          device?: string | null
+          downloaded_at?: string
+          id?: string
+          ip_hash?: string | null
+          last_seen_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          metadata?: Json
+          region?: string | null
+          returned_at?: string | null
+          session_token?: string | null
+          short_link_id?: string | null
+          source_campaign?: string | null
+          status?: string
+          store_id?: string
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apk_downloads_short_link_id_fkey"
+            columns: ["short_link_id"]
+            isOneToOne: false
+            referencedRelation: "app_short_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "apk_downloads_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_config: {
         Row: {
           created_at: string
@@ -291,9 +428,88 @@ export type Database = {
         }
         Relationships: []
       }
+      app_short_link_clicks: {
+        Row: {
+          browser: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          device: string | null
+          id: string
+          ip_hash: string | null
+          latitude: number | null
+          longitude: number | null
+          referrer: string | null
+          region: string | null
+          session_token: string | null
+          short_link_id: string
+          store_id: string
+          token_prefix: string | null
+          user_agent: string | null
+          utm_campaign: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          device?: string | null
+          id?: string
+          ip_hash?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          referrer?: string | null
+          region?: string | null
+          session_token?: string | null
+          short_link_id: string
+          store_id: string
+          token_prefix?: string | null
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          device?: string | null
+          id?: string
+          ip_hash?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          referrer?: string | null
+          region?: string | null
+          session_token?: string | null
+          short_link_id?: string
+          store_id?: string
+          token_prefix?: string | null
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_short_link_clicks_short_link_id_fkey"
+            columns: ["short_link_id"]
+            isOneToOne: false
+            referencedRelation: "app_short_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_short_link_clicks_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_short_links: {
         Row: {
           active: boolean
+          campaign_origin: string | null
           clicks: number
           created_at: string
           created_by: string | null
@@ -301,14 +517,18 @@ export type Database = {
           expires_at: string | null
           id: string
           last_clicked_at: string | null
+          link_type: string
+          metadata: Json
           original_url: string
           slug: string
           store_id: string
           title: string | null
+          token_id: string | null
           updated_at: string
         }
         Insert: {
           active?: boolean
+          campaign_origin?: string | null
           clicks?: number
           created_at?: string
           created_by?: string | null
@@ -316,14 +536,18 @@ export type Database = {
           expires_at?: string | null
           id?: string
           last_clicked_at?: string | null
+          link_type?: string
+          metadata?: Json
           original_url: string
           slug: string
           store_id: string
           title?: string | null
+          token_id?: string | null
           updated_at?: string
         }
         Update: {
           active?: boolean
+          campaign_origin?: string | null
           clicks?: number
           created_at?: string
           created_by?: string | null
@@ -331,10 +555,13 @@ export type Database = {
           expires_at?: string | null
           id?: string
           last_clicked_at?: string | null
+          link_type?: string
+          metadata?: Json
           original_url?: string
           slug?: string
           store_id?: string
           title?: string | null
+          token_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -343,6 +570,13 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_short_links_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "app_shortener_tokens"
             referencedColumns: ["id"]
           },
         ]

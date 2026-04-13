@@ -222,7 +222,26 @@ Deno.serve(async (req) => {
       referrer,
     });
 
+    let destinationUrl = row.original_url;
+
     if (row.link_type === "apk") {
+      const metadata = row.metadata && typeof row.metadata === "object" ? (row.metadata as Record<string, unknown>) : {};
+      const apkTokenFromMeta = typeof metadata.apk_token === "string" ? metadata.apk_token.trim() : "";
+      const apkTokenFromUrl = (() => {
+        try {
+          const parsed = new URL(row.original_url);
+          const match = parsed.pathname.match(/\/api\/apk\/([^/?#]+)/i);
+          return match?.[1] ?? "";
+        } catch {
+          return "";
+        }
+      })();
+      const apkToken = apkTokenFromMeta || apkTokenFromUrl;
+      const origin = req.headers.get("origin") ?? new URL(req.url).origin;
+      if (apkToken) {
+        destinationUrl = `${origin}/api/apk/${encodeURIComponent(apkToken)}`;
+      }
+
       await cloud.from("visitor_events").insert({
         session_id: sessionToken,
         event_name: "download_apk",
@@ -272,7 +291,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        destination_url: row.original_url,
+        destination_url: destinationUrl,
         session_token: sessionToken,
         link_type: row.link_type,
         campaign_origin: row.campaign_origin,

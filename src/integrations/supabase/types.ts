@@ -291,6 +291,106 @@ export type Database = {
         }
         Relationships: []
       }
+      app_short_links: {
+        Row: {
+          active: boolean
+          clicks: number
+          created_at: string
+          created_by: string | null
+          created_via: string
+          expires_at: string | null
+          id: string
+          last_clicked_at: string | null
+          original_url: string
+          slug: string
+          store_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          clicks?: number
+          created_at?: string
+          created_by?: string | null
+          created_via?: string
+          expires_at?: string | null
+          id?: string
+          last_clicked_at?: string | null
+          original_url: string
+          slug: string
+          store_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          clicks?: number
+          created_at?: string
+          created_by?: string | null
+          created_via?: string
+          expires_at?: string | null
+          id?: string
+          last_clicked_at?: string | null
+          original_url?: string
+          slug?: string
+          store_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_short_links_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_shortener_tokens: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          last_used_at: string | null
+          name: string
+          store_id: string
+          token_hash: string
+          token_prefix: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          name?: string
+          store_id: string
+          token_hash: string
+          token_prefix: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          name?: string
+          store_id?: string
+          token_hash?: string
+          token_prefix?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_shortener_tokens_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       best_conversations: {
         Row: {
           chat_session_id: string

@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Download,
   MousePointerClick,
@@ -13,6 +15,9 @@ import {
   Upload,
   Loader2,
   Save,
+  Link2,
+  KeyRound,
+  Copy,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -49,6 +54,23 @@ interface ApkMeta {
   uploadedAt: string;
 }
 
+interface ShortLinkRow {
+  id: string;
+  slug: string;
+  original_url: string;
+  clicks: number;
+  created_at: string;
+  active: boolean;
+}
+
+interface ShortenerTokenRow {
+  id: string;
+  name: string;
+  token_prefix: string;
+  created_at: string;
+  active: boolean;
+}
+
 function readLocalValue(key: string) {
   try {
     if (typeof window === "undefined") return null;
@@ -79,6 +101,7 @@ function parseLocalMeta(value: string | null) {
 }
 
 export default function AdminAppMetrics() {
+  const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
   const [bannerClicks, setBannerClicks] = useState(0);
   const [appDownloadClicks, setAppDownloadClicks] = useState(0);
@@ -93,6 +116,52 @@ export default function AdminAppMetrics() {
   const [appName, setAppName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [persistToSystem, setPersistToSystem] = useState(true);
+
+  const [shortLinks, setShortLinks] = useState<ShortLinkRow[]>([]);
+  const [shortenerTokens, setShortenerTokens] = useState<ShortenerTokenRow[]>([]);
+  const [shortUrlInput, setShortUrlInput] = useState("");
+  const [shortSlugInput, setShortSlugInput] = useState("");
+  const [tokenName, setTokenName] = useState("Integração Script");
+  const [creatingShortLink, setCreatingShortLink] = useState(false);
+  const [creatingToken, setCreatingToken] = useState(false);
+  const [generatedToken, setGeneratedToken] = useState<string | null>(null);
+
+  const professionalDownloadUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const base = `${window.location.origin}/functions/v1/download-app`;
+    return activeStoreId ? `${base}?store_id=${encodeURIComponent(activeStoreId)}` : base;
+  }, [activeStoreId]);
+
+  const shortBaseUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}/r`;
+  }, []);
+
+  const hashToken = async (raw: string) => {
+    const data = new TextEncoder().encode(raw);
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  };
+
+  const sanitizeSlug = (value: string) =>
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-{2,}/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40);
+
+  const randomSlug = () => Math.random().toString(36).slice(2, 9);
+
+  const randomToken = () => `st_${crypto.randomUUID().replace(/-/g, "")}${Date.now().toString(36)}`;
+
+  const scriptSnippet = useMemo(() => {
+    if (!generatedToken || !activeStoreId || !shortBaseUrl) return "";
+    return `const SHORTENER_TOKEN = "${generatedToken}";\n\nasync function createShortLink(originalUrl) {\n  const res = await fetch("${window.location.origin}/functions/v1/short-link-create", {\n    method: "POST",\n    headers: { "Content-Type": "application/json" },\n    body: JSON.stringify({\n      token: SHORTENER_TOKEN,\n      store_id: "${activeStoreId}",\n      original_url: originalUrl\n    })\n  });\n\n  const data = await res.json();\n  if (!res.ok) throw new Error(data?.error || "Falha ao gerar link curto");\n  return data.short_url;\n}`;
+  }, [generatedToken, activeStoreId, shortBaseUrl]);
 
   const saveConfig = async (key: string, value: string) => {
     const { error } = await cloud
@@ -118,12 +187,30 @@ export default function AdminAppMetrics() {
         { data: sessions },
         { data: configRow, error: configError },
         { data: metaRow, error: metaError },
+        shortLinksRes,
+        tokenRes,
       ] = await Promise.all([
         cloud.from("visitor_events").select("id, metadata, created_at").eq("type", "banner_click").limit(1000),
         cloud.from("tracking_events").select("id, metadata, created_at").eq("type", "banner_click").limit(500),
         cloud.from("visitor_sessions").select("id, referrer, utm_source").limit(500),
         cloud.from("app_config").select("value").eq("key", "app_download_url").maybeSingle(),
         cloud.from("app_config").select("value").eq("key", "app_apk_meta").maybeSingle(),
+        activeStoreId
+          ? cloud
+              .from("app_short_links")
+              .select("id, slug, original_url, clicks, created_at, active")
+              .eq("store_id", activeStoreId)
+              .order("created_at", { ascending: false })
+              .limit(20)
+          : Promise.resolve({ data: [] }),
+        activeStoreId
+          ? cloud
+              .from("app_shortener_tokens")
+              .select("id, name, token_prefix, created_at, active")
+              .eq("store_id", activeStoreId)
+              .order("created_at", { ascending: false })
+              .limit(10)
+          : Promise.resolve({ data: [] }),
       ]);
 
       const allBanner = bannerEvents ?? [];
@@ -192,12 +279,17 @@ export default function AdminAppMetrics() {
       } else {
         setApkMeta(parseLocalMeta(localMeta));
       }
+
+      setShortLinks((shortLinksRes.data as ShortLinkRow[] | null) ?? []);
+      setShortenerTokens((tokenRes.data as ShortenerTokenRow[] | null) ?? []);
     } catch (error) {
       console.error("[AppMetrics] load error:", error);
       const localUrl = readLocalValue(APK_URL_STORAGE_KEY);
       const localMeta = readLocalValue(APK_META_STORAGE_KEY);
       setApkUrl(localUrl);
       setApkMeta(parseLocalMeta(localMeta));
+      setShortLinks([]);
+      setShortenerTokens([]);
     } finally {
       setLoading(false);
     }
@@ -306,6 +398,104 @@ export default function AdminAppMetrics() {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleCreateShortLink = async () => {
+    if (!activeStoreId) {
+      toast.error("Selecione uma loja antes de criar links curtos");
+      return;
+    }
+
+    const original = shortUrlInput.trim();
+    if (!original) {
+      toast.error("Informe a URL original");
+      return;
+    }
+
+    try {
+      const parsed = new URL(original);
+      if (!(parsed.protocol === "https:" || parsed.protocol === "http:")) {
+        toast.error("URL deve começar com http:// ou https://");
+        return;
+      }
+    } catch {
+      toast.error("URL inválida");
+      return;
+    }
+
+    setCreatingShortLink(true);
+    try {
+      const slug = sanitizeSlug(shortSlugInput) || randomSlug();
+      const { data, error } = await cloud
+        .from("app_short_links")
+        .insert({
+          store_id: activeStoreId,
+          slug,
+          original_url: original,
+          created_via: "admin",
+          active: true,
+        })
+        .select("id, slug, original_url, clicks, created_at, active")
+        .single();
+
+      if (error) {
+        if ((error as { code?: string }).code === "23505") {
+          toast.error("Slug já existe. Tente outro valor.");
+          return;
+        }
+        throw error;
+      }
+
+      setShortLinks((prev) => [data as ShortLinkRow, ...prev]);
+      setShortUrlInput("");
+      setShortSlugInput("");
+      toast.success("Link curto criado com sucesso");
+    } catch (error: any) {
+      toast.error(`Erro ao criar link curto: ${error?.message ?? "falha desconhecida"}`);
+    } finally {
+      setCreatingShortLink(false);
+    }
+  };
+
+  const handleGenerateToken = async () => {
+    if (!activeStoreId) {
+      toast.error("Selecione uma loja antes de gerar token");
+      return;
+    }
+
+    setCreatingToken(true);
+    try {
+      const raw = randomToken();
+      const tokenHash = await hashToken(raw);
+      const tokenPrefix = raw.slice(0, 8);
+
+      const { data, error } = await cloud
+        .from("app_shortener_tokens")
+        .insert({
+          store_id: activeStoreId,
+          name: tokenName.trim() || "Integração Script",
+          token_hash: tokenHash,
+          token_prefix: tokenPrefix,
+          active: true,
+        })
+        .select("id, name, token_prefix, created_at, active")
+        .single();
+
+      if (error) throw error;
+
+      setGeneratedToken(raw);
+      setShortenerTokens((prev) => [data as ShortenerTokenRow, ...prev]);
+      toast.success("Token gerado. Copie agora: ele não será exibido novamente.");
+    } catch (error: any) {
+      toast.error(`Erro ao gerar token: ${error?.message ?? "falha desconhecida"}`);
+    } finally {
+      setCreatingToken(false);
+    }
+  };
+
+  const copyText = async (value: string, label: string) => {
+    await navigator.clipboard.writeText(value);
+    toast.success(`${label} copiado`);
   };
 
   const conversionRate = bannerClicks > 0 ? ((appDownloadClicks / bannerClicks) * 100).toFixed(1) : "0";
@@ -435,7 +625,7 @@ export default function AdminAppMetrics() {
                 {apkUrl && (
                   <div className="mt-3 flex flex-col gap-2">
                     <div className="flex items-center gap-3">
-                      <a href={`https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/download-app`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+                      <a href={professionalDownloadUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
                         Baixar APK (link profissional)
                       </a>
                       <Button variant="outline" size="sm" onClick={handleSaveToSystem} disabled={uploading} className="gap-1.5">
@@ -443,7 +633,7 @@ export default function AdminAppMetrics() {
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Link direto: <code className="bg-muted px-1 rounded text-[10px]">{`https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/download-app`}</code>
+                      Link direto: <code className="bg-muted px-1 rounded text-[10px]">{professionalDownloadUrl}</code>
                     </p>
                   </div>
                 )}
@@ -453,6 +643,124 @@ export default function AdminAppMetrics() {
               </>
             ) : (
               <p className="text-sm text-muted-foreground">Nenhum APK enviado ainda.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl border border-border">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Link2 className="h-4 w-4 text-primary" /> Encurtador de URL (domínio da loja)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="shortUrlInput" className="text-xs font-medium">URL original</Label>
+              <Input
+                id="shortUrlInput"
+                placeholder="https://seusite.com/pagina/campanha"
+                value={shortUrlInput}
+                onChange={(e) => setShortUrlInput(e.target.value)}
+                disabled={creatingShortLink}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="shortSlugInput" className="text-xs font-medium">Slug customizado (opcional)</Label>
+              <Input
+                id="shortSlugInput"
+                placeholder="promo-abril"
+                value={shortSlugInput}
+                onChange={(e) => setShortSlugInput(e.target.value)}
+                disabled={creatingShortLink}
+              />
+            </div>
+            <div className="flex items-end">
+              <Button onClick={handleCreateShortLink} disabled={creatingShortLink || !activeStoreId} className="w-full gap-1.5">
+                {creatingShortLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                {creatingShortLink ? "Gerando..." : "Gerar link curto"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-semibold text-foreground">🔑 Token para script de geração</h3>
+              <Button variant="outline" size="sm" onClick={handleGenerateToken} disabled={creatingToken || !activeStoreId} className="gap-1.5">
+                {creatingToken ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+                Gerar token
+              </Button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="tokenName" className="text-xs font-medium">Nome do token</Label>
+                <Input id="tokenName" value={tokenName} onChange={(e) => setTokenName(e.target.value)} disabled={creatingToken} />
+              </div>
+            </div>
+
+            {generatedToken && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                <p className="text-xs text-muted-foreground">Token gerado (copie agora, exibição única):</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <code className="rounded bg-muted px-2 py-1 text-xs">{generatedToken}</code>
+                  <Button size="sm" variant="outline" onClick={() => void copyText(generatedToken, "Token")} className="gap-1">
+                    <Copy className="h-3.5 w-3.5" /> Copiar token
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {scriptSnippet && (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Script de integração</Label>
+                <Textarea value={scriptSnippet} readOnly className="min-h-[220px] font-mono text-xs" />
+                <Button size="sm" variant="outline" onClick={() => void copyText(scriptSnippet, "Script")} className="gap-1">
+                  <Copy className="h-3.5 w-3.5" /> Copiar script
+                </Button>
+              </div>
+            )}
+
+            {shortenerTokens.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-foreground">Tokens ativos recentes</p>
+                <div className="space-y-1.5">
+                  {shortenerTokens.map((token) => (
+                    <div key={token.id} className="flex items-center justify-between rounded border border-border px-2 py-1.5 text-xs">
+                      <span>{token.name}</span>
+                      <span className="text-muted-foreground">{token.token_prefix}•••• ({fmtDate(token.created_at)})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <h3 className="font-semibold text-foreground">🔗 Links curtos recentes</h3>
+            {shortLinks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum link curto criado ainda.</p>
+            ) : (
+              <div className="space-y-2">
+                {shortLinks.map((link) => {
+                  const shortUrl = `${shortBaseUrl}/${link.slug}`;
+                  return (
+                    <div key={link.id} className="rounded border border-border p-2.5 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <a href={shortUrl} target="_blank" rel="noreferrer" className="text-primary underline break-all">
+                          {shortUrl}
+                        </a>
+                        <Button size="sm" variant="outline" onClick={() => void copyText(shortUrl, "Link curto")} className="h-7 gap-1 px-2">
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <p className="text-muted-foreground break-all">Destino: {link.original_url}</p>
+                      <div className="text-muted-foreground">Cliques: {link.clicks} • Criado em: {fmtDate(link.created_at)}</div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </CardContent>

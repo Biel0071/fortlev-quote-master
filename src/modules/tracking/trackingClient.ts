@@ -57,8 +57,9 @@ export async function setVisitorConsent({
   return data as any;
 }
 
-// Simple client-side throttle: max 1 event per 2s
+// Client-side throttle por assinatura de evento para evitar perdas de tipos diferentes
 let _lastTrackTime = 0;
+let _lastTrackSignature = "";
 const THROTTLE_MS = 2000;
 
 export async function trackVisitorEvent({
@@ -73,8 +74,12 @@ export async function trackVisitorEvent({
   if (!sessionToken) return { skipped: true };
 
   const now = Date.now();
-  if (now - _lastTrackTime < THROTTLE_MS) return { skipped: true, reason: "throttled" };
+  const signature = `${event.type}:${event.productId ?? ""}:${event.categoryId ?? ""}:${event.path ?? ""}`;
+  if (now - _lastTrackTime < THROTTLE_MS && signature === _lastTrackSignature) {
+    return { skipped: true, reason: "throttled" };
+  }
   _lastTrackTime = now;
+  _lastTrackSignature = signature;
 
   try {
     const { data, error } = await cloud.functions.invoke("track-event", {

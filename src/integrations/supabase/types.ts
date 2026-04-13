@@ -404,6 +404,47 @@ export type Database = {
           },
         ]
       }
+      apks: {
+        Row: {
+          active: boolean
+          created_at: string
+          download_token: string
+          file_name: string
+          file_path: string
+          id: string
+          store_id: string
+          version: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          download_token: string
+          file_name: string
+          file_path: string
+          id?: string
+          store_id: string
+          version?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          download_token?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          store_id?: string
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apks_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_config: {
         Row: {
           created_at: string

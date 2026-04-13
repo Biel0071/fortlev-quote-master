@@ -13,6 +13,7 @@ type CreateBody = {
   title?: string;
   campaign_origin?: string;
   link_type?: "apk" | "product" | "page";
+  apk_token?: string;
   metadata?: Record<string, unknown>;
 };
 
@@ -72,6 +73,7 @@ Deno.serve(async (req) => {
       body.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)
         ? body.metadata
         : {};
+    const apkToken = safeText(body.apk_token ?? (metadata as Record<string, unknown>).apk_token ?? "", 180);
 
     if (!token || token.length < 16) {
       return new Response(JSON.stringify({ error: "invalid_token" }), {
@@ -88,7 +90,10 @@ Deno.serve(async (req) => {
     }
 
     let finalOriginalUrl = originalUrl;
-    if (linkType === "apk" && !finalOriginalUrl) {
+    if (linkType === "apk" && apkToken) {
+      const origin = req.headers.get("origin") ?? new URL(req.url).origin;
+      finalOriginalUrl = `${origin}/api/apk/${encodeURIComponent(apkToken)}`;
+    } else if (linkType === "apk" && !finalOriginalUrl) {
       const origin = req.headers.get("origin") ?? new URL(req.url).origin;
       finalOriginalUrl = `${origin}/functions/v1/download-app?store_id=${encodeURIComponent(storeId)}`;
     }

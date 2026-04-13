@@ -61,6 +61,8 @@ interface ShortLinkRow {
   clicks: number;
   created_at: string;
   active: boolean;
+  link_type?: "apk" | "product" | "page";
+  metadata?: Record<string, unknown>;
 }
 
 interface ShortenerTokenRow {
@@ -69,6 +71,13 @@ interface ShortenerTokenRow {
   token_prefix: string;
   created_at: string;
   active: boolean;
+}
+
+interface ApkRow {
+  id: string;
+  download_token: string;
+  file_name: string;
+  version: string | null;
 }
 
 function readLocalValue(key: string) {
@@ -125,12 +134,12 @@ export default function AdminAppMetrics() {
   const [creatingShortLink, setCreatingShortLink] = useState(false);
   const [creatingToken, setCreatingToken] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
+  const [apkToken, setApkToken] = useState<string | null>(null);
 
   const professionalDownloadUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
-    const base = `${window.location.origin}/functions/v1/download-app`;
-    return activeStoreId ? `${base}?store_id=${encodeURIComponent(activeStoreId)}` : base;
-  }, [activeStoreId]);
+    return apkToken ? `${window.location.origin}/api/apk/${encodeURIComponent(apkToken)}` : "";
+  }, [apkToken]);
 
   const shortBaseUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -189,6 +198,7 @@ export default function AdminAppMetrics() {
         { data: metaRow, error: metaError },
         shortLinksRes,
         tokenRes,
+        apkRes,
       ] = await Promise.all([
         cloud.from("visitor_events").select("id, metadata, created_at").eq("type", "banner_click").limit(1000),
         cloud.from("tracking_events").select("id, metadata, created_at").eq("type", "banner_click").limit(500),
@@ -211,6 +221,16 @@ export default function AdminAppMetrics() {
               .order("created_at", { ascending: false })
               .limit(10)
           : Promise.resolve({ data: [] }),
+        activeStoreId
+          ? cloud
+              .from("apks")
+              .select("id, download_token, file_name, version")
+              .eq("store_id", activeStoreId)
+              .eq("active", true)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
 
       const allBanner = bannerEvents ?? [];
@@ -282,12 +302,14 @@ export default function AdminAppMetrics() {
 
       setShortLinks((shortLinksRes.data as ShortLinkRow[] | null) ?? []);
       setShortenerTokens((tokenRes.data as ShortenerTokenRow[] | null) ?? []);
+      setApkToken((apkRes.data as ApkRow | null)?.download_token ?? null);
     } catch (error) {
       console.error("[AppMetrics] load error:", error);
       const localUrl = readLocalValue(APK_URL_STORAGE_KEY);
       const localMeta = readLocalValue(APK_META_STORAGE_KEY);
       setApkUrl(localUrl);
       setApkMeta(parseLocalMeta(localMeta));
+      setApkToken(null);
       setShortLinks([]);
       setShortenerTokens([]);
     } finally {
@@ -340,6 +362,28 @@ export default function AdminAppMetrics() {
 
         const { data: urlData } = cloud.storage.from("apps").getPublicUrl(fileName);
         publicUrl = urlData.publicUrl;
+
+        if (activeStoreId) {
+          const newToken = `apk_${crypto.randomUUID().replace(/-/g, "")}`;
+
+          await cloud
+            .from("apks")
+            .update({ active: false })
+            .eq("store_id", activeStoreId)
+            .eq("active", true);
+
+          const { error: apkInsertError } = await cloud.from("apks").insert({
+            store_id: activeStoreId,
+            file_path: fileName,
+            file_name: finalDisplayName,
+            version: null,
+            active: true,
+            download_token: newToken,
+          });
+
+          if (apkInsertError) throw apkInsertError;
+          setApkToken(newToken);
+        }
       } else {
         publicUrl = URL.createObjectURL(file);
       }
@@ -407,13 +451,15 @@ export default function AdminAppMetrics() {
     }
 
     const original = shortUrlInput.trim();
-    if (!original) {
+    if (!original && !professionalDownloadUrl) {
       toast.error("Informe a URL original");
       return;
     }
 
+    const finalOriginal = original || professionalDownloadUrl;
+
     try {
-      const parsed = new URL(original);
+      const parsed = new URL(finalOriginal);
       if (!(parsed.protocol === "https:" || parsed.protocol === "http:")) {
         toast.error("URL deve começar com http:// ou https://");
         return;
@@ -426,16 +472,19 @@ export default function AdminAppMetrics() {
     setCreatingShortLink(true);
     try {
       const slug = sanitizeSlug(shortSlugInput) || randomSlug();
+      const isApkLink = !!apkToken && finalOriginal.includes(`/api/apk/${apkToken}`);
       const { data, error } = await cloud
         .from("app_short_links")
         .insert({
           store_id: activeStoreId,
           slug,
-          original_url: original,
+          original_url: finalOriginal,
           created_via: "admin",
+          link_type: isApkLink ? "apk" : "page",
+          metadata: isApkLink ? { apk_token: apkToken } : {},
           active: true,
         })
-        .select("id, slug, original_url, clicks, created_at, active")
+        .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
         .single();
 
       if (error) {
@@ -622,7 +671,7 @@ export default function AdminAppMetrics() {
                   </div>
                 )}
 
-                {apkUrl && (
+                {apkUrl && professionalDownloadUrl && (
                   <div className="mt-3 flex flex-col gap-2">
                     <div className="flex items-center gap-3">
                       <a href={professionalDownloadUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">

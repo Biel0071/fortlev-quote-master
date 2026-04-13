@@ -14,6 +14,7 @@ import CartPage from "./pages/store/CartPage";
 import CheckoutPage from "./pages/store/CheckoutPage";
 import PaymentPendingPage from "./pages/store/PaymentPendingPage";
 import StorePage from "./pages/store/StorePage";
+import ShortLinkRedirect from "./pages/store/ShortLinkRedirect";
 import AccountPage from "./pages/account/AccountPage";
 import OrdersPage from "./pages/account/OrdersPage";
 import TrackingPage from "./pages/account/TrackingPage";
@@ -120,6 +121,7 @@ const App = () => (
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/checkout/pagamento" element={<PaymentPendingPage />} />
             <Route path="/p/:slug" element={<StorePage />} />
+            <Route path="/r/:slug" element={<ShortLinkRedirect />} />
             <Route path="/institucional/:slug" element={<InstitutionalRedirect />} />
 
             {/* Área do cliente */}

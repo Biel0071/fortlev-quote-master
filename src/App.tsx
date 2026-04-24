@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
+import { BuildRecoveryFooter } from "@/components/system/BuildRecoveryFooter";
 import ScrollToTop from "@/components/ScrollToTop";
 import StoreHome from "./pages/store/StoreHome";
 import StoreCatalog from "./pages/store/StoreCatalog";
@@ -107,6 +108,7 @@ const App = () => (
         <BrowserRouter>
           <ScrollToTop />
           <CookieConsentBanner />
+          <BuildRecoveryFooter />
           <Routes>
             {/* Loja Materiais (HOME/vitrine) */}
             <Route path="/" element={<StoreHome />} />

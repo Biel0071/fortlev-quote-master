@@ -43,3 +43,8 @@ export const isValidBrazilPhone = (phone: string): boolean => {
   const digits = phone.replace(/\D/g, "");
   return digits.length === 10 || digits.length === 11;
 };
+
+export const getBrazilDocumentLabel = (document: string): "CPF" | "CNPJ" => {
+  const digits = document.replace(/\D/g, "");
+  return digits.length <= 11 ? "CPF" : "CNPJ";
+};

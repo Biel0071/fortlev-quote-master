@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Quotation } from '@/types/quotation';
-import { formatCurrency, formatDate } from './formatters';
+import { formatCurrency, formatDate, getBrazilDocumentLabel } from './formatters';
 import { 
   calculateTotalTaxes, 
   getProductFullDescription, 
@@ -205,7 +205,7 @@ export const generateNFePDF = async (quotation: Quotation, nfeNumber: string): P
   
   let emitY = y + 11;
   if (quotation.companyInfo?.cnpj) {
-    doc.text(`CNPJ: ${quotation.companyInfo.cnpj}`, margin + 4, emitY);
+    doc.text(`${getBrazilDocumentLabel(quotation.companyInfo.cnpj)}: ${quotation.companyInfo.cnpj}`, margin + 4, emitY);
     emitY += 4;
   }
   if (quotation.companyInfo?.address) {
@@ -253,7 +253,7 @@ export const generateNFePDF = async (quotation: Quotation, nfeNumber: string): P
   
   let destY = y + 11;
   if (quotation.customer?.cnpj) {
-    doc.text(`CPF/CNPJ: ${quotation.customer.cnpj}`, margin + 4, destY);
+    doc.text(`${getBrazilDocumentLabel(quotation.customer.cnpj)}: ${quotation.customer.cnpj}`, margin + 4, destY);
     destY += 4;
   }
   if (quotation.customer?.address) {

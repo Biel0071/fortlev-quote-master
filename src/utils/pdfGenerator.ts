@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Quotation } from '@/types/quotation';
-import { formatCurrency, formatDate } from './formatters';
+import { formatCurrency, formatDate, getBrazilDocumentLabel } from './formatters';
 import { getProductFullDescription } from './taxCalculator';
 
 export const generatePDF = (quotation: Quotation): jsPDF => {
@@ -60,7 +60,7 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   }
   
   if (quotation.companyInfo.cnpj) {
-    doc.text(`CNPJ: ${quotation.companyInfo.cnpj}`, 15, yPos);
+    doc.text(`${getBrazilDocumentLabel(quotation.companyInfo.cnpj)}: ${quotation.companyInfo.cnpj}`, 15, yPos);
     doc.text(`Validade: ${quotation.validity}`, pageWidth - 15, yPos, { align: 'right' });
     yPos += 6;
   }
@@ -113,7 +113,7 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
     
     doc.setFont('helvetica', 'normal');
     if (quotation.customer.cnpj) {
-      doc.text(`CNPJ: ${quotation.customer.cnpj}`, 15, yPos);
+      doc.text(`${getBrazilDocumentLabel(quotation.customer.cnpj)}: ${quotation.customer.cnpj}`, 15, yPos);
       yPos += 5;
     }
     
@@ -411,7 +411,7 @@ const generateCanvasPNG = (quotation: Quotation) => {
   }
   
   if (quotation.companyInfo.cnpj) {
-    ctx.fillText(`CNPJ: ${quotation.companyInfo.cnpj}`, padding, yPos);
+    ctx.fillText(`${getBrazilDocumentLabel(quotation.companyInfo.cnpj)}: ${quotation.companyInfo.cnpj}`, padding, yPos);
     ctx.textAlign = 'right';
     ctx.fillText(`Validade: ${quotation.validity}`, canvas.width - padding, yPos);
     ctx.textAlign = 'left';
@@ -477,7 +477,7 @@ const generateCanvasPNG = (quotation: Quotation) => {
     
     ctx.font = '13px Arial, sans-serif';
     if (quotation.customer.cnpj) {
-      ctx.fillText(`CNPJ: ${quotation.customer.cnpj}`, padding, yPos);
+      ctx.fillText(`${getBrazilDocumentLabel(quotation.customer.cnpj)}: ${quotation.customer.cnpj}`, padding, yPos);
       yPos += 18;
     }
     

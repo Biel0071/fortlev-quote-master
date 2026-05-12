@@ -2,7 +2,7 @@ import { Quotation, QuotationItem, Customer, PaymentConditions } from '@/types/q
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatCurrency, formatDate, getBrazilDocumentLabel } from '@/utils/formatters';
 import { getProductFullDescription } from '@/utils/taxCalculator';
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { downloadNFePDF } from '@/utils/nfeGenerator';
@@ -549,7 +549,7 @@ export const Dashboard = ({ quotations, onDelete, onEdit, onSave, onDuplicate }:
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por cliente, nº ou CNPJ..."
+                placeholder="Buscar por cliente, nº ou CPF/CNPJ..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -751,7 +751,9 @@ export const Dashboard = ({ quotations, onDelete, onEdit, onSave, onDuplicate }:
                     <CardContent className="p-4 space-y-1">
                       <p className="font-medium text-lg">{selectedQuotation.customer.name}</p>
                       {selectedQuotation.customer.cnpj && (
-                        <p className="text-sm text-muted-foreground">CNPJ: {selectedQuotation.customer.cnpj}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {getBrazilDocumentLabel(selectedQuotation.customer.cnpj)}: {selectedQuotation.customer.cnpj}
+                        </p>
                       )}
                       {selectedQuotation.customer.phone && (
                         <p className="text-sm text-muted-foreground">Telefone: {selectedQuotation.customer.phone}</p>

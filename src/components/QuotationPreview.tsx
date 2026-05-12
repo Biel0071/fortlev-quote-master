@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Quotation } from '@/types/quotation';
 import { formatCurrency } from '@/utils/formatters';
+import { getBrazilDocumentLabel } from '@/utils/formatters';
 import { FileText, Image, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -105,7 +106,7 @@ export const QuotationPreview = ({
                     <p><span className="text-muted-foreground">Emitido por:</span> {companyInfo.name}</p>
                   )}
                   {companyInfo.cnpj && (
-                    <p><span className="text-muted-foreground">CNPJ:</span> {companyInfo.cnpj}</p>
+                    <p><span className="text-muted-foreground">{getBrazilDocumentLabel(companyInfo.cnpj)}:</span> {companyInfo.cnpj}</p>
                   )}
                   {companyInfo.address && (
                     <p><span className="text-muted-foreground">Endereço:</span> {companyInfo.address}</p>
@@ -140,7 +141,7 @@ export const QuotationPreview = ({
                 <div className="space-y-1 text-sm">
                   <p className="font-medium">{customer.name}</p>
                   {customer.cnpj && (
-                    <p><span className="text-muted-foreground">CNPJ:</span> {customer.cnpj}</p>
+                    <p><span className="text-muted-foreground">{getBrazilDocumentLabel(customer.cnpj)}:</span> {customer.cnpj}</p>
                   )}
                   {customer.address && (
                     <p><span className="text-muted-foreground">Endereço:</span> {customer.address}</p>

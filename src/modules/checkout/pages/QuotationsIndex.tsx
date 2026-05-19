@@ -125,6 +125,58 @@ const QuotationsIndex = () => {
     toast({ title: 'Modo de edição', description: `Editando orçamento ${source.number}` });
   }, [editId, quotations, loading]);
 
+  // Load smart quotation data
+  useEffect(() => {
+    const rawItems = sessionStorage.getItem("smart_quotation_items");
+    const rawFactory = sessionStorage.getItem("smart_quotation_factory");
+
+    if (rawItems) {
+      try {
+        const parsedItems = JSON.parse(rawItems);
+        // Map to QuotationItem
+        const quotationItems = parsedItems.map((item: any) => ({
+          id: crypto.randomUUID(),
+          product: {
+            id: 'manual-' + Math.random().toString(36).substr(2, 9),
+            name: item.name,
+            capacity: 0,
+            unit: item.unit || 'un',
+            height: '',
+            diameter: '',
+            basePrice: item.unitPrice || 0,
+            type: 'caixa'
+          },
+          quantity: item.quantity,
+          unitPrice: item.unitPrice || 0,
+          subtotal: (item.unitPrice || 0) * item.quantity
+        }));
+        setItems(quotationItems);
+        sessionStorage.removeItem("smart_quotation_items");
+      } catch (e) {
+        console.error("Error parsing smart items", e);
+      }
+    }
+
+    if (rawFactory) {
+      try {
+        const factory = JSON.parse(rawFactory);
+        setCompanyInfo({
+          name: factory.name,
+          cnpj: factory.cnpj,
+          address: factory.address,
+          phone: factory.phone,
+          email: factory.email,
+          website: factory.website || '',
+          sellerName: companyInfo.sellerName,
+          sellerRole: companyInfo.sellerRole,
+        });
+        sessionStorage.removeItem("smart_quotation_factory");
+      } catch (e) {
+        console.error("Error parsing smart factory", e);
+      }
+    }
+  }, []);
+
   const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
   const total = subtotal - discount + freight;
 

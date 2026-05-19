@@ -200,6 +200,45 @@ const QuotationsIndex = () => {
           setDeliveryTime(customerData.deliveryTime);
         }
 
+        if (customerData.freight !== undefined && customerData.freight !== null) {
+          setFreight(customerData.freight);
+        } else if (parsedItems.length > 0) {
+          // Rule: If freight not specified, consider 8% of subtotal
+          const calculatedSubtotal = parsedItems.reduce((acc: number, item: any) => 
+            acc + ((item.price || item.unitPrice || 0) * item.quantity), 0
+          );
+          if (calculatedSubtotal > 0) {
+            // "Picado" roughly means approximately, so we'll just set the 8%
+            setFreight(Number((calculatedSubtotal * 0.08).toFixed(2)));
+          }
+        }
+
+        if (customerData.sellerName) {
+          setCompanyInfo(prev => ({
+            ...prev,
+            sellerName: customerData.sellerName
+          }));
+        } else {
+          // If no seller mentioned, pick a default from saved sellers
+          const storedSellers = localStorage.getItem('fortlev-saved-sellers');
+          if (storedSellers) {
+            try {
+              const sellers = JSON.parse(storedSellers);
+              if (sellers && sellers.length > 0) {
+                // Pick the first one as default
+                const defaultSeller = sellers[0];
+                setCompanyInfo(prev => ({
+                  ...prev,
+                  sellerName: defaultSeller.name,
+                  sellerRole: defaultSeller.role || prev.sellerRole
+                }));
+              }
+            } catch (e) {
+              console.error("Error picking default seller", e);
+            }
+          }
+        }
+
         sessionStorage.removeItem("smart_quotation_customer");
       } catch (e) {
         console.error("Error parsing smart customer", e);

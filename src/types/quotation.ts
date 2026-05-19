@@ -61,6 +61,9 @@ export interface QuotationBranding {
 
 export interface Quotation {
   id: string;
+  companyId?: string;
+  leadId?: string;
+  isOrder?: boolean;
   number: string;
   customer: Customer;
   companyInfo: CompanyInfo;

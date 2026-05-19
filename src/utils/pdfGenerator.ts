@@ -506,7 +506,7 @@ const generateCanvasPNG = (quotation: Quotation) => {
     colStarts.push(colStarts[i-1] + colWidths[i-1]);
   }
   
-  ctx.fillStyle = primaryBlue;
+  ctx.fillStyle = '#000000';
   ctx.fillRect(padding, yPos, tableWidth, 32);
   
   ctx.fillStyle = '#ffffff';

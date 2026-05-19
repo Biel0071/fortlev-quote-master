@@ -413,6 +413,33 @@ const ConstructionPage = () => {
     toast({ title: 'Orçamento excluído', variant: 'destructive' });
   };
 
+  // Load smart quotation data
+  useEffect(() => {
+    const rawItems = sessionStorage.getItem("smart_quotation_items");
+    if (rawItems) {
+      try {
+        const parsedItems = JSON.parse(rawItems);
+        const quotationItems: ConstructionQuotationItem[] = parsedItems.map((item: any) => ({
+          id: crypto.randomUUID(),
+          product: {
+            id: 'manual-' + Math.random().toString(36).substr(2, 9),
+            name: item.name,
+            unit: item.unit || 'un',
+            basePrice: item.unitPrice || 0,
+            category: 'outros'
+          },
+          quantity: item.quantity,
+          unitPrice: item.unitPrice || 0,
+          subtotal: (item.unitPrice || 0) * item.quantity
+        }));
+        setItems(quotationItems);
+        sessionStorage.removeItem("smart_quotation_items");
+      } catch (e) {
+        console.error("Error parsing smart items", e);
+      }
+    }
+  }, []);
+
   const resetForm = () => {
     setCustomer({ name: '', cnpj: '', phone: '', address: '' });
     setItems([]);

@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { FileText, Droplets, HardHat, Shield } from "lucide-react";
+import { FileText, Droplets, HardHat, Shield, Users } from "lucide-react";
 
 const tabs = [
   { to: "/admin/orcamentos", label: "Visão Geral", icon: FileText, end: true },

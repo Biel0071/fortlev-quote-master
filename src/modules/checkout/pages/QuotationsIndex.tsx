@@ -54,6 +54,56 @@ const QuotationsIndex = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
 
+  // Load Fortlev factories
+  useEffect(() => {
+    const fetchFactories = async () => {
+      const { data } = await supabase
+        .from('issuing_companies')
+        .select('*')
+        .eq('company_type', 'fortlev')
+        .eq('is_active', true);
+      
+      if (data) setFactories(data);
+    };
+    fetchFactories();
+  }, []);
+
+  // Nearest Factory Routing
+  useEffect(() => {
+    if (!customer.address || editingQuotationId || factories.length === 0) return;
+
+    const findNearest = async () => {
+      // Try to find state UF in address
+      const ufMatch = customer.address.match(/\b([A-Z]{2})\b/);
+      if (ufMatch) {
+        const uf = ufMatch[1];
+        const coords = getUFCoordinates(uf);
+        if (coords) {
+          const nearest = findNearestFactory(coords, factories);
+          if (nearest && nearest.name !== companyInfo.name) {
+            setCompanyInfo({
+              name: nearest.name,
+              cnpj: nearest.cnpj,
+              address: nearest.address,
+              phone: nearest.phone,
+              email: nearest.email,
+              website: nearest.website,
+              sellerName: companyInfo.sellerName,
+              sellerRole: companyInfo.sellerRole,
+            });
+            toast({ 
+              title: 'Unidade inteligente', 
+              description: `Selecionamos a unidade ${nearest.trading_name || nearest.name} por proximidade.`
+            });
+          }
+        }
+      }
+    };
+
+    const timer = setTimeout(findNearest, 1000);
+    return () => clearTimeout(timer);
+  }, [customer.address, factories, editingQuotationId]);
+
   // Load quotation data when editing and data becomes available
   useEffect(() => {
     if (!editId || editLoaded.current || loading) return;

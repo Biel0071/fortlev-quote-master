@@ -19,6 +19,10 @@ export type ConstructionCategory =
   | 'estruturas'
   | 'madeiras'
   | 'churrasqueiras'
+  | 'pisos-revestimentos'
+  | 'pintura'
+  | 'metais-loucas'
+  | 'ferragens'
   | 'outros';
 
 export interface ConstructionQuotationItem {

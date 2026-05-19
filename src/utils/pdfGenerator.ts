@@ -215,9 +215,9 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   finalY += 8;
   
   // Total row
-  doc.setFillColor(...primaryBlue);
-  doc.rect(totalsX, finalY, totalsWidth, 10, 'F');
-  doc.setTextColor(...white);
+  doc.setDrawColor(...black);
+  doc.rect(totalsX, finalY, totalsWidth, 10, 'S');
+  doc.setTextColor(...black);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text('Total Geral:', totalsX + 3, finalY + 7);

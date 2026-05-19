@@ -99,7 +99,7 @@ export default function AdminIssuingCompanies() {
     } else {
       const { error } = await supabase
         .from("issuing_companies")
-        .insert(currentCompany);
+        .insert(currentCompany as any);
       
       if (error) {
         toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });

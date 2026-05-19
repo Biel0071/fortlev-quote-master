@@ -84,6 +84,8 @@ import PublicQuotationAccess from "./pages/store/PublicQuotationAccess";
 
 import FortlevOverview from "./pages/dashboard/FortlevOverview";
 import ConstructionOverview from "./pages/dashboard/ConstructionOverview";
+import AdminIssuingCompanies from "./pages/dashboard/AdminIssuingCompanies";
+import AdminCrmLeads from "./pages/dashboard/AdminCrmLeads";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

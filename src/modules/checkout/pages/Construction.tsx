@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConstructionProductSelector } from '@/components/ConstructionProductSelector';
 import { CompanyForm } from '@/components/CompanyForm';
@@ -11,7 +11,7 @@ import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
 import { cloud } from '@/lib/cloud';
-import { FilePlus, LayoutDashboard, Pencil, Building2, ArrowLeft } from 'lucide-react';
+import { FilePlus, LayoutDashboard, Pencil, Building2, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency } from '@/utils/formatters';
 import { useConstructionQuotations } from '@/hooks/useConstructionQuotations';
 import { ConstructionQuotationsDashboard } from '@/components/construction/ConstructionQuotationsDashboard';
+import { supabase } from '@/integrations/supabase/client';
 
 const ConstructionPage = () => {
   const { quotations, saveQuotation, updateQuotation, deleteQuotation, duplicateQuotation, generateQuotationNumber } = useConstructionQuotations();

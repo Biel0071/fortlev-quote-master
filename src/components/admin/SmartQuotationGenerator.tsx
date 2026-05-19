@@ -113,6 +113,7 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
             productName: item.productName,
             quantity: item.quantity || 1,
             unit: item.unit || "un",
+            price: item.price,
             confidence: 0.9,
             matched: true
           }));

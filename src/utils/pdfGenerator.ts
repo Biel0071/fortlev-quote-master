@@ -14,16 +14,14 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   };
   
   // Colors
-  const primaryBlue = [0, 82, 147] as const;
-  const darkBlue = [0, 51, 102] as const;
+  const black = [0, 0, 0] as const;
   const white = [255, 255, 255] as const;
-  const lightGray = [245, 247, 250] as const;
-  const textDark = [30, 30, 30] as const;
-  const textGray = [100, 100, 100] as const;
+  const lightGray = [220, 220, 220] as const;
+  const textDark = [0, 0, 0] as const;
   
-  // Header bar
-  doc.setFillColor(...primaryBlue);
-  doc.rect(0, 0, pageWidth, 8, 'F');
+  // Header bar (Border)
+  doc.setDrawColor(...black);
+  doc.rect(0, 0, pageWidth, 8, 'S');
   
   // Title section
   doc.setFillColor(...lightGray);

@@ -169,7 +169,7 @@ export const QuotationPreview = ({
             </div>
 
             {/* Destinatário/Remetente */}
-            <div className="bg-gray-100 border-b-2 border-black px-1 font-bold text-[8px]">DESTINATÁRIO / REMETENTE</div>
+            <div className="border-b-2 border-black px-1 font-bold text-[8px]">DESTINATÁRIO / REMETENTE</div>
             <div className="grid grid-cols-12 border-b-2 border-black">
               <div className="col-span-8 border-r-2 border-black p-1">
                 <p className="text-[7px]">NOME / RAZÃO SOCIAL</p>

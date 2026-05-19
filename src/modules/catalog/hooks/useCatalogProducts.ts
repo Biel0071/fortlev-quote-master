@@ -63,6 +63,26 @@ export function useFortlevCatalogProducts() {
   }, [custom, dbProducts]);
 }
 
+function mapToConstructionCategory(cat: string): ConstructionCategory {
+  const c = cat?.toLowerCase() || "";
+  if (c.includes('piso') || c.includes('revestimento')) return 'pisos-revestimentos';
+  if (c.includes('tinta') || c.includes('pintura')) return 'pintura';
+  if (c.includes('metal') || c.includes('louça')) return 'metais-loucas';
+  if (c.includes('ferragem')) return 'ferragens';
+  if (c.includes('ferramenta')) return 'ferramentas';
+  if (c.includes('hidráulica')) return 'hidraulica';
+  if (c.includes('elétrica')) return 'eletrica';
+  if (c.includes('cimento') || c.includes('argamassa')) return 'cimentos';
+  if (c.includes('tijolo') || c.includes('bloco')) return 'blocos-tijolos';
+  if (c.includes('telha') || c.includes('cobertura')) return 'telhas';
+  if (c.includes('madeira')) return 'madeiras';
+  if (c.includes('churrasqueira')) return 'churrasqueiras';
+  if (c.includes('agregado')) return 'agregados';
+  if (c.includes('estrutura')) return 'estruturas';
+  if (c.includes('acabamento')) return 'acabamentos';
+  return 'outros';
+}
+
 export function useConstructionCatalogProducts() {
   const [dbProducts, setDbProducts] = useState<ConstructionProduct[] | null>(null);
 

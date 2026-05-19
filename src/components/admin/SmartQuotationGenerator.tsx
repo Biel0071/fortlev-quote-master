@@ -114,6 +114,30 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 space-y-4">
+        {/* Address & Routing */}
+        <div className="space-y-2">
+          <Label className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider flex items-center gap-1">
+            <MapPin className="h-3 w-3" /> Endereço de Entrega (UF)
+          </Label>
+          <Input 
+            placeholder="Ex: Rua Tal, São Paulo - SP" 
+            className="h-9 bg-background/50 border-primary/10 text-xs"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+          />
+          {nearestFactory && (
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 animate-in fade-in slide-in-from-top-1">
+              <Truck className="h-3.5 w-3.5 text-emerald-500" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-tight">Fábrica sugerida</p>
+                <p className="text-[11px] text-emerald-700 font-medium truncate">{nearestFactory.trading_name || nearestFactory.name}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Separator className="bg-primary/10" />
+
         {!interpretedItems.length ? (
           <div className="space-y-3">
             <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">

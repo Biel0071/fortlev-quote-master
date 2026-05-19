@@ -18,6 +18,7 @@ interface InterpretedItem {
   productName: string;
   quantity: number;
   unit: string;
+  price?: number;
   confidence: number;
   suggestedProductId?: string;
   matched: boolean;

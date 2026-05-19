@@ -316,7 +316,7 @@ export const QuotationPreview = ({
             </div>
 
             {/* Dados Adicionais */}
-            <div className="bg-gray-100 border-t-2 border-b-2 border-black px-1 font-bold text-[8px]">DADOS ADICIONAIS</div>
+            <div className="border-t-2 border-b-2 border-black px-1 font-bold text-[8px]">DADOS ADICIONAIS</div>
             <div className="grid grid-cols-12">
               <div className="col-span-8 border-r-2 border-black p-1 min-h-[60px]">
                 <p className="text-[7px]">INFORMAÇÕES COMPLEMENTARES</p>

@@ -149,6 +149,8 @@ const App = () => (
                 <Route index element={<AdminQuotationsOverview />} />
                 <Route path="fortlev" element={<FortlevOverview />} />
                 <Route path="construcao" element={<ConstructionOverview />} />
+                <Route path="empresas" element={<AdminIssuingCompanies />} />
+                <Route path="leads" element={<AdminCrmLeads />} />
                 <Route path="tokens" element={<AdminQuotationTokens />} />
               </Route>
 

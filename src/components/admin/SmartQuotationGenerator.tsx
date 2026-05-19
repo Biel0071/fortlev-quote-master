@@ -59,40 +59,78 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
     }
   }, [address, factories]);
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+        toast({ title: "Imagem carregada", description: "A imagem está pronta para análise." });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setSelectedImage(reader.result as string);
+            toast({ title: "Imagem colada", description: "Imagem do clipboard carregada para análise." });
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    }
+  };
+
   const handleInterpret = async () => {
-    if (!inputText.trim()) {
-      toast({ title: "Texto vazio", description: "Cole ou digite uma lista de produtos", variant: "destructive" });
+    if (!inputText.trim() && !selectedImage) {
+      toast({ title: "Entrada vazia", description: "Cole um texto ou uma imagem do pedido.", variant: "destructive" });
       return;
     }
 
     setIsInterpreting(true);
     
-    // Simulate AI interpretation
-    // In a real scenario, this would call an Edge Function with OpenAI/Gemini
-    setTimeout(() => {
-      const lines = inputText.split('\n').filter(l => l.trim());
-      const mockInterpreted: InterpretedItem[] = lines.map((line, index) => {
-        // Simple regex to find numbers and names
-        const qtyMatch = line.match(/^(\d+)\s*(.*)$/);
-        const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
-        const name = qtyMatch ? qtyMatch[2] : line;
-
-        return {
-          id: `item-${index}`,
-          originalText: line,
-          productName: name,
-          quantity: qty,
-          unit: "un",
-          confidence: 0.8 + Math.random() * 0.2,
-          matched: Math.random() > 0.3 // Mocking some matches
-        };
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-quotation-image', {
+        body: { text: inputText, image: selectedImage }
       });
 
-      setInterpretedItems(mockInterpreted);
+      if (error) throw error;
+
+      if (data && data.items) {
+        const mappedItems: InterpretedItem[] = data.items.map((item: any, index: number) => ({
+          id: `item-${index}-${Date.now()}`,
+          originalText: item.originalText || item.productName,
+          productName: item.productName,
+          quantity: item.quantity || 1,
+          unit: item.unit || "un",
+          confidence: 0.9,
+          matched: true
+        }));
+
+        setInterpretedItems(mappedItems);
+        toast({ title: "Interpretação concluída", description: `${mappedItems.length} itens identificados.` });
+      } else {
+        throw new Error("Não foi possível identificar itens.");
+      }
+    } catch (error: any) {
+      console.error("Erro na interpretação:", error);
+      toast({ 
+        title: "Erro na análise", 
+        description: error.message || "Ocorreu um erro ao processar os dados.", 
+        variant: "destructive" 
+      });
+    } finally {
       setIsInterpreting(false);
-      toast({ title: "Interpretação concluída", description: `${mockInterpreted.length} itens identificados.` });
-    }, 1500);
+    }
   };
+
 
   const handleAddAll = () => {
     onItemsGenerated(interpretedItems.map(item => ({

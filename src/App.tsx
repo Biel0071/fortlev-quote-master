@@ -84,6 +84,8 @@ import PublicQuotationAccess from "./pages/store/PublicQuotationAccess";
 
 import FortlevOverview from "./pages/dashboard/FortlevOverview";
 import ConstructionOverview from "./pages/dashboard/ConstructionOverview";
+import AdminIssuingCompanies from "./pages/dashboard/AdminIssuingCompanies";
+import AdminCrmLeads from "./pages/dashboard/AdminCrmLeads";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -147,6 +149,8 @@ const App = () => (
                 <Route index element={<AdminQuotationsOverview />} />
                 <Route path="fortlev" element={<FortlevOverview />} />
                 <Route path="construcao" element={<ConstructionOverview />} />
+                <Route path="empresas" element={<AdminIssuingCompanies />} />
+                <Route path="leads" element={<AdminCrmLeads />} />
                 <Route path="tokens" element={<AdminQuotationTokens />} />
               </Route>
 

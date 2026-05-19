@@ -957,6 +957,7 @@ export type Database = {
       }
       construction_quotations: {
         Row: {
+          company_id: string | null
           company_info_json: Json
           created_at: string
           created_via_token: boolean
@@ -965,7 +966,9 @@ export type Database = {
           discount: number
           freight: number
           id: string
+          is_order: boolean | null
           items_json: Json
+          lead_id: string | null
           number: string
           observations: string
           payment_method: string
@@ -978,6 +981,7 @@ export type Database = {
           validity: string
         }
         Insert: {
+          company_id?: string | null
           company_info_json?: Json
           created_at?: string
           created_via_token?: boolean
@@ -986,7 +990,9 @@ export type Database = {
           discount?: number
           freight?: number
           id?: string
+          is_order?: boolean | null
           items_json?: Json
+          lead_id?: string | null
           number: string
           observations?: string
           payment_method?: string
@@ -999,6 +1005,7 @@ export type Database = {
           validity?: string
         }
         Update: {
+          company_id?: string | null
           company_info_json?: Json
           created_at?: string
           created_via_token?: boolean
@@ -1007,7 +1014,9 @@ export type Database = {
           discount?: number
           freight?: number
           id?: string
+          is_order?: boolean | null
           items_json?: Json
+          lead_id?: string | null
           number?: string
           observations?: string
           payment_method?: string
@@ -1020,6 +1029,20 @@ export type Database = {
           validity?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "construction_quotations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "issuing_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "construction_quotations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "construction_quotations_source_token_id_fkey"
             columns: ["source_token_id"]
@@ -1056,6 +1079,54 @@ export type Database = {
           ip_hash?: string | null
           session_token?: string
           user_agent_hash?: string | null
+        }
+        Relationships: []
+      }
+      crm_leads: {
+        Row: {
+          conversion_rate: number | null
+          created_at: string | null
+          document: string | null
+          email: string | null
+          id: string
+          last_purchase: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          source: string | null
+          status: string | null
+          total_spent: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          conversion_rate?: number | null
+          created_at?: string | null
+          document?: string | null
+          email?: string | null
+          id?: string
+          last_purchase?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          source?: string | null
+          status?: string | null
+          total_spent?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          conversion_rate?: number | null
+          created_at?: string | null
+          document?: string | null
+          email?: string | null
+          id?: string
+          last_purchase?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          source?: string | null
+          status?: string | null
+          total_spent?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -1226,6 +1297,7 @@ export type Database = {
       fortlev_quotations: {
         Row: {
           branding_json: Json | null
+          company_id: string | null
           company_info_json: Json
           created_at: string
           created_via_token: boolean
@@ -1234,7 +1306,9 @@ export type Database = {
           discount: number
           freight: number
           id: string
+          is_order: boolean | null
           items_json: Json
+          lead_id: string | null
           number: string
           observations: string
           payment_conditions_json: Json
@@ -1249,6 +1323,7 @@ export type Database = {
         }
         Insert: {
           branding_json?: Json | null
+          company_id?: string | null
           company_info_json?: Json
           created_at?: string
           created_via_token?: boolean
@@ -1257,7 +1332,9 @@ export type Database = {
           discount?: number
           freight?: number
           id?: string
+          is_order?: boolean | null
           items_json?: Json
+          lead_id?: string | null
           number: string
           observations?: string
           payment_conditions_json?: Json
@@ -1272,6 +1349,7 @@ export type Database = {
         }
         Update: {
           branding_json?: Json | null
+          company_id?: string | null
           company_info_json?: Json
           created_at?: string
           created_via_token?: boolean
@@ -1280,7 +1358,9 @@ export type Database = {
           discount?: number
           freight?: number
           id?: string
+          is_order?: boolean | null
           items_json?: Json
+          lead_id?: string | null
           number?: string
           observations?: string
           payment_conditions_json?: Json
@@ -1294,6 +1374,20 @@ export type Database = {
           validity?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fortlev_quotations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "issuing_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fortlev_quotations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fortlev_quotations_source_token_id_fkey"
             columns: ["source_token_id"]
@@ -1681,6 +1775,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      issuing_companies: {
+        Row: {
+          address: string | null
+          city: string | null
+          cnpj: string
+          created_at: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          logo_url: string | null
+          name: string
+          phone: string | null
+          seller_name: string | null
+          seller_role: string | null
+          signature_url: string | null
+          state: string | null
+          trading_name: string | null
+          updated_at: string | null
+          website: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          cnpj: string
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          logo_url?: string | null
+          name: string
+          phone?: string | null
+          seller_name?: string | null
+          seller_role?: string | null
+          signature_url?: string | null
+          state?: string | null
+          trading_name?: string | null
+          updated_at?: string | null
+          website?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          cnpj?: string
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          seller_name?: string | null
+          seller_role?: string | null
+          signature_url?: string | null
+          state?: string | null
+          trading_name?: string | null
+          updated_at?: string | null
+          website?: string | null
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
+      order_tracking: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          location: string | null
+          occurred_at: string | null
+          order_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          location?: string | null
+          occurred_at?: string | null
+          order_id: string
+          status: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          location?: string | null
+          occurred_at?: string | null
+          order_id?: string
+          status?: string
+        }
+        Relationships: []
       }
       payment_api_keys: {
         Row: {

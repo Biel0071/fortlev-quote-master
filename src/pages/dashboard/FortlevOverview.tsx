@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, MoreHorizontal } from "lucide-react";
+import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, MoreHorizontal, Building2, Users, Search, Filter } from "lucide-react";
+import SmartQuotationGenerator from "@/components/admin/SmartQuotationGenerator";
 import { useQuotations } from "@/hooks/useQuotations";
 import { useSales } from "@/hooks/useSales";
 import { formatCurrency, formatDate } from "@/utils/formatters";
@@ -36,6 +38,31 @@ export default function FortlevOverview() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [issuers, setIssuers] = useState<any[]>([]);
+  const [selectedIssuerId, setSelectedIssuerId] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    const fetchIssuers = async () => {
+      const { data } = await supabase.from("issuing_companies").select("*").order("name");
+      setIssuers(data || []);
+    };
+    fetchIssuers();
+  }, []);
+
+  const filteredQuotations = useMemo(() => {
+    let result = quotations;
+    if (selectedIssuerId !== "all") {
+      result = result.filter(q => q.companyId === selectedIssuerId);
+    }
+    if (searchTerm) {
+      result = result.filter(q => 
+        q.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        q.number.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return result;
+  }, [quotations, selectedIssuerId, searchTerm]);
 
   const totalQuoted = useMemo(() => quotations.reduce((acc, q) => acc + (q.total || 0), 0), [quotations]);
   const totalSales = useMemo(() => sales.reduce((acc, s) => acc + (s.value || 0), 0), [sales]);

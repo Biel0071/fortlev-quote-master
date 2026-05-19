@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wand2, Image as ImageIcon, Copy, Check, AlertCircle, ShoppingCart, MapPin, Truck } from "lucide-react";
+import { Wand2, Image as ImageIcon, Copy, Check, AlertCircle, ShoppingCart, MapPin, Truck, X, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,6 +30,9 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
   const [interpretedItems, setInterpretedItems] = useState<InterpretedItem[]>([]);
   const [factories, setFactories] = useState<any[]>([]);
   const [nearestFactory, setNearestFactory] = useState<any>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
     const fetchFactories = async () => {
@@ -56,40 +59,78 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
     }
   }, [address, factories]);
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+        toast({ title: "Imagem carregada", description: "A imagem está pronta para análise." });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setSelectedImage(reader.result as string);
+            toast({ title: "Imagem colada", description: "Imagem do clipboard carregada para análise." });
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    }
+  };
+
   const handleInterpret = async () => {
-    if (!inputText.trim()) {
-      toast({ title: "Texto vazio", description: "Cole ou digite uma lista de produtos", variant: "destructive" });
+    if (!inputText.trim() && !selectedImage) {
+      toast({ title: "Entrada vazia", description: "Cole um texto ou uma imagem do pedido.", variant: "destructive" });
       return;
     }
 
     setIsInterpreting(true);
     
-    // Simulate AI interpretation
-    // In a real scenario, this would call an Edge Function with OpenAI/Gemini
-    setTimeout(() => {
-      const lines = inputText.split('\n').filter(l => l.trim());
-      const mockInterpreted: InterpretedItem[] = lines.map((line, index) => {
-        // Simple regex to find numbers and names
-        const qtyMatch = line.match(/^(\d+)\s*(.*)$/);
-        const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
-        const name = qtyMatch ? qtyMatch[2] : line;
-
-        return {
-          id: `item-${index}`,
-          originalText: line,
-          productName: name,
-          quantity: qty,
-          unit: "un",
-          confidence: 0.8 + Math.random() * 0.2,
-          matched: Math.random() > 0.3 // Mocking some matches
-        };
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-quotation-image', {
+        body: { text: inputText, image: selectedImage }
       });
 
-      setInterpretedItems(mockInterpreted);
+      if (error) throw error;
+
+      if (data && data.items) {
+        const mappedItems: InterpretedItem[] = data.items.map((item: any, index: number) => ({
+          id: `item-${index}-${Date.now()}`,
+          originalText: item.originalText || item.productName,
+          productName: item.productName,
+          quantity: item.quantity || 1,
+          unit: item.unit || "un",
+          confidence: 0.9,
+          matched: true
+        }));
+
+        setInterpretedItems(mappedItems);
+        toast({ title: "Interpretação concluída", description: `${mappedItems.length} itens identificados.` });
+      } else {
+        throw new Error("Não foi possível identificar itens.");
+      }
+    } catch (error: any) {
+      console.error("Erro na interpretação:", error);
+      toast({ 
+        title: "Erro na análise", 
+        description: error.message || "Ocorreu um erro ao processar os dados.", 
+        variant: "destructive" 
+      });
+    } finally {
       setIsInterpreting(false);
-      toast({ title: "Interpretação concluída", description: `${mockInterpreted.length} itens identificados.` });
-    }, 1500);
+    }
   };
+
 
   const handleAddAll = () => {
     onItemsGenerated(interpretedItems.map(item => ({
@@ -141,14 +182,39 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
         {!interpretedItems.length ? (
           <div className="space-y-3">
             <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
-              Cole texto do WhatsApp, OCR ou lista manual
+              Cole texto, lista ou imagem (Ctrl+V)
             </p>
-            <Textarea 
-              placeholder="Ex: 15 cimento cp2, 20 tijolo 8 furos, 3 barras 5/16..." 
-              className="min-h-[120px] bg-background/50 border-primary/10 focus-visible:ring-primary/30"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-            />
+            
+            <div className="relative">
+              <Textarea 
+                placeholder="Ex: 15 cimento cp2, 20 tijolo 8 furos..." 
+                className="min-h-[120px] bg-background/50 border-primary/10 focus-visible:ring-primary/30 text-xs"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onPaste={handlePaste}
+              />
+              
+              {selectedImage && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95">
+                  <div className="relative group max-h-full">
+                    <img 
+                      src={selectedImage} 
+                      alt="Upload preview" 
+                      className="max-h-[110px] rounded border border-primary/20 object-contain shadow-lg"
+                    />
+                    <Button 
+                      variant="destructive" 
+                      size="icon" 
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setSelectedImage(null)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2">
               <Button 
                 onClick={handleInterpret} 
@@ -156,20 +222,36 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               >
                 {isInterpreting ? (
-                  <>Interpretando...</>
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Analisando...
+                  </>
                 ) : (
                   <>
                     <Wand2 className="h-4 w-4 mr-2" />
-                    Interpretar Pedido
+                    Gerar Orçamento
                   </>
                 )}
               </Button>
-              <Button variant="outline" size="icon" className="border-primary/20 text-primary hover:bg-primary/10">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*" 
+                onChange={handleImageUpload}
+              />
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className={`border-primary/20 hover:bg-primary/10 ${selectedImage ? 'text-primary' : 'text-muted-foreground'}`}
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <ImageIcon className="h-4 w-4" />
               </Button>
             </div>
           </div>
         ) : (
+
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">

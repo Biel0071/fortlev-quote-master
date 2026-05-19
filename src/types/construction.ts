@@ -39,6 +39,7 @@ export interface ConstructionCustomer {
   cpfCnpj: string;
   phone: string;
   address: string;
+  email?: string;
 }
 
 export interface ConstructionCompanyInfo {

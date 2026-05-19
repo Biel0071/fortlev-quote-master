@@ -157,10 +157,13 @@ export default function ConstructionOverview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
-          <SmartQuotationGenerator onItemsGenerated={(items) => {
+          <SmartQuotationGenerator onItemsGenerated={(items, nearestFactory, customerData) => {
             console.log("Items generated:", items);
             sessionStorage.setItem("smart_quotation_items", JSON.stringify(items));
-            toast({ title: "Gerador Inteligente", description: "Itens processados e prontos para o orçamento." });
+            if (customerData) {
+              sessionStorage.setItem("smart_quotation_customer", JSON.stringify(customerData));
+            }
+            toast({ title: "Gerador Inteligente", description: "Itens e dados do cliente processados." });
             navigate("/construcao");
           }} />
         </div>

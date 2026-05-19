@@ -22,6 +22,7 @@ export interface Customer {
   cnpj: string;
   phone: string;
   address: string;
+  email?: string;
 }
 
 export interface CompanyInfo {

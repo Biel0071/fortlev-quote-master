@@ -129,6 +129,7 @@ const QuotationsIndex = () => {
   useEffect(() => {
     const rawItems = sessionStorage.getItem("smart_quotation_items");
     const rawFactory = sessionStorage.getItem("smart_quotation_factory");
+    const rawCustomer = sessionStorage.getItem("smart_quotation_customer");
 
     if (rawItems) {
       try {
@@ -138,17 +139,17 @@ const QuotationsIndex = () => {
           id: crypto.randomUUID(),
           product: {
             id: 'manual-' + Math.random().toString(36).substr(2, 9),
-            name: item.name,
+            name: item.productName || item.name,
             capacity: 0,
             unit: item.unit || 'un',
             height: '',
             diameter: '',
-            basePrice: item.unitPrice || 0,
+            basePrice: item.price || item.unitPrice || 0,
             type: 'caixa'
           },
           quantity: item.quantity,
-          unitPrice: item.unitPrice || 0,
-          subtotal: (item.unitPrice || 0) * item.quantity
+          unitPrice: item.price || item.unitPrice || 0,
+          subtotal: (item.price || item.unitPrice || 0) * item.quantity
         }));
         setItems(quotationItems);
         sessionStorage.removeItem("smart_quotation_items");
@@ -160,19 +161,35 @@ const QuotationsIndex = () => {
     if (rawFactory) {
       try {
         const factory = JSON.parse(rawFactory);
-        setCompanyInfo({
+        setCompanyInfo(prev => ({
+          ...prev,
           name: factory.name,
           cnpj: factory.cnpj,
           address: factory.address,
           phone: factory.phone,
           email: factory.email,
           website: factory.website || '',
-          sellerName: companyInfo.sellerName,
-          sellerRole: companyInfo.sellerRole,
-        });
+        }));
         sessionStorage.removeItem("smart_quotation_factory");
       } catch (e) {
         console.error("Error parsing smart factory", e);
+      }
+    }
+
+    if (rawCustomer) {
+      try {
+        const customerData = JSON.parse(rawCustomer);
+        setCustomer(prev => ({
+          ...prev,
+          name: customerData.name || prev.name,
+          cnpj: customerData.document || prev.cnpj,
+          email: customerData.email || prev.email,
+          phone: customerData.phone || prev.phone,
+          address: customerData.address || prev.address,
+        }));
+        sessionStorage.removeItem("smart_quotation_customer");
+      } catch (e) {
+        console.error("Error parsing smart customer", e);
       }
     }
   }, []);

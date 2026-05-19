@@ -10,13 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown } from "lucide-react";
+import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, Search } from "lucide-react";
 import { useConstructionQuotations } from "@/hooks/useConstructionQuotations";
 import { useSales } from "@/hooks/useSales";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { toast } from "@/hooks/use-toast";
 import type { Quotation } from "@/types/quotation";
 import { downloadPDF, downloadPNG } from "@/utils/pdfGenerator";
+import SmartQuotationGenerator from "@/components/admin/SmartQuotationGenerator";
 
 function currencyToNumber(raw: string) {
   const cleaned = raw.replace(/[^0-9,.-]/g, "").replace(".", "").replace(",", ".");

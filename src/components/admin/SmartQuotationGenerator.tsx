@@ -182,14 +182,39 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
         {!interpretedItems.length ? (
           <div className="space-y-3">
             <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
-              Cole texto do WhatsApp, OCR ou lista manual
+              Cole texto, lista ou imagem (Ctrl+V)
             </p>
-            <Textarea 
-              placeholder="Ex: 15 cimento cp2, 20 tijolo 8 furos, 3 barras 5/16..." 
-              className="min-h-[120px] bg-background/50 border-primary/10 focus-visible:ring-primary/30"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-            />
+            
+            <div className="relative">
+              <Textarea 
+                placeholder="Ex: 15 cimento cp2, 20 tijolo 8 furos..." 
+                className="min-h-[120px] bg-background/50 border-primary/10 focus-visible:ring-primary/30 text-xs"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onPaste={handlePaste}
+              />
+              
+              {selectedImage && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95">
+                  <div className="relative group max-h-full">
+                    <img 
+                      src={selectedImage} 
+                      alt="Upload preview" 
+                      className="max-h-[110px] rounded border border-primary/20 object-contain shadow-lg"
+                    />
+                    <Button 
+                      variant="destructive" 
+                      size="icon" 
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setSelectedImage(null)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2">
               <Button 
                 onClick={handleInterpret} 
@@ -197,20 +222,36 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               >
                 {isInterpreting ? (
-                  <>Interpretando...</>
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Analisando...
+                  </>
                 ) : (
                   <>
                     <Wand2 className="h-4 w-4 mr-2" />
-                    Interpretar Pedido
+                    Gerar Orçamento
                   </>
                 )}
               </Button>
-              <Button variant="outline" size="icon" className="border-primary/20 text-primary hover:bg-primary/10">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*" 
+                onChange={handleImageUpload}
+              />
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className={`border-primary/20 hover:bg-primary/10 ${selectedImage ? 'text-primary' : 'text-muted-foreground'}`}
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <ImageIcon className="h-4 w-4" />
               </Button>
             </div>
           </div>
         ) : (
+
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">

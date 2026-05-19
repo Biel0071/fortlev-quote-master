@@ -575,7 +575,7 @@ const generateCanvasPNG = (quotation: Quotation) => {
   ctx.textAlign = 'left';
   yPos += 26;
   
-  ctx.fillStyle = primaryBlue;
+  ctx.fillStyle = '#000000';
   ctx.fillRect(totalsX, yPos, totalsWidth, 30);
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 13px Arial, sans-serif';

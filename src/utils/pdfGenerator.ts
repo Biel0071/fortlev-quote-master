@@ -675,7 +675,7 @@ const generateCanvasPNG = (quotation: Quotation) => {
     ctx.drawImage(tempCanvas, 0, 0);
     
     // Bottom bar
-    ctx.fillStyle = primaryBlue;
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, finalHeight - 35, canvas.width, 35);
   }
   

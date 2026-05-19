@@ -118,8 +118,8 @@ export function useConstructionCatalogProducts() {
         id: r.id,
         name: r.name,
         unit: r.unit || 'un',
-        basePrice: Number(r.price ?? 0),
-        category: (r.category?.toLowerCase() || "outros") as ConstructionCategory,
+        basePrice: Number(r.price || 0),
+        category: mapToConstructionCategory(r.category),
       }));
 
       // Merge and remove duplicates by ID

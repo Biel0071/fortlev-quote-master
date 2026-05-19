@@ -146,7 +146,7 @@ const QuotationsIndex = () => {
             height: '',
             diameter: '',
             basePrice: item.price || item.unitPrice || 0,
-            type: 'caixa'
+            type: 'caixa' as const
           },
           quantity: item.quantity,
           unitPrice: item.price || item.unitPrice || 0,

@@ -1,0 +1,162 @@
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Wand2, Image as ImageIcon, Copy, Check, AlertCircle, ShoppingCart } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+
+interface InterpretedItem {
+  id: string;
+  originalText: string;
+  productName: string;
+  quantity: number;
+  unit: string;
+  confidence: number;
+  suggestedProductId?: string;
+  matched: boolean;
+}
+
+export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsGenerated: (items: any[]) => void }) {
+  const [inputText, setInputText] = useState("");
+  const [isInterpreting, setIsInterpreting] = useState(false);
+  const [interpretedItems, setInterpretedItems] = useState<InterpretedItem[]>([]);
+
+  const handleInterpret = async () => {
+    if (!inputText.trim()) {
+      toast({ title: "Texto vazio", description: "Cole ou digite uma lista de produtos", variant: "destructive" });
+      return;
+    }
+
+    setIsInterpreting(true);
+    
+    // Simulate AI interpretation
+    // In a real scenario, this would call an Edge Function with OpenAI/Gemini
+    setTimeout(() => {
+      const lines = inputText.split('\n').filter(l => l.trim());
+      const mockInterpreted: InterpretedItem[] = lines.map((line, index) => {
+        // Simple regex to find numbers and names
+        const qtyMatch = line.match(/^(\d+)\s*(.*)$/);
+        const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+        const name = qtyMatch ? qtyMatch[2] : line;
+
+        return {
+          id: `item-${index}`,
+          originalText: line,
+          productName: name,
+          quantity: qty,
+          unit: "un",
+          confidence: 0.8 + Math.random() * 0.2,
+          matched: Math.random() > 0.3 // Mocking some matches
+        };
+      });
+
+      setInterpretedItems(mockInterpreted);
+      setIsInterpreting(false);
+      toast({ title: "Interpretação concluída", description: `${mockInterpreted.length} itens identificados.` });
+    }, 1500);
+  };
+
+  const handleAddAll = () => {
+    onItemsGenerated(interpretedItems.map(item => ({
+      name: item.productName,
+      quantity: item.quantity,
+      unitPrice: 0, // Should come from a real product search
+      subtotal: 0
+    })));
+    setInterpretedItems([]);
+    setInputText("");
+    toast({ title: "Itens adicionados", description: "Os itens foram enviados para o orçamento." });
+  };
+
+  return (
+    <Card className="border-primary/20 bg-primary/5 backdrop-blur-sm overflow-hidden">
+      <CardHeader className="pb-3 border-b border-primary/10 bg-primary/10">
+        <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
+          <Wand2 className="h-4 w-4" />
+          Gerador Inteligente
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-4 space-y-4">
+        {!interpretedItems.length ? (
+          <div className="space-y-3">
+            <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+              Cole texto do WhatsApp, OCR ou lista manual
+            </p>
+            <Textarea 
+              placeholder="Ex: 15 cimento cp2, 20 tijolo 8 furos, 3 barras 5/16..." 
+              className="min-h-[120px] bg-background/50 border-primary/10 focus-visible:ring-primary/30"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleInterpret} 
+                disabled={isInterpreting}
+                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
+                {isInterpreting ? (
+                  <>Interpretando...</>
+                ) : (
+                  <>
+                    <Wand2 className="h-4 w-4 mr-2" />
+                    Interpretar Pedido
+                  </>
+                )}
+              </Button>
+              <Button variant="outline" size="icon" className="border-primary/20 text-primary hover:bg-primary/10">
+                <ImageIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                Itens Identificados
+                <Badge variant="secondary" className="h-4 px-1.5 text-[9px]">{interpretedItems.length}</Badge>
+              </h3>
+              <Button variant="ghost" size="sm" onClick={() => setInterpretedItems([])} className="h-7 text-[10px]">
+                Limpar
+              </Button>
+            </div>
+            
+            <ScrollArea className="h-[250px] pr-3">
+              <div className="space-y-2">
+                {interpretedItems.map((item) => (
+                  <div key={item.id} className="p-2.5 rounded-lg border border-primary/10 bg-background/40 flex items-start justify-between gap-3 group transition-all hover:border-primary/30">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-bold text-sm text-foreground">{item.quantity} {item.unit}</span>
+                        <span className="text-sm truncate font-medium text-foreground/80">{item.productName}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground italic truncate">"{item.originalText}"</p>
+                    </div>
+                    {item.matched ? (
+                      <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 pointer-events-none">
+                        <Check className="h-3 w-3 mr-1" /> OK
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-amber-500 border-amber-500/20 bg-amber-500/5 pointer-events-none">
+                        <AlertCircle className="h-3 w-3 mr-1" /> Sugerir
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+
+            <Separator className="bg-primary/10" />
+            
+            <Button onClick={handleAddAll} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20">
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Adicionar Itens ao Orçamento
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

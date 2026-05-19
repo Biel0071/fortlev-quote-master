@@ -1,12 +1,14 @@
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CompanyInfo } from '@/types/quotation';
-import { Building2, Phone, Mail, Globe, User, Save, Trash2, Plus } from 'lucide-react';
+import { Building2, Phone, Mail, Globe, User, Save, Trash2, Plus, Loader2 } from 'lucide-react';
 import { useSavedCompanies } from '@/hooks/useSavedCompanies';
 import { useSavedSellers, SavedSeller } from '@/hooks/useSavedSellers';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CompanyFormProps {
   companyInfo: CompanyInfo;

@@ -83,10 +83,11 @@ export default function AdminIssuingCompanies() {
     }
 
     if (currentCompany.id) {
+      const { id, ...updateData } = currentCompany;
       const { error } = await supabase
         .from("issuing_companies")
-        .update(currentCompany)
-        .eq("id", currentCompany.id);
+        .update(updateData as any)
+        .eq("id", id);
       
       if (error) {
         toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });

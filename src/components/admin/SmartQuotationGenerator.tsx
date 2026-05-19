@@ -126,7 +126,9 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
             ...data.customer,
             observations: data.observations,
             validity: data.validity,
-            deliveryTime: data.deliveryTime
+            deliveryTime: data.deliveryTime,
+            freight: data.freight,
+            sellerName: data.sellerName
           });
           if (data.customer.address) {
             setAddress(data.customer.address);

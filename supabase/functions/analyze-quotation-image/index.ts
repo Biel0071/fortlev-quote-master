@@ -49,7 +49,9 @@ serve(async (req) => {
           ],
           "observations": "string (incluindo referências de local e notas)",
           "validity": "string (ex: '7 dias')",
-          "deliveryTime": "string (ex: '24 horas')"
+          "deliveryTime": "string (ex: '24 horas')",
+          "freight": number (valor de frete se explicitamente mencionado, caso contrário nulo),
+          "sellerName": "string (nome de vendedor se mencionado)"
         }
         
         Seja preciso. Se não houver quantidade, assuma 1. Limpe textos de conversa, foque nos dados comerciais.`,

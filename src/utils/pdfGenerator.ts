@@ -291,14 +291,14 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   finalY += 5;
   
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...textGray);
+  doc.setTextColor(...black);
   doc.text(quotation.companyInfo.sellerRole || 'Gerente de Vendas', 15, finalY);
   finalY += 5;
   doc.text(quotation.companyInfo.name || 'Empresa', 15, finalY);
   
-  // Footer bar
-  doc.setFillColor(...primaryBlue);
-  doc.rect(0, doc.internal.pageSize.getHeight() - 8, pageWidth, 8, 'F');
+  // Footer bar (Border)
+  doc.setDrawColor(...black);
+  doc.rect(0, doc.internal.pageSize.getHeight() - 8, pageWidth, 8, 'S');
   
   return doc;
 };

@@ -273,7 +273,7 @@ export const QuotationPreview = ({
             </div>
 
             {/* Dados do Produto/Serviço */}
-            <div className="bg-gray-100 border-b-2 border-black px-1 font-bold text-[8px]">DADOS DO PRODUTO / SERVIÇO</div>
+            <div className="border-b-2 border-black px-1 font-bold text-[8px]">DADOS DO PRODUTO / SERVIÇO</div>
             <div className="min-h-[150px]">
               <table className="w-full text-[7px] border-collapse">
                 <thead>

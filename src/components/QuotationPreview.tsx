@@ -266,7 +266,7 @@ export const QuotationPreview = ({
                 <p className="text-[7px]">OUTRAS DESPESAS</p>
                 <p className="font-bold text-right">R$ 0,00</p>
               </div>
-              <div className="p-1 bg-gray-50">
+              <div className="p-1 border-2 border-black">
                 <p className="text-[7px] font-bold">VALOR TOTAL DA NOTA</p>
                 <p className="font-extrabold text-sm text-right">{formatCurrency(quotation.total)}</p>
               </div>

@@ -18,6 +18,7 @@ interface InterpretedItem {
   productName: string;
   quantity: number;
   unit: string;
+  price?: number;
   confidence: number;
   suggestedProductId?: string;
   matched: boolean;
@@ -50,6 +51,7 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
   useEffect(() => {
     if (!address || factories.length === 0) return;
     
+    // Extract UF (two uppercase letters) or CEP
     const ufMatch = address.match(/\b([A-Z]{2})\b/);
     if (ufMatch) {
       const coords = getUFCoordinates(ufMatch[1]);
@@ -112,6 +114,7 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
             productName: item.productName,
             quantity: item.quantity || 1,
             unit: item.unit || "un",
+            price: item.price,
             confidence: 0.9,
             matched: true
           }));
@@ -119,7 +122,12 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
         }
 
         if (data.customer) {
-          setCustomerData(data.customer);
+          setCustomerData({
+            ...data.customer,
+            observations: data.observations,
+            validity: data.validity,
+            deliveryTime: data.deliveryTime
+          });
           if (data.customer.address) {
             setAddress(data.customer.address);
           }
@@ -146,8 +154,9 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
     onItemsGenerated(interpretedItems.map(item => ({
       name: item.productName,
       quantity: item.quantity,
-      unitPrice: 0, 
-      subtotal: 0
+      unitPrice: item.price || 0, 
+      subtotal: (item.price || 0) * item.quantity,
+      unit: item.unit
     })), nearestFactory, customerData);
     
     setInterpretedItems([]);
@@ -241,7 +250,7 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
                 ) : (
                   <>
                     <Wand2 className="h-4 w-4 mr-2" />
-                    Gerar Orçamento
+                    Analisar Pedido
                   </>
                 )}
               </Button>
@@ -267,15 +276,39 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                Itens Identificados
-                <Badge variant="secondary" className="h-4 px-1.5 text-[9px]">{interpretedItems.length}</Badge>
+                Dados Identificados
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => setInterpretedItems([])} className="h-7 text-[10px]">
+              <Button variant="ghost" size="sm" onClick={() => {
+                setInterpretedItems([]);
+                setCustomerData(null);
+                setAddress("");
+                setNearestFactory(null);
+              }} className="h-7 text-[10px]">
                 Limpar
               </Button>
             </div>
+
+            {customerData && (
+              <div className="p-3 rounded-lg border border-primary/20 bg-primary/5 space-y-2 animate-in fade-in slide-in-from-top-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold text-primary truncate max-w-[70%]">{customerData.name || "Cliente não identificado"}</p>
+                  <Badge variant="outline" className="text-[9px] h-4">{customerData.document || "Sem documento"}</Badge>
+                </div>
+                {customerData.observations && (
+                  <div className="text-[10px] text-muted-foreground bg-background/50 p-1.5 rounded border border-primary/10">
+                    <span className="font-bold text-primary/70">Ref/Obs:</span> {customerData.observations}
+                  </div>
+                )}
+                {(customerData.validity || customerData.deliveryTime) && (
+                  <div className="flex gap-2">
+                    {customerData.validity && <Badge variant="secondary" className="text-[9px] h-4">Validade: {customerData.validity}</Badge>}
+                    {customerData.deliveryTime && <Badge variant="secondary" className="text-[9px] h-4">Entrega: {customerData.deliveryTime}</Badge>}
+                  </div>
+                )}
+              </div>
+            )}
             
-            <ScrollArea className="h-[250px] pr-3">
+            <ScrollArea className="h-[200px] pr-3">
               <div className="space-y-2">
                 {interpretedItems.map((item) => (
                   <div key={item.id} className="p-2.5 rounded-lg border border-primary/10 bg-background/40 flex items-start justify-between gap-3 group transition-all hover:border-primary/30">
@@ -284,7 +317,10 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
                         <span className="font-bold text-sm text-foreground">{item.quantity} {item.unit}</span>
                         <span className="text-sm truncate font-medium text-foreground/80">{item.productName}</span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground italic truncate">"{item.originalText}"</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] text-muted-foreground italic truncate">"{item.originalText}"</p>
+                        {item.price && item.price > 0 && <span className="text-[10px] font-bold text-emerald-600">R$ {item.price.toFixed(2)}</span>}
+                      </div>
                     </div>
                     {item.matched ? (
                       <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 pointer-events-none">
@@ -304,7 +340,7 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
             
             <Button onClick={handleAddAll} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20">
               <ShoppingCart className="h-4 w-4 mr-2" />
-              Adicionar Itens ao Orçamento
+              Gerar Orçamento Completo
             </Button>
           </div>
         )}

@@ -24,22 +24,43 @@ serve(async (req) => {
         IMPORTANTE: 
         1. Desconsidere metadados de conversas de chat (como timestamps [14:37, 19/05/2026], nomes de atendentes, etc). 
         2. Identifique dados do cliente: nome completo, CPF/CNPJ, e-mail, telefone e endereço completo.
-        3. Identifique os itens do orçamento: nome do produto, quantidade, unidade e preço se disponível.
+        3. No endereço, identifique e inclua o CEP se disponível.
+        4. Se houver pontos de referência ou instruções de entrega (ex: "em frente à padaria", "casa verde"), extraia isso para o campo "observations".
+        5. Identifique os itens do orçamento: nome do produto, quantidade, unidade e preço unitário se disponível.
+        6. Identifique validade do orçamento ou prazos de entrega se mencionados.
         
-        Retorne um objeto JSON com:
-        - customer: { name, document, email, phone, address }
-        - items: array de objetos com { originalText, productName, quantity, unit, price }
+        Retorne um objeto JSON estrito com esta estrutura:
+        {
+          "customer": { 
+            "name": "string", 
+            "document": "string (CPF ou CNPJ)", 
+            "email": "string", 
+            "phone": "string", 
+            "address": "string (completo com CEP e UF)" 
+          },
+          "items": [
+            { 
+              "originalText": "string (como aparece no original)", 
+              "productName": "string (nome normalizado)", 
+              "quantity": number, 
+              "unit": "string (un, m, kg, etc)", 
+              "price": number (preço unitário, 0 se não houver) 
+            }
+          ],
+          "observations": "string (incluindo referências de local e notas)",
+          "validity": "string (ex: '7 dias')",
+          "deliveryTime": "string (ex: '24 horas')"
+        }
         
-        Seja preciso. Se não houver quantidade, assuma 1.`,
+        Seja preciso. Se não houver quantidade, assuma 1. Limpe textos de conversa, foque nos dados comerciais.`,
       },
     ];
 
     const userContent: any[] = [];
     if (text) {
-      userContent.push({ type: "text", text: `Analise este pedido: ${text}` });
+      userContent.push({ type: "text", text: `Analise este pedido/conversa e gere o JSON: ${text}` });
     }
     if (image) {
-      // image is expected to be base64 data URL
       const base64Data = image.split(",")[1] || image;
       userContent.push({
         type: "image_url",
@@ -56,7 +77,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5-mini", // Use a vision capable model from the current environment
+        model: "openai/gpt-4o",
         messages,
         response_format: { type: "json_object" },
       }),

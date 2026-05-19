@@ -131,9 +131,10 @@ const QuotationsIndex = () => {
     const rawFactory = sessionStorage.getItem("smart_quotation_factory");
     const rawCustomer = sessionStorage.getItem("smart_quotation_customer");
 
+    let parsedItems: any[] = [];
     if (rawItems) {
       try {
-        const parsedItems = JSON.parse(rawItems);
+        parsedItems = JSON.parse(rawItems);
         // Map to QuotationItem
         const quotationItems = parsedItems.map((item: any) => ({
           id: crypto.randomUUID(),

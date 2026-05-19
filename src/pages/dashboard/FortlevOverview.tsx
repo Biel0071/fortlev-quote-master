@@ -37,6 +37,31 @@ export default function FortlevOverview() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [issuers, setIssuers] = useState<any[]>([]);
+  const [selectedIssuerId, setSelectedIssuerId] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    const fetchIssuers = async () => {
+      const { data } = await supabase.from("issuing_companies").select("*").order("name");
+      setIssuers(data || []);
+    };
+    fetchIssuers();
+  }, []);
+
+  const filteredQuotations = useMemo(() => {
+    let result = quotations;
+    if (selectedIssuerId !== "all") {
+      result = result.filter(q => q.companyId === selectedIssuerId);
+    }
+    if (searchTerm) {
+      result = result.filter(q => 
+        q.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        q.number.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return result;
+  }, [quotations, selectedIssuerId, searchTerm]);
 
   const totalQuoted = useMemo(() => quotations.reduce((acc, q) => acc + (q.total || 0), 0), [quotations]);
   const totalSales = useMemo(() => sales.reduce((acc, s) => acc + (s.value || 0), 0), [sales]);

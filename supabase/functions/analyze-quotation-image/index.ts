@@ -24,11 +24,16 @@ serve(async (req) => {
         IMPORTANTE: 
         1. Desconsidere metadados de conversas de chat (como timestamps [14:37, 19/05/2026], nomes de atendentes, etc). 
         2. Identifique dados do cliente: nome completo, CPF/CNPJ, e-mail, telefone e endereço completo.
-        3. Identifique os itens do orçamento: nome do produto, quantidade, unidade e preço se disponível.
+        3. Se houver pontos de referência no endereço (ex: "em frente à padaria"), extraia isso para o campo "observations".
+        4. Identifique os itens do orçamento: nome do produto, quantidade, unidade e preço se disponível.
+        5. Identifique validade do orçamento ou prazos de entrega se mencionados.
         
         Retorne um objeto JSON com:
         - customer: { name, document, email, phone, address }
         - items: array de objetos com { originalText, productName, quantity, unit, price }
+        - observations: string (incluindo referências de local e notas do pedido)
+        - validity: string (validade se encontrada, ex: "7 dias")
+        - deliveryTime: string (prazo de entrega se encontrado)
         
         Seja preciso. Se não houver quantidade, assuma 1.`,
       },
@@ -56,7 +61,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5-mini", // Use a vision capable model from the current environment
+        model: "openai/gpt-4o", // Using a strong vision model
         messages,
         response_format: { type: "json_object" },
       }),

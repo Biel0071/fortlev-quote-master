@@ -56,7 +56,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini", // Use a vision capable model
+        model: "openai/gpt-5-mini", // Use a vision capable model from the current environment
         messages,
         response_format: { type: "json_object" },
       }),

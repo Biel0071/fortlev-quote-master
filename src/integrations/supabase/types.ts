@@ -1781,12 +1781,15 @@ export type Database = {
           address: string | null
           city: string | null
           cnpj: string
+          company_type: string | null
           created_at: string | null
           email: string | null
           id: string
           is_active: boolean | null
           is_default: boolean | null
+          latitude: number | null
           logo_url: string | null
+          longitude: number | null
           name: string
           phone: string | null
           seller_name: string | null
@@ -1802,12 +1805,15 @@ export type Database = {
           address?: string | null
           city?: string | null
           cnpj: string
+          company_type?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           name: string
           phone?: string | null
           seller_name?: string | null
@@ -1823,12 +1829,15 @@ export type Database = {
           address?: string | null
           city?: string | null
           cnpj?: string
+          company_type?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           name?: string
           phone?: string | null
           seller_name?: string | null

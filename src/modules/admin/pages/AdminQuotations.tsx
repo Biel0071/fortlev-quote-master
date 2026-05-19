@@ -6,7 +6,9 @@ const tabs = [
   { to: "/admin/orcamentos", label: "Visão Geral", icon: FileText, end: true },
   { to: "/admin/orcamentos/fortlev", label: "Fortlev", icon: Droplets },
   { to: "/admin/orcamentos/construcao", label: "Construção", icon: HardHat },
-  { to: "/admin/orcamentos/tokens", label: "Tokens de Acesso", icon: Shield },
+  { to: "/admin/orcamentos/empresas", label: "Empresas", icon: Shield },
+  { to: "/admin/orcamentos/leads", label: "CRM / Leads", icon: Users },
+  { to: "/admin/orcamentos/tokens", label: "Tokens", icon: Shield },
 ];
 
 export default function AdminQuotations() {

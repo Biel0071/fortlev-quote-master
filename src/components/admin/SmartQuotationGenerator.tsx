@@ -95,11 +95,13 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
     onItemsGenerated(interpretedItems.map(item => ({
       name: item.productName,
       quantity: item.quantity,
-      unitPrice: 0, // Should come from a real product search
+      unitPrice: 0, 
       subtotal: 0
-    })));
+    })), nearestFactory);
     setInterpretedItems([]);
     setInputText("");
+    setAddress("");
+    setNearestFactory(null);
     toast({ title: "Itens adicionados", description: "Os itens foram enviados para o orçamento." });
   };
 

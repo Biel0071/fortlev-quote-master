@@ -6,6 +6,9 @@ import { toast } from '@/hooks/use-toast';
 function rowToQuotation(row: any): Quotation {
   return {
     id: row.id,
+    companyId: row.company_id,
+    leadId: row.lead_id,
+    isOrder: row.is_order,
     number: row.number,
     customer: row.customer_json as Quotation['customer'],
     companyInfo: row.company_info_json as Quotation['companyInfo'],
@@ -29,6 +32,9 @@ function rowToQuotation(row: any): Quotation {
 function quotationToRow(q: Quotation) {
   return {
     id: q.id,
+    company_id: q.companyId,
+    lead_id: q.leadId,
+    is_order: q.isOrder,
     number: q.number,
     customer_json: q.customer as any,
     company_info_json: q.companyInfo as any,

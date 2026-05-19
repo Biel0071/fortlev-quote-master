@@ -129,7 +129,7 @@ export default function FortlevOverview() {
   };
 
   const toggleAll = () => {
-    selected.size === recentQuotations.length ? setSelected(new Set()) : setSelected(new Set(recentQuotations.map((q) => q.id)));
+    selected.size === filteredQuotations.length ? setSelected(new Set()) : setSelected(new Set(filteredQuotations.map((q) => q.id)));
   };
 
   const handleEdit = (id: string) => { navigate(`/orcamentos?edit=${id}`); };
@@ -153,48 +153,139 @@ export default function FortlevOverview() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2.5 rounded-xl bg-muted"><Receipt className="h-5 w-5 text-foreground" /></div><div className="min-w-0"><p className="text-xs text-muted-foreground">Orçamentos</p><p className="text-lg font-bold truncate">{quotations.length}</p></div></div></CardContent></Card>
-        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2.5 rounded-xl bg-muted"><TrendingUp className="h-5 w-5 text-foreground" /></div><div className="min-w-0"><p className="text-xs text-muted-foreground">Total orçado</p><p className="text-lg font-bold truncate">{formatCurrency(totalQuoted)}</p></div></div></CardContent></Card>
-        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2.5 rounded-xl bg-muted"><DollarSign className="h-5 w-5 text-foreground" /></div><div className="min-w-0"><p className="text-xs text-muted-foreground">Vendas (manual)</p><p className="text-lg font-bold truncate">{formatCurrency(totalSales)}</p><p className="text-xs text-muted-foreground">{sales.length} venda(s)</p></div></div></CardContent></Card>
-        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2.5 rounded-xl bg-muted"><BarChart3 className="h-5 w-5 text-foreground" /></div><div className="min-w-0"><p className="text-xs text-muted-foreground">Conversão</p><p className="text-lg font-bold truncate">{conversion.toFixed(1)}%</p></div></div></CardContent></Card>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Painel Fortlev</h1>
+          <p className="text-muted-foreground">Gestão inteligente de orçamentos e propostas comerciais.</p>
+        </div>
+        <div className="flex items-center gap-2">
+           <Button variant="outline" className="gap-2">
+             <Filter className="h-4 w-4" /> Filtros
+           </Button>
+           <Button onClick={() => navigate("/orcamentos")} className="gap-2">
+             <Plus className="h-4 w-4" /> Novo Orçamento
+           </Button>
+        </div>
       </div>
 
-      {/* Chart + Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <BarChart3 className="h-5 w-5 text-foreground" />
-              Vendas (últimos 7 dias)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {sales.length === 0 ? (
-              <div className="h-[200px] flex items-center justify-center text-muted-foreground">Sem dados para exibir</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={last7DaysSales}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(value: number) => [formatCurrency(value), "Vendas"]} />
-                  <Area type="monotone" dataKey="valor" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-base">Resumo</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Ticket médio (orçado)</span><span className="font-semibold">{formatCurrency(quotations.length ? totalQuoted / quotations.length : 0)}</span></div>
-            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Ticket médio (venda)</span><span className="font-semibold">{formatCurrency(sales.length ? totalSales / sales.length : 0)}</span></div>
-            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Orçamentos sem venda</span><span className="font-semibold">{Math.max(0, quotations.length - new Set(sales.map((s) => s.quotationId)).size)}</span></div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-1">
+          <SmartQuotationGenerator onItemsGenerated={(items) => {
+            console.log("Items generated:", items);
+            toast({ title: "Gerador Inteligente", description: "Itens processados e prontos para o orçamento." });
+            navigate("/orcamentos");
+          }} />
+        </div>
+
+        <div className="lg:col-span-3 space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                    <Receipt className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Orçamentos</p>
+                    <p className="text-lg font-bold truncate">{quotations.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Total orçado</p>
+                    <p className="text-lg font-bold truncate">{formatCurrency(totalQuoted)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500">
+                    <DollarSign className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Vendas</p>
+                    <p className="text-lg font-bold truncate">{formatCurrency(totalSales)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500">
+                    <BarChart3 className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Conversão</p>
+                    <p className="text-lg font-bold truncate">{conversion.toFixed(1)}%</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Desempenho Comercial
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sales.length === 0 ? (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">Sem dados para exibir</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={last7DaysSales}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(value: number) => [formatCurrency(value), "Vendas"]} />
+                    <Area type="monotone" dataKey="valor" stroke="hsl(var(--primary))" fill="url(#colorSales)" />
+                    <defs>
+                      <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4 mt-8 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Buscar por cliente ou nº do orçamento..." 
+            className="pl-9 bg-card/50 border-primary/10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <select 
+          className="bg-card/50 border border-primary/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
+          value={selectedIssuerId}
+          onChange={(e) => setSelectedIssuerId(e.target.value)}
+        >
+          <option value="all">Todas as Unidades</option>
+          {issuers.map(i => (
+            <option key={i.id} value={i.id}>{i.trading_name || i.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* Quotations table */}
@@ -215,15 +306,15 @@ export default function FortlevOverview() {
           </div>
         </CardHeader>
         <CardContent>
-          {recentQuotations.length === 0 ? (
-            <div className="py-10 text-center text-muted-foreground">Nenhum orçamento emitido ainda.</div>
+          {filteredQuotations.length === 0 ? (
+            <div className="py-10 text-center text-muted-foreground">Nenhum orçamento encontrado com os filtros atuais.</div>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="w-10">
-                      <Checkbox checked={selected.size === recentQuotations.length && recentQuotations.length > 0} onCheckedChange={toggleAll} />
+                      <Checkbox checked={selected.size === filteredQuotations.length && filteredQuotations.length > 0} onCheckedChange={toggleAll} />
                     </TableHead>
                     <TableHead>Nº</TableHead>
                     <TableHead>Cliente</TableHead>
@@ -235,7 +326,7 @@ export default function FortlevOverview() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentQuotations.map((q) => {
+                  {filteredQuotations.map((q) => {
                     const sold = (salesByQuotationId.get(q.id) ?? []).length > 0;
                     return (
                       <TableRow key={q.id} className="hover:bg-muted/30">

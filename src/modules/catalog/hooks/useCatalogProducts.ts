@@ -70,28 +70,43 @@ export function useConstructionCatalogProducts() {
     let cancelled = false;
 
     async function load() {
-      const { data, error } = await cloud
+      // Fetch from construction_catalog_products
+      const { data: constructionData } = await cloud
         .from("construction_catalog_products")
         .select("id, legacy_id, name, unit, base_price, category")
         .eq("active", true)
         .order("name", { ascending: true });
 
+      // Fetch from store_products (general materials)
+      const { data: storeData } = await cloud
+        .from("store_products")
+        .select("id, name, unit, price, category")
+        .eq("status", "published")
+        .order("name", { ascending: true });
+
       if (cancelled) return;
 
-      if (error || !data) {
-        setDbProducts([]);
-        return;
-      }
-
-      const mapped: ConstructionProduct[] = data.map((r: any) => ({
+      const products1: ConstructionProduct[] = (constructionData || []).map((r: any) => ({
         id: r.legacy_id ?? r.id,
         name: r.name,
-        unit: r.unit,
+        unit: r.unit || 'un',
         basePrice: Number(r.base_price ?? 0),
         category: (r.category ?? "outros") as ConstructionCategory,
       }));
 
-      setDbProducts(mapped);
+      const products2: ConstructionProduct[] = (storeData || []).map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        unit: r.unit || 'un',
+        basePrice: Number(r.price ?? 0),
+        category: (r.category?.toLowerCase() || "outros") as ConstructionCategory,
+      }));
+
+      // Merge and remove duplicates by ID
+      const mergedMap = new Map<string, ConstructionProduct>();
+      [...products1, ...products2].forEach(p => mergedMap.set(p.id, p));
+      
+      setDbProducts(Array.from(mergedMap.values()));
     }
 
     load();

@@ -85,168 +85,239 @@ export const QuotationPreview = ({
 
         {/* Preview Content */}
         <div className="p-6">
-          <div className="bg-white border border-border rounded-lg shadow-sm overflow-hidden">
-            {/* Header */}
-            <div className="bg-muted/50 p-6 flex justify-between items-start">
-              <div>
-                <h1 className="text-2xl font-bold text-primary italic">ORÇAMENTO OFICIAL</h1>
+          <div className="bg-white border-2 border-black text-black font-mono text-[10px] uppercase leading-tight">
+            {/* DANFE Header */}
+            <div className="grid grid-cols-12 border-b-2 border-black">
+              <div className="col-span-4 border-r-2 border-black p-2 flex flex-col justify-center items-center text-center">
+                {branding.showBrand && (
+                  <h2 className="text-xl font-bold mb-1">{branding.brandText || 'FORTLEV'}</h2>
+                )}
+                <div className="text-[8px] font-bold">
+                  <p>{companyInfo.name}</p>
+                  <p>{companyInfo.address}</p>
+                  <p>FONE: {companyInfo.phone}</p>
+                </div>
               </div>
-              {branding.showBrand && (
-                <div className="text-right">
-                  <h2 className="text-2xl font-bold text-primary">{branding.brandText || 'FORTLEV'}</h2>
+              <div className="col-span-4 border-r-2 border-black p-2 flex flex-col items-center justify-center text-center">
+                <h1 className="text-sm font-bold mb-1">DANFE</h1>
+                <p className="text-[8px]">DOCUMENTO AUXILIAR DA</p>
+                <p className="text-[8px]">NOTA FISCAL ELETRÔNICA</p>
+                <div className="mt-2 grid grid-cols-2 w-full gap-1 text-[7px]">
+                  <div className="border border-black p-1">
+                    <p>0 - ENTRADA</p>
+                    <p>1 - SAÍDA</p>
+                  </div>
+                  <div className="border border-black flex items-center justify-center text-lg font-bold">
+                    1
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* Company Info */}
-            <div className="p-6 border-b border-border">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1 text-sm">
-                  {companyInfo.name && (
-                    <p><span className="text-muted-foreground">Emitido por:</span> {companyInfo.name}</p>
-                  )}
-                  {companyInfo.cnpj && (
-                    <p><span className="text-muted-foreground">{getBrazilDocumentLabel(companyInfo.cnpj)}:</span> {companyInfo.cnpj}</p>
-                  )}
-                  {companyInfo.address && (
-                    <p><span className="text-muted-foreground">Endereço:</span> {companyInfo.address}</p>
-                  )}
-                  {companyInfo.phone && (
-                    <p><span className="text-muted-foreground">Telefone:</span> {companyInfo.phone}</p>
-                  )}
-                  {companyInfo.email && (
-                    <p><span className="text-muted-foreground">E-mail:</span> {companyInfo.email}</p>
-                  )}
-                  {companyInfo.website && (
-                    <p><span className="text-muted-foreground">Site:</span> {companyInfo.website}</p>
-                  )}
-                </div>
-                <div className="text-right space-y-1 text-sm">
-                  <p><span className="text-muted-foreground">Data de Emissão:</span> {formatDate(quotation.createdAt)}</p>
-                  <p><span className="text-muted-foreground">Validade:</span> {quotation.validity}</p>
-                </div>
+                <p className="mt-1 font-bold">Nº {quotation.number}</p>
+                <p className="font-bold">SÉRIE: 001</p>
+              </div>
+              <div className="col-span-4 p-2 overflow-hidden">
+                <p className="text-[7px] mb-1">CONTROLE DO FISCO</p>
+                <div className="h-8 bg-black mb-1 w-full flex items-center justify-center text-white text-[6px]">BARCODE_PLACEHOLDER</div>
+                <p className="text-[7px] font-bold break-all">CHAVE DE ACESSO: 3326 0509 5436 9900 0112 5500 1000 00{quotation.number} 1095 4369 9712</p>
+                <p className="text-[8px] mt-1 text-center border-t border-black pt-1">Consulta de autenticidade no portal nacional da NF-e</p>
               </div>
             </div>
 
-            {/* Quotation Number */}
-            <div className="px-6 py-3 border-b border-border bg-muted/30 flex justify-between items-center">
-              <p className="font-semibold text-sm">Orçamento nº: {quotation.number}</p>
-              <p className="text-sm text-muted-foreground">Data de Emissão: {formatDate(quotation.createdAt)}</p>
+            {/* Natureza da Operação */}
+            <div className="grid grid-cols-12 border-b-2 border-black">
+              <div className="col-span-8 border-r-2 border-black p-1">
+                <p className="text-[7px]">NATUREZA DA OPERAÇÃO</p>
+                <p className="font-bold">VENDA DE MERCADORIA</p>
+              </div>
+              <div className="col-span-4 p-1">
+                <p className="text-[7px]">PROTOCOLO DE AUTORIZAÇÃO DE USO</p>
+                <p className="font-bold">133260005436997 - {formatDate(quotation.createdAt)}</p>
+              </div>
             </div>
 
-            {/* Client Info */}
-            {quotation.showClientData && customer.name && (
-              <div className="p-6 border-b border-border">
-                <h3 className="font-semibold text-sm mb-2">Cliente:</h3>
-                <div className="space-y-1 text-sm">
-                  <p className="font-medium">{customer.name}</p>
-                  {customer.cnpj && (
-                    <p><span className="text-muted-foreground">{getBrazilDocumentLabel(customer.cnpj)}:</span> {customer.cnpj}</p>
-                  )}
-                  {customer.address && (
-                    <p><span className="text-muted-foreground">Endereço:</span> {customer.address}</p>
-                  )}
-                  {customer.phone && (
-                    <p><span className="text-muted-foreground">Telefone:</span> {customer.phone}</p>
-                  )}
-                </div>
+            {/* Inscrições */}
+            <div className="grid grid-cols-12 border-b-2 border-black">
+              <div className="col-span-4 border-r-2 border-black p-1">
+                <p className="text-[7px]">INSCRIÇÃO ESTADUAL</p>
+                <p className="font-bold">09.543.699-7</p>
               </div>
-            )}
+              <div className="col-span-4 border-r-2 border-black p-1">
+                <p className="text-[7px]">INSCRIÇÃO ESTADUAL DO SUBST. TRIB.</p>
+                <p className="font-bold">---</p>
+              </div>
+              <div className="col-span-4 p-1">
+                <p className="text-[7px]">CNPJ</p>
+                <p className="font-bold">{companyInfo.cnpj || '09.543.699/0001-12'}</p>
+              </div>
+            </div>
 
-            {/* Items Table */}
-            <div className="p-6 border-b border-border">
-              <table className="w-full text-sm">
+            {/* Destinatário/Remetente */}
+            <div className="bg-gray-100 border-b-2 border-black px-1 font-bold text-[8px]">DESTINATÁRIO / REMETENTE</div>
+            <div className="grid grid-cols-12 border-b-2 border-black">
+              <div className="col-span-8 border-r-2 border-black p-1">
+                <p className="text-[7px]">NOME / RAZÃO SOCIAL</p>
+                <p className="font-bold">{customer.name || 'CONSUMIDOR FINAL'}</p>
+              </div>
+              <div className="col-span-2 border-r-2 border-black p-1">
+                <p className="text-[7px]">CNPJ / CPF</p>
+                <p className="font-bold">{customer.cnpj}</p>
+              </div>
+              <div className="col-span-2 p-1">
+                <p className="text-[7px]">DATA DA EMISSÃO</p>
+                <p className="font-bold">{formatDate(quotation.createdAt)}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-12 border-b-2 border-black">
+              <div className="col-span-6 border-r-2 border-black p-1">
+                <p className="text-[7px]">ENDEREÇO</p>
+                <p className="font-bold">{customer.address || 'RUA PEDRO ERNESTO, 95'}</p>
+              </div>
+              <div className="col-span-3 border-r-2 border-black p-1">
+                <p className="text-[7px]">BAIRRO / DISTRITO</p>
+                <p className="font-bold">GAMBOA</p>
+              </div>
+              <div className="col-span-2 border-r-2 border-black p-1">
+                <p className="text-[7px]">CEP</p>
+                <p className="font-bold">20220-530</p>
+              </div>
+              <div className="col-span-1 p-1">
+                <p className="text-[7px]">DATA SAÍDA</p>
+                <p className="font-bold">{formatDate(quotation.createdAt)}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-12 border-b-2 border-black">
+              <div className="col-span-4 border-r-2 border-black p-1">
+                <p className="text-[7px]">MUNICÍPIO</p>
+                <p className="font-bold">RIO DE JANEIRO</p>
+              </div>
+              <div className="col-span-1 border-r-2 border-black p-1 text-center">
+                <p className="text-[7px]">UF</p>
+                <p className="font-bold">RJ</p>
+              </div>
+              <div className="col-span-3 border-r-2 border-black p-1">
+                <p className="text-[7px]">FONE / FAX</p>
+                <p className="font-bold">{customer.phone}</p>
+              </div>
+              <div className="col-span-3 border-r-2 border-black p-1">
+                <p className="text-[7px]">INSCRIÇÃO ESTADUAL</p>
+                <p className="font-bold">ISENTO</p>
+              </div>
+              <div className="col-span-1 p-1">
+                <p className="text-[7px]">HORA SAÍDA</p>
+                <p className="font-bold">{format(new Date(), 'HH:mm')}</p>
+              </div>
+            </div>
+
+            {/* Cálculo do Imposto */}
+            <div className="bg-gray-100 border-b-2 border-black px-1 font-bold text-[8px]">CÁLCULO DO IMPOSTO</div>
+            <div className="grid grid-cols-5 border-b-2 border-black">
+              <div className="border-r-2 border-black p-1">
+                <p className="text-[7px]">BASE DE CÁLCULO DO ICMS</p>
+                <p className="font-bold text-right">{formatCurrency(quotation.taxes?.icmsBase || 0)}</p>
+              </div>
+              <div className="border-r-2 border-black p-1">
+                <p className="text-[7px]">VALOR DO ICMS</p>
+                <p className="font-bold text-right">{formatCurrency(quotation.taxes?.icmsValue || 0)}</p>
+              </div>
+              <div className="border-r-2 border-black p-1">
+                <p className="text-[7px]">BASE DE CÁLC. ICMS S.T.</p>
+                <p className="font-bold text-right">R$ 0,00</p>
+              </div>
+              <div className="border-r-2 border-black p-1">
+                <p className="text-[7px]">VALOR DO ICMS S.T.</p>
+                <p className="font-bold text-right">R$ 0,00</p>
+              </div>
+              <div className="p-1">
+                <p className="text-[7px]">VALOR TOTAL DOS PRODUTOS</p>
+                <p className="font-bold text-right">{formatCurrency(quotation.subtotal)}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-5 border-b-2 border-black">
+              <div className="border-r-2 border-black p-1">
+                <p className="text-[7px]">VALOR DO FRETE</p>
+                <p className="font-bold text-right">{formatCurrency(quotation.freight)}</p>
+              </div>
+              <div className="border-r-2 border-black p-1">
+                <p className="text-[7px]">VALOR DO SEGURO</p>
+                <p className="font-bold text-right">R$ 0,00</p>
+              </div>
+              <div className="border-r-2 border-black p-1">
+                <p className="text-[7px]">DESCONTO</p>
+                <p className="font-bold text-right">{formatCurrency(quotation.discount)}</p>
+              </div>
+              <div className="border-r-2 border-black p-1">
+                <p className="text-[7px]">OUTRAS DESPESAS</p>
+                <p className="font-bold text-right">R$ 0,00</p>
+              </div>
+              <div className="p-1 bg-gray-50">
+                <p className="text-[7px] font-bold">VALOR TOTAL DA NOTA</p>
+                <p className="font-extrabold text-sm text-right">{formatCurrency(quotation.total)}</p>
+              </div>
+            </div>
+
+            {/* Dados do Produto/Serviço */}
+            <div className="bg-gray-100 border-b-2 border-black px-1 font-bold text-[8px]">DADOS DO PRODUTO / SERVIÇO</div>
+            <div className="min-h-[150px]">
+              <table className="w-full text-[7px] border-collapse">
                 <thead>
-                  <tr className="bg-primary text-primary-foreground">
-                    <th className="px-4 py-2 text-left">Itens Orçados</th>
-                    <th className="px-4 py-2 text-center">Tipo</th>
-                    <th className="px-4 py-2 text-center">Un.</th>
-                    <th className="px-4 py-2 text-center">Qtd.</th>
-                    <th className="px-4 py-2 text-right">Valor Unit. (R$)</th>
-                    <th className="px-4 py-2 text-right">Total (R$)</th>
+                  <tr className="border-b-2 border-black">
+                    <th className="border-r border-black p-1 text-left w-12">CÓDIGO</th>
+                    <th className="border-r border-black p-1 text-left">DESCRIÇÃO DO PRODUTO / SERVIÇO</th>
+                    <th className="border-r border-black p-1 text-center w-8">NCM</th>
+                    <th className="border-r border-black p-1 text-center w-8">CST</th>
+                    <th className="border-r border-black p-1 text-center w-8">CFOP</th>
+                    <th className="border-r border-black p-1 text-center w-6">UNID</th>
+                    <th className="border-r border-black p-1 text-right w-10">QTD</th>
+                    <th className="border-r border-black p-1 text-right w-16">VLR.UNIT</th>
+                    <th className="border-r border-black p-1 text-right w-16">VLR.TOTAL</th>
+                    <th className="border-r border-black p-1 text-right w-12">BC.ICMS</th>
+                    <th className="border-r border-black p-1 text-right w-12">VLR.ICMS</th>
+                    <th className="p-1 text-right w-8">%ICMS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {quotation.items.map((item, index) => (
-                    <tr key={item.id} className={index % 2 === 0 ? 'bg-card' : 'bg-muted/20'}>
-                      <td className="px-4 py-2 border-b border-border">
-                        {item.product.name} {item.product.capacity}{item.product.unit}
+                  {quotation.items.map((item) => (
+                    <tr key={item.id} className="border-b border-gray-300">
+                      <td className="border-r border-black p-1">{item.product.id.slice(0, 8)}</td>
+                      <td className="border-r border-black p-1 font-bold">
+                        {item.product.name} {item.product.capacity}{item.product.unit} - {getProductTypeLabel(item.product.type)}
                       </td>
-                      <td className="px-4 py-2 border-b border-border text-center">
-                        <Badge variant="secondary" className="text-xs">
-                          {getProductTypeLabel(item.product.type)}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-2 border-b border-border text-center">Un.</td>
-                      <td className="px-4 py-2 border-b border-border text-center">{item.quantity}</td>
-                      <td className="px-4 py-2 border-b border-border text-right">{formatCurrency(item.unitPrice)}</td>
-                      <td className="px-4 py-2 border-b border-border text-right">{formatCurrency(item.subtotal)}</td>
+                      <td className="border-r border-black p-1 text-center">39251000</td>
+                      <td className="border-r border-black p-1 text-center">000</td>
+                      <td className="border-r border-black p-1 text-center">5102</td>
+                      <td className="border-r border-black p-1 text-center">UN</td>
+                      <td className="border-r border-black p-1 text-right">{item.quantity}</td>
+                      <td className="border-r border-black p-1 text-right">{formatCurrency(item.unitPrice).replace('R$', '').trim()}</td>
+                      <td className="border-r border-black p-1 text-right font-bold">{formatCurrency(item.subtotal).replace('R$', '').trim()}</td>
+                      <td className="border-r border-black p-1 text-right">0,00</td>
+                      <td className="border-r border-black p-1 text-right">0,00</td>
+                      <td className="p-1 text-right">0,00</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
 
-              {/* Totals */}
-              <div className="mt-4 flex justify-end">
-                <div className="w-64 space-y-2 text-sm">
-                  <div className="flex justify-between border-b border-border pb-1">
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(quotation.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-border pb-1">
-                    <span>Desconto:</span>
-                    <span>{formatCurrency(quotation.discount)}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-border pb-1">
-                    <span>Frete:</span>
-                    <span className={quotation.freight === 0 ? 'text-green-600 font-medium' : ''}>
-                      {quotation.freight === 0 ? 'Grátis' : formatCurrency(quotation.freight)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between font-bold text-base bg-primary text-primary-foreground px-2 py-1 rounded">
-                    <span>Total Geral:</span>
-                    <span>{formatCurrency(quotation.total)}</span>
-                  </div>
+            {/* Dados Adicionais */}
+            <div className="bg-gray-100 border-t-2 border-b-2 border-black px-1 font-bold text-[8px]">DADOS ADICIONAIS</div>
+            <div className="grid grid-cols-12">
+              <div className="col-span-8 border-r-2 border-black p-1 min-h-[60px]">
+                <p className="text-[7px]">INFORMAÇÕES COMPLEMENTARES</p>
+                <div className="text-[7px] space-y-1">
+                  <p>CONDIÇÕES DE PAGAMENTO: {paymentConditions.cashDiscount ? `À VISTA: ${paymentConditions.cashDiscount}` : ''} 
+                  {paymentConditions.installments ? ` | PARCELADO: ${paymentConditions.installments}` : ''}</p>
+                  <p>VALIDADE DO ORÇAMENTO: {quotation.validity}</p>
+                  <p>PRAZO DE ENTREGA: {quotation.deliveryTime}</p>
+                  {quotation.observations && <p>OBSERVAÇÕES: {quotation.observations}</p>}
+                  <p className="mt-2 font-bold">VENDEDOR: {companyInfo.sellerName || 'NÃO INFORMADO'}</p>
                 </div>
               </div>
-            </div>
-
-            {/* Payment Conditions */}
-            <div className="p-6 border-b border-border">
-              <h3 className="font-semibold text-sm mb-2">Condições de Pagamento:</h3>
-              <ul className="text-sm space-y-1 text-muted-foreground">
-                {paymentConditions.cashDiscount && (
-                  <li>• À vista: {paymentConditions.cashDiscount}</li>
-                )}
-                {paymentConditions.installments && (
-                  <li>• Parcelado: {paymentConditions.installments}</li>
-                )}
-                {paymentConditions.downPayment && (
-                  <li>• Entrada mínima de {paymentConditions.downPayment}</li>
-                )}
-              </ul>
-            </div>
-
-            {/* Additional Info */}
-            <div className="p-6 border-b border-border">
-              <h3 className="font-semibold text-sm mb-2">Informações Adicionais:</h3>
-              <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Prazo de entrega: {quotation.deliveryTime} após confirmação do pagamento.</li>
-                <li>• Instalação realizada por equipe especializada.</li>
-                <li>• Valores sujeitos a alteração sem aviso prévio.</li>
-                {quotation.observations && <li>• {quotation.observations}</li>}
-              </ul>
-            </div>
-
-            {/* Signature */}
-            <div className="p-6">
-              <p className="text-sm text-muted-foreground">Atenciosamente,</p>
-              <p className="font-semibold text-sm mt-2">{companyInfo.sellerName || 'Vendedor'}</p>
-              <p className="text-sm text-muted-foreground">{companyInfo.sellerRole || 'Consultor de Vendas'}</p>
-              <p className="text-sm text-muted-foreground">{companyInfo.name}</p>
+              <div className="col-span-4 p-1">
+                <p className="text-[7px]">RESERVADO AO FISCO</p>
+              </div>
             </div>
           </div>
         </div>
+
 
         {/* Action Buttons */}
         <div className="p-6 pt-0 flex flex-col sm:flex-row gap-3">

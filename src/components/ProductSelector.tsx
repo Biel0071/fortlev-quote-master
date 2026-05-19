@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Package, Filter, Search, Sparkles } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import type { Product, QuotationItem } from "@/types/quotation";
-import { productCategories, getProductPrice } from "@/data/products";
+import { getProductPrice } from "@/data/products";
 import { normalizeText } from "@/utils/normalize";
 import { useFortlevCatalogProducts } from "@/hooks/useCatalogProducts";
 import { AddCustomFortlevProductDialog } from "@/components/catalog/AddCustomFortlevProductDialog";

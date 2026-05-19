@@ -95,5 +95,9 @@ export const categoryLabels: Record<ConstructionCategory, string> = {
   'estruturas': 'Estruturas',
   'madeiras': 'Madeiras',
   'churrasqueiras': 'Churrasqueiras',
+  'pisos-revestimentos': 'Pisos e Revestimentos',
+  'pintura': 'Pintura',
+  'metais-loucas': 'Metais e Louças',
+  'ferragens': 'Ferragens',
   'outros': 'Outros',
 };

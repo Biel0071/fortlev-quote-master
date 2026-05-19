@@ -372,11 +372,9 @@ const generateCanvasPNG = (quotation: Quotation) => {
   if (!ctx) return;
   
   // Colors
-  const primaryBlue = '#005293';
-  const darkBlue = '#003366';
-  const lightGray = '#f5f7fa';
-  const textDark = '#1e1e1e';
-  const textGray = '#646464';
+  const black = '#000000';
+  const lightGray = '#f0f0f0';
+  const textDark = '#000000';
   
   // White background
   ctx.fillStyle = '#ffffff';
@@ -384,18 +382,20 @@ const generateCanvasPNG = (quotation: Quotation) => {
   ctx.textAlign = 'left';
   
   // Title section
-  ctx.fillStyle = lightGray;
-  ctx.fillRect(0, 0, canvas.width, 55);
+  ctx.strokeStyle = black;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(padding, 10, canvas.width - (padding * 2), 55);
   
-  ctx.fillStyle = darkBlue;
+  ctx.fillStyle = black;
+  ctx.font = 'bold 20px Arial, sans-serif';
+  ctx.fillText('DANFE', padding + 10, 38);
+  ctx.font = '10px Arial, sans-serif';
+  ctx.fillText('DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA', padding + 10, 52);
+  
   ctx.font = 'bold 24px Arial, sans-serif';
-  ctx.fillText('ORÇAMENTO OFICIAL', padding, 38);
-  
-  ctx.fillStyle = primaryBlue;
-  ctx.font = 'bold 28px Arial, sans-serif';
   ctx.textAlign = 'right';
   if ((quotation.branding ?? { showBrand: true }).showBrand) {
-    ctx.fillText(quotation.branding?.brandText || 'FORTLEV', canvas.width - padding, 38);
+    ctx.fillText(quotation.branding?.brandText || 'FORTLEV', canvas.width - padding - 10, 38);
   }
   ctx.textAlign = 'left';
   

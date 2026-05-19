@@ -171,8 +171,13 @@ export default function FortlevOverview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
-          <SmartQuotationGenerator onItemsGenerated={(items) => {
+          <SmartQuotationGenerator onItemsGenerated={(items, nearestFactory) => {
             console.log("Items generated:", items);
+            // Store items and factory in session storage to be picked up by the quotation page
+            sessionStorage.setItem("smart_quotation_items", JSON.stringify(items));
+            if (nearestFactory) {
+              sessionStorage.setItem("smart_quotation_factory", JSON.stringify(nearestFactory));
+            }
             toast({ title: "Gerador Inteligente", description: "Itens processados e prontos para o orçamento." });
             navigate("/orcamentos");
           }} />

@@ -226,7 +226,7 @@ export const QuotationPreview = ({
             </div>
 
             {/* Cálculo do Imposto */}
-            <div className="bg-gray-100 border-b-2 border-black px-1 font-bold text-[8px]">CÁLCULO DO IMPOSTO</div>
+            <div className="border-b-2 border-black px-1 font-bold text-[8px]">CÁLCULO DO IMPOSTO</div>
             <div className="grid grid-cols-5 border-b-2 border-black">
               <div className="border-r-2 border-black p-1">
                 <p className="text-[7px]">BASE DE CÁLCULO DO ICMS</p>

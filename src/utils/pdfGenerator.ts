@@ -655,7 +655,7 @@ const generateCanvasPNG = (quotation: Quotation) => {
   yPos += 18;
   
   ctx.font = '12px Arial, sans-serif';
-  ctx.fillStyle = textGray;
+  ctx.fillStyle = '#000000';
   ctx.fillText(quotation.companyInfo.sellerRole || 'Gerente de Vendas', padding, yPos);
   yPos += 18;
   ctx.fillText(quotation.companyInfo.name || 'Empresa', padding, yPos);

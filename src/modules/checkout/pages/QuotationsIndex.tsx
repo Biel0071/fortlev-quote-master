@@ -187,6 +187,19 @@ const QuotationsIndex = () => {
           phone: customerData.phone || prev.phone,
           address: customerData.address || prev.address,
         }));
+        
+        if (customerData.observations) {
+          setObservations(prev => prev ? `${prev}\n${customerData.observations}` : customerData.observations);
+        }
+        
+        if (customerData.validity) {
+          setValidity(customerData.validity);
+        }
+        
+        if (customerData.deliveryTime) {
+          setDeliveryTime(customerData.deliveryTime);
+        }
+
         sessionStorage.removeItem("smart_quotation_customer");
       } catch (e) {
         console.error("Error parsing smart customer", e);

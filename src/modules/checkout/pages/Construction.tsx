@@ -416,6 +416,8 @@ const ConstructionPage = () => {
   // Load smart quotation data
   useEffect(() => {
     const rawItems = sessionStorage.getItem("smart_quotation_items");
+    const rawCustomer = sessionStorage.getItem("smart_quotation_customer");
+
     if (rawItems) {
       try {
         const parsedItems = JSON.parse(rawItems);
@@ -423,19 +425,35 @@ const ConstructionPage = () => {
           id: crypto.randomUUID(),
           product: {
             id: 'manual-' + Math.random().toString(36).substr(2, 9),
-            name: item.name,
+            name: item.productName || item.name,
             unit: item.unit || 'un',
-            basePrice: item.unitPrice || 0,
+            basePrice: item.price || item.unitPrice || 0,
             category: 'outros'
           },
           quantity: item.quantity,
-          unitPrice: item.unitPrice || 0,
-          subtotal: (item.unitPrice || 0) * item.quantity
+          unitPrice: item.price || item.unitPrice || 0,
+          subtotal: (item.price || item.unitPrice || 0) * item.quantity
         }));
         setItems(quotationItems);
         sessionStorage.removeItem("smart_quotation_items");
       } catch (e) {
         console.error("Error parsing smart items", e);
+      }
+    }
+
+    if (rawCustomer) {
+      try {
+        const customerData = JSON.parse(rawCustomer);
+        setCustomer(prev => ({
+          ...prev,
+          name: customerData.name || prev.name,
+          cnpj: customerData.document || prev.cnpj,
+          phone: customerData.phone || prev.phone,
+          address: customerData.address || prev.address,
+        }));
+        sessionStorage.removeItem("smart_quotation_customer");
+      } catch (e) {
+        console.error("Error parsing smart customer", e);
       }
     }
   }, []);

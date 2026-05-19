@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConstructionProductSelector } from '@/components/ConstructionProductSelector';
 import { CompanyForm } from '@/components/CompanyForm';
@@ -11,7 +11,7 @@ import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
 import { cloud } from '@/lib/cloud';
-import { FilePlus, LayoutDashboard, Pencil, Building2, ArrowLeft } from 'lucide-react';
+import { FilePlus, LayoutDashboard, Pencil, Building2, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency } from '@/utils/formatters';
 import { useConstructionQuotations } from '@/hooks/useConstructionQuotations';
 import { ConstructionQuotationsDashboard } from '@/components/construction/ConstructionQuotationsDashboard';
+import { supabase } from '@/integrations/supabase/client';
 
 const ConstructionPage = () => {
   const { quotations, saveQuotation, updateQuotation, deleteQuotation, duplicateQuotation, generateQuotationNumber } = useConstructionQuotations();
@@ -31,14 +32,41 @@ const ConstructionPage = () => {
 
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: 'Material de Construção',
-    cnpj: '04.925.466/0001-59',
-    address: 'R. Carlos Drumont de Andrade, 484 - Vista Alegre, Vespasiano - MG, 33200-000',
-    phone: '(31) 9 9372-6642',
-    email: 'vendas@materialdecontrucao.online',
+    cnpj: '',
+    address: '',
+    phone: '',
+    email: '',
     website: '',
     sellerName: '',
     sellerRole: 'Vendedor',
   });
+
+  useEffect(() => {
+    const fetchDefaultCompany = async () => {
+      const { data } = await supabase
+        .from('issuing_companies')
+        .select('*')
+        .eq('company_type', 'material')
+        .eq('is_active', true)
+        .order('is_default', { ascending: false })
+        .limit(1);
+      
+      if (data && data.length > 0) {
+        const company = data[0];
+        setCompanyInfo({
+          name: company.name,
+          cnpj: company.cnpj,
+          address: company.address,
+          phone: company.phone,
+          email: company.email,
+          website: company.website || '',
+          sellerName: '',
+          sellerRole: 'Vendedor',
+        });
+      }
+    };
+    if (!editingQuotationId) fetchDefaultCompany();
+  }, [editingQuotationId]);
 
   const [customer, setCustomer] = useState<Customer>({
     name: '',
@@ -384,6 +412,33 @@ const ConstructionPage = () => {
     deleteQuotation(id);
     toast({ title: 'Orçamento excluído', variant: 'destructive' });
   };
+
+  // Load smart quotation data
+  useEffect(() => {
+    const rawItems = sessionStorage.getItem("smart_quotation_items");
+    if (rawItems) {
+      try {
+        const parsedItems = JSON.parse(rawItems);
+        const quotationItems: ConstructionQuotationItem[] = parsedItems.map((item: any) => ({
+          id: crypto.randomUUID(),
+          product: {
+            id: 'manual-' + Math.random().toString(36).substr(2, 9),
+            name: item.name,
+            unit: item.unit || 'un',
+            basePrice: item.unitPrice || 0,
+            category: 'outros'
+          },
+          quantity: item.quantity,
+          unitPrice: item.unitPrice || 0,
+          subtotal: (item.unitPrice || 0) * item.quantity
+        }));
+        setItems(quotationItems);
+        sessionStorage.removeItem("smart_quotation_items");
+      } catch (e) {
+        console.error("Error parsing smart items", e);
+      }
+    }
+  }, []);
 
   const resetForm = () => {
     setCustomer({ name: '', cnpj: '', phone: '', address: '' });

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Package, Filter, Search, Sparkles } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import type { Product, QuotationItem } from "@/types/quotation";
-import { productCategories, getProductPrice } from "@/data/products";
+import { getProductPrice } from "@/data/products";
 import { normalizeText } from "@/utils/normalize";
 import { useFortlevCatalogProducts } from "@/hooks/useCatalogProducts";
 import { AddCustomFortlevProductDialog } from "@/components/catalog/AddCustomFortlevProductDialog";
@@ -169,37 +169,35 @@ export const ProductSelector = ({ onAddItem }: ProductSelectorProps) => {
             </SelectTrigger>
             <SelectContent className="max-h-[400px] bg-background z-50">
               {categoryFilter === "all" ? (
-                Object.entries(productCategories)
-                  .map(([key, category]) => {
-                    const groupProducts = category.products
-                      .filter((p) => searchMatches.some((x) => x.id === p.id))
-                      .filter((p) => !normalizedQuery || normalizeText(`${p.name} ${p.capacity}${p.unit} ${p.type}`).includes(normalizedQuery));
+                categoryFilters.filter(f => f.key !== 'all').map((filter) => {
+                  const groupProducts = allProducts
+                    .filter(p => p.type === filter.key)
+                    .filter((p) => !normalizedQuery || normalizeText(`${p.name} ${p.capacity}${p.unit} ${p.type}`).includes(normalizedQuery));
 
-                    if (normalizedQuery && groupProducts.length === 0) return null;
+                  if (groupProducts.length === 0) return null;
 
-                    return (
-                      <SelectGroup key={key}>
-                        <SelectLabel className="font-bold text-foreground py-2 bg-muted/50">{category.label}</SelectLabel>
-                        {groupProducts.map((product) => (
-                          <SelectItem key={product.id} value={product.id} className="bg-background hover:bg-muted">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">
-                                {product.capacity.toLocaleString("pt-BR")}
-                                {product.unit}
-                                {typeLabels[product.type]?.label && (
-                                  <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${typeLabels[product.type].color}`}>
-                                    {typeLabels[product.type].label}
-                                  </span>
-                                )}
-                              </span>
-                              <span className="text-muted-foreground text-sm">- {formatCurrency(product.basePrice)}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    );
-                  })
-                  .filter(Boolean)
+                  return (
+                    <SelectGroup key={filter.key}>
+                      <SelectLabel className="font-bold text-foreground py-2 bg-muted/50">{filter.label}</SelectLabel>
+                      {groupProducts.map((product) => (
+                        <SelectItem key={product.id} value={product.id} className="bg-background hover:bg-muted">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {product.capacity.toLocaleString("pt-BR")}
+                              {product.unit}
+                              {typeLabels[product.type]?.label && (
+                                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${typeLabels[product.type].color}`}>
+                                  {typeLabels[product.type].label}
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-muted-foreground text-sm">- {formatCurrency(product.basePrice)}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  );
+                }).filter(Boolean)
               ) : (
                 <SelectGroup>
                   <SelectLabel className="font-bold text-foreground py-2 bg-muted/50">

@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Wand2, Image as ImageIcon, Copy, Check, AlertCircle, ShoppingCart } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Wand2, Image as ImageIcon, Copy, Check, AlertCircle, ShoppingCart, MapPin, Truck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
+import { findNearestFactory, getUFCoordinates } from "@/utils/proximity";
 
 interface InterpretedItem {
   id: string;
@@ -19,10 +23,38 @@ interface InterpretedItem {
   matched: boolean;
 }
 
-export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsGenerated: (items: any[]) => void }) {
+export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsGenerated: (items: any[], nearestFactory?: any) => void }) {
   const [inputText, setInputText] = useState("");
+  const [address, setAddress] = useState("");
   const [isInterpreting, setIsInterpreting] = useState(false);
   const [interpretedItems, setInterpretedItems] = useState<InterpretedItem[]>([]);
+  const [factories, setFactories] = useState<any[]>([]);
+  const [nearestFactory, setNearestFactory] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchFactories = async () => {
+      const { data } = await supabase
+        .from('issuing_companies')
+        .select('*')
+        .eq('company_type', 'fortlev')
+        .eq('is_active', true);
+      if (data) setFactories(data);
+    };
+    fetchFactories();
+  }, []);
+
+  useEffect(() => {
+    if (!address || factories.length === 0) return;
+    
+    const ufMatch = address.match(/\b([A-Z]{2})\b/);
+    if (ufMatch) {
+      const coords = getUFCoordinates(ufMatch[1]);
+      if (coords) {
+        const nearest = findNearestFactory(coords, factories);
+        setNearestFactory(nearest);
+      }
+    }
+  }, [address, factories]);
 
   const handleInterpret = async () => {
     if (!inputText.trim()) {
@@ -63,11 +95,13 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
     onItemsGenerated(interpretedItems.map(item => ({
       name: item.productName,
       quantity: item.quantity,
-      unitPrice: 0, // Should come from a real product search
+      unitPrice: 0, 
       subtotal: 0
-    })));
+    })), nearestFactory);
     setInterpretedItems([]);
     setInputText("");
+    setAddress("");
+    setNearestFactory(null);
     toast({ title: "Itens adicionados", description: "Os itens foram enviados para o orçamento." });
   };
 
@@ -80,6 +114,30 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 space-y-4">
+        {/* Address & Routing */}
+        <div className="space-y-2">
+          <Label className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider flex items-center gap-1">
+            <MapPin className="h-3 w-3" /> Endereço de Entrega (UF)
+          </Label>
+          <Input 
+            placeholder="Ex: Rua Tal, São Paulo - SP" 
+            className="h-9 bg-background/50 border-primary/10 text-xs"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+          />
+          {nearestFactory && (
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 animate-in fade-in slide-in-from-top-1">
+              <Truck className="h-3.5 w-3.5 text-emerald-500" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-tight">Fábrica sugerida</p>
+                <p className="text-[11px] text-emerald-700 font-medium truncate">{nearestFactory.trading_name || nearestFactory.name}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Separator className="bg-primary/10" />
+
         {!interpretedItems.length ? (
           <div className="space-y-3">
             <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">

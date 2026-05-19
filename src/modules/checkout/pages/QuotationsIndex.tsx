@@ -15,7 +15,9 @@ import { toast } from '@/hooks/use-toast';
 import { cloud } from '@/lib/cloud';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Pencil, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Pencil, FileText, Loader2, Sparkles } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { findNearestFactory, getUFCoordinates } from '@/utils/proximity';
 
 const QuotationsIndex = () => {
   const navigate = useNavigate();
@@ -27,6 +29,8 @@ const QuotationsIndex = () => {
 
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
   const editLoaded = useRef(false);
+  const [factories, setFactories] = useState<any[]>([]);
+  const [isRouting, setIsRouting] = useState(false);
 
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: '', cnpj: '', address: '', phone: '', email: '', website: '', sellerName: '', sellerRole: 'Gerente de Vendas',
@@ -50,6 +54,56 @@ const QuotationsIndex = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
 
+  // Load Fortlev factories
+  useEffect(() => {
+    const fetchFactories = async () => {
+      const { data } = await supabase
+        .from('issuing_companies')
+        .select('*')
+        .eq('company_type', 'fortlev')
+        .eq('is_active', true);
+      
+      if (data) setFactories(data);
+    };
+    fetchFactories();
+  }, []);
+
+  // Nearest Factory Routing
+  useEffect(() => {
+    if (!customer.address || editingQuotationId || factories.length === 0) return;
+
+    const findNearest = async () => {
+      // Try to find state UF in address
+      const ufMatch = customer.address.match(/\b([A-Z]{2})\b/);
+      if (ufMatch) {
+        const uf = ufMatch[1];
+        const coords = getUFCoordinates(uf);
+        if (coords) {
+          const nearest = findNearestFactory(coords, factories);
+          if (nearest && nearest.name !== companyInfo.name) {
+            setCompanyInfo({
+              name: nearest.name,
+              cnpj: nearest.cnpj,
+              address: nearest.address,
+              phone: nearest.phone,
+              email: nearest.email,
+              website: nearest.website,
+              sellerName: companyInfo.sellerName,
+              sellerRole: companyInfo.sellerRole,
+            });
+            toast({ 
+              title: 'Unidade inteligente', 
+              description: `Selecionamos a unidade ${nearest.trading_name || nearest.name} por proximidade.`
+            });
+          }
+        }
+      }
+    };
+
+    const timer = setTimeout(findNearest, 1000);
+    return () => clearTimeout(timer);
+  }, [customer.address, factories, editingQuotationId]);
+
   // Load quotation data when editing and data becomes available
   useEffect(() => {
     if (!editId || editLoaded.current || loading) return;
@@ -70,6 +124,58 @@ const QuotationsIndex = () => {
     setShowClientData(source.showClientData);
     toast({ title: 'Modo de edição', description: `Editando orçamento ${source.number}` });
   }, [editId, quotations, loading]);
+
+  // Load smart quotation data
+  useEffect(() => {
+    const rawItems = sessionStorage.getItem("smart_quotation_items");
+    const rawFactory = sessionStorage.getItem("smart_quotation_factory");
+
+    if (rawItems) {
+      try {
+        const parsedItems = JSON.parse(rawItems);
+        // Map to QuotationItem
+        const quotationItems = parsedItems.map((item: any) => ({
+          id: crypto.randomUUID(),
+          product: {
+            id: 'manual-' + Math.random().toString(36).substr(2, 9),
+            name: item.name,
+            capacity: 0,
+            unit: item.unit || 'un',
+            height: '',
+            diameter: '',
+            basePrice: item.unitPrice || 0,
+            type: 'caixa'
+          },
+          quantity: item.quantity,
+          unitPrice: item.unitPrice || 0,
+          subtotal: (item.unitPrice || 0) * item.quantity
+        }));
+        setItems(quotationItems);
+        sessionStorage.removeItem("smart_quotation_items");
+      } catch (e) {
+        console.error("Error parsing smart items", e);
+      }
+    }
+
+    if (rawFactory) {
+      try {
+        const factory = JSON.parse(rawFactory);
+        setCompanyInfo({
+          name: factory.name,
+          cnpj: factory.cnpj,
+          address: factory.address,
+          phone: factory.phone,
+          email: factory.email,
+          website: factory.website || '',
+          sellerName: companyInfo.sellerName,
+          sellerRole: companyInfo.sellerRole,
+        });
+        sessionStorage.removeItem("smart_quotation_factory");
+      } catch (e) {
+        console.error("Error parsing smart factory", e);
+      }
+    }
+  }, []);
 
   const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
   const total = subtotal - discount + freight;

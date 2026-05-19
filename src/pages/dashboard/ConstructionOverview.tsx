@@ -10,13 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown } from "lucide-react";
+import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, Search } from "lucide-react";
 import { useConstructionQuotations } from "@/hooks/useConstructionQuotations";
 import { useSales } from "@/hooks/useSales";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { toast } from "@/hooks/use-toast";
 import type { Quotation } from "@/types/quotation";
 import { downloadPDF, downloadPNG } from "@/utils/pdfGenerator";
+import SmartQuotationGenerator from "@/components/admin/SmartQuotationGenerator";
 
 function currencyToNumber(raw: string) {
   const cleaned = raw.replace(/[^0-9,.-]/g, "").replace(".", "").replace(",", ".");
@@ -154,33 +155,46 @@ export default function ConstructionOverview() {
         <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2.5 rounded-xl bg-muted"><BarChart3 className="h-5 w-5 text-foreground" /></div><div className="min-w-0"><p className="text-xs text-muted-foreground">Conversão</p><p className="text-lg font-bold truncate">{conversion.toFixed(1)}%</p></div></div></CardContent></Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-5 w-5 text-foreground" />Vendas (últimos 7 dias)</CardTitle></CardHeader>
-          <CardContent>
-            {sales.length === 0 ? (
-              <div className="h-[200px] flex items-center justify-center text-muted-foreground">Sem dados para exibir</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={last7DaysSales}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(value: number) => [formatCurrency(value), "Vendas"]} />
-                  <Area type="monotone" dataKey="valor" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-base">Resumo</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Ticket médio (orçado)</span><span className="font-semibold">{formatCurrency(quotations.length ? totalQuoted / quotations.length : 0)}</span></div>
-            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Ticket médio (venda)</span><span className="font-semibold">{formatCurrency(sales.length ? totalSales / sales.length : 0)}</span></div>
-            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Orçamentos sem venda</span><span className="font-semibold">{Math.max(0, quotations.length - new Set(sales.map((s) => s.quotationId)).size)}</span></div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-1">
+          <SmartQuotationGenerator onItemsGenerated={(items) => {
+            console.log("Items generated:", items);
+            sessionStorage.setItem("smart_quotation_items", JSON.stringify(items));
+            toast({ title: "Gerador Inteligente", description: "Itens processados e prontos para o orçamento." });
+            navigate("/construcao");
+          }} />
+        </div>
+
+        <div className="lg:col-span-3 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-5 w-5 text-foreground" />Vendas (últimos 7 dias)</CardTitle></CardHeader>
+              <CardContent>
+                {sales.length === 0 ? (
+                  <div className="h-[200px] flex items-center justify-center text-muted-foreground">Sem dados para exibir</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <AreaChart data={last7DaysSales}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} />
+                      <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(value: number) => [formatCurrency(value), "Vendas"]} />
+                      <Area type="monotone" dataKey="valor" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-base">Resumo</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Ticket médio (orçado)</span><span className="font-semibold">{formatCurrency(quotations.length ? totalQuoted / quotations.length : 0)}</span></div>
+                <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Ticket médio (venda)</span><span className="font-semibold">{formatCurrency(sales.length ? totalSales / sales.length : 0)}</span></div>
+                <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Orçamentos sem venda</span><span className="font-semibold">{Math.max(0, quotations.length - new Set(sales.map((s) => s.quotationId)).size)}</span></div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
 
       <Card>

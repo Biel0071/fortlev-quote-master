@@ -63,6 +63,26 @@ export function useFortlevCatalogProducts() {
   }, [custom, dbProducts]);
 }
 
+function mapToConstructionCategory(cat: string): ConstructionCategory {
+  const c = cat?.toLowerCase() || "";
+  if (c.includes('piso') || c.includes('revestimento')) return 'pisos-revestimentos';
+  if (c.includes('tinta') || c.includes('pintura')) return 'pintura';
+  if (c.includes('metal') || c.includes('louça')) return 'metais-loucas';
+  if (c.includes('ferragem')) return 'ferragens';
+  if (c.includes('ferramenta')) return 'ferramentas';
+  if (c.includes('hidráulica')) return 'hidraulica';
+  if (c.includes('elétrica')) return 'eletrica';
+  if (c.includes('cimento') || c.includes('argamassa')) return 'cimentos';
+  if (c.includes('tijolo') || c.includes('bloco')) return 'blocos-tijolos';
+  if (c.includes('telha') || c.includes('cobertura')) return 'telhas';
+  if (c.includes('madeira')) return 'madeiras';
+  if (c.includes('churrasqueira')) return 'churrasqueiras';
+  if (c.includes('agregado')) return 'agregados';
+  if (c.includes('estrutura')) return 'estruturas';
+  if (c.includes('acabamento')) return 'acabamentos';
+  return 'outros';
+}
+
 export function useConstructionCatalogProducts() {
   const [dbProducts, setDbProducts] = useState<ConstructionProduct[] | null>(null);
 
@@ -70,28 +90,43 @@ export function useConstructionCatalogProducts() {
     let cancelled = false;
 
     async function load() {
-      const { data, error } = await cloud
+      // Fetch from construction_catalog_products
+      const { data: constructionData } = await cloud
         .from("construction_catalog_products")
         .select("id, legacy_id, name, unit, base_price, category")
         .eq("active", true)
         .order("name", { ascending: true });
 
+      // Fetch from store_products (general materials)
+      const { data: storeData } = await cloud
+        .from("store_products")
+        .select("id, name, unit, price, category")
+        .eq("status", "published")
+        .order("name", { ascending: true });
+
       if (cancelled) return;
 
-      if (error || !data) {
-        setDbProducts([]);
-        return;
-      }
-
-      const mapped: ConstructionProduct[] = data.map((r: any) => ({
+      const products1: ConstructionProduct[] = (constructionData || []).map((r: any) => ({
         id: r.legacy_id ?? r.id,
         name: r.name,
-        unit: r.unit,
+        unit: r.unit || 'un',
         basePrice: Number(r.base_price ?? 0),
         category: (r.category ?? "outros") as ConstructionCategory,
       }));
 
-      setDbProducts(mapped);
+      const products2: ConstructionProduct[] = (storeData || []).map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        unit: r.unit || 'un',
+        basePrice: Number(r.price || 0),
+        category: mapToConstructionCategory(r.category),
+      }));
+
+      // Merge and remove duplicates by ID
+      const mergedMap = new Map<string, ConstructionProduct>();
+      [...products1, ...products2].forEach(p => mergedMap.set(p.id, p));
+      
+      setDbProducts(Array.from(mergedMap.values()));
     }
 
     load();

@@ -151,8 +151,9 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
     onItemsGenerated(interpretedItems.map(item => ({
       name: item.productName,
       quantity: item.quantity,
-      unitPrice: 0, 
-      subtotal: 0
+      unitPrice: item.price || 0, 
+      subtotal: (item.price || 0) * item.quantity,
+      unit: item.unit
     })), nearestFactory, customerData);
     
     setInterpretedItems([]);

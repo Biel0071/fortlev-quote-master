@@ -85,14 +85,30 @@ export const QuotationPreview = ({
 
         {/* Preview Content */}
         <div className="p-6">
-          <div className="bg-white border-2 border-black text-black font-mono text-[10px] uppercase leading-tight">
+          <div className="bg-white border-2 border-black text-black font-mono text-[9px] uppercase leading-tight p-1">
+            {/* Canhoto de Recebimento */}
+            <div className="grid grid-cols-12 border-b-2 border-black mb-1 h-12">
+              <div className="col-span-10 border-r-2 border-black p-1">
+                <p className="text-[6px]">RECEBEMOS DE {companyInfo.name} OS PRODUTOS/SERVIÇOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO</p>
+                <div className="grid grid-cols-2 mt-2 gap-4">
+                  <div className="border-t border-black pt-1">DATA DE RECEBIMENTO</div>
+                  <div className="border-t border-black pt-1">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</div>
+                </div>
+              </div>
+              <div className="col-span-2 p-1 flex flex-col items-center justify-center text-center">
+                <p className="font-bold text-xs">NF-e</p>
+                <p className="font-bold">Nº {quotation.number}</p>
+                <p className="font-bold text-[7px]">SÉRIE: 001</p>
+              </div>
+            </div>
+
             {/* DANFE Header */}
             <div className="grid grid-cols-12 border-b-2 border-black">
-              <div className="col-span-4 border-r-2 border-black p-2 flex flex-col justify-center items-center text-center">
+              <div className="col-span-3 border-r-2 border-black p-2 flex flex-col justify-center items-center text-center">
                 {branding.showBrand && (
-                  <h2 className="text-xl font-bold mb-1">{branding.brandText || 'FORTLEV'}</h2>
+                  <h2 className="text-lg font-bold mb-1">{branding.brandText || 'FORTLEV'}</h2>
                 )}
-                <div className="text-[8px] font-bold">
+                <div className="text-[7px] font-bold">
                   <p>{companyInfo.name}</p>
                   <p>{companyInfo.address}</p>
                   <p>FONE: {companyInfo.phone}</p>
@@ -100,10 +116,10 @@ export const QuotationPreview = ({
               </div>
               <div className="col-span-4 border-r-2 border-black p-2 flex flex-col items-center justify-center text-center">
                 <h1 className="text-sm font-bold mb-1">DANFE</h1>
-                <p className="text-[8px]">DOCUMENTO AUXILIAR DA</p>
-                <p className="text-[8px]">NOTA FISCAL ELETRÔNICA</p>
+                <p className="text-[7px]">DOCUMENTO AUXILIAR DA</p>
+                <p className="text-[7px]">NOTA FISCAL ELETRÔNICA</p>
                 <div className="mt-2 grid grid-cols-2 w-full gap-1 text-[7px]">
-                  <div className="border border-black p-1">
+                  <div className="border border-black p-1 text-center">
                     <p>0 - ENTRADA</p>
                     <p>1 - SAÍDA</p>
                   </div>
@@ -113,12 +129,14 @@ export const QuotationPreview = ({
                 </div>
                 <p className="mt-1 font-bold">Nº {quotation.number}</p>
                 <p className="font-bold">SÉRIE: 001</p>
+                <p className="text-[7px]">FOLHA 1/1</p>
               </div>
-              <div className="col-span-4 p-2 overflow-hidden">
+              <div className="col-span-5 p-2 overflow-hidden">
                 <p className="text-[7px] mb-1">CONTROLE DO FISCO</p>
-                <div className="h-8 bg-black mb-1 w-full flex items-center justify-center text-white text-[6px]">BARCODE_PLACEHOLDER</div>
-                <p className="text-[7px] font-bold break-all">CHAVE DE ACESSO: 3326 0509 5436 9900 0112 5500 1000 00{quotation.number} 1095 4369 9712</p>
-                <p className="text-[8px] mt-1 text-center border-t border-black pt-1">Consulta de autenticidade no portal nacional da NF-e</p>
+                <div className="h-10 bg-black mb-1 w-full flex items-center justify-center text-white text-[6px] tracking-[5px]">|||||||||||||||||||||||||||||||||||||||||||||||</div>
+                <p className="text-[7px] font-bold break-all">CHAVE DE ACESSO</p>
+                <p className="text-[8px] font-bold break-all">3326 0509 5436 9900 0112 5500 1000 00{quotation.number} 1095 4369 9712</p>
+                <p className="text-[8px] mt-2 text-center border-t border-black pt-1">Consulta de autenticidade no portal nacional da NF-e</p>
               </div>
             </div>
 

@@ -15,7 +15,9 @@ import { toast } from '@/hooks/use-toast';
 import { cloud } from '@/lib/cloud';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Pencil, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Pencil, FileText, Loader2, Sparkles } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { findNearestFactory, getUFCoordinates } from '@/utils/proximity';
 
 const QuotationsIndex = () => {
   const navigate = useNavigate();

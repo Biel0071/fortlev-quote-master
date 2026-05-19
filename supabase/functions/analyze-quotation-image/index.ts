@@ -77,7 +77,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o",
+        model: "openai/gpt-5-mini", // Corrected model name for this environment
         messages,
         response_format: { type: "json_object" },
       }),

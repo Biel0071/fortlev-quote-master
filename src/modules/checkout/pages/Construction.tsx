@@ -201,6 +201,7 @@ const ConstructionPage = () => {
         cpfCnpj: customer.cnpj,
         phone: customer.phone,
         address: customer.address,
+        email: customer.email,
       },
       companyInfo: {
         name: companyInfo.name,
@@ -381,6 +382,7 @@ const ConstructionPage = () => {
       cnpj: q.customer?.cpfCnpj || '',
       phone: q.customer?.phone || '',
       address: q.customer?.address || '',
+      email: q.customer?.email || '',
     });
     setCompanyInfo((prev) => ({
       ...prev,
@@ -459,7 +461,7 @@ const ConstructionPage = () => {
   }, []);
 
   const resetForm = () => {
-    setCustomer({ name: '', cnpj: '', phone: '', address: '' });
+    setCustomer({ name: '', cnpj: '', phone: '', address: '', email: '' });
     setItems([]);
     setDiscount(0);
     setFreight(0);

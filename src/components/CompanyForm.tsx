@@ -16,8 +16,43 @@ interface CompanyFormProps {
 }
 
 export const CompanyForm = ({ companyInfo, onChange }: CompanyFormProps) => {
-  const { companies, saveCompany, deleteCompany } = useSavedCompanies();
+  const { companies: localSavedCompanies, saveCompany, deleteCompany } = useSavedCompanies();
   const { sellers, saveSeller, deleteSeller } = useSavedSellers();
+  const [dbCompanies, setDbCompanies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('issuing_companies')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (data) setDbCompanies(data);
+      setLoading(false);
+    };
+    fetchCompanies();
+  }, []);
+
+  const allCompanies = [
+    ...dbCompanies.map(c => ({
+      name: c.name,
+      trading_name: c.trading_name,
+      cnpj: c.cnpj,
+      address: c.address,
+      phone: c.phone,
+      email: c.email,
+      website: c.website || '',
+      sellerName: '',
+      sellerRole: 'Consultor de Vendas'
+    })),
+    ...localSavedCompanies
+  ];
+
+  // Remove duplicates by CNPJ
+  const companies = Array.from(new Map(allCompanies.map(c => [c.cnpj, c])).values());
 
   const handleChange = (field: keyof CompanyInfo, value: string) => {
     onChange({ ...companyInfo, [field]: value });

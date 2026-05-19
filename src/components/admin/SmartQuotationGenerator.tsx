@@ -23,10 +23,38 @@ interface InterpretedItem {
   matched: boolean;
 }
 
-export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsGenerated: (items: any[]) => void }) {
+export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsGenerated: (items: any[], nearestFactory?: any) => void }) {
   const [inputText, setInputText] = useState("");
+  const [address, setAddress] = useState("");
   const [isInterpreting, setIsInterpreting] = useState(false);
   const [interpretedItems, setInterpretedItems] = useState<InterpretedItem[]>([]);
+  const [factories, setFactories] = useState<any[]>([]);
+  const [nearestFactory, setNearestFactory] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchFactories = async () => {
+      const { data } = await supabase
+        .from('issuing_companies')
+        .select('*')
+        .eq('company_type', 'fortlev')
+        .eq('is_active', true);
+      if (data) setFactories(data);
+    };
+    fetchFactories();
+  }, []);
+
+  useEffect(() => {
+    if (!address || factories.length === 0) return;
+    
+    const ufMatch = address.match(/\b([A-Z]{2})\b/);
+    if (ufMatch) {
+      const coords = getUFCoordinates(ufMatch[1]);
+      if (coords) {
+        const nearest = findNearestFactory(coords, factories);
+        setNearestFactory(nearest);
+      }
+    }
+  }, [address, factories]);
 
   const handleInterpret = async () => {
     if (!inputText.trim()) {

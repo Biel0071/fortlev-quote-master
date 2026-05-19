@@ -14,31 +14,31 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   };
   
   // Colors
-  const primaryBlue = [0, 82, 147] as const;
-  const darkBlue = [0, 51, 102] as const;
+  const black = [0, 0, 0] as const;
   const white = [255, 255, 255] as const;
-  const lightGray = [245, 247, 250] as const;
-  const textDark = [30, 30, 30] as const;
-  const textGray = [100, 100, 100] as const;
+  const lightGray = [220, 220, 220] as const;
+  const textDark = [0, 0, 0] as const;
   
-  // Header bar
-  doc.setFillColor(...primaryBlue);
-  doc.rect(0, 0, pageWidth, 8, 'F');
+  // Header bar (Border)
+  doc.setDrawColor(...black);
+  doc.rect(0, 0, pageWidth, 8, 'S');
   
   // Title section
-  doc.setFillColor(...lightGray);
-  doc.rect(0, 8, pageWidth, 20, 'F');
+  doc.setDrawColor(...black);
+  doc.rect(10, 10, pageWidth - 20, 25, 'S');
   
-  doc.setTextColor(...darkBlue);
-  doc.setFontSize(18);
+  doc.setTextColor(...black);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('ORÇAMENTO OFICIAL', 15, 22);
+  doc.text('DANFE', 15, 20);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text('DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA', 15, 24);
   
   // Brand text (optional)
   if (branding.showBrand) {
-    doc.setFontSize(22);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...primaryBlue);
     doc.text(branding.brandText || 'FORTLEV', pageWidth - 15, 22, { align: 'right' });
   }
   
@@ -149,31 +149,35 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   
   autoTable(doc, {
     startY: yPos,
-    head: [['Itens Orçados', 'Un.', 'Qtd.', 'Valor Unit. (R$)', 'Total (R$)']],
+    head: [['DADOS DO PRODUTO / SERVIÇO', 'Un.', 'Qtd.', 'Vlr. Unit.', 'Vlr. Total']],
     body: tableData,
     theme: 'grid',
     headStyles: {
-      fillColor: [0, 82, 147],
-      textColor: [255, 255, 255],
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0],
       fontStyle: 'bold',
-      fontSize: 9,
+      fontSize: 8,
       halign: 'left',
-      cellPadding: 4,
+      cellPadding: 2,
+      lineWidth: 0.2,
+      lineColor: [0, 0, 0],
     },
     bodyStyles: {
-      fontSize: 9,
-      textColor: [30, 30, 30],
-      cellPadding: 4,
+      fontSize: 7,
+      textColor: [0, 0, 0],
+      cellPadding: 2,
+      lineWidth: 0.1,
+      lineColor: [0, 0, 0],
     },
     columnStyles: {
-      0: { cellWidth: 75, halign: 'left' },
-      1: { cellWidth: 20, halign: 'center' },
-      2: { cellWidth: 20, halign: 'center' },
-      3: { cellWidth: 35, halign: 'right' },
+      0: { cellWidth: 'auto', halign: 'left' },
+      1: { cellWidth: 15, halign: 'center' },
+      2: { cellWidth: 15, halign: 'center' },
+      3: { cellWidth: 30, halign: 'right' },
       4: { cellWidth: 30, halign: 'right' },
     },
     alternateRowStyles: {
-      fillColor: [250, 251, 252],
+      fillColor: [255, 255, 255],
     },
     margin: { left: 15, right: 15 },
   });
@@ -211,9 +215,9 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   finalY += 8;
   
   // Total row
-  doc.setFillColor(...primaryBlue);
-  doc.rect(totalsX, finalY, totalsWidth, 10, 'F');
-  doc.setTextColor(...white);
+  doc.setDrawColor(...black);
+  doc.rect(totalsX, finalY, totalsWidth, 10, 'S');
+  doc.setTextColor(...black);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text('Total Geral:', totalsX + 3, finalY + 7);
@@ -287,14 +291,14 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   finalY += 5;
   
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...textGray);
+  doc.setTextColor(...black);
   doc.text(quotation.companyInfo.sellerRole || 'Gerente de Vendas', 15, finalY);
   finalY += 5;
   doc.text(quotation.companyInfo.name || 'Empresa', 15, finalY);
   
-  // Footer bar
-  doc.setFillColor(...primaryBlue);
-  doc.rect(0, doc.internal.pageSize.getHeight() - 8, pageWidth, 8, 'F');
+  // Footer bar (Border)
+  doc.setDrawColor(...black);
+  doc.rect(0, doc.internal.pageSize.getHeight() - 8, pageWidth, 8, 'S');
   
   return doc;
 };
@@ -368,11 +372,9 @@ const generateCanvasPNG = (quotation: Quotation) => {
   if (!ctx) return;
   
   // Colors
-  const primaryBlue = '#005293';
-  const darkBlue = '#003366';
-  const lightGray = '#f5f7fa';
-  const textDark = '#1e1e1e';
-  const textGray = '#646464';
+  const black = '#000000';
+  const lightGray = '#f0f0f0';
+  const textDark = '#000000';
   
   // White background
   ctx.fillStyle = '#ffffff';
@@ -380,18 +382,20 @@ const generateCanvasPNG = (quotation: Quotation) => {
   ctx.textAlign = 'left';
   
   // Title section
-  ctx.fillStyle = lightGray;
-  ctx.fillRect(0, 0, canvas.width, 55);
+  ctx.strokeStyle = black;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(padding, 10, canvas.width - (padding * 2), 55);
   
-  ctx.fillStyle = darkBlue;
+  ctx.fillStyle = black;
+  ctx.font = 'bold 20px Arial, sans-serif';
+  ctx.fillText('DANFE', padding + 10, 38);
+  ctx.font = '10px Arial, sans-serif';
+  ctx.fillText('DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA', padding + 10, 52);
+  
   ctx.font = 'bold 24px Arial, sans-serif';
-  ctx.fillText('ORÇAMENTO OFICIAL', padding, 38);
-  
-  ctx.fillStyle = primaryBlue;
-  ctx.font = 'bold 28px Arial, sans-serif';
   ctx.textAlign = 'right';
   if ((quotation.branding ?? { showBrand: true }).showBrand) {
-    ctx.fillText(quotation.branding?.brandText || 'FORTLEV', canvas.width - padding, 38);
+    ctx.fillText(quotation.branding?.brandText || 'FORTLEV', canvas.width - padding - 10, 38);
   }
   ctx.textAlign = 'left';
   
@@ -502,7 +506,7 @@ const generateCanvasPNG = (quotation: Quotation) => {
     colStarts.push(colStarts[i-1] + colWidths[i-1]);
   }
   
-  ctx.fillStyle = primaryBlue;
+  ctx.fillStyle = '#000000';
   ctx.fillRect(padding, yPos, tableWidth, 32);
   
   ctx.fillStyle = '#ffffff';
@@ -571,7 +575,7 @@ const generateCanvasPNG = (quotation: Quotation) => {
   ctx.textAlign = 'left';
   yPos += 26;
   
-  ctx.fillStyle = primaryBlue;
+  ctx.fillStyle = '#000000';
   ctx.fillRect(totalsX, yPos, totalsWidth, 30);
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 13px Arial, sans-serif';
@@ -651,7 +655,7 @@ const generateCanvasPNG = (quotation: Quotation) => {
   yPos += 18;
   
   ctx.font = '12px Arial, sans-serif';
-  ctx.fillStyle = textGray;
+  ctx.fillStyle = '#000000';
   ctx.fillText(quotation.companyInfo.sellerRole || 'Gerente de Vendas', padding, yPos);
   yPos += 18;
   ctx.fillText(quotation.companyInfo.name || 'Empresa', padding, yPos);
@@ -671,7 +675,7 @@ const generateCanvasPNG = (quotation: Quotation) => {
     ctx.drawImage(tempCanvas, 0, 0);
     
     // Bottom bar
-    ctx.fillStyle = primaryBlue;
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, finalHeight - 35, canvas.width, 35);
   }
   

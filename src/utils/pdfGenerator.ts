@@ -24,19 +24,21 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   doc.rect(0, 0, pageWidth, 8, 'S');
   
   // Title section
-  doc.setFillColor(...lightGray);
-  doc.rect(0, 8, pageWidth, 20, 'F');
+  doc.setDrawColor(...black);
+  doc.rect(10, 10, pageWidth - 20, 25, 'S');
   
-  doc.setTextColor(...darkBlue);
-  doc.setFontSize(18);
+  doc.setTextColor(...black);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('ORÇAMENTO OFICIAL', 15, 22);
+  doc.text('DANFE', 15, 20);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text('DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA', 15, 24);
   
   // Brand text (optional)
   if (branding.showBrand) {
-    doc.setFontSize(22);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...primaryBlue);
     doc.text(branding.brandText || 'FORTLEV', pageWidth - 15, 22, { align: 'right' });
   }
   

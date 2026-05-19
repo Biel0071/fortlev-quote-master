@@ -23,11 +23,12 @@ interface InterpretedItem {
   matched: boolean;
 }
 
-export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsGenerated: (items: any[], nearestFactory?: any) => void }) {
+export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsGenerated: (items: any[], nearestFactory?: any, customerData?: any) => void }) {
   const [inputText, setInputText] = useState("");
   const [address, setAddress] = useState("");
   const [isInterpreting, setIsInterpreting] = useState(false);
   const [interpretedItems, setInterpretedItems] = useState<InterpretedItem[]>([]);
+  const [customerData, setCustomerData] = useState<any>(null);
   const [factories, setFactories] = useState<any[]>([]);
   const [nearestFactory, setNearestFactory] = useState<any>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -103,21 +104,30 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
 
       if (error) throw error;
 
-      if (data && data.items) {
-        const mappedItems: InterpretedItem[] = data.items.map((item: any, index: number) => ({
-          id: `item-${index}-${Date.now()}`,
-          originalText: item.originalText || item.productName,
-          productName: item.productName,
-          quantity: item.quantity || 1,
-          unit: item.unit || "un",
-          confidence: 0.9,
-          matched: true
-        }));
+      if (data) {
+        if (data.items) {
+          const mappedItems: InterpretedItem[] = data.items.map((item: any, index: number) => ({
+            id: `item-${index}-${Date.now()}`,
+            originalText: item.originalText || item.productName,
+            productName: item.productName,
+            quantity: item.quantity || 1,
+            unit: item.unit || "un",
+            confidence: 0.9,
+            matched: true
+          }));
+          setInterpretedItems(mappedItems);
+        }
 
-        setInterpretedItems(mappedItems);
-        toast({ title: "Interpretação concluída", description: `${mappedItems.length} itens identificados.` });
+        if (data.customer) {
+          setCustomerData(data.customer);
+          if (data.customer.address) {
+            setAddress(data.customer.address);
+          }
+        }
+
+        toast({ title: "Interpretação concluída", description: `${data.items?.length || 0} itens identificados.` });
       } else {
-        throw new Error("Não foi possível identificar itens.");
+        throw new Error("Não foi possível identificar dados.");
       }
     } catch (error: any) {
       console.error("Erro na interpretação:", error);
@@ -138,12 +148,14 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
       quantity: item.quantity,
       unitPrice: 0, 
       subtotal: 0
-    })), nearestFactory);
+    })), nearestFactory, customerData);
+    
     setInterpretedItems([]);
+    setCustomerData(null);
     setInputText("");
     setAddress("");
     setNearestFactory(null);
-    toast({ title: "Itens adicionados", description: "Os itens foram enviados para o orçamento." });
+    toast({ title: "Dados adicionados", description: "Itens e cliente enviados para o orçamento." });
   };
 
   return (

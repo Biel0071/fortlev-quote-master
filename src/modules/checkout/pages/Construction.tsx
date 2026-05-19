@@ -32,14 +32,41 @@ const ConstructionPage = () => {
 
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: 'Material de Construção',
-    cnpj: '04.925.466/0001-59',
-    address: 'R. Carlos Drumont de Andrade, 484 - Vista Alegre, Vespasiano - MG, 33200-000',
-    phone: '(31) 9 9372-6642',
-    email: 'vendas@materialdecontrucao.online',
+    cnpj: '',
+    address: '',
+    phone: '',
+    email: '',
     website: '',
     sellerName: '',
     sellerRole: 'Vendedor',
   });
+
+  useEffect(() => {
+    const fetchDefaultCompany = async () => {
+      const { data } = await supabase
+        .from('issuing_companies')
+        .select('*')
+        .eq('company_type', 'material')
+        .eq('is_active', true)
+        .order('is_default', { ascending: false })
+        .limit(1);
+      
+      if (data && data.length > 0) {
+        const company = data[0];
+        setCompanyInfo({
+          name: company.name,
+          cnpj: company.cnpj,
+          address: company.address,
+          phone: company.phone,
+          email: company.email,
+          website: company.website || '',
+          sellerName: '',
+          sellerRole: 'Vendedor',
+        });
+      }
+    };
+    if (!editingQuotationId) fetchDefaultCompany();
+  }, [editingQuotationId]);
 
   const [customer, setCustomer] = useState<Customer>({
     name: '',

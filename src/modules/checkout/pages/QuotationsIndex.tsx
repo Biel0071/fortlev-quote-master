@@ -11,6 +11,7 @@ import { useQuotations } from '@/hooks/useQuotations';
 import { Customer, CompanyInfo, PaymentConditions, QuotationItem, Quotation } from '@/types/quotation';
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { downloadNFePDF } from '@/utils/nfeGenerator';
+import { downloadNFePDF } from '@/utils/nfeGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
 import { cloud } from '@/lib/cloud';
@@ -506,7 +507,8 @@ const QuotationsIndex = () => {
             subtotal={subtotal} deliveryTime={deliveryTime} paymentConditions={paymentConditions}
             onValidityChange={setValidity} onObservationsChange={setObservations} onDiscountChange={setDiscount}
             onFreightChange={setFreight} onDeliveryTimeChange={setDeliveryTime} onPaymentConditionsChange={setPaymentConditions}
-            onGeneratePDF={handleGeneratePDF} onGeneratePNG={handleGeneratePNG} onSendWhatsApp={handleSendWhatsApp}
+            onGeneratePDF={handleGeneratePDF} onGeneratePNG={handleGeneratePNG} onGenerateDANFE={handleGenerateDANFE} 
+            onSendWhatsApp={handleSendWhatsApp}
             onPreview={handlePreview} disabled={!isFormValid}
           />
         </div>

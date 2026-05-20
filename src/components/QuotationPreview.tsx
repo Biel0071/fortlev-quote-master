@@ -84,8 +84,8 @@ export const QuotationPreview = ({
         </DialogHeader>
 
         {/* Preview Content */}
-        <div className="p-6">
-          <div className="bg-white border-2 border-black text-black font-mono text-[9px] uppercase leading-tight p-1">
+        <div className="p-6 overflow-x-auto">
+          <div className="danfe-container bg-white border-2 border-black text-black font-mono text-[9px] uppercase leading-tight p-1 min-w-[750px]">
             {/* Canhoto de Recebimento */}
             <div className="grid grid-cols-12 border-b-2 border-black mb-1 h-12">
               <div className="col-span-10 border-r-2 border-black p-1">

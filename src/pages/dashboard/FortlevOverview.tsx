@@ -382,7 +382,7 @@ export default function FortlevOverview() {
                             {sold ? (
                               <Badge variant="secondary" className="w-fit">Vendido</Badge>
                             ) : (
-                              <Button variant="outline" size="xs" className="h-7 text-[10px]" onClick={() => openSellDialog(q.id, q.total)}>Vender</Button>
+                              <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => openSellDialog(q.id, q.total)}>Vender</Button>
                             )}
                             <FiscalStatusBadge status={q.fiscal?.status} className="text-[9px] py-0 px-1.5" />
                           </div>

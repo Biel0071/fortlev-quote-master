@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, MoreHorizontal, Building2, Users, Search, Filter } from "lucide-react";
+import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, MoreHorizontal, Building2, Users, Search, Filter, Eye } from "lucide-react";
 import SmartQuotationGenerator from "@/components/admin/SmartQuotationGenerator";
 import { useQuotations } from "@/hooks/useQuotations";
 import { useSales } from "@/hooks/useSales";
@@ -19,6 +19,8 @@ import { formatCurrency, formatDate } from "@/utils/formatters";
 import { downloadPDF, downloadPNG } from "@/utils/pdfGenerator";
 import { downloadNFePDF } from "@/utils/nfeGenerator";
 import { toast } from "@/hooks/use-toast";
+import { QuotationPreview } from "@/components/QuotationPreview";
+import { Quotation } from "@/types/quotation";
 
 function currencyToNumber(raw: string) {
   const cleaned = raw.replace(/[^0-9,.-]/g, "").replace(".", "").replace(",", ".");
@@ -41,6 +43,8 @@ export default function FortlevOverview() {
   const [issuers, setIssuers] = useState<any[]>([]);
   const [selectedIssuerId, setSelectedIssuerId] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
 
   useEffect(() => {
     const fetchIssuers = async () => {
@@ -150,6 +154,11 @@ export default function FortlevOverview() {
       await downloadNFePDF(q, nfeNumber);
       toast({ title: "Nota Fiscal gerada com sucesso" });
     } catch { toast({ title: "Erro ao gerar NFe", variant: "destructive" }); }
+  };
+
+  const handlePreview = (q: Quotation) => {
+    setPreviewQuotation(q);
+    setPreviewOpen(true);
   };
 
   return (
@@ -360,15 +369,18 @@ export default function FortlevOverview() {
                                 Gerar
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="center">
+                            <DropdownMenuContent align="center" className="w-56">
+                               <DropdownMenuItem onClick={() => handlePreview(q as any)}>
+                                <Eye className="h-4 w-4 mr-2 text-primary" />Pré-visualizar
+                              </DropdownMenuItem>
                                <DropdownMenuItem onClick={() => handleDownloadPDF(q)}>
-                                <FileDown className="h-4 w-4 mr-2" />Baixar Orçamento
+                                <FileDown className="h-4 w-4 mr-2" />Baixar Orçamento PDF
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadPNG(q)}>
-                                <Receipt className="h-4 w-4 mr-2" />Baixar DANFE / NF-e
+                                <Image className="h-4 w-4 mr-2" />Baixar Orçamento PNG
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadNFe(q)}>
-                                <Receipt className="h-4 w-4 mr-2" />Nota Fiscal
+                                <Receipt className="h-4 w-4 mr-2" />Baixar DANFE / NF-e
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -441,6 +453,14 @@ export default function FortlevOverview() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <QuotationPreview 
+        quotation={previewQuotation}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        onDownloadPDF={() => previewQuotation && handleDownloadPDF(previewQuotation)}
+        onDownloadPNG={() => previewQuotation && handleDownloadPNG(previewQuotation)}
+        onDownloadDANFE={() => previewQuotation && handleDownloadNFe(previewQuotation)}
+      />
     </div>
   );
 }

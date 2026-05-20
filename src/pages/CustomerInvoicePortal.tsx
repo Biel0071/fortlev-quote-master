@@ -44,19 +44,23 @@ export const CustomerInvoicePortal = () => {
         setError(null);
 
         // Try to find in fortlev_quotations first
-        let { data, error: fetchError } = await supabase
+        let data: any = null;
+        
+        const { data: fData, error: fetchError } = await supabase
           .from("fortlev_quotations")
           .select("*")
           .eq("access_key", accessKey)
-          .single();
+          .maybeSingle();
 
-        if (fetchError || !data) {
+        if (fData) {
+          data = fData;
+        } else {
           // Try construction_quotations
           const { data: cData, error: cError } = await supabase
             .from("construction_quotations")
             .select("*")
             .eq("access_key", accessKey)
-            .single();
+            .maybeSingle();
           
           if (cError || !cData) {
             setError("Documento não encontrado ou chave de acesso inválida.");
@@ -65,6 +69,7 @@ export const CustomerInvoicePortal = () => {
           }
           data = cData;
         }
+
 
         // Validate token
         if (data.portal_token !== portalToken) {

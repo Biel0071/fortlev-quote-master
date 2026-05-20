@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-export const CustomerInvoicePortal = () => {
+const CustomerInvoicePortal = () => {
   const { accessKey } = useParams();
   const [searchParams] = useSearchParams();
   const portalToken = searchParams.get("token");
@@ -378,3 +378,6 @@ export const CustomerInvoicePortal = () => {
     </div>
   );
 };
+
+export default CustomerInvoicePortal;
+

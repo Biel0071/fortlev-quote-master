@@ -339,7 +339,7 @@ export const QuotationPreview = ({
 
 
         {/* Action Buttons */}
-        <div className="p-6 pt-0 flex flex-col sm:flex-row gap-3">
+        <div className="p-6 pt-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Button
             variant="fortlev"
             size="lg"
@@ -350,20 +350,34 @@ export const QuotationPreview = ({
             className="flex-1 bg-[#004a97] hover:bg-[#003d7c]"
           >
             <FileDown className="h-5 w-5" />
-            Baixar Orçamento
+            PDF Orçamento
           </Button>
 
           <Button
-            variant="accent"
+            variant="fortlev"
             size="lg"
             onClick={() => {
               onDownloadPNG();
               onOpenChange(false);
             }}
+            className="flex-1 bg-[#004a97] hover:bg-[#003d7c]"
+          >
+            <Image className="h-5 w-5" />
+            PNG Orçamento
+          </Button>
+
+          <Button
+            variant="accent"
+            size="lg"
+            onClick={async () => {
+              const { downloadNFePDF } = await import('@/utils/nfeGenerator');
+              downloadNFePDF(quotation, quotation.number);
+              onOpenChange(false);
+            }}
             className="flex-1 bg-black hover:bg-black/90 text-white"
           >
             <Receipt className="h-5 w-5" />
-            Baixar DANFE / NF-e
+            PDF DANFE
           </Button>
 
           <Button

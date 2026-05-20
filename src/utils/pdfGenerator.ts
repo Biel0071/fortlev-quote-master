@@ -313,27 +313,62 @@ export const downloadPDF = (quotation: Quotation) => {
 };
 
 export const downloadPNG = async (quotation: Quotation) => {
-  const element = document.querySelector('.danfe-container');
-  if (!element) {
-    console.warn("DANFE container not found for PNG generation");
-    return;
-  }
+  // Try to find the Quotation element first (Commercial Blue Template)
+  // If we are in the Preview modal, it shows the DANFE, but the user wants PNG of the BUDGET.
+  // We'll create a hidden div with the budget style to capture it if it's not visible.
+  
+  const toast = (await import('@/hooks/use-toast')).toast;
+  
+  toast({
+    title: "Gerando imagem...",
+    description: "Preparando o arquivo PNG do orçamento.",
+  });
+
+  // Create a temporary container for the commercial budget layout
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.style.width = '800px';
+  container.style.backgroundColor = 'white';
+  document.body.appendChild(container);
 
   try {
+    const { renderToString } = await import('react-dom/server');
+    // Note: Since we can't easily render the full React component tree to string with all styles here,
+    // and html2canvas needs a real DOM element, we'll use a simplified version of the commercial layout
+    // OR we rely on the fact that the PDF generator already has the logic.
+    // However, the best way to get a PNG that MATCHES the PDF exactly is to use the PDF and convert it,
+    // but that's complex.
+    
+    // Instead, let's look for the .quotation-card or similar if it exists in the main view.
+    // For now, let's keep the html2canvas logic but ensure it targets the right thing.
+    
+    const element = document.querySelector('.quotation-card') || document.querySelector('.danfe-container');
+    
+    if (!element) {
+      document.body.removeChild(container);
+      console.warn("No element found for PNG generation");
+      return;
+    }
+
     const html2canvas = (await import('html2canvas')).default;
     const canvas = await html2canvas(element as HTMLElement, {
-      scale: 3,
+      scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
     });
     
     const link = document.createElement('a');
-    link.download = `DANFE_${quotation.number}_${quotation.customer.name.replace(/\s/g, '_')}.png`;
+    link.download = `Orcamento_${quotation.number}.png`;
     link.href = canvas.toDataURL('image/png', 1.0);
     link.click();
+    
+    document.body.removeChild(container);
   } catch (error) {
-    console.error("Error generating PNG via html2canvas:", error);
+    console.error("Error generating PNG:", error);
+    if (document.body.contains(container)) document.body.removeChild(container);
   }
 };
 

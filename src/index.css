@@ -186,6 +186,14 @@
     box-shadow: var(--shadow-xl);
   }
 
+  .premium-card {
+    @apply bg-white dark:bg-card border border-border/60 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden;
+  }
+
+  .premium-table-container {
+    @apply border border-border/60 rounded-xl overflow-hidden bg-white shadow-sm;
+  }
+
   .animate-fade-in {
     animation: fadeIn 0.5s ease-out forwards;
   }

@@ -5,7 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Quotation } from '@/types/quotation';
 import { formatCurrency } from '@/utils/formatters';
 import { getBrazilDocumentLabel } from '@/utils/formatters';
-import { FileText, Image, X, FileDown, Receipt, Eye } from 'lucide-react';
+import { FileText, Image, X, FileDown, Receipt, Eye, ShieldCheck, Copy, ExternalLink } from 'lucide-react';
+import { FiscalStatusBadge } from './FiscalStatusBadge';
+import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
+
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useState, useRef, useEffect } from 'react';
@@ -74,7 +78,36 @@ export const QuotationPreview = ({
   const branding = quotation.branding ?? { showBrand: true, brandText: 'FORTLEV' };
   const formatDate = (date: Date) => format(new Date(date), "dd/MM/yyyy", { locale: ptBR });
 
+  const barcodeRef = useRef<SVGSVGElement>(null);
+  const qrCodeRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    if (activeTab === 'danfe' && quotation.fiscal?.accessKey && barcodeRef.current) {
+      JsBarcode(barcodeRef.current, quotation.fiscal.accessKey, {
+        format: "CODE128C",
+        width: 1,
+        height: 40,
+        displayValue: false,
+        margin: 0
+      });
+    }
+  }, [activeTab, quotation.fiscal?.accessKey]);
+
+  useEffect(() => {
+    const generateQR = async () => {
+      if (activeTab === 'danfe' && quotation.fiscal?.accessKey && quotation.fiscal?.portalToken && qrCodeRef.current) {
+        const portalUrl = `${window.location.origin}/nota/${quotation.fiscal.accessKey}?token=${quotation.fiscal.portalToken}`;
+        const qrDataUrl = await QRCode.toDataURL(portalUrl, { margin: 1, width: 100 });
+        qrCodeRef.current.src = qrDataUrl;
+      }
+    };
+    generateQR();
+  }, [activeTab, quotation.fiscal?.accessKey, quotation.fiscal?.portalToken]);
+
+  const isAuthorized = quotation.fiscal?.status === 'autorizada' || quotation.fiscal?.status === 'autorizada_fora_prazo';
+
   return (
+
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-0 border-none shadow-2xl">
         <DialogHeader className="p-6 pb-2 bg-muted/30">
@@ -83,16 +116,20 @@ export const QuotationPreview = ({
               <Eye className="h-5 w-5 text-primary" />
               Pré-visualização de Documentos
             </DialogTitle>
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full sm:w-auto">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="budget" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" /> Orçamento
-                </TabsTrigger>
-                <TabsTrigger value="danfe" className="flex items-center gap-2">
-                  <Receipt className="h-4 w-4" /> DANFE
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex items-center gap-4 w-full sm:w-auto">
+              <FiscalStatusBadge status={quotation.fiscal?.status} className="hidden sm:flex" />
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full sm:w-auto">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="budget" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" /> Orçamento
+                  </TabsTrigger>
+                  <TabsTrigger value="danfe" className="flex items-center gap-2">
+                    <Receipt className="h-4 w-4" /> DANFE
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
           </div>
         </DialogHeader>
 
@@ -220,21 +257,27 @@ export const QuotationPreview = ({
                 <div className="absolute bottom-0 left-0 w-full h-2 bg-[#004a97]"></div>
               </div>
             ) : (
-              <div className="danfe-container bg-white shadow-lg p-2 font-mono uppercase leading-none text-black border border-gray-300" style={{ width: '800px', minHeight: '1100px', fontSize: '8px' }}>
+              <div className="danfe-container bg-white shadow-lg p-2 font-mono uppercase leading-none text-black border border-gray-300 relative" style={{ width: '800px', minHeight: '1100px', fontSize: '8px' }}>
+                {!isAuthorized && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] rotate-45">
+                    <span className="text-8xl font-black text-red-600 border-8 border-red-600 p-8 whitespace-nowrap">SEM VALOR FISCAL</span>
+                  </div>
+                )}
+
                 {/* Real DANFE structure for Preview */}
-                <div className="border-2 border-black p-1 mb-1">
+                <div className="border border-black p-1 mb-1">
                   <div className="grid grid-cols-12 gap-0 border-b border-black pb-1 mb-1">
-                    <div className="col-span-9 border-r border-black pr-1">
-                      <p className="text-[6px]">Recebemos de ${companyInfo.name} os produtos constantes da nota fiscal indicada ao lado.</p>
+                    <div className="col-span-10 border-r border-black pr-1">
+                      <p className="text-[6px]">Recebemos de {companyInfo.name} os produtos constantes da nota fiscal eletrônica indicada abaixo.</p>
                       <div className="grid grid-cols-2 mt-4 gap-4">
                         <div className="border-t border-black pt-1">DATA DE RECEBIMENTO</div>
                         <div className="border-t border-black pt-1">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</div>
                       </div>
                     </div>
-                    <div className="col-span-3 text-center flex flex-col justify-center">
+                    <div className="col-span-2 text-center flex flex-col justify-center">
                       <p className="font-bold text-sm">NF-E</p>
-                      <p className="font-bold">Nº {quotation.number}</p>
-                      <p className="font-bold">SÉRIE 1</p>
+                      <p className="font-bold">Nº {quotation.fiscal?.invoiceNumber || "---.---.---"}</p>
+                      <p className="font-bold">SÉRIE {quotation.fiscal?.series || "---"}</p>
                     </div>
                   </div>
 
@@ -253,13 +296,23 @@ export const QuotationPreview = ({
                         <div className="border border-black p-1 text-[7px]">0-ENTRADA<br/>1-SAÍDA</div>
                         <div className="border border-black px-2 flex items-center font-bold text-lg">1</div>
                       </div>
-                      <p className="font-bold mt-1 text-[8px]">Nº {quotation.number}</p>
-                      <p className="font-bold text-[8px]">SÉRIE 1</p>
+                      <p className="font-bold mt-1 text-[8px]">Nº {quotation.fiscal?.invoiceNumber || "---.---.---"}</p>
+                      <p className="font-bold text-[8px]">SÉRIE {quotation.fiscal?.series || "---"}</p>
                     </div>
                     <div className="col-span-5 p-1 flex flex-col justify-center">
-                      <div className="h-8 bg-black mb-1 w-full"></div>
-                      <p className="text-[6px] font-bold">CHAVE DE ACESSO</p>
-                      <p className="text-[8px] font-bold">3524 0509 5436 9900 0112 5500 1000 00{quotation.number} 1095 4369 9712</p>
+                      {quotation.fiscal?.accessKey ? (
+                        <div className="flex flex-col items-center">
+                          <svg ref={barcodeRef} className="w-full h-10 mb-1"></svg>
+                          <p className="text-[6px] font-bold">CHAVE DE ACESSO</p>
+                          <p className="text-[8px] font-bold tracking-tighter">
+                            {quotation.fiscal.accessKey.match(/.{1,4}/g)?.join(' ')}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <p className="text-[6px] font-bold">CHAVE DE ACESSO INDISPONÍVEL</p>
+                        </div>
+                      )}
                       <p className="text-[6px] mt-2 border-t border-black pt-1 text-center">Consulta de autenticidade no portal nacional da NF-e</p>
                     </div>
                   </div>
@@ -271,7 +324,9 @@ export const QuotationPreview = ({
                     </div>
                     <div className="col-span-4 p-1">
                       <p className="text-[5px]">PROTOCOLO DE AUTORIZAÇÃO DE USO</p>
-                      <p className="font-bold text-[8px]">135240005436997 - {formatDate(quotation.createdAt)}</p>
+                      <p className="font-bold text-[8px]">
+                        {isAuthorized ? `${quotation.fiscal?.protocol} - ${quotation.fiscal?.receiptAt ? formatDate(quotation.fiscal.receiptAt) : ''}` : "DOCUMENTO NÃO FISCAL"}
+                      </p>
                     </div>
                   </div>
 
@@ -301,9 +356,10 @@ export const QuotationPreview = ({
                     </div>
                     <div className="col-span-2 p-1">
                       <p className="text-[5px]">DATA DA EMISSÃO</p>
-                      <p className="font-bold">{formatDate(quotation.createdAt)}</p>
+                      <p className="font-bold">{quotation.fiscal?.emissionAt ? formatDate(quotation.fiscal.emissionAt) : formatDate(quotation.createdAt)}</p>
                     </div>
                   </div>
+
 
                   <div className="bg-gray-100 p-0.5 border-b border-black font-bold text-[7px]">CÁLCULO DO IMPOSTO</div>
                   <div className="grid grid-cols-5 border-b border-black">

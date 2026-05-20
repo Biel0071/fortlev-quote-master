@@ -482,14 +482,15 @@ export const QuotationPreview = ({
           </Button>
 
           <Button
-            variant="outline"
+            variant={isAuthorized ? "default" : "outline"}
             size="lg"
             onClick={onDownloadDANFE}
-            className="flex-1 border-2 border-black font-bold hover:bg-black hover:text-white transition-colors"
+            className={`flex-1 ${isAuthorized ? 'bg-green-600 hover:bg-green-700 text-white' : 'border-2 border-black font-bold hover:bg-black hover:text-white'} transition-colors`}
           >
             <Receipt className="h-5 w-5 mr-2" />
-            Baixar DANFE NF-e
+            {isAuthorized ? "Baixar DANFE Autorizada" : "Baixar Prévia DANFE"}
           </Button>
+
 
           <Button
             variant="ghost"

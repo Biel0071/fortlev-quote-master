@@ -32,7 +32,7 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
   const [customerData, setCustomerData] = useState<any>(null);
   const [factories, setFactories] = useState<any[]>([]);
   const [nearestFactory, setNearestFactory] = useState<any>(null);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -92,8 +92,8 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
   };
 
   const handleInterpret = async () => {
-    if (!inputText.trim() && !selectedImage) {
-      toast({ title: "Entrada vazia", description: "Cole um texto ou uma imagem do pedido.", variant: "destructive" });
+    if (!inputText.trim() && selectedImages.length === 0) {
+      toast({ title: "Entrada vazia", description: "Cole um texto ou adicione imagens do pedido.", variant: "destructive" });
       return;
     }
 
@@ -101,7 +101,7 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
     
     try {
       const { data, error } = await supabase.functions.invoke('analyze-quotation-image', {
-        body: { text: inputText, image: selectedImage }
+        body: { text: inputText, images: selectedImages }
       });
 
       if (error) throw error;
@@ -164,6 +164,7 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
     setInterpretedItems([]);
     setCustomerData(null);
     setInputText("");
+    setSelectedImages([]);
     setAddress("");
     setNearestFactory(null);
     toast({ title: "Dados adicionados", description: "Itens e cliente enviados para o orçamento." });
@@ -217,29 +218,25 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
                 onPaste={handlePaste}
               />
               
-              {selectedImage && (
-                <div className="relative animate-in fade-in zoom-in-95 group">
-                  <div className="bg-background/50 border border-primary/10 rounded-lg p-3 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
+              {selectedImages.length > 0 && (
+                <div className="grid grid-cols-5 gap-2 animate-in fade-in zoom-in-95 mt-3">
+                  {selectedImages.map((img, idx) => (
+                    <div key={idx} className="relative group aspect-square bg-background/50 border border-primary/10 rounded-md overflow-hidden">
                       <img 
-                        src={selectedImage} 
-                        alt="Upload preview" 
-                        className="h-16 w-16 rounded border border-primary/20 object-contain bg-white shadow-sm"
+                        src={img} 
+                        alt={`Preview ${idx + 1}`} 
+                        className="w-full h-full object-cover"
                       />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Imagem selecionada</p>
-                        <p className="text-[11px] text-muted-foreground truncate">Pronta para análise conjunta</p>
-                      </div>
+                      <Button 
+                        variant="destructive" 
+                        size="icon" 
+                        className="absolute top-0 right-0 h-5 w-5 rounded-none rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== idx))}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setSelectedImage(null)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -266,13 +263,14 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
                 type="file" 
                 ref={fileInputRef} 
                 className="hidden" 
+                multiple
                 accept="image/*" 
                 onChange={handleImageUpload}
               />
               <Button 
                 variant="outline" 
                 size="icon" 
-                className={`border-primary/20 hover:bg-primary/10 ${selectedImage ? 'text-primary' : 'text-muted-foreground'}`}
+                className={`border-primary/20 hover:bg-primary/10 ${selectedImages.length > 0 ? 'text-primary' : 'text-muted-foreground'}`}
                 onClick={() => fileInputRef.current?.click()}
               >
                 <ImageIcon className="h-4 w-4" />

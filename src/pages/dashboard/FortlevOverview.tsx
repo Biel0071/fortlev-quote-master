@@ -151,7 +151,7 @@ export default function FortlevOverview() {
   const handleDownloadNFe = async (q: typeof quotations[0]) => {
     try {
       const nfeNumber = q.number.slice(0, 9).padStart(9, "0");
-      await downloadNFePDF(q, nfeNumber);
+      await downloadNFePDF(q);
       toast({ title: "Nota Fiscal gerada com sucesso" });
     } catch { toast({ title: "Erro ao gerar NFe", variant: "destructive" }); }
   };

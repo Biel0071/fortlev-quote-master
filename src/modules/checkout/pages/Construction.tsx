@@ -653,7 +653,7 @@ const ConstructionPage = () => {
         onDownloadPNG={() => previewQuotation && downloadPNG(previewQuotation)}
         onDownloadDANFE={() => {
           if (previewQuotation) {
-            downloadNFePDF(previewQuotation, previewQuotation.number);
+            downloadNFePDF(previewQuotation);
           }
         }}
       />

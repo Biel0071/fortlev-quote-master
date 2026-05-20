@@ -154,7 +154,7 @@ export default function ConstructionOverview() {
     try {
       const adapted = toQuotationType(q);
       const nfeNumber = adapted.number.slice(0, 9).padStart(9, "0");
-      await downloadNFePDF(adapted, nfeNumber);
+      await downloadNFePDF(adapted);
       toast({ title: "Nota Fiscal gerada com sucesso" });
     } catch { toast({ title: "Erro ao gerar NFe", variant: "destructive" }); }
   };

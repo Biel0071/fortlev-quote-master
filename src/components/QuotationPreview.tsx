@@ -80,7 +80,7 @@ export const QuotationPreview = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
         <DialogHeader className="p-6 pb-0">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold">Visualização DANFE (NFe Oficial)</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">Visualização Oficial DANFE / NF-e</DialogTitle>
           </div>
         </DialogHeader>
 

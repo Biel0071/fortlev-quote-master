@@ -208,7 +208,7 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
               Cole texto, lista ou imagem (Ctrl+V)
             </p>
             
-            <div className="relative">
+            <div className="space-y-3">
               <Textarea 
                 placeholder="Ex: 15 cimento cp2, 20 tijolo 8 furos..." 
                 className="min-h-[120px] bg-background/50 border-primary/10 focus-visible:ring-primary/30 text-xs"
@@ -218,20 +218,26 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
               />
               
               {selectedImage && (
-                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95">
-                  <div className="relative group max-h-full">
-                    <img 
-                      src={selectedImage} 
-                      alt="Upload preview" 
-                      className="max-h-[110px] rounded border border-primary/20 object-contain shadow-lg"
-                    />
+                <div className="relative animate-in fade-in zoom-in-95 group">
+                  <div className="bg-background/50 border border-primary/10 rounded-lg p-3 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img 
+                        src={selectedImage} 
+                        alt="Upload preview" 
+                        className="h-16 w-16 rounded border border-primary/20 object-contain bg-white shadow-sm"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Imagem selecionada</p>
+                        <p className="text-[11px] text-muted-foreground truncate">Pronta para análise conjunta</p>
+                      </div>
+                    </div>
                     <Button 
-                      variant="destructive" 
+                      variant="ghost" 
                       size="icon" 
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       onClick={() => setSelectedImage(null)}
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>

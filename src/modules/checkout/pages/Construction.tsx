@@ -650,6 +650,11 @@ const ConstructionPage = () => {
         onOpenChange={setPreviewOpen}
         onDownloadPDF={() => previewQuotation && downloadPDF(previewQuotation)}
         onDownloadPNG={() => previewQuotation && downloadPNG(previewQuotation)}
+        onDownloadDANFE={() => {
+          if (previewQuotation) {
+            downloadNFePDF(previewQuotation, previewQuotation.number);
+          }
+        }}
       />
 
       <footer className="text-center py-6 text-sm text-muted-foreground border-t border-border mt-12">

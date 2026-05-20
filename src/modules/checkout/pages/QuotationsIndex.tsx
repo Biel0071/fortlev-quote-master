@@ -514,6 +514,11 @@ const QuotationsIndex = () => {
       <QuotationPreview
         quotation={previewQuotation} open={previewOpen} onOpenChange={setPreviewOpen}
         onDownloadPDF={handlePreviewDownloadPDF} onDownloadPNG={handlePreviewDownloadPNG}
+        onDownloadDANFE={() => {
+          if (previewQuotation) {
+            downloadNFePDF(previewQuotation, previewQuotation.number);
+          }
+        }}
       />
 
       <footer className="text-center py-6 text-sm text-muted-foreground border-t border-border mt-12">

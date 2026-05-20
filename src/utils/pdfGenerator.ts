@@ -16,119 +16,115 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   // Colors
   const black = [0, 0, 0] as const;
   const white = [255, 255, 255] as const;
-  const lightGray = [220, 220, 220] as const;
-  const textDark = [0, 0, 0] as const;
+  const fortlevBlue = [0, 74, 151] as const; // Real Fortlev Blue
+  const fortlevRed = [231, 18, 18] as const; // Real Fortlev Red
+  const textDark = [30, 30, 30] as const;
   
-  // Header bar (Border)
-  doc.setDrawColor(...black);
-  doc.rect(0, 0, pageWidth, 8, 'S');
+  // Header bar (Fortlev Blue)
+  doc.setDrawColor(...fortlevBlue);
+  doc.setFillColor(...fortlevBlue);
+  doc.rect(0, 0, pageWidth, 12, 'F');
   
   // Title section
-  doc.setDrawColor(...black);
-  doc.rect(10, 10, pageWidth - 20, 25, 'S');
-  
-  doc.setTextColor(...black);
-  doc.setFontSize(14);
+  doc.setTextColor(...white);
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('DANFE', 15, 20);
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text('DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA', 15, 24);
-  
-  // Brand text (optional)
+  doc.text('ORÇAMENTO DE PRODUTOS', pageWidth / 2, 8, { align: 'center' });
+
+  let yPos = 25;
+
+  // Logo / Branding section
   if (branding.showBrand) {
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text(branding.brandText || 'FORTLEV', pageWidth - 15, 22, { align: 'right' });
+    // Left side: Company Logo Placeholder/Text in Color
+    doc.setDrawColor(...fortlevBlue);
+    doc.setLineWidth(0.5);
+    doc.rect(15, yPos, 60, 25);
+    
+    doc.setTextColor(...fortlevBlue);
+    doc.setFontSize(18);
+    doc.text(branding.brandText || 'FORTLEV', 45, yPos + 15, { align: 'center' });
+    doc.setFontSize(7);
+    doc.text('QUALIDADE EM PRIMEIRO LUGAR', 45, yPos + 20, { align: 'center' });
   }
+
+  // Right side: Quotation Header info in color box
+  doc.setFillColor(245, 247, 250);
+  doc.rect(pageWidth - 85, yPos, 70, 25, 'F');
+  doc.setDrawColor(...fortlevBlue);
+  doc.rect(pageWidth - 85, yPos, 70, 25, 'S');
+
+  doc.setTextColor(...fortlevBlue);
+  doc.setFontSize(10);
+  doc.text(`Orçamento: ${quotation.number}`, pageWidth - 50, yPos + 8, { align: 'center' });
+  doc.setFontSize(8);
+  doc.setTextColor(...fortlevRed);
+  doc.text(`Válido até: ${quotation.validity}`, pageWidth - 50, yPos + 15, { align: 'center' });
+  doc.setTextColor(...textDark);
+  doc.text(`Emissão: ${formatDate(quotation.createdAt)}`, pageWidth - 50, yPos + 21, { align: 'center' });
+
+  yPos += 35;
+
   
   // Company info section
-  let yPos = 38;
+  doc.setFontSize(10);
+  doc.setTextColor(...fortlevBlue);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DADOS DO EMISSOR', 15, yPos);
+  yPos += 2;
+  doc.setDrawColor(...fortlevBlue);
+  doc.setLineWidth(0.2);
+  doc.line(15, yPos, pageWidth - 15, yPos);
+  yPos += 6;
+
   doc.setFontSize(9);
   doc.setTextColor(...textDark);
   
   if (quotation.companyInfo.name) {
-    doc.setFont('helvetica', 'normal');
-    doc.text('Emitido por: ', 15, yPos);
     doc.setFont('helvetica', 'bold');
-    doc.text(quotation.companyInfo.name, 37, yPos);
-    
-    // Date and validity on right
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Data de Emissão: ${formatDate(quotation.createdAt)}`, pageWidth - 15, yPos, { align: 'right' });
-    yPos += 6;
+    doc.text(quotation.companyInfo.name, 15, yPos);
+    yPos += 5;
   }
   
-  if (quotation.companyInfo.cnpj) {
-    doc.text(`${getBrazilDocumentLabel(quotation.companyInfo.cnpj)}: ${quotation.companyInfo.cnpj}`, 15, yPos);
-    doc.text(`Validade: ${quotation.validity}`, pageWidth - 15, yPos, { align: 'right' });
-    yPos += 6;
-  }
-  
-  if (quotation.companyInfo.address) {
-    doc.text(`Endereço: ${quotation.companyInfo.address}`, 15, yPos);
-    yPos += 6;
-  }
-  
-  if (quotation.companyInfo.phone) {
-    doc.text(`Telefone / WhatsApp: ${quotation.companyInfo.phone}`, 15, yPos);
-    yPos += 6;
-  }
-  
-  if (quotation.companyInfo.email) {
-    doc.text(`E-mail: ${quotation.companyInfo.email}`, 15, yPos);
-    yPos += 6;
-  }
-  
-  if (quotation.companyInfo.website) {
-    doc.text(`Site: ${quotation.companyInfo.website}`, 15, yPos);
-    yPos += 6;
-  }
-  
-  yPos += 4;
-  
-  // Quotation number line
-  doc.setDrawColor(200, 200, 200);
-  doc.line(15, yPos, pageWidth - 15, yPos);
-  yPos += 6;
-  
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Orçamento nº: ${quotation.number}`, 15, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Data de Emissão: ${formatDate(quotation.createdAt)}`, pageWidth / 2, yPos);
-  yPos += 6;
+  const companyDetails = [
+    quotation.companyInfo.cnpj ? `CNPJ: ${quotation.companyInfo.cnpj}` : null,
+    quotation.companyInfo.address ? `Endereço: ${quotation.companyInfo.address}` : null,
+    quotation.companyInfo.phone ? `Fone: ${quotation.companyInfo.phone}` : null,
+    quotation.companyInfo.email ? `E-mail: ${quotation.companyInfo.email}` : null
+  ].filter(Boolean).join('  |  ');
   
-  doc.line(15, yPos, pageWidth - 15, yPos);
-  yPos += 6;
+  const splitDetails = doc.splitTextToSize(companyDetails, pageWidth - 30);
+  doc.text(splitDetails, 15, yPos);
+  yPos += (splitDetails.length * 5) + 5;
   
   // Client section
   if (quotation.showClientData && quotation.customer.name) {
+    doc.setFontSize(10);
+    doc.setTextColor(...fortlevBlue);
     doc.setFont('helvetica', 'bold');
-    doc.text('Cliente:', 15, yPos);
+    doc.text('DADOS DO CLIENTE', 15, yPos);
+    yPos += 2;
+    doc.line(15, yPos, pageWidth - 15, yPos);
     yPos += 6;
-    
+
+    doc.setFontSize(9);
+    doc.setTextColor(...textDark);
     doc.setFont('helvetica', 'bold');
     doc.text(quotation.customer.name, 15, yPos);
     yPos += 5;
     
     doc.setFont('helvetica', 'normal');
-    if (quotation.customer.cnpj) {
-      doc.text(`${getBrazilDocumentLabel(quotation.customer.cnpj)}: ${quotation.customer.cnpj}`, 15, yPos);
-      yPos += 5;
-    }
-    
-    if (quotation.customer.address) {
-      doc.text(`Endereço de entrega: ${quotation.customer.address}`, 15, yPos);
-      yPos += 5;
-    }
-    
-    if (quotation.customer.phone) {
-      doc.text(`Telefone / WhatsApp: ${quotation.customer.phone}`, 15, yPos);
-      yPos += 5;
-    }
-    
-    yPos += 4;
+    const customerDetails = [
+      quotation.customer.cnpj ? `${getBrazilDocumentLabel(quotation.customer.cnpj)}: ${quotation.customer.cnpj}` : null,
+      quotation.customer.phone ? `Fone: ${quotation.customer.phone}` : null,
+      quotation.customer.address ? `Entrega: ${quotation.customer.address}` : null
+    ].filter(Boolean).join('  |  ');
+
+    const splitCust = doc.splitTextToSize(customerDetails, pageWidth - 30);
+    doc.text(splitCust, 15, yPos);
+    yPos += (splitCust.length * 5) + 5;
   }
+
   
   // Items table
   // - Fortlev: usa descrição completa (tipo + capacidade + unidade)
@@ -153,14 +149,12 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
     body: tableData,
     theme: 'grid',
     headStyles: {
-      fillColor: [255, 255, 255],
-      textColor: [0, 0, 0],
+      fillColor: [0, 74, 151], // Fortlev Blue
+      textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 8,
       halign: 'left',
-      cellPadding: 2,
-      lineWidth: 0.2,
-      lineColor: [0, 0, 0],
+      cellPadding: 3,
     },
     bodyStyles: {
       fontSize: 7,
@@ -220,12 +214,16 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   doc.setTextColor(...black);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
+  doc.setTextColor(...fortlevBlue);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
   doc.text('Total Geral:', totalsX + 3, finalY + 7);
+  doc.setTextColor(...fortlevRed);
   doc.text(`R$ ${formatCurrency(quotation.total).replace('R$', '').trim()}`, totalsX + totalsWidth - 3, finalY + 7, { align: 'right' });
   finalY += 18;
   
   // Payment conditions
-  doc.setTextColor(...textDark);
+  doc.setTextColor(...fortlevBlue);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text('Condições de Pagamento:', 15, finalY);
@@ -252,6 +250,7 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   finalY += 5;
   
   // Additional info
+  doc.setTextColor(...fortlevBlue);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text('Informações Adicionais:', 15, finalY);
@@ -297,8 +296,13 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   doc.text(quotation.companyInfo.name || 'Empresa', 15, finalY);
   
   // Footer bar (Border)
-  doc.setDrawColor(...black);
-  doc.rect(0, doc.internal.pageSize.getHeight() - 8, pageWidth, 8, 'S');
+  doc.setDrawColor(...fortlevBlue);
+  doc.setFillColor(...fortlevBlue);
+  doc.rect(0, doc.internal.pageSize.getHeight() - 10, pageWidth, 10, 'F');
+  
+  doc.setTextColor(...white);
+  doc.setFontSize(7);
+  doc.text('Fortlev - Líder em Reservatórios de Água e Tubulações', pageWidth / 2, doc.internal.pageSize.getHeight() - 4, { align: 'center' });
   
   return doc;
 };

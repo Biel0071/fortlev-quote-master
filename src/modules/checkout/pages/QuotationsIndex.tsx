@@ -191,12 +191,12 @@ const QuotationsIndex = () => {
   const handleGenerateDANFE = async () => {
     if (!validateForm()) return;
     const q = createQuotationObject();
-    const nfeNumber = q.number.slice(0, 9).padStart(9, "0");
     await downloadNFePDF(q);
     if (editingQuotationId) updateQuotation(editingQuotationId, q); else saveQuotation(q);
     toast({ title: 'DANFE gerado!', description: `Orçamento ${q.number} salvo` });
     resetForm();
   };
+
 
   const handleSendWhatsApp = () => {
     if (!validateForm()) return;

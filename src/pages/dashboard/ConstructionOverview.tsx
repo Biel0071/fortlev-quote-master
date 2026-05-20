@@ -73,7 +73,7 @@ function toQuotationType(q: ReturnType<typeof useConstructionQuotations>["quotat
 
 export default function ConstructionOverview() {
   const navigate = useNavigate();
-  const { quotations, deleteQuotation, duplicateQuotation } = useConstructionQuotations();
+  const { quotations, deleteQuotation, duplicateQuotation, refetchQuotations } = useConstructionQuotations();
   const { sales, salesByQuotationId, createSale } = useSales("construcao");
 
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
@@ -173,7 +173,8 @@ export default function ConstructionOverview() {
         title: "Nota Autorizada", 
         description: `NF-e ${updated.fiscal?.invoiceNumber} emitida com sucesso.` 
       });
-      window.location.reload();
+      refetchQuotations();
+
     } catch (error: any) {
       toast({ 
         title: "Erro na Autorização", 

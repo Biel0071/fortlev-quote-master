@@ -34,7 +34,7 @@ function currencyToNumber(raw: string) {
 
 export default function FortlevOverview() {
   const navigate = useNavigate();
-  const { quotations, deleteQuotation, duplicateQuotation } = useQuotations();
+  const { quotations, deleteQuotation, duplicateQuotation, refetchQuotations } = useQuotations();
   const { sales, salesByQuotationId, createSale } = useSales("fortlev");
 
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
@@ -172,8 +172,8 @@ export default function FortlevOverview() {
         title: "Nota Autorizada", 
         description: `NF-e ${updated.fiscal?.invoiceNumber} emitida com sucesso.` 
       });
-      // Update local state if needed (useQuotations might need a way to refresh)
-      window.location.reload(); // Quickest way to sync state for now
+      refetchQuotations();
+
     } catch (error: any) {
       toast({ 
         title: "Erro na Autorização", 

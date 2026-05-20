@@ -2,94 +2,43 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import ScrollToTop from "@/components/ScrollToTop";
 import "@/styles/budget-template.css";
-import StoreHome from "./pages/store/StoreHome";
-import StoreCatalog from "./pages/store/StoreCatalog";
-import OffersPage from "./pages/store/OffersPage";
-import ProductPage from "./pages/store/ProductPage";
-import CartPage from "./pages/store/CartPage";
-import CheckoutPage from "./pages/store/CheckoutPage";
-import PaymentPendingPage from "./pages/store/PaymentPendingPage";
-import StorePage from "./pages/store/StorePage";
-import ShortLinkRedirect from "./pages/store/ShortLinkRedirect";
-import ApiApkDownloadRedirect from "./pages/store/ApiApkDownloadRedirect";
-import AccountPage from "./pages/account/AccountPage";
-import OrdersPage from "./pages/account/OrdersPage";
-import TrackingPage from "./pages/account/TrackingPage";
+import NotFound from "@/pages/NotFound";
 
-import {
-  AdminLayout,
-  AdminDashboardShell,
-  AdminDashboardOverview,
-  AdminHome,
-  AdminProductsList,
-  AdminProductForm,
-  AdminCategoriesList,
-  AdminCategoryForm,
-  AdminOrders,
-  AdminPages,
-  AdminCustomers,
-  AdminCoupons,
-  AdminBanners,
-  AdminSettings,
-  AdminSettingsLayout,
-  AdminUsersAccess,
-  AdminSettingsIdentidade,
-  AdminSettingsIntegracoes,
-  AdminTheme,
-  AdminDashboardTracking,
-  AdminIntelligence,
-  AdminDashboardQuotations,
-  AdminQuotations,
-  AdminQuotationsOverview,
-  AdminQuotationTokens,
-  AdminBulkImageSearch,
-  AdminStoreSelector,
-  AdminProductsImport,
-  AdminProductScraper,
-  AdminReviews,
-  AdminPriceIntelligence,
-  AdminImageReview,
-  AdminBatchOps,
-  AdminRecommendations,
-  AdminShipping,
-  AdminIntelligenceUnified,
-  // New modules
-  AdminConversionFunnel,
-  AdminClickMap,
-  AdminAppMetrics,
-  AdminAiInsights,
-  // Payments
-  AdminPaymentsLayout,
-  AdminPaymentsOverview,
-  AdminPaymentsGateways,
-  AdminPaymentsGatewayAdd,
-  AdminPaymentsCheckouts,
-  AdminPaymentsMethods,
-  AdminPaymentsAntifraud,
-  AdminPaymentsSubscriptions,
-  AdminPaymentsWebhooks,
-  AdminPaymentsApi,
-  AdminMasterDashboard,
-} from "@/modules/admin";
-import LoginPage from "./pages/auth/LoginPage";
-import SignupPage from "./pages/auth/SignupPage";
+const StoreHome = lazy(() => import("@/pages/store/StoreHome"));
+const StoreCatalog = lazy(() => import("@/pages/store/StoreCatalog"));
+const OffersPage = lazy(() => import("@/pages/store/OffersPage"));
+const ProductPage = lazy(() => import("@/pages/store/ProductPage"));
+const CartPage = lazy(() => import("@/pages/store/CartPage"));
+const CheckoutPage = lazy(() => import("@/pages/store/CheckoutPage"));
+const PaymentPendingPage = lazy(() => import("@/pages/store/PaymentPendingPage"));
+const StorePage = lazy(() => import("@/pages/store/StorePage"));
+const ShortLinkRedirect = lazy(() => import("@/pages/store/ShortLinkRedirect"));
+const ApiApkDownloadRedirect = lazy(() => import("@/pages/store/ApiApkDownloadRedirect"));
+const AccountPage = lazy(() => import("@/pages/account/AccountPage"));
+const OrdersPage = lazy(() => import("@/pages/account/OrdersPage"));
+const TrackingPage = lazy(() => import("@/pages/account/TrackingPage"));
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
+const SignupPage = lazy(() => import("@/pages/auth/SignupPage"));
+const PublicQuotationAccess = lazy(() => import("@/pages/store/PublicQuotationAccess"));
+const QuotationsIndex = lazy(() => import("@/modules/checkout/pages/QuotationsIndex"));
+const Construction = lazy(() => import("@/modules/checkout/pages/Construction"));
+const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
 
-import QuotationsIndex from "@/modules/checkout/pages/QuotationsIndex";
-import Construction from "@/modules/checkout/pages/Construction";
-import PublicQuotationAccess from "./pages/store/PublicQuotationAccess";
-
-import FortlevOverview from "./pages/dashboard/FortlevOverview";
-import ConstructionOverview from "./pages/dashboard/ConstructionOverview";
-import AdminIssuingCompanies from "./pages/dashboard/AdminIssuingCompanies";
-import AdminCrmLeads from "./pages/dashboard/AdminCrmLeads";
-import NotFound from "./pages/NotFound";
-
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function InstitutionalRedirect() {
   const { slug = "" } = useParams();
@@ -101,6 +50,10 @@ function CatalogRedirect() {
   return <Navigate to={`/loja${search}`} replace />;
 }
 
+function RouteSkeleton() {
+  return <div className="min-h-[40vh] w-full animate-pulse bg-muted/30" />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -110,129 +63,42 @@ const App = () => (
         <BrowserRouter>
           <ScrollToTop />
           <CookieConsentBanner />
-          <Routes>
-            {/* Loja Materiais (HOME/vitrine) */}
-            <Route path="/" element={<StoreHome />} />
-            <Route path="/materiais" element={<Navigate to="/" replace />} />
+          <Suspense fallback={<RouteSkeleton />}>
+            <Routes>
+              <Route path="/" element={<StoreHome />} />
+              <Route path="/materiais" element={<Navigate to="/" replace />} />
+              <Route path="/loja" element={<StoreCatalog />} />
+              <Route path="/catalogo" element={<CatalogRedirect />} />
+              <Route path="/catálogo" element={<CatalogRedirect />} />
+              <Route path="/ofertas" element={<OffersPage />} />
+              <Route path="/produto/:slug" element={<ProductPage />} />
+              <Route path="/carrinho" element={<CartPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/checkout/pagamento" element={<PaymentPendingPage />} />
+              <Route path="/p/:slug" element={<StorePage />} />
+              <Route path="/r/:slug" element={<ShortLinkRedirect />} />
+              <Route path="/api/apk/:token" element={<ApiApkDownloadRedirect />} />
+              <Route path="/institucional/:slug" element={<InstitutionalRedirect />} />
 
-            {/* E-commerce */}
-            <Route path="/loja" element={<StoreCatalog />} />
-            <Route path="/catalogo" element={<CatalogRedirect />} />
-            <Route path="/catálogo" element={<CatalogRedirect />} />
-            <Route path="/ofertas" element={<OffersPage />} />
-            <Route path="/produto/:slug" element={<ProductPage />} />
-            <Route path="/carrinho" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/checkout/pagamento" element={<PaymentPendingPage />} />
-            <Route path="/p/:slug" element={<StorePage />} />
-            <Route path="/r/:slug" element={<ShortLinkRedirect />} />
-            <Route path="/api/apk/:token" element={<ApiApkDownloadRedirect />} />
-            <Route path="/institucional/:slug" element={<InstitutionalRedirect />} />
+              <Route path="/conta" element={<AccountPage />} />
+              <Route path="/pedidos" element={<OrdersPage />} />
+              <Route path="/rastreio/:id" element={<TrackingPage />} />
 
-            {/* Área do cliente */}
-            <Route path="/conta" element={<AccountPage />} />
-            <Route path="/pedidos" element={<OrdersPage />} />
-            <Route path="/rastreio/:id" element={<TrackingPage />} />
+              <Route path="/admin/*" element={<AdminApp />} />
 
-            {/* Admin (protegido) */}
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminStoreSelector />} />
-              <Route path="master" element={<AdminMasterDashboard />} />
-              <Route path="dashboard" element={<AdminDashboardShell />}>
-                <Route index element={<AdminDashboardOverview />} />
-                <Route path="orcamentos" element={<AdminDashboardQuotations />} />
-                <Route path="tracking" element={<AdminDashboardTracking />} />
-                <Route path="inteligencia" element={<AdminIntelligence />} />
-              </Route>
-              <Route path="home" element={<AdminHome />} />
+              <Route path="/auth/login" element={<LoginPage />} />
+              <Route path="/auth/signup" element={<SignupPage />} />
 
-              <Route path="orcamentos" element={<AdminQuotations />}>
-                <Route index element={<AdminQuotationsOverview />} />
-                <Route path="fortlev" element={<FortlevOverview />} />
-                <Route path="construcao" element={<ConstructionOverview />} />
-                <Route path="empresas" element={<AdminIssuingCompanies />} />
-                <Route path="leads" element={<AdminCrmLeads />} />
-                <Route path="tokens" element={<AdminQuotationTokens />} />
-              </Route>
+              <Route path="/construcao" element={<Construction />} />
+              <Route path="/orcamentos" element={<QuotationsIndex />} />
+              <Route path="/orcamento/:slug/:token" element={<PublicQuotationAccess />} />
+              <Route path="/orcamento-publico" element={<PublicQuotationAccess />} />
 
-              <Route path="produtos" element={<AdminProductsList />} />
-              <Route path="produtos/novo" element={<AdminProductForm />} />
-              <Route path="produtos/editar/:id" element={<AdminProductForm />} />
-              <Route path="produtos/imagens" element={<AdminBulkImageSearch />} />
-              <Route path="produtos/importar" element={<AdminProductsImport />} />
-              <Route path="produtos/scraper" element={<AdminProductScraper />} />
-              <Route path="produtos/inteligencia-preco" element={<AdminPriceIntelligence />} />
-              <Route path="imagens/revisao" element={<AdminImageReview />} />
-              <Route path="inteligencia-ia" element={<AdminIntelligenceUnified />} />
-              <Route path="relatorios-ia" element={<Navigate to="/admin/inteligencia-ia" replace />} />
-              <Route path="analise-ia" element={<Navigate to="/admin/inteligencia-ia" replace />} />
-              <Route path="produtos/recomendacoes" element={<AdminRecommendations />} />
-              <Route path="funil" element={<AdminConversionFunnel />} />
-              <Route path="mapa-cliques" element={<AdminClickMap />} />
-              <Route path="app-metricas" element={<AdminAppMetrics />} />
-              <Route path="insights-ia" element={<AdminAiInsights />} />
-              <Route path="categorias/nova" element={<AdminCategoryForm />} />
-              <Route path="categorias/editar/:id" element={<AdminCategoryForm />} />
-
-              <Route path="pedidos" element={<AdminOrders />} />
-              <Route path="paginas" element={<AdminPages />} />
-              <Route path="clientes" element={<AdminCustomers />} />
-              <Route path="banners" element={<AdminBanners />} />
-              <Route path="avaliacoes" element={<AdminReviews />} />
-              <Route path="tema" element={<AdminTheme />} />
-              <Route path="configuracoes" element={<AdminSettingsLayout />}>
-                <Route index element={<AdminSettings />} />
-                <Route path="usuarios" element={<AdminUsersAccess />} />
-                <Route path="identidade" element={<AdminSettingsIdentidade />} />
-                <Route path="integracoes" element={<AdminSettingsIntegracoes />} />
-                <Route path="frete" element={<AdminShipping />} />
-                <Route path="cupons" element={<AdminCoupons />} />
-                <Route path="pagamentos/gateways" element={<AdminPaymentsGateways />} />
-                <Route path="pagamentos/gateways/add" element={<AdminPaymentsGatewayAdd />} />
-                <Route path="pagamentos/checkouts" element={<AdminPaymentsCheckouts />} />
-                <Route path="pagamentos/methods" element={<AdminPaymentsMethods />} />
-                <Route path="pagamentos/methods/pix" element={<AdminPaymentsMethods />} />
-                <Route path="pagamentos/methods/card" element={<AdminPaymentsMethods />} />
-                <Route path="pagamentos/methods/boleto" element={<AdminPaymentsMethods />} />
-                <Route path="pagamentos/methods/split" element={<AdminPaymentsMethods />} />
-                <Route path="pagamentos/antifraud" element={<AdminPaymentsAntifraud />} />
-                <Route path="pagamentos/antifraud/rules" element={<AdminPaymentsAntifraud />} />
-                <Route path="pagamentos/subscriptions" element={<AdminPaymentsSubscriptions />} />
-                <Route path="pagamentos/subscriptions/plans" element={<AdminPaymentsSubscriptions />} />
-                <Route path="pagamentos/webhooks" element={<AdminPaymentsWebhooks />} />
-                <Route path="pagamentos/webhooks/events" element={<AdminPaymentsWebhooks />} />
-                <Route path="pagamentos/api" element={<AdminPaymentsApi />} />
-                <Route path="pagamentos/api/keys" element={<AdminPaymentsApi />} />
-                <Route path="pagamentos/api/docs" element={<AdminPaymentsApi />} />
-                <Route path="pagamentos/api/sandbox" element={<AdminPaymentsApi />} />
-              </Route>
-
-              {/* Legacy redirects */}
-              <Route path="cupons" element={<Navigate to="/admin/configuracoes/cupons" replace />} />
-              <Route path="frete" element={<Navigate to="/admin/configuracoes/frete" replace />} />
-              <Route path="payments/*" element={<Navigate to="/admin/configuracoes/pagamentos" replace />} />
-
-
-
-
-              {/* rotas reservadas */}
-              <Route path="ofertas" element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>} />
-            </Route>
-
-            <Route path="/auth/login" element={<LoginPage />} />
-            <Route path="/auth/signup" element={<SignupPage />} />
-
-            {/* Sistemas de Orçamento */}
-            <Route path="/construcao" element={<Construction />} />
-            <Route path="/orcamentos" element={<QuotationsIndex />} />
-            <Route path="/orcamento/:slug/:token" element={<PublicQuotationAccess />} />
-            <Route path="/orcamento-publico" element={<PublicQuotationAccess />} />
-
-            <Route path="/dashboard" element={<Navigate to="/admin/orcamentos" replace />} />
-            <Route path="/dashboard/*" element={<Navigate to="/admin/orcamentos" replace />} />
-
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="/dashboard" element={<Navigate to="/admin/orcamentos" replace />} />
+              <Route path="/dashboard/*" element={<Navigate to="/admin/orcamentos" replace />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </ThemeBoot>
     </TooltipProvider>

@@ -957,6 +957,8 @@ export type Database = {
       }
       construction_quotations: {
         Row: {
+          access_key: string | null
+          c_stat: number | null
           company_id: string | null
           company_info_json: Json
           created_at: string
@@ -964,14 +966,21 @@ export type Database = {
           customer_json: Json
           delivery_date: string
           discount: number
+          emission_at: string | null
+          fiscal_status: string | null
           freight: number
           id: string
+          invoice_number: string | null
           is_order: boolean | null
           items_json: Json
           lead_id: string | null
           number: string
           observations: string
           payment_method: string
+          portal_token: string | null
+          protocol: string | null
+          receipt_at: string | null
+          series: string | null
           show_client_data: boolean
           source_token_id: string | null
           status: string
@@ -979,8 +988,12 @@ export type Database = {
           total: number
           updated_at: string
           validity: string
+          xml_content: string | null
+          xml_hash: string | null
         }
         Insert: {
+          access_key?: string | null
+          c_stat?: number | null
           company_id?: string | null
           company_info_json?: Json
           created_at?: string
@@ -988,14 +1001,21 @@ export type Database = {
           customer_json?: Json
           delivery_date?: string
           discount?: number
+          emission_at?: string | null
+          fiscal_status?: string | null
           freight?: number
           id?: string
+          invoice_number?: string | null
           is_order?: boolean | null
           items_json?: Json
           lead_id?: string | null
           number: string
           observations?: string
           payment_method?: string
+          portal_token?: string | null
+          protocol?: string | null
+          receipt_at?: string | null
+          series?: string | null
           show_client_data?: boolean
           source_token_id?: string | null
           status?: string
@@ -1003,8 +1023,12 @@ export type Database = {
           total?: number
           updated_at?: string
           validity?: string
+          xml_content?: string | null
+          xml_hash?: string | null
         }
         Update: {
+          access_key?: string | null
+          c_stat?: number | null
           company_id?: string | null
           company_info_json?: Json
           created_at?: string
@@ -1012,14 +1036,21 @@ export type Database = {
           customer_json?: Json
           delivery_date?: string
           discount?: number
+          emission_at?: string | null
+          fiscal_status?: string | null
           freight?: number
           id?: string
+          invoice_number?: string | null
           is_order?: boolean | null
           items_json?: Json
           lead_id?: string | null
           number?: string
           observations?: string
           payment_method?: string
+          portal_token?: string | null
+          protocol?: string | null
+          receipt_at?: string | null
+          series?: string | null
           show_client_data?: boolean
           source_token_id?: string | null
           status?: string
@@ -1027,6 +1058,8 @@ export type Database = {
           total?: number
           updated_at?: string
           validity?: string
+          xml_content?: string | null
+          xml_hash?: string | null
         }
         Relationships: [
           {
@@ -1296,7 +1329,9 @@ export type Database = {
       }
       fortlev_quotations: {
         Row: {
+          access_key: string | null
           branding_json: Json | null
+          c_stat: number | null
           company_id: string | null
           company_info_json: Json
           created_at: string
@@ -1304,14 +1339,21 @@ export type Database = {
           customer_json: Json
           delivery_time: string
           discount: number
+          emission_at: string | null
+          fiscal_status: string | null
           freight: number
           id: string
+          invoice_number: string | null
           is_order: boolean | null
           items_json: Json
           lead_id: string | null
           number: string
           observations: string
           payment_conditions_json: Json
+          portal_token: string | null
+          protocol: string | null
+          receipt_at: string | null
+          series: string | null
           show_client_data: boolean
           source_token_id: string | null
           status: string
@@ -1320,9 +1362,13 @@ export type Database = {
           total: number
           updated_at: string
           validity: string
+          xml_content: string | null
+          xml_hash: string | null
         }
         Insert: {
+          access_key?: string | null
           branding_json?: Json | null
+          c_stat?: number | null
           company_id?: string | null
           company_info_json?: Json
           created_at?: string
@@ -1330,14 +1376,21 @@ export type Database = {
           customer_json?: Json
           delivery_time?: string
           discount?: number
+          emission_at?: string | null
+          fiscal_status?: string | null
           freight?: number
           id?: string
+          invoice_number?: string | null
           is_order?: boolean | null
           items_json?: Json
           lead_id?: string | null
           number: string
           observations?: string
           payment_conditions_json?: Json
+          portal_token?: string | null
+          protocol?: string | null
+          receipt_at?: string | null
+          series?: string | null
           show_client_data?: boolean
           source_token_id?: string | null
           status?: string
@@ -1346,9 +1399,13 @@ export type Database = {
           total?: number
           updated_at?: string
           validity?: string
+          xml_content?: string | null
+          xml_hash?: string | null
         }
         Update: {
+          access_key?: string | null
           branding_json?: Json | null
+          c_stat?: number | null
           company_id?: string | null
           company_info_json?: Json
           created_at?: string
@@ -1356,14 +1413,21 @@ export type Database = {
           customer_json?: Json
           delivery_time?: string
           discount?: number
+          emission_at?: string | null
+          fiscal_status?: string | null
           freight?: number
           id?: string
+          invoice_number?: string | null
           is_order?: boolean | null
           items_json?: Json
           lead_id?: string | null
           number?: string
           observations?: string
           payment_conditions_json?: Json
+          portal_token?: string | null
+          protocol?: string | null
+          receipt_at?: string | null
+          series?: string | null
           show_client_data?: boolean
           source_token_id?: string | null
           status?: string
@@ -1372,6 +1436,8 @@ export type Database = {
           total?: number
           updated_at?: string
           validity?: string
+          xml_content?: string | null
+          xml_hash?: string | null
         }
         Relationships: [
           {

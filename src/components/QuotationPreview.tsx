@@ -1,9 +1,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import '@/styles/danfe-template.css';
 import { Button } from '@/components/ui/button';
 import { Quotation } from '@/types/quotation';
 import { formatCurrency } from '@/utils/formatters';
 import { getBrazilDocumentLabel } from '@/utils/formatters';
-import { FileText, Image, X } from 'lucide-react';
+import { FileText, Image, X, FileDown, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
@@ -79,13 +80,13 @@ export const QuotationPreview = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
         <DialogHeader className="p-6 pb-0">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold">Visualização DANFE (NFe Oficial)</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">Visualização Oficial DANFE / NF-e</DialogTitle>
           </div>
         </DialogHeader>
 
         {/* Preview Content */}
         <div className="p-6 overflow-x-auto">
-          <div className="danfe-container bg-white border-2 border-black text-black font-mono text-[9px] uppercase leading-tight p-1 min-w-[750px]">
+          <div className="danfe-container border-2 border-black text-black font-mono text-[9px] uppercase leading-tight p-1 min-w-[750px]">
             {/* Canhoto de Recebimento */}
             <div className="grid grid-cols-12 border-b-2 border-black mb-1 h-12">
               <div className="col-span-10 border-r-2 border-black p-1">
@@ -346,10 +347,10 @@ export const QuotationPreview = ({
               onDownloadPDF();
               onOpenChange(false);
             }}
-            className="flex-1"
+            className="flex-1 bg-[#004a97] hover:bg-[#003d7c]"
           >
-            <FileText className="h-5 w-5" />
-            Baixar PDF
+            <FileDown className="h-5 w-5" />
+            Baixar Orçamento (Colorido)
           </Button>
 
           <Button
@@ -359,10 +360,10 @@ export const QuotationPreview = ({
               onDownloadPNG();
               onOpenChange(false);
             }}
-            className="flex-1"
+            className="flex-1 bg-black hover:bg-black/90 text-white"
           >
-            <Image className="h-5 w-5" />
-            Baixar PNG
+            <Receipt className="h-5 w-5" />
+            Baixar DANFE / NF-e (Oficial)
           </Button>
 
           <Button

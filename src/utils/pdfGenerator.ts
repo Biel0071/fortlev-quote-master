@@ -313,63 +313,138 @@ export const downloadPDF = (quotation: Quotation) => {
 };
 
 export const downloadPNG = async (quotation: Quotation) => {
-  // Try to find the Quotation element first (Commercial Blue Template)
-  // If we are in the Preview modal, it shows the DANFE, but the user wants PNG of the BUDGET.
-  // We'll create a hidden div with the budget style to capture it if it's not visible.
-  
   const toast = (await import('@/hooks/use-toast')).toast;
   
-  toast({
-    title: "Gerando imagem...",
-    description: "Preparando o arquivo PNG do orçamento.",
-  });
-
-  // Create a temporary container for the commercial budget layout
-  const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.left = '-9999px';
-  container.style.top = '0';
-  container.style.width = '800px';
-  container.style.backgroundColor = 'white';
-  document.body.appendChild(container);
-
   try {
-    const { renderToString } = await import('react-dom/server');
-    // Note: Since we can't easily render the full React component tree to string with all styles here,
-    // and html2canvas needs a real DOM element, we'll use a simplified version of the commercial layout
-    // OR we rely on the fact that the PDF generator already has the logic.
-    // However, the best way to get a PNG that MATCHES the PDF exactly is to use the PDF and convert it,
-    // but that's complex.
-    
-    // Instead, let's look for the .quotation-card or similar if it exists in the main view.
-    // For now, let's keep the html2canvas logic but ensure it targets the right thing.
-    
-    const element = document.querySelector('.quotation-card') || document.querySelector('.danfe-container');
-    
+    // Look for the commercial budget layout in the DOM
+    let element = document.querySelector('.quotation-card') as HTMLElement;
+    let removeAfter = false;
+    let container: HTMLDivElement | null = null;
+
+    // If not found (e.g., we are in the dashboard list), we need to render it temporarily
     if (!element) {
-      document.body.removeChild(container);
-      console.warn("No element found for PNG generation");
-      return;
+      container = document.createElement('div');
+      container.id = 'temp-quotation-render';
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '800px';
+      container.style.backgroundColor = 'white';
+      document.body.appendChild(container);
+
+      // We use a simplified version of the budget layout for PNG if the main one isn't visible
+      // In a real app, you'd probably use a dedicated component for this
+      container.innerHTML = `
+        <div class="quotation-card p-8 font-sans" style="width: 800px; min-height: 1000px; color: #1e1e1e;">
+          <div style="background-color: #004a97; height: 12px; margin: -32px -32px 32px -32px;"></div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px;">
+            <div style="border: 2px solid #004a97; padding: 15px; width: 200px; text-align: center;">
+              <h2 style="color: #004a97; font-size: 24px; font-weight: bold; margin: 0;">${quotation.branding?.brandText || 'FORTLEV'}</h2>
+              <p style="font-size: 8px; color: #004a97; margin-top: 4px;">QUALIDADE EM PRIMEIRO LUGAR</p>
+            </div>
+            <div style="background-color: #f5f7fa; border: 1px solid #004a97; padding: 15px; width: 250px; text-align: center;">
+              <p style="color: #004a97; font-size: 14px; font-weight: bold; margin-bottom: 5px;">Orçamento: ${quotation.number}</p>
+              <p style="color: #e71212; font-size: 11px; margin-bottom: 3px;">Válido até: ${quotation.validity}</p>
+              <p style="color: #1e1e1e; font-size: 10px;">Emissão: ${formatDate(quotation.createdAt)}</p>
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 30px;">
+            <h3 style="color: #004a97; font-size: 14px; font-weight: bold; border-bottom: 1px solid #004a97; padding-bottom: 5px; margin-bottom: 10px;">DADOS DO EMISSOR</h3>
+            <p style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">${quotation.companyInfo.name}</p>
+            <p style="font-size: 11px;">CNPJ: ${quotation.companyInfo.cnpj} | Fone: ${quotation.companyInfo.phone}</p>
+            <p style="font-size: 11px;">Endereço: ${quotation.companyInfo.address}</p>
+          </div>
+
+          <div style="margin-bottom: 30px;">
+            <h3 style="color: #004a97; font-size: 14px; font-weight: bold; border-bottom: 1px solid #004a97; padding-bottom: 5px; margin-bottom: 10px;">DADOS DO CLIENTE</h3>
+            <p style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">${quotation.customer.name}</p>
+            <p style="font-size: 11px;">CNPJ/CPF: ${quotation.customer.cnpj} | Fone: ${quotation.customer.phone}</p>
+            <p style="font-size: 11px;">Entrega: ${quotation.customer.address}</p>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <thead>
+              <tr style="background-color: #004a97; color: white; font-size: 10px;">
+                <th style="padding: 10px; text-align: left;">DESCRIÇÃO</th>
+                <th style="padding: 10px; text-align: center; width: 50px;">QTD</th>
+                <th style="padding: 10px; text-align: right; width: 100px;">VLR. UNIT</th>
+                <th style="padding: 10px; text-align: right; width: 100px;">VLR. TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${quotation.items.map(item => `
+                <tr style="border-bottom: 1px solid #eee; font-size: 10px;">
+                  <td style="padding: 10px;">${item.product.name} ${item.product.capacity > 0 ? item.product.capacity + item.product.unit : ''}</td>
+                  <td style="padding: 10px; text-align: center;">${item.quantity}</td>
+                  <td style="padding: 10px; text-align: right;">${formatCurrency(item.unitPrice).replace('R$', '').trim()}</td>
+                  <td style="padding: 10px; text-align: right; font-weight: bold;">${formatCurrency(item.subtotal).replace('R$', '').trim()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div style="display: flex; justify-content: flex-end; margin-bottom: 40px;">
+            <div style="width: 250px; border: 1px solid #004a97; padding: 15px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px;">
+                <span>Subtotal:</span>
+                <span>${formatCurrency(quotation.subtotal)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px;">
+                <span>Desconto:</span>
+                <span>${formatCurrency(quotation.discount)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                <span>Frete:</span>
+                <span>${quotation.freight === 0 ? 'Grátis' : formatCurrency(quotation.freight)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; color: #004a97;">
+                <span>TOTAL:</span>
+                <span style="color: #e71212;">${formatCurrency(quotation.total)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="background-color: #004a97; height: 10px; margin: 32px -32px -32px -32px;"></div>
+        </div>
+      `;
+      element = container.firstElementChild as HTMLElement;
+      removeAfter = true;
     }
 
     const html2canvas = (await import('html2canvas')).default;
-    const canvas = await html2canvas(element as HTMLElement, {
+    const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
+      width: element.offsetWidth,
+      height: element.offsetHeight,
     });
     
-    const link = document.createElement('a');
-    link.download = `Orcamento_${quotation.number}.png`;
-    link.href = canvas.toDataURL('image/png', 1.0);
-    link.click();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1.0));
     
-    document.body.removeChild(container);
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Orcamento_${quotation.number}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+    
+    if (removeAfter && container) {
+      document.body.removeChild(container);
+    }
+    
+    return true;
   } catch (error) {
     console.error("Error generating PNG:", error);
-    if (document.body.contains(container)) document.body.removeChild(container);
+    throw error;
   }
 };
+
 
 

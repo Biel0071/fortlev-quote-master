@@ -309,44 +309,32 @@ export const downloadPDF = (quotation: Quotation) => {
 };
 
 export const downloadPNG = async (quotation: Quotation) => {
-  const doc = generatePDF(quotation);
-  
-  // Convert PDF to image using canvas
-  const pdfBlob = doc.output('blob');
-  const pdfUrl = URL.createObjectURL(pdfBlob);
-  
-  // Use pdf.js or convert via canvas - simplified approach using jspdf output
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  
-  // Set canvas size (A4 at 150 DPI)
-  canvas.width = 1240;
-  canvas.height = 1754;
-  
-  if (ctx) {
-    // White background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Create image from PDF data URL
-    const pdfDataUrl = doc.output('datauristring');
-    
-    // Since direct PDF to PNG is complex, we'll use an alternative approach
-    // Generate an HTML canvas representation
-    const img = new Image();
-    
-    return new Promise<void>((resolve) => {
-      // Use svg output for better quality
-      const svgString = doc.output('datauristring');
-      
-      // Fallback: download PDF and notify user
-      // For PNG, we'll create a simpler canvas-based version
-      generateCanvasPNG(quotation);
-      resolve();
-    });
+  // Use html2canvas to capture the exact DOM structure from QuotationPreview
+  // We need to wait for the dialog to be open and the element to be present
+  const element = document.querySelector('.danfe-container');
+  if (!element) {
+    console.warn("DANFE container not found for PNG generation, using canvas fallback");
+    generateCanvasPNG(quotation);
+    return;
   }
-  
-  URL.revokeObjectURL(pdfUrl);
+
+  try {
+    const html2canvas = (await import('html2canvas')).default;
+    const canvas = await html2canvas(element as HTMLElement, {
+      scale: 2, // Higher quality
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+    
+    const link = document.createElement('a');
+    link.download = `DANFE_${quotation.number}_${quotation.customer.name.replace(/\s/g, '_')}.png`;
+    link.href = canvas.toDataURL('image/png', 1.0);
+    link.click();
+  } catch (error) {
+    console.error("Error generating PNG via html2canvas:", error);
+    generateCanvasPNG(quotation);
+  }
 };
 
 const generateCanvasPNG = (quotation: Quotation) => {

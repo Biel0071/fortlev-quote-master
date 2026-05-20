@@ -98,16 +98,16 @@ export const generateNFePDF = async (quotation: Quotation, nfeNumber: string): P
   let y = margin;
   
   // ══════════════════════════════════════════════════════════════
-  // HEADER SECTION - Professional Corporate Header
+  // HEADER SECTION - Professional DANFE Header
   // ══════════════════════════════════════════════════════════════
   
-  // Header background with gradient effect
-  doc.setFillColor(...primaryBlue);
-  doc.rect(margin, y, contentWidth, 28, 'F');
+  // Header background (White for DANFE)
+  doc.setFillColor(...white);
+  doc.setDrawColor(...primaryBlack);
+  doc.rect(margin, y, contentWidth, 28, 'S');
   
-  // Subtle darker stripe at top
-  doc.setFillColor(...darkBlue);
-  doc.rect(margin, y, contentWidth, 3, 'F');
+  // No gradient stripe for DANFE
+
   
   // Company Logo Area (Left)
   doc.setFontSize(22);

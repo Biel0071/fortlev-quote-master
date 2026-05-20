@@ -112,7 +112,7 @@ export const generateNFePDF = async (quotation: Quotation, nfeNumber: string): P
   // Company Logo Area (Left)
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...white);
+  doc.setTextColor(...primaryBlack);
   doc.text('FORTLEV', margin + 8, y + 14);
   
   doc.setFontSize(7);

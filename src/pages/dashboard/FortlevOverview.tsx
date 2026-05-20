@@ -197,7 +197,7 @@ export default function FortlevOverview() {
 
         <div className="lg:col-span-3 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+            <Card className="premium-card bg-card/50 backdrop-blur-sm border-primary/10">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
@@ -210,7 +210,7 @@ export default function FortlevOverview() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+            <Card className="premium-card bg-card/50 backdrop-blur-sm border-primary/10">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
@@ -223,7 +223,7 @@ export default function FortlevOverview() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+            <Card className="premium-card bg-card/50 backdrop-blur-sm border-primary/10">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500">
@@ -236,7 +236,7 @@ export default function FortlevOverview() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+            <Card className="premium-card bg-card/50 backdrop-blur-sm border-primary/10">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500">
@@ -251,7 +251,7 @@ export default function FortlevOverview() {
             </Card>
           </div>
 
-          <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+          <Card className="premium-card bg-card/50 backdrop-blur-sm border-primary/10">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <TrendingUp className="h-5 w-5 text-primary" />
@@ -306,7 +306,7 @@ export default function FortlevOverview() {
       </div>
 
       {/* Quotations table */}
-      <Card>
+      <Card className="premium-card">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle>Orçamentos</CardTitle>
@@ -326,7 +326,7 @@ export default function FortlevOverview() {
           {filteredQuotations.length === 0 ? (
             <div className="py-10 text-center text-muted-foreground">Nenhum orçamento encontrado com os filtros atuais.</div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-border">
+            <div className="premium-table-container">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">

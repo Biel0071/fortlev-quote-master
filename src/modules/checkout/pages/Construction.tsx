@@ -8,6 +8,7 @@ import { QuotationPreview } from '@/components/QuotationPreview';
 import type { ConstructionQuotationItem, ConstructionQuotation } from '@/types/construction';
 import type { Customer, CompanyInfo, PaymentConditions, Quotation, QuotationItem } from '@/types/quotation';
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
+import { downloadNFePDF } from '@/utils/nfeGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
 import { cloud } from '@/lib/cloud';

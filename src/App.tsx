@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import ScrollToTop from "@/components/ScrollToTop";
+import "@/styles/budget-template.css";
 import StoreHome from "./pages/store/StoreHome";
 import StoreCatalog from "./pages/store/StoreCatalog";
 import OffersPage from "./pages/store/OffersPage";

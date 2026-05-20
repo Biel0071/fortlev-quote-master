@@ -362,10 +362,10 @@ export default function FortlevOverview() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="center">
                                <DropdownMenuItem onClick={() => handleDownloadPDF(q)}>
-                                <FileDown className="h-4 w-4 mr-2" />Baixar Orçamento (Colorido)
+                                <FileDown className="h-4 w-4 mr-2" />Baixar Orçamento
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadPNG(q)}>
-                                <Receipt className="h-4 w-4 mr-2" />Baixar DANFE / NF-e (Oficial)
+                                <Receipt className="h-4 w-4 mr-2" />Baixar DANFE / NF-e
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadNFe(q)}>
                                 <Receipt className="h-4 w-4 mr-2" />Nota Fiscal

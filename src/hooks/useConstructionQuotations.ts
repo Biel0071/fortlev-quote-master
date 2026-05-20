@@ -158,5 +158,7 @@ export function useConstructionQuotations() {
     deleteQuotation,
     duplicateQuotation,
     generateQuotationNumber,
+    refetchQuotations: fetchQuotations,
   };
 }
+

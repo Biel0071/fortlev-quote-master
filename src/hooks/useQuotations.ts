@@ -168,5 +168,7 @@ export const useQuotations = () => {
     deleteQuotation,
     duplicateQuotation,
     generateQuotationNumber,
+    refetchQuotations: fetchQuotations,
   };
 };
+

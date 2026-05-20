@@ -347,10 +347,10 @@ export const QuotationPreview = ({
               onDownloadPDF();
               onOpenChange(false);
             }}
-            className="flex-1"
+            className="flex-1 bg-[#004a97] hover:bg-[#003d7c]"
           >
-            <FileText className="h-5 w-5" />
-            Baixar PDF
+            <FileDown className="h-5 w-5" />
+            Baixar Orçamento (Colorido)
           </Button>
 
           <Button
@@ -360,10 +360,10 @@ export const QuotationPreview = ({
               onDownloadPNG();
               onOpenChange(false);
             }}
-            className="flex-1"
+            className="flex-1 bg-black hover:bg-black/90 text-white"
           >
-            <Image className="h-5 w-5" />
-            Baixar PNG
+            <Receipt className="h-5 w-5" />
+            Baixar DANFE / NF-e (Oficial)
           </Button>
 
           <Button

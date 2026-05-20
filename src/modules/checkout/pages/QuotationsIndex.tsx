@@ -11,7 +11,6 @@ import { useQuotations } from '@/hooks/useQuotations';
 import { Customer, CompanyInfo, PaymentConditions, QuotationItem, Quotation } from '@/types/quotation';
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { downloadNFePDF } from '@/utils/nfeGenerator';
-import { downloadNFePDF } from '@/utils/nfeGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
 import { cloud } from '@/lib/cloud';
@@ -75,7 +74,6 @@ const QuotationsIndex = () => {
     if (!customer.address || editingQuotationId || factories.length === 0) return;
 
     const findNearest = async () => {
-      // Try to find state UF in address
       const ufMatch = customer.address.match(/\b([A-Z]{2})\b/);
       if (ufMatch) {
         const uf = ufMatch[1];
@@ -106,7 +104,7 @@ const QuotationsIndex = () => {
     return () => clearTimeout(timer);
   }, [customer.address, factories, editingQuotationId]);
 
-  // Load quotation data when editing and data becomes available
+  // Load quotation data when editing
   useEffect(() => {
     if (!editId || editLoaded.current || loading) return;
     const source = quotations.find(q => q.id === editId);
@@ -133,11 +131,9 @@ const QuotationsIndex = () => {
     const rawFactory = sessionStorage.getItem("smart_quotation_factory");
     const rawCustomer = sessionStorage.getItem("smart_quotation_customer");
 
-    let parsedItems: any[] = [];
     if (rawItems) {
       try {
-        parsedItems = JSON.parse(rawItems);
-        // Map to QuotationItem
+        const parsedItems = JSON.parse(rawItems);
         const quotationItems = parsedItems.map((item: any) => ({
           id: crypto.randomUUID(),
           product: {
@@ -205,41 +201,10 @@ const QuotationsIndex = () => {
 
         if (customerData.freight !== undefined && customerData.freight !== null) {
           setFreight(customerData.freight);
-        } else if (parsedItems.length > 0) {
-          // Rule: If freight not specified, consider 8% of subtotal
-          const calculatedSubtotal = parsedItems.reduce((acc: number, item: any) => 
-            acc + ((item.price || item.unitPrice || 0) * item.quantity), 0
-          );
-          if (calculatedSubtotal > 0) {
-            // "Picado" roughly means approximately, so we'll just set the 8%
-            setFreight(Number((calculatedSubtotal * 0.08).toFixed(2)));
-          }
         }
 
         if (customerData.sellerName) {
-          setCompanyInfo(prev => ({
-            ...prev,
-            sellerName: customerData.sellerName
-          }));
-        } else {
-          // If no seller mentioned, pick a default from saved sellers
-          const storedSellers = localStorage.getItem('fortlev-saved-sellers');
-          if (storedSellers) {
-            try {
-              const sellers = JSON.parse(storedSellers);
-              if (sellers && sellers.length > 0) {
-                // Pick the first one as default
-                const defaultSeller = sellers[0];
-                setCompanyInfo(prev => ({
-                  ...prev,
-                  sellerName: defaultSeller.name,
-                  sellerRole: defaultSeller.role || prev.sellerRole
-                }));
-              }
-            } catch (e) {
-              console.error("Error picking default seller", e);
-            }
-          }
+          setCompanyInfo(prev => ({ ...prev, sellerName: customerData.sellerName }));
         }
 
         sessionStorage.removeItem("smart_quotation_customer");
@@ -258,7 +223,6 @@ const QuotationsIndex = () => {
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw) as { token?: string; tokenId?: string; storeId?: string };
-      if (!parsed?.tokenId || !parsed?.storeId) return null;
       if (parsed?.token && parsed.token !== publicToken) return null;
       return parsed;
     } catch {
@@ -266,21 +230,7 @@ const QuotationsIndex = () => {
     }
   };
 
-  const handleAddItem = (item: QuotationItem) => {
-    setItems(prev => [...prev, item]);
-    toast({ title: 'Item adicionado', description: `${item.product.capacity}${item.product.unit} adicionado ao orçamento` });
-  };
-
-  const handleRemoveItem = (id: string) => {
-    setItems(prev => prev.filter(i => i.id !== id));
-    toast({ title: 'Item removido', variant: 'destructive' });
-  };
-
-  const handleUpdateQuantity = (id: string, quantity: number) => {
-    setItems(prev => prev.map(item => item.id === id ? { ...item, quantity, subtotal: item.unitPrice * quantity } : item));
-  };
-
-  const createQuotation = (): Quotation => ({
+  const createQuotationObject = (): Quotation => ({
     id: editingQuotationId || crypto.randomUUID(),
     number: quotationNumber || generateQuotationNumber(),
     customer, companyInfo, items, subtotal, discount, freight, total, validity, observations,
@@ -313,91 +263,40 @@ const QuotationsIndex = () => {
 
   const handleGeneratePDF = () => {
     if (!validateForm()) return;
-    const q = createQuotation();
-    const tokenCtx = getTokenContext();
-    const row = {
-      ...q,
-      created_via_token: Boolean(tokenCtx),
-      source_token_id: tokenCtx?.tokenId ?? null,
-    } as any;
-    saveAndExecute(row, () => downloadPDF(q));
-
-    if (tokenCtx) {
-      cloud.rpc('log_token_action', {
-        _raw_token: publicToken,
-        _store_id: tokenCtx.storeId,
-        _action: 'created_quotation',
-        _quotation_type: 'fortlev',
-        _quotation_id: q.id,
-        _ip: null,
-        _user_agent: navigator.userAgent,
-        _source: 'public',
-      });
-    }
-
+    const q = createQuotationObject();
+    saveAndExecute(q, () => downloadPDF(q));
     toast({ title: 'PDF gerado!', description: `Orçamento ${q.number} salvo` });
   };
 
   const handleGeneratePNG = async () => {
     if (!validateForm()) return;
-    const q = createQuotation();
-    const tokenCtx = getTokenContext();
-    const row = {
-      ...q,
-      created_via_token: Boolean(tokenCtx),
-      source_token_id: tokenCtx?.tokenId ?? null,
-    } as any;
-    if (editingQuotationId) updateQuotation(editingQuotationId, row); else saveQuotation(row);
-
-    if (tokenCtx) {
-      cloud.rpc('log_token_action', {
-        _raw_token: publicToken,
-        _store_id: tokenCtx.storeId,
-        _action: 'created_quotation',
-        _quotation_type: 'fortlev',
-        _quotation_id: q.id,
-        _ip: null,
-        _user_agent: navigator.userAgent,
-        _source: 'public',
-      });
-    }
-
+    const q = createQuotationObject();
     await downloadPNG(q);
+    if (editingQuotationId) updateQuotation(editingQuotationId, q); else saveQuotation(q);
     toast({ title: 'PNG gerado!', description: `Orçamento ${q.number} salvo` });
+    resetForm();
+  };
+
+  const handleGenerateDANFE = async () => {
+    if (!validateForm()) return;
+    const q = createQuotationObject();
+    const nfeNumber = q.number.slice(0, 9).padStart(9, "0");
+    await downloadNFePDF(q, nfeNumber);
+    if (editingQuotationId) updateQuotation(editingQuotationId, q); else saveQuotation(q);
+    toast({ title: 'DANFE gerado!', description: `Orçamento ${q.number} salvo` });
     resetForm();
   };
 
   const handleSendWhatsApp = () => {
     if (!validateForm()) return;
-    const q = createQuotation();
-    const tokenCtx = getTokenContext();
-    const row = {
-      ...q,
-      status: 'sent',
-      created_via_token: Boolean(tokenCtx),
-      source_token_id: tokenCtx?.tokenId ?? null,
-    } as any;
-    saveAndExecute(row, () => openWhatsApp(q));
-
-    if (tokenCtx) {
-      cloud.rpc('log_token_action', {
-        _raw_token: publicToken,
-        _store_id: tokenCtx.storeId,
-        _action: 'created_quotation',
-        _quotation_type: 'fortlev',
-        _quotation_id: q.id,
-        _ip: null,
-        _user_agent: navigator.userAgent,
-        _source: 'public',
-      });
-    }
-
+    const q = createQuotationObject();
+    saveAndExecute(q, () => openWhatsApp(q));
     toast({ title: 'Orçamento enviado!', description: `Aberto no WhatsApp` });
   };
 
   const handlePreview = () => {
     if (!validateForm()) return;
-    setPreviewQuotation(createQuotation());
+    setPreviewQuotation(createQuotationObject());
     setPreviewOpen(true);
   };
 
@@ -409,14 +308,10 @@ const QuotationsIndex = () => {
 
   const handlePreviewDownloadPNG = async () => {
     if (!previewQuotation) return;
+    await downloadPNG(previewQuotation);
     if (editingQuotationId) updateQuotation(editingQuotationId, previewQuotation); else saveQuotation(previewQuotation);
-    
-    // Give time for DOM to be stable if just opened, though it's already visible in preview
-    setTimeout(async () => {
-      await downloadPNG(previewQuotation);
-      resetForm();
-      setPreviewOpen(false);
-    }, 100);
+    resetForm();
+    setPreviewOpen(false);
   };
 
   const resetForm = () => {
@@ -434,11 +329,8 @@ const QuotationsIndex = () => {
     toast({ title: 'Edição cancelada' });
   };
 
-  const handleBack = () => {
-    navigate('/admin/orcamentos/fortlev');
-  };
+  const handleBack = () => { navigate('/admin/orcamentos/fortlev'); };
 
-  // Show loading state when editing but data hasn't loaded yet
   if (editId && loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -455,33 +347,23 @@ const QuotationsIndex = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        {/* Top bar: Back + Status */}
         <div className="flex items-center justify-between">
           <Button variant="ghost" className="gap-2 text-muted-foreground" onClick={handleBack}>
-            <ArrowLeft className="h-4 w-4" />
-            Voltar
+            <ArrowLeft className="h-4 w-4" /> Voltar
           </Button>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1">
-              <FileText className="h-3.5 w-3.5" />
-              Rascunho
-            </Badge>
-          </div>
+          <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1">
+            <FileText className="h-3.5 w-3.5" /> Rascunho
+          </Badge>
         </div>
 
         {editingQuotationId && (
           <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Pencil className="h-5 w-5 text-orange-600" />
-              <span className="font-medium text-orange-700">
-                Editando orçamento: {quotationNumber}
-              </span>
+              <span className="font-medium text-orange-700">Editando orçamento: {quotationNumber}</span>
             </div>
-            <button onClick={handleCancelEdit} className="text-sm text-orange-600 hover:text-orange-800 underline">
-              Cancelar edição
-            </button>
+            <button onClick={handleCancelEdit} className="text-sm text-orange-600 hover:text-orange-800 underline">Cancelar edição</button>
           </div>
         )}
 
@@ -494,11 +376,18 @@ const QuotationsIndex = () => {
         </div>
 
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
-          <ProductSelector onAddItem={handleAddItem} />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" /> Seleção de Produtos
+              </h3>
+            </div>
+            <ProductSelector onAddItem={handleAddItem} />
+          </div>
         </div>
 
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
-          <ItemsList items={items} onRemoveItem={handleRemoveItem} onUpdateQuantity={handleUpdateQuantity} total={total} />
+          <ItemsList items={items} onRemoveItem={handleRemoveItem} onUpdateQuantity={handleUpdateQuantity} />
         </div>
 
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
@@ -507,9 +396,8 @@ const QuotationsIndex = () => {
             subtotal={subtotal} deliveryTime={deliveryTime} paymentConditions={paymentConditions}
             onValidityChange={setValidity} onObservationsChange={setObservations} onDiscountChange={setDiscount}
             onFreightChange={setFreight} onDeliveryTimeChange={setDeliveryTime} onPaymentConditionsChange={setPaymentConditions}
-            onGeneratePDF={handleGeneratePDF} onGeneratePNG={handleGeneratePNG} onGenerateDANFE={handleGenerateDANFE} 
-            onSendWhatsApp={handleSendWhatsApp}
-            onPreview={handlePreview} disabled={!isFormValid}
+            onGeneratePDF={handleGeneratePDF} onGeneratePNG={handleGeneratePNG} onGenerateDANFE={handleGenerateDANFE}
+            onSendWhatsApp={handleSendWhatsApp} onPreview={handlePreview} disabled={!isFormValid}
           />
         </div>
       </main>
@@ -517,11 +405,7 @@ const QuotationsIndex = () => {
       <QuotationPreview
         quotation={previewQuotation} open={previewOpen} onOpenChange={setPreviewOpen}
         onDownloadPDF={handlePreviewDownloadPDF} onDownloadPNG={handlePreviewDownloadPNG}
-        onDownloadDANFE={() => {
-          if (previewQuotation) {
-            downloadNFePDF(previewQuotation, previewQuotation.number);
-          }
-        }}
+        onDownloadDANFE={() => previewQuotation && downloadNFePDF(previewQuotation, previewQuotation.number.slice(0, 9).padStart(9, "0"))}
       />
 
       <footer className="text-center py-6 text-sm text-muted-foreground border-t border-border mt-12">

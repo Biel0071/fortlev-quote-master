@@ -350,7 +350,7 @@ export const QuotationPreview = ({
             className="flex-1 bg-[#004a97] hover:bg-[#003d7c]"
           >
             <FileDown className="h-5 w-5" />
-            Baixar Orçamento (Colorido)
+            Baixar Orçamento
           </Button>
 
           <Button
@@ -363,7 +363,7 @@ export const QuotationPreview = ({
             className="flex-1 bg-black hover:bg-black/90 text-white"
           >
             <Receipt className="h-5 w-5" />
-            Baixar DANFE / NF-e (Oficial)
+            Baixar DANFE / NF-e
           </Button>
 
           <Button

@@ -1,4 +1,7 @@
+import { FiscalInfo } from "./quotation";
+
 export interface ConstructionProduct {
+
   id: string;
   name: string;
   description?: string;
@@ -69,7 +72,9 @@ export interface ConstructionQuotation {
   showClientData: boolean;
   createdAt: Date;
   status: 'pending' | 'sent' | 'approved' | 'rejected';
+  fiscal?: FiscalInfo;
 }
+
 
 export const unitLabels: Record<ConstructionProduct['unit'], string> = {
   'un': 'Unidade',

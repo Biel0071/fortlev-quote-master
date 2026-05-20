@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PaymentConditions } from '@/types/quotation';
-import { FileText, Send, Calendar, MessageSquare, CreditCard, Truck, Image, Percent, DollarSign, Eye } from 'lucide-react';
+import { FileText, Send, Calendar, MessageSquare, CreditCard, Truck, Image, Percent, DollarSign, Eye, Receipt } from 'lucide-react';
 import { useState } from 'react';
 
 interface QuotationActionsProps {
@@ -23,6 +23,7 @@ interface QuotationActionsProps {
   onPaymentConditionsChange: (conditions: PaymentConditions) => void;
   onGeneratePDF: () => void;
   onGeneratePNG: () => void;
+  onGenerateDANFE: () => void;
   onSendWhatsApp: () => void;
   onPreview: () => void;
   disabled: boolean;
@@ -44,6 +45,7 @@ export const QuotationActions = ({
   onPaymentConditionsChange,
   onGeneratePDF,
   onGeneratePNG,
+  onGenerateDANFE,
   onSendWhatsApp,
   onPreview,
   disabled,
@@ -251,15 +253,15 @@ export const QuotationActions = ({
         />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 pt-4">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-4">
         <Button
           variant="outline"
           size="lg"
           onClick={onPreview}
           disabled={disabled}
-          className="flex-1"
+          className="flex-1 min-w-[140px]"
         >
-          <Eye className="h-5 w-5" />
+          <Eye className="h-5 w-5 mr-2" />
           Pré-visualizar
         </Button>
 
@@ -268,9 +270,9 @@ export const QuotationActions = ({
           size="lg"
           onClick={onGeneratePDF}
           disabled={disabled}
-          className="flex-1"
+          className="flex-1 min-w-[140px]"
         >
-          <FileText className="h-5 w-5" />
+          <FileText className="h-5 w-5 mr-2" />
           Baixar PDF
         </Button>
 
@@ -279,10 +281,21 @@ export const QuotationActions = ({
           size="lg"
           onClick={onGeneratePNG}
           disabled={disabled}
-          className="flex-1"
+          className="flex-1 min-w-[140px]"
         >
-          <Image className="h-5 w-5" />
+          <Image className="h-5 w-5 mr-2" />
           Baixar PNG
+        </Button>
+
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={onGenerateDANFE}
+          disabled={disabled}
+          className="flex-1 min-w-[140px] border-2 border-black font-bold hover:bg-black hover:text-white transition-colors"
+        >
+          <Receipt className="h-5 w-5 mr-2" />
+          Baixar DANFE
         </Button>
 
         <Button
@@ -290,10 +303,10 @@ export const QuotationActions = ({
           size="lg"
           onClick={onSendWhatsApp}
           disabled={disabled}
-          className="flex-1"
+          className="flex-1 min-w-[140px]"
         >
-          <Send className="h-5 w-5" />
-          Enviar WhatsApp
+          <Send className="h-5 w-5 mr-2" />
+          WhatsApp
         </Button>
       </div>
     </div>

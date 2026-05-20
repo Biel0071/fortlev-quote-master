@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, MoreHorizontal, Building2, Users, Search, Filter } from "lucide-react";
+import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, MoreHorizontal, Building2, Users, Search, Filter, Eye } from "lucide-react";
 import SmartQuotationGenerator from "@/components/admin/SmartQuotationGenerator";
 import { useQuotations } from "@/hooks/useQuotations";
 import { useSales } from "@/hooks/useSales";
@@ -19,6 +19,8 @@ import { formatCurrency, formatDate } from "@/utils/formatters";
 import { downloadPDF, downloadPNG } from "@/utils/pdfGenerator";
 import { downloadNFePDF } from "@/utils/nfeGenerator";
 import { toast } from "@/hooks/use-toast";
+import { QuotationPreview } from "@/components/QuotationPreview";
+import { Quotation } from "@/types/quotation";
 
 function currencyToNumber(raw: string) {
   const cleaned = raw.replace(/[^0-9,.-]/g, "").replace(".", "").replace(",", ".");
@@ -41,6 +43,8 @@ export default function FortlevOverview() {
   const [issuers, setIssuers] = useState<any[]>([]);
   const [selectedIssuerId, setSelectedIssuerId] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
 
   useEffect(() => {
     const fetchIssuers = async () => {
@@ -152,6 +156,11 @@ export default function FortlevOverview() {
     } catch { toast({ title: "Erro ao gerar NFe", variant: "destructive" }); }
   };
 
+  const handlePreview = (q: Quotation) => {
+    setPreviewQuotation(q);
+    setPreviewOpen(true);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -188,7 +197,7 @@ export default function FortlevOverview() {
 
         <div className="lg:col-span-3 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+            <Card className="premium-card bg-card/50 backdrop-blur-sm border-primary/10">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
@@ -201,7 +210,7 @@ export default function FortlevOverview() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+            <Card className="premium-card bg-card/50 backdrop-blur-sm border-primary/10">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
@@ -214,7 +223,7 @@ export default function FortlevOverview() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+            <Card className="premium-card bg-card/50 backdrop-blur-sm border-primary/10">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500">
@@ -227,7 +236,7 @@ export default function FortlevOverview() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+            <Card className="premium-card bg-card/50 backdrop-blur-sm border-primary/10">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500">
@@ -242,7 +251,7 @@ export default function FortlevOverview() {
             </Card>
           </div>
 
-          <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
+          <Card className="premium-card bg-card/50 backdrop-blur-sm border-primary/10">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <TrendingUp className="h-5 w-5 text-primary" />
@@ -297,7 +306,7 @@ export default function FortlevOverview() {
       </div>
 
       {/* Quotations table */}
-      <Card>
+      <Card className="premium-card">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle>Orçamentos</CardTitle>
@@ -317,7 +326,7 @@ export default function FortlevOverview() {
           {filteredQuotations.length === 0 ? (
             <div className="py-10 text-center text-muted-foreground">Nenhum orçamento encontrado com os filtros atuais.</div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-border">
+            <div className="premium-table-container">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
@@ -360,15 +369,18 @@ export default function FortlevOverview() {
                                 Gerar
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="center">
+                            <DropdownMenuContent align="center" className="w-56">
+                               <DropdownMenuItem onClick={() => handlePreview(q as any)}>
+                                <Eye className="h-4 w-4 mr-2 text-primary" />Pré-visualizar
+                              </DropdownMenuItem>
                                <DropdownMenuItem onClick={() => handleDownloadPDF(q)}>
-                                <FileDown className="h-4 w-4 mr-2" />Baixar Orçamento
+                                <FileDown className="h-4 w-4 mr-2" />Baixar Orçamento PDF
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadPNG(q)}>
-                                <Receipt className="h-4 w-4 mr-2" />Baixar DANFE / NF-e
+                                <Image className="h-4 w-4 mr-2" />Baixar Orçamento PNG
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadNFe(q)}>
-                                <Receipt className="h-4 w-4 mr-2" />Nota Fiscal
+                                <Receipt className="h-4 w-4 mr-2" />Baixar DANFE / NF-e
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -441,6 +453,14 @@ export default function FortlevOverview() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <QuotationPreview 
+        quotation={previewQuotation}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        onDownloadPDF={() => previewQuotation && handleDownloadPDF(previewQuotation)}
+        onDownloadPNG={() => previewQuotation && handleDownloadPNG(previewQuotation)}
+        onDownloadDANFE={() => previewQuotation && handleDownloadNFe(previewQuotation)}
+      />
     </div>
   );
 }

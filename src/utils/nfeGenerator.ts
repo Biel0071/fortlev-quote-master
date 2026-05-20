@@ -49,19 +49,12 @@ const formatAccessKey = (key: string): string => {
 
 // Draw professional barcode
 const drawBarcode = (doc: jsPDF, data: string, x: number, y: number, width: number, height: number) => {
-  const pattern = data.split('').map(c => parseInt(c) || 0);
-  const barWidth = width / (pattern.length * 11);
-  
+  const barWidth = width / 44;
   doc.setFillColor(0, 0, 0);
-  let currentX = x;
-  
-  for (let i = 0; i < pattern.length; i++) {
-    const widths = [1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1];
-    for (let j = 0; j < widths.length; j++) {
-      if (j % 2 === 0) {
-        doc.rect(currentX, y, barWidth * widths[j], height, 'F');
-      }
-      currentX += barWidth * widths[j];
+  for (let i = 0; i < 44; i++) {
+    if (Math.random() > 0.3) {
+      const w = Math.random() > 0.5 ? barWidth : barWidth * 1.5;
+      doc.rect(x + (i * barWidth), y, w, height, 'F');
     }
   }
 };
@@ -86,279 +79,276 @@ export const generateNFePDF = async (quotation: Quotation, nfeNumber: string): P
   const taxCalc = calculateTotalTaxes(quotation.items, DEFAULT_TAX_RATES);
   
   let y = margin;
-  
-  // HEADER SECTION - Professional DANFE Header
-  doc.setFillColor(...white);
+
+  // 1. RECEBIMENTO (CANHOTO)
   doc.setDrawColor(...primaryBlack);
-  doc.rect(margin, y, contentWidth, 28, 'S');
+  doc.rect(margin, y, contentWidth * 0.8, 15);
+  doc.setFontSize(5);
+  doc.text(`RECEBEMOS DE ${quotation.companyInfo.name || 'EMISSOR'} OS PRODUTOS E/OU SERVIÇOS CONSTANTES DA NOTA FISCAL ELETRÔNICA INDICADA ABAIXO.`, margin + 2, y + 4);
+  doc.line(margin, y + 8, margin + contentWidth * 0.8, y + 8);
+  doc.text('DATA DE RECEBIMENTO', margin + 2, y + 11);
+  doc.text('IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR', margin + 40, y + 11);
   
-  // Company Logo Area (Left)
-  doc.setFontSize(22);
+  doc.rect(margin + contentWidth * 0.8, y, contentWidth * 0.2, 15);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...primaryBlack);
-  doc.text('FORTLEV', margin + 8, y + 14);
-  
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Caixas d\'Água e Tanques', margin + 8, y + 20);
-  
-  // DANFE Title (Center)
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...primaryBlack);
-  doc.text('DANFE', pageWidth / 2, y + 12, { align: 'center' });
-  
+  doc.text('NF-e', margin + contentWidth * 0.8 + (contentWidth * 0.1), y + 5, { align: 'center' });
+  doc.text(`Nº ${nfeNumber}`, margin + contentWidth * 0.8 + (contentWidth * 0.1), y + 10, { align: 'center' });
+  doc.text('SÉRIE 1', margin + contentWidth * 0.8 + (contentWidth * 0.1), y + 13, { align: 'center' });
+
+  y += 18;
+
+  // 2. IDENTIFICAÇÃO DO EMITENTE & DANFE
+  doc.rect(margin, y, contentWidth * 0.4, 30);
+  doc.setFontSize(12);
+  doc.text(quotation.companyInfo.name || 'EMISSOR', margin + 2, y + 8);
   doc.setFontSize(6);
-  doc.text('Documento Auxiliar da Nota Fiscal Eletrônica', pageWidth / 2, y + 18, { align: 'center' });
-  
-  // NFe Number (Right)
+  doc.setFont('helvetica', 'normal');
+  const companyAddr = doc.splitTextToSize(quotation.companyInfo.address || '', (contentWidth * 0.4) - 4);
+  doc.text(companyAddr, margin + 2, y + 12);
+  doc.text(`Fone: ${quotation.companyInfo.phone || ''}`, margin + 2, y + 25);
+
+  doc.rect(margin + contentWidth * 0.4, y, contentWidth * 0.15, 30);
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text(`Nº ${nfeNumber}`, pageWidth - margin - 8, y + 12, { align: 'right' });
-  
+  doc.text('DANFE', margin + contentWidth * 0.475, y + 6, { align: 'center' });
+  doc.setFontSize(5);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Documento Auxiliar da', margin + contentWidth * 0.475, y + 10, { align: 'center' });
+  doc.text('Nota Fiscal Eletrônica', margin + contentWidth * 0.475, y + 12, { align: 'center' });
+  doc.rect(margin + contentWidth * 0.42, y + 15, contentWidth * 0.11, 8);
+  doc.text('0-ENTRADA', margin + contentWidth * 0.43, y + 18);
+  doc.text('1-SAÍDA', margin + contentWidth * 0.43, y + 21);
+  doc.setFontSize(10);
+  doc.text('1', margin + contentWidth * 0.51, y + 21);
   doc.setFontSize(7);
-  doc.text('Série 1 | 1-Saída', pageWidth - margin - 8, y + 18, { align: 'right' });
-  
+  doc.text(`Nº ${nfeNumber}`, margin + contentWidth * 0.475, y + 26, { align: 'center' });
+  doc.text('SÉRIE 1', margin + contentWidth * 0.475, y + 28, { align: 'center' });
+
+  doc.rect(margin + contentWidth * 0.55, y, contentWidth * 0.45, 30);
+  drawBarcode(doc, accessKey, margin + contentWidth * 0.57, y + 2, contentWidth * 0.41, 10);
+  doc.setFontSize(5);
+  doc.text('CHAVE DE ACESSO', margin + contentWidth * 0.56, y + 15);
+  doc.setFontSize(7);
+  doc.text(formatAccessKey(accessKey), margin + contentWidth * 0.56, y + 18);
+  doc.setFontSize(6);
+  doc.text('Consulta de autenticidade no portal nacional da NF-e', margin + contentWidth * 0.56, y + 22);
+  doc.text('www.nfe.fazenda.gov.br/portal ou no site da Sefaz Autorizadora', margin + contentWidth * 0.56, y + 24);
+
   y += 30;
-  
-  // ACCESS KEY & BARCODE SECTION
-  doc.setFillColor(...white);
-  doc.setDrawColor(...primaryBlack);
-  doc.rect(margin, y, contentWidth, 22, 'S');
-  
-  drawBarcode(doc, accessKey.slice(0, 24), margin + 5, y + 3, 80, 10);
-  
-  doc.setFontSize(6);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...darkGray);
-  doc.text('CHAVE DE ACESSO', margin + 5, y + 16);
-  
-  doc.setFontSize(6.5);
-  doc.setFont('helvetica', 'normal');
-  doc.text(formatAccessKey(accessKey), margin + 5, y + 20);
-  
-  doc.setFontSize(6);
-  doc.setFont('helvetica', 'bold');
-  doc.text('PROTOCOLO DE AUTORIZAÇÃO', pageWidth - margin - 60, y + 6);
-  
-  doc.setFontSize(6);
-  doc.setFont('helvetica', 'normal');
-  doc.text(protocolNumber, pageWidth - margin - 60, y + 11);
-  doc.text(`${emissionDate} às ${emissionTime}`, pageWidth - margin - 60, y + 16);
-  
-  y += 24;
-  
-  // EMITENTE SECTION
-  doc.setFillColor(...lightGray);
-  doc.rect(margin, y, contentWidth, 6, 'F');
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...primaryBlack);
-  doc.text('EMITENTE', margin + 4, y + 4.5);
-  y += 6;
-  
-  doc.setFillColor(...white);
-  doc.setDrawColor(...primaryBlack);
-  doc.rect(margin, y, contentWidth, 22, 'S');
-  
-  doc.setTextColor(...primaryBlack);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text(quotation.companyInfo?.name || 'EMPRESA EMITENTE', margin + 4, y + 6);
-  
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...darkGray);
-  
-  let emitY = y + 11;
-  if (quotation.companyInfo?.cnpj) {
-    doc.text(`${getBrazilDocumentLabel(quotation.companyInfo.cnpj)}: ${quotation.companyInfo.cnpj}`, margin + 4, emitY);
-    emitY += 4;
-  }
-  if (quotation.companyInfo?.address) {
-    doc.text(quotation.companyInfo.address, margin + 4, emitY);
-    emitY += 4;
-  }
-  
-  y += 24;
-  
-  // DESTINATÁRIO SECTION
-  doc.setFillColor(...lightGray);
-  doc.rect(margin, y, contentWidth, 6, 'F');
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...primaryBlack);
-  doc.text('DESTINATÁRIO / REMETENTE', margin + 4, y + 4.5);
-  y += 6;
-  
-  doc.setFillColor(...white);
-  doc.setDrawColor(...primaryBlack);
-  doc.rect(margin, y, contentWidth, 22, 'S');
-  
-  doc.setTextColor(...primaryBlack);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text(quotation.customer?.name || 'CLIENTE', margin + 4, y + 6);
-  
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...darkGray);
-  
-  let destY = y + 11;
-  if (quotation.customer?.cnpj) {
-    doc.text(`${getBrazilDocumentLabel(quotation.customer.cnpj)}: ${quotation.customer.cnpj}`, margin + 4, destY);
-    destY += 4;
-  }
-  if (quotation.customer?.address) {
-    doc.text(quotation.customer.address, margin + 4, destY);
-    destY += 4;
-  }
-  
-  y += 24;
-  
-  // NATUREZA DA OPERAÇÃO
-  doc.setFillColor(...white);
-  doc.setDrawColor(...primaryBlack);
-  doc.rect(margin, y, contentWidth, 10, 'S');
-  
-  doc.setFontSize(6);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...mediumGray);
-  doc.text('NATUREZA DA OPERAÇÃO', margin + 4, y + 3.5);
-  
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...primaryBlack);
-  doc.text('VENDA DE MERCADORIA', margin + 4, y + 8);
-  
-  y += 12;
-  
-  // CÁLCULO DO IMPOSTO
-  doc.setFillColor(...lightGray);
-  doc.rect(margin, y, contentWidth, 6, 'F');
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...primaryBlack);
-  doc.text('CÁLCULO DO IMPOSTO', margin + 4, y + 4.5);
-  y += 6;
-  
-  const taxColWidth = contentWidth / 6;
-  doc.setFillColor(...white);
-  doc.setDrawColor(...primaryBlack);
-  
-  for (let i = 0; i < 6; i++) {
-    doc.rect(margin + (taxColWidth * i), y, taxColWidth, 12, 'S');
-  }
-  
-  const taxLabels1 = ['BC DO ICMS', 'VL. ICMS', 'BC ICMS ST', 'VL. ICMS ST', 'VL. IMP. IMPORT.', 'VL. PRODUTOS'];
-  const taxValues1 = [
-    formatCurrency(taxCalc.baseCalculo).replace('R$', ''),
-    formatCurrency(taxCalc.icmsValue).replace('R$', ''),
-    '0,00', '0,00', '0,00',
-    formatCurrency(quotation.subtotal).replace('R$', ''),
-  ];
-  
+
+  // 3. NATUREZA DA OPERAÇÃO & PROTOCOLO
+  doc.rect(margin, y, contentWidth * 0.55, 10);
   doc.setFontSize(5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...mediumGray);
-  for (let i = 0; i < 6; i++) {
-    doc.text(taxLabels1[i], margin + (taxColWidth * i) + 2, y + 4);
-  }
-  
+  doc.text('NATUREZA DA OPERAÇÃO', margin + 2, y + 3);
   doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...primaryBlack);
-  for (let i = 0; i < 6; i++) {
-    doc.text(taxValues1[i].trim(), margin + (taxColWidth * i) + 2, y + 10);
-  }
-  
-  y += 12;
-  
-  for (let i = 0; i < 6; i++) {
-    doc.rect(margin + (taxColWidth * i), y, taxColWidth, 12, 'S');
-  }
-  
-  const taxLabels2 = ['VL. FRETE', 'VL. SEGURO', 'DESCONTO', 'OUTRAS DESP.', 'VL. IPI', 'VL. TOTAL NOTA'];
-  const freightValue = quotation.freight || 0;
-  const taxValues2 = [
-    freightValue === 0 ? '0,00' : formatCurrency(freightValue).replace('R$', ''),
-    '0,00',
-    formatCurrency(quotation.discount).replace('R$', ''),
-    '0,00', '0,00',
-    formatCurrency(quotation.total).replace('R$', ''),
-  ];
-  
+  doc.text('VENDA DE MERCADORIA', margin + 2, y + 8);
+
+  doc.rect(margin + contentWidth * 0.55, y, contentWidth * 0.45, 10);
   doc.setFontSize(5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...mediumGray);
-  for (let i = 0; i < 6; i++) {
-    doc.text(taxLabels2[i], margin + (taxColWidth * i) + 2, y + 4);
-  }
-  
+  doc.text('PROTOCOLO DE AUTORIZAÇÃO DE USO', margin + contentWidth * 0.56, y + 3);
   doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...primaryBlack);
-  for (let i = 0; i < 6; i++) {
-    doc.text(taxValues2[i].trim(), margin + (taxColWidth * i) + 2, y + 10);
-  }
-  
-  y += 14;
-  
-  // PRODUTOS / SERVIÇOS
+  doc.text(`${protocolNumber} - ${emissionDate} ${emissionTime}`, margin + contentWidth * 0.56, y + 8);
+
+  y += 10;
+
+  // 4. INSCRIÇÃO ESTADUAL & CNPJ
+  doc.rect(margin, y, contentWidth * 0.33, 10);
+  doc.setFontSize(5);
+  doc.text('INSCRIÇÃO ESTADUAL', margin + 2, y + 3);
+  doc.setFontSize(8);
+  doc.text('ISENTO', margin + 2, y + 8);
+
+  doc.rect(margin + contentWidth * 0.33, y, contentWidth * 0.33, 10);
+  doc.setFontSize(5);
+  doc.text('INSCRIÇÃO ESTADUAL DO SUBST. TRIB.', margin + contentWidth * 0.34, y + 3);
+
+  doc.rect(margin + contentWidth * 0.66, y, contentWidth * 0.34, 10);
+  doc.setFontSize(5);
+  doc.text('CNPJ', margin + contentWidth * 0.67, y + 3);
+  doc.setFontSize(8);
+  doc.text(quotation.companyInfo.cnpj || '', margin + contentWidth * 0.67, y + 8);
+
+  y += 12;
+
+  // 5. DESTINATÁRIO
   doc.setFillColor(...lightGray);
-  doc.rect(margin, y, contentWidth, 6, 'F');
-  doc.setFontSize(7);
+  doc.rect(margin, y, contentWidth, 5, 'F');
+  doc.setFontSize(6);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...primaryBlack);
-  doc.text('DADOS DOS PRODUTOS / SERVIÇOS', margin + 4, y + 4.5);
-  y += 6;
-  
-  const tableData = quotation.items.map((item, index) => {
-    const ncm = getNcmCode(item.product.type);
-    const cfop = getCfopCode(false);
-    const itemTax = taxCalc.baseCalculo > 0 
-      ? (item.subtotal / taxCalc.baseCalculo) * taxCalc.icmsValue 
-      : 0;
-    
-    return [
-      (index + 1).toString().padStart(3, '0'),
-      item.product.capacity > 0
-        ? getProductFullDescription(item.product.type, item.product.capacity, item.product.unit)
-        : item.product.name,
-      ncm, CST_CODES.normal, cfop, 'UN', item.quantity.toString(),
-      formatCurrency(item.unitPrice).replace('R$', '').trim(),
-      formatCurrency(item.subtotal).replace('R$', '').trim(),
-      formatCurrency(item.subtotal).replace('R$', '').trim(),
-      formatCurrency(itemTax).replace('R$', '').trim(),
-      `${(DEFAULT_TAX_RATES.icms * 100).toFixed(0)}%`,
+  doc.text('DESTINATÁRIO / REMETENTE', margin + 2, y + 3.5);
+  y += 5;
+
+  doc.rect(margin, y, contentWidth * 0.7, 10);
+  doc.setFontSize(5);
+  doc.setFont('helvetica', 'normal');
+  doc.text('NOME / RAZÃO SOCIAL', margin + 2, y + 3);
+  doc.setFontSize(8);
+  doc.text(quotation.customer.name || '', margin + 2, y + 8);
+
+  doc.rect(margin + contentWidth * 0.7, y, contentWidth * 0.15, 10);
+  doc.setFontSize(5);
+  doc.text('CNPJ / CPF', margin + contentWidth * 0.71, y + 3);
+  doc.setFontSize(7);
+  doc.text(quotation.customer.cnpj || '', margin + contentWidth * 0.71, y + 8);
+
+  doc.rect(margin + contentWidth * 0.85, y, contentWidth * 0.15, 10);
+  doc.setFontSize(5);
+  doc.text('DATA DA EMISSÃO', margin + contentWidth * 0.86, y + 3);
+  doc.setFontSize(7);
+  doc.text(emissionDate, margin + contentWidth * 0.86, y + 8);
+
+  y += 10;
+
+  doc.rect(margin, y, contentWidth * 0.5, 10);
+  doc.setFontSize(5);
+  doc.text('ENDEREÇO', margin + 2, y + 3);
+  doc.setFontSize(7);
+  doc.text(quotation.customer.address || '', margin + 2, y + 8);
+
+  doc.rect(margin + contentWidth * 0.5, y, contentWidth * 0.2, 10);
+  doc.setFontSize(5);
+  doc.text('BAIRRO / DISTRITO', margin + contentWidth * 0.51, y + 3);
+
+  doc.rect(margin + contentWidth * 0.7, y, contentWidth * 0.15, 10);
+  doc.setFontSize(5);
+  doc.text('CEP', margin + contentWidth * 0.71, y + 3);
+
+  doc.rect(margin + contentWidth * 0.85, y, contentWidth * 0.15, 10);
+  doc.setFontSize(5);
+  doc.text('DATA SAÍDA / ENTRADA', margin + contentWidth * 0.86, y + 3);
+  doc.setFontSize(7);
+  doc.text(emissionDate, margin + contentWidth * 0.86, y + 8);
+
+  y += 12;
+
+  // 6. CÁLCULO DO IMPOSTO
+  doc.setFillColor(...lightGray);
+  doc.rect(margin, y, contentWidth, 5, 'F');
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CÁLCULO DO IMPOSTO', margin + 2, y + 3.5);
+  y += 5;
+
+  const col = contentWidth / 5;
+  for (let i = 0; i < 5; i++) {
+    doc.rect(margin + (i * col), y, col, 10);
+    doc.setFontSize(4);
+    doc.setFont('helvetica', 'normal');
+    const labels = ['BASE DE CÁLCULO DO ICMS', 'VALOR DO ICMS', 'BASE DE CÁLCULO ICMS S.T.', 'VALOR DO ICMS S.T.', 'VALOR TOTAL DOS PRODUTOS'];
+    doc.text(labels[i], margin + (i * col) + 1, y + 3);
+    doc.setFontSize(7);
+    const values = [
+      formatCurrency(taxCalc.baseCalculo).replace('R$', ''),
+      formatCurrency(taxCalc.icmsValue).replace('R$', ''),
+      '0,00', '0,00',
+      formatCurrency(quotation.subtotal).replace('R$', '')
     ];
-  });
-  
+    doc.text(values[i].trim(), margin + (i * col) + col - 2, y + 8, { align: 'right' });
+  }
+  y += 10;
+
+  for (let i = 0; i < 5; i++) {
+    doc.rect(margin + (i * col), y, col, 10);
+    doc.setFontSize(4);
+    const labels = ['VALOR DO FRETE', 'VALOR DO SEGURO', 'DESCONTO', 'OUTRAS DESPESAS ACESSÓRIAS', 'VALOR TOTAL DA NOTA'];
+    doc.text(labels[i], margin + (i * col) + 1, y + 3);
+    doc.setFontSize(7);
+    const values = [
+      formatCurrency(quotation.freight || 0).replace('R$', ''),
+      '0,00',
+      formatCurrency(quotation.discount).replace('R$', ''),
+      '0,00',
+      formatCurrency(quotation.total).replace('R$', '')
+    ];
+    if (i === 4) doc.setFont('helvetica', 'bold');
+    doc.text(values[i].trim(), margin + (i * col) + col - 2, y + 8, { align: 'right' });
+  }
+
+  y += 12;
+
+  // 7. TRANSPORTADOR / VOLUMES
+  doc.setFillColor(...lightGray);
+  doc.rect(margin, y, contentWidth, 5, 'F');
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.text('TRANSPORTADOR / VOLUMES TRANSPORTADOS', margin + 2, y + 3.5);
+  y += 5;
+
+  doc.rect(margin, y, contentWidth * 0.4, 8);
+  doc.setFontSize(4);
+  doc.setFont('helvetica', 'normal');
+  doc.text('RAZÃO SOCIAL', margin + 1, y + 3);
+  doc.rect(margin + contentWidth * 0.4, y, contentWidth * 0.15, 8);
+  doc.text('FRETE POR CONTA', margin + contentWidth * 0.4 + 1, y + 3);
+  doc.setFontSize(6);
+  doc.text('0 - EMITENTE', margin + contentWidth * 0.4 + 1, y + 6);
+  doc.rect(margin + contentWidth * 0.55, y, contentWidth * 0.1, 8);
+  doc.text('CÓDIGO ANTT', margin + contentWidth * 0.55 + 1, y + 3);
+  doc.rect(margin + contentWidth * 0.65, y, contentWidth * 0.15, 8);
+  doc.text('PLACA DO VEÍCULO', margin + contentWidth * 0.65 + 1, y + 3);
+  doc.rect(margin + contentWidth * 0.8, y, contentWidth * 0.05, 8);
+  doc.text('UF', margin + contentWidth * 0.8 + 1, y + 3);
+  doc.rect(margin + contentWidth * 0.85, y, contentWidth * 0.15, 8);
+  doc.text('CNPJ / CPF', margin + contentWidth * 0.85 + 1, y + 3);
+
+  y += 10;
+
+  // 8. DADOS DO PRODUTO / SERVIÇO
+  doc.setFillColor(...lightGray);
+  doc.rect(margin, y, contentWidth, 5, 'F');
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DADOS DOS PRODUTOS / SERVIÇOS', margin + 2, y + 3.5);
+  y += 5;
+
+  const tableData = quotation.items.map((item, index) => [
+    (index + 1).toString().padStart(3, '0'),
+    item.product.name + (item.product.capacity > 0 ? ` ${item.product.capacity}${item.product.unit}` : ''),
+    getNcmCode(item.product.type),
+    '000', '5102', 'UN', item.quantity.toString(),
+    formatCurrency(item.unitPrice).replace('R$', '').trim(),
+    formatCurrency(item.subtotal).replace('R$', '').trim(),
+    '0,00', '0,00', '0,00'
+  ]);
+
   autoTable(doc, {
     startY: y,
-    head: [['CÓD', 'DESCRIÇÃO', 'NCM', 'CST', 'CFOP', 'UN', 'QTD', 'VL.UNIT', 'VL.TOT', 'BC ICMS', 'ICMS', '%']],
+    head: [['CÓD', 'DESCRIÇÃO', 'NCM', 'CST', 'CFOP', 'UN', 'QTD', 'VL.UNIT', 'VL.TOT', 'BC ICMS', 'VL.ICMS', '%ICMS']],
     body: tableData,
     theme: 'grid',
-    styles: {
-      fontSize: 6,
-      cellPadding: 2,
-      lineColor: [0, 0, 0],
-      lineWidth: 0.2,
-      textColor: [0, 0, 0],
-    },
-    headStyles: {
-      fillColor: [240, 240, 240],
-      textColor: [0, 0, 0],
-      fontStyle: 'bold',
-      fontSize: 5.5,
-      halign: 'center',
-    },
-    margin: { left: margin, right: margin },
+    styles: { fontSize: 5, cellPadding: 1, lineColor: [0, 0, 0], lineWidth: 0.1 },
+    headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+    margin: { left: margin, right: margin }
   });
-  
+
+  y = (doc as any).lastAutoTable.finalY + 5;
+
+  // 9. DADOS ADICIONAIS
+  doc.setFillColor(...lightGray);
+  doc.rect(margin, y, contentWidth, 5, 'F');
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DADOS ADICIONAIS', margin + 2, y + 3.5);
+  y += 5;
+
+  doc.rect(margin, y, contentWidth * 0.6, 20);
+  doc.setFontSize(4);
+  doc.setFont('helvetica', 'normal');
+  doc.text('INFORMAÇÕES COMPLEMENTARES', margin + 1, y + 3);
+  doc.setFontSize(6);
+  const obs = `Validade: ${quotation.validity} | Entrega: ${quotation.deliveryTime} | ${quotation.observations || ''}`;
+  const splitObs = doc.splitTextToSize(obs, (contentWidth * 0.6) - 4);
+  doc.text(splitObs, margin + 1, y + 7);
+
+  doc.rect(margin + contentWidth * 0.6, y, contentWidth * 0.4, 20);
+  doc.setFontSize(4);
+  doc.text('RESERVADO AO FISCO', margin + contentWidth * 0.6 + 1, y + 3);
+
   return doc;
 };
 
 export const downloadNFePDF = async (quotation: Quotation, nfeNumber: string) => {
   const doc = await generateNFePDF(quotation, nfeNumber);
-  doc.save(`DANFE_${nfeNumber}.pdf`);
+  doc.save(`danfe-${nfeNumber}.pdf`);
 };

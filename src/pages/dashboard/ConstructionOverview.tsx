@@ -10,14 +10,16 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, Search } from "lucide-react";
+import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, Search, Eye } from "lucide-react";
 import { useConstructionQuotations } from "@/hooks/useConstructionQuotations";
 import { useSales } from "@/hooks/useSales";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { toast } from "@/hooks/use-toast";
 import type { Quotation } from "@/types/quotation";
 import { downloadPDF, downloadPNG } from "@/utils/pdfGenerator";
+import { downloadNFePDF } from "@/utils/nfeGenerator";
 import SmartQuotationGenerator from "@/components/admin/SmartQuotationGenerator";
+import { QuotationPreview } from "@/components/QuotationPreview";
 
 function currencyToNumber(raw: string) {
   const cleaned = raw.replace(/[^0-9,.-]/g, "").replace(".", "").replace(",", ".");
@@ -75,6 +77,8 @@ export default function ConstructionOverview() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
 
   const totalQuoted = useMemo(() => quotations.reduce((acc, q) => acc + (q.total || 0), 0), [quotations]);
   const totalSales = useMemo(() => sales.reduce((acc, s) => acc + (s.value || 0), 0), [sales]);
@@ -144,6 +148,20 @@ export default function ConstructionOverview() {
   const handleDownloadPNG = async (q: typeof quotations[0]) => {
     try { await downloadPNG(toQuotationType(q)); toast({ title: "PNG gerado com sucesso" }); }
     catch { toast({ title: "Erro ao gerar PNG", variant: "destructive" }); }
+  };
+
+  const handleDownloadNFe = async (q: typeof quotations[0]) => {
+    try {
+      const adapted = toQuotationType(q);
+      const nfeNumber = adapted.number.slice(0, 9).padStart(9, "0");
+      await downloadNFePDF(adapted, nfeNumber);
+      toast({ title: "Nota Fiscal gerada com sucesso" });
+    } catch { toast({ title: "Erro ao gerar NFe", variant: "destructive" }); }
+  };
+
+  const handlePreview = (q: typeof quotations[0]) => {
+    setPreviewQuotation(toQuotationType(q));
+    setPreviewOpen(true);
   };
 
   return (
@@ -255,12 +273,18 @@ export default function ConstructionOverview() {
                                 Gerar
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="center">
+                            <DropdownMenuContent align="center" className="w-56">
+                              <DropdownMenuItem onClick={() => handlePreview(q)}>
+                                <Eye className="h-4 w-4 mr-2 text-primary" />Pré-visualizar
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadPDF(q)}>
-                                <FileText className="h-4 w-4 mr-2" />PDF
+                                <FileDown className="h-4 w-4 mr-2" />Baixar Orçamento PDF
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadPNG(q)}>
-                                <Image className="h-4 w-4 mr-2" />PNG
+                                <Image className="h-4 w-4 mr-2" />Baixar Orçamento PNG
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadNFe(q)}>
+                                <Receipt className="h-4 w-4 mr-2" />Baixar DANFE / NF-e
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -306,6 +330,15 @@ export default function ConstructionOverview() {
           <DialogFooter><Button variant="outline" onClick={() => setBulkDeleteOpen(false)}>Cancelar</Button><Button variant="destructive" onClick={handleBulkDelete}>Excluir todos</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <QuotationPreview 
+        quotation={previewQuotation}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        onDownloadPDF={() => previewQuotation && handleDownloadPDF(quotations.find(q => q.id === previewQuotation.id)!)}
+        onDownloadPNG={() => previewQuotation && handleDownloadPNG(quotations.find(q => q.id === previewQuotation.id)!)}
+        onDownloadDANFE={() => previewQuotation && handleDownloadNFe(quotations.find(q => q.id === previewQuotation.id)!)}
+      />
     </div>
   );
 }

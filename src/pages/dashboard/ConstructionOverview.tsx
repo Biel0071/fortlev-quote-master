@@ -273,12 +273,18 @@ export default function ConstructionOverview() {
                                 Gerar
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="center">
+                            <DropdownMenuContent align="center" className="w-56">
+                              <DropdownMenuItem onClick={() => handlePreview(q)}>
+                                <Eye className="h-4 w-4 mr-2 text-primary" />Pré-visualizar
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadPDF(q)}>
-                                <FileText className="h-4 w-4 mr-2" />PDF
+                                <FileDown className="h-4 w-4 mr-2" />Baixar Orçamento PDF
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadPNG(q)}>
-                                <Image className="h-4 w-4 mr-2" />PNG
+                                <Image className="h-4 w-4 mr-2" />Baixar Orçamento PNG
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadNFe(q)}>
+                                <Receipt className="h-4 w-4 mr-2" />Baixar DANFE / NF-e
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

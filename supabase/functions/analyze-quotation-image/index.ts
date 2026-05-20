@@ -63,12 +63,12 @@ serve(async (req) => {
     
     // Combine prompt instructions based on available inputs
     let instruction = "Analise as informações fornecidas para gerar o JSON do pedido.";
-    if (text && image) {
-      instruction = "Analise tanto o texto da conversa quanto a imagem do pedido em anexo. O texto pode conter dados do cliente e a imagem a lista de produtos, ou vice-versa. Combine todas as informações.";
+    if (text && allImages.length > 0) {
+      instruction = `Analise tanto o texto da conversa quanto as ${allImages.length} imagens do pedido em anexo. Combine todas as informações de todas as fontes.`;
     } else if (text) {
       instruction = "Analise este pedido/conversa e gere o JSON.";
-    } else if (image) {
-      instruction = "Analise esta imagem de pedido e gere o JSON.";
+    } else if (allImages.length > 0) {
+      instruction = `Analise estas ${allImages.length} imagens de pedido e gere o JSON.`;
     }
 
     if (text) {
@@ -77,11 +77,13 @@ serve(async (req) => {
       userContent.push({ type: "text", text: instruction });
     }
 
-    if (image) {
-      const base64Data = image.split(",")[1] || image;
-      userContent.push({
-        type: "image_url",
-        image_url: { url: `data:image/jpeg;base64,${base64Data}` },
+    if (allImages.length > 0) {
+      allImages.forEach((imgBase64: string) => {
+        const base64Data = imgBase64.split(",")[1] || imgBase64;
+        userContent.push({
+          type: "image_url",
+          image_url: { url: `data:image/jpeg;base64,${base64Data}` },
+        });
       });
     }
 

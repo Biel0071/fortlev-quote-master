@@ -63,14 +63,24 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
   }, [address, factories]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-        toast({ title: "Imagem carregada", description: "A imagem está pronta para análise." });
-      };
-      reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (files) {
+      const remainingSlots = 5 - selectedImages.length;
+      const filesToProcess = Array.from(files).slice(0, remainingSlots);
+
+      if (filesToProcess.length === 0 && files.length > 0) {
+        toast({ title: "Limite atingido", description: "Você só pode enviar até 5 imagens.", variant: "destructive" });
+        return;
+      }
+
+      filesToProcess.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setSelectedImages(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+      toast({ title: "Imagens carregadas", description: `${filesToProcess.length} imagens adicionadas.` });
     }
   };
 
@@ -78,12 +88,16 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf("image") !== -1) {
+        if (selectedImages.length >= 5) {
+          toast({ title: "Limite atingido", description: "Máximo de 5 imagens permitido.", variant: "destructive" });
+          return;
+        }
         const file = items[i].getAsFile();
         if (file) {
           const reader = new FileReader();
           reader.onloadend = () => {
-            setSelectedImage(reader.result as string);
-            toast({ title: "Imagem colada", description: "Imagem do clipboard carregada para análise." });
+            setSelectedImages(prev => [...prev, reader.result as string]);
+            toast({ title: "Imagem colada", description: "Imagem adicionada para análise." });
           };
           reader.readAsDataURL(file);
         }

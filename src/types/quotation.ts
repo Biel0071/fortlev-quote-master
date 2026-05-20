@@ -60,6 +60,29 @@ export interface QuotationBranding {
   brandText?: string;
 }
 
+export type FiscalStatus = 
+  | 'autorizada'
+  | 'autorizada_fora_prazo'
+  | 'em_processamento'
+  | 'cancelada'
+  | 'rejeitada'
+  | 'indisponivel'
+  | 'pre_visualizacao_sem_validade_fiscal';
+
+export interface FiscalInfo {
+  status: FiscalStatus;
+  accessKey?: string;
+  invoiceNumber?: string;
+  series?: string;
+  protocol?: string;
+  emissionAt?: Date;
+  receiptAt?: Date;
+  cStat?: number;
+  xmlContent?: string;
+  xmlHash?: string;
+  portalToken?: string;
+}
+
 export interface Quotation {
   id: string;
   companyId?: string;
@@ -82,5 +105,7 @@ export interface Quotation {
   createdAt: Date;
   status: 'pending' | 'sent' | 'approved' | 'rejected';
   branding?: QuotationBranding;
+  fiscal?: FiscalInfo;
 }
+
 

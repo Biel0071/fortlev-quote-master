@@ -1,4 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import '@/styles/danfe-template.css';
 import { Button } from '@/components/ui/button';
 import { Quotation } from '@/types/quotation';
 import { formatCurrency } from '@/utils/formatters';

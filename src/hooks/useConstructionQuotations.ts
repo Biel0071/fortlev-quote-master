@@ -21,6 +21,19 @@ function rowToQuotation(row: any): ConstructionQuotation {
     showClientData: row.show_client_data,
     createdAt: new Date(row.created_at),
     status: row.status as ConstructionQuotation['status'],
+    fiscal: row.fiscal_status ? {
+      status: row.fiscal_status,
+      accessKey: row.access_key,
+      invoiceNumber: row.invoice_number,
+      series: row.series,
+      protocol: row.protocol,
+      emissionAt: row.emission_at ? new Date(row.emission_at) : undefined,
+      receiptAt: row.receipt_at ? new Date(row.receipt_at) : undefined,
+      cStat: row.c_stat,
+      xmlContent: row.xml_content,
+      xmlHash: row.xml_hash,
+      portalToken: row.portal_token
+    } : undefined
   };
 }
 
@@ -42,6 +55,17 @@ function quotationToRow(q: ConstructionQuotation) {
     show_client_data: q.showClientData,
     status: q.status,
     created_at: q.createdAt instanceof Date ? q.createdAt.toISOString() : q.createdAt,
+    fiscal_status: q.fiscal?.status,
+    access_key: q.fiscal?.accessKey,
+    invoice_number: q.fiscal?.invoiceNumber,
+    series: q.fiscal?.series,
+    protocol: q.fiscal?.protocol,
+    emission_at: q.fiscal?.emissionAt instanceof Date ? q.fiscal.emissionAt.toISOString() : q.fiscal?.emissionAt,
+    receipt_at: q.fiscal?.receiptAt instanceof Date ? q.fiscal.receiptAt.toISOString() : q.fiscal?.receiptAt,
+    c_stat: q.fiscal?.cStat,
+    xml_content: q.fiscal?.xmlContent,
+    xml_hash: q.fiscal?.xmlHash,
+    portal_token: q.fiscal?.portalToken
   };
 }
 
@@ -111,6 +135,7 @@ export function useConstructionQuotations() {
       number: generateQuotationNumber(),
       createdAt: new Date(),
       status: 'pending',
+      fiscal: undefined,
     };
     await saveQuotation(newQ);
     toast({ title: 'Orçamento duplicado', description: `Novo orçamento ${newQ.number} criado` });

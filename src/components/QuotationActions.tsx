@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PaymentConditions } from '@/types/quotation';
-import { FileText, Send, Calendar, MessageSquare, CreditCard, Truck, Image, Percent, DollarSign, Eye } from 'lucide-react';
+import { FileText, Send, Calendar, MessageSquare, CreditCard, Truck, Image, Percent, DollarSign, Eye, Receipt } from 'lucide-react';
 import { useState } from 'react';
 
 interface QuotationActionsProps {

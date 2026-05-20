@@ -59,9 +59,23 @@ serve(async (req) => {
     ];
 
     const userContent: any[] = [];
-    if (text) {
-      userContent.push({ type: "text", text: `Analise este pedido/conversa e gere o JSON: ${text}` });
+    
+    // Combine prompt instructions based on available inputs
+    let instruction = "Analise as informações fornecidas para gerar o JSON do pedido.";
+    if (text && image) {
+      instruction = "Analise tanto o texto da conversa quanto a imagem do pedido em anexo. O texto pode conter dados do cliente e a imagem a lista de produtos, ou vice-versa. Combine todas as informações.";
+    } else if (text) {
+      instruction = "Analise este pedido/conversa e gere o JSON.";
+    } else if (image) {
+      instruction = "Analise esta imagem de pedido e gere o JSON.";
     }
+
+    if (text) {
+      userContent.push({ type: "text", text: `${instruction}\n\nTexto/Conversa: ${text}` });
+    } else {
+      userContent.push({ type: "text", text: instruction });
+    }
+
     if (image) {
       const base64Data = image.split(",")[1] || image;
       userContent.push({

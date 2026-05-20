@@ -3,7 +3,9 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Quotation } from "@/types/quotation";
 import { FiscalStatusBadge } from "@/components/FiscalStatusBadge";
-import { Button } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency, formatDate } from "@/utils/formatters";
@@ -71,7 +73,9 @@ export const CustomerInvoicePortal = () => {
           return;
         }
 
-        // Map data to Quotation type (reusing logic from useQuotations hook)
+        if (!data) return;
+
+        // Map data to Quotation type
         const mapped: Quotation = {
           id: data.id,
           number: data.number,
@@ -84,13 +88,14 @@ export const CustomerInvoicePortal = () => {
           total: Number(data.total),
           validity: data.validity,
           observations: data.observations,
-          paymentConditions: (data.payment_conditions_json || data.payment_method) as any,
-          deliveryTime: data.delivery_time || data.delivery_date,
+          paymentConditions: (data.payment_conditions_json || { installments: (data as any).payment_method || "" }) as any,
+          deliveryTime: data.delivery_time || (data as any).delivery_date || "",
           showClientData: data.show_client_data,
           createdAt: new Date(data.created_at),
           status: data.status as any,
           fiscal: {
-            status: data.fiscal_status,
+            status: data.fiscal_status as any,
+
             accessKey: data.access_key,
             invoiceNumber: data.invoice_number,
             series: data.series,

@@ -191,12 +191,12 @@ const QuotationsIndex = () => {
   const handleGenerateDANFE = async () => {
     if (!validateForm()) return;
     const q = createQuotationObject();
-    const nfeNumber = q.number.slice(0, 9).padStart(9, "0");
-    await downloadNFePDF(q, nfeNumber);
+    await downloadNFePDF(q);
     if (editingQuotationId) updateQuotation(editingQuotationId, q); else saveQuotation(q);
     toast({ title: 'DANFE gerado!', description: `Orçamento ${q.number} salvo` });
     resetForm();
   };
+
 
   const handleSendWhatsApp = () => {
     if (!validateForm()) return;
@@ -316,7 +316,7 @@ const QuotationsIndex = () => {
       <QuotationPreview
         quotation={previewQuotation} open={previewOpen} onOpenChange={setPreviewOpen}
         onDownloadPDF={handlePreviewDownloadPDF} onDownloadPNG={handlePreviewDownloadPNG}
-        onDownloadDANFE={() => previewQuotation && downloadNFePDF(previewQuotation, previewQuotation.number.slice(0, 9).padStart(9, "0"))}
+        onDownloadDANFE={() => previewQuotation && downloadNFePDF(previewQuotation)}
       />
 
       <footer className="text-center py-6 text-sm text-muted-foreground border-t border-border mt-12">

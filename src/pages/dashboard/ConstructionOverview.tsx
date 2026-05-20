@@ -20,6 +20,10 @@ import { downloadPDF, downloadPNG } from "@/utils/pdfGenerator";
 import { downloadNFePDF } from "@/utils/nfeGenerator";
 import SmartQuotationGenerator from "@/components/admin/SmartQuotationGenerator";
 import { QuotationPreview } from "@/components/QuotationPreview";
+import { FiscalStatusBadge } from "@/components/FiscalStatusBadge";
+import { authorizeFiscalQuotation } from "@/utils/fiscalService";
+import { ShieldCheck } from "lucide-react";
+
 
 function currencyToNumber(raw: string) {
   const cleaned = raw.replace(/[^0-9,.-]/g, "").replace(".", "").replace(",", ".");
@@ -62,12 +66,14 @@ function toQuotationType(q: ReturnType<typeof useConstructionQuotations>["quotat
     createdAt: q.createdAt,
     status: q.status as Quotation["status"],
     branding: { showBrand: false },
+    fiscal: q.fiscal
   };
 }
 
+
 export default function ConstructionOverview() {
   const navigate = useNavigate();
-  const { quotations, deleteQuotation, duplicateQuotation } = useConstructionQuotations();
+  const { quotations, deleteQuotation, duplicateQuotation, refetchQuotations } = useConstructionQuotations();
   const { sales, salesByQuotationId, createSale } = useSales("construcao");
 
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
@@ -154,12 +160,32 @@ export default function ConstructionOverview() {
     try {
       const adapted = toQuotationType(q);
       const nfeNumber = adapted.number.slice(0, 9).padStart(9, "0");
-      await downloadNFePDF(adapted, nfeNumber);
+      await downloadNFePDF(adapted);
       toast({ title: "Nota Fiscal gerada com sucesso" });
     } catch { toast({ title: "Erro ao gerar NFe", variant: "destructive" }); }
   };
 
+  const handleAuthorizeFiscal = async (q: any) => {
+    try {
+      const adapted = toQuotationType(q);
+      const updated = await authorizeFiscalQuotation(adapted, false);
+      toast({ 
+        title: "Nota Autorizada", 
+        description: `NF-e ${updated.fiscal?.invoiceNumber} emitida com sucesso.` 
+      });
+      refetchQuotations();
+
+    } catch (error: any) {
+      toast({ 
+        title: "Erro na Autorização", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  };
+
   const handlePreview = (q: typeof quotations[0]) => {
+
     setPreviewQuotation(toQuotationType(q));
     setPreviewOpen(true);
   };
@@ -263,17 +289,28 @@ export default function ConstructionOverview() {
                         <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(q.createdAt))}</TableCell>
                         <TableCell className="text-right font-semibold">{formatCurrency(q.total)}</TableCell>
                         <TableCell>
-                          {sold ? <Badge>Vendido</Badge> : <Button variant="outline" size="sm" onClick={() => openSellDialog(q.id, q.total)}>Registrar</Button>}
+                          <div className="flex flex-col gap-1">
+                            {sold ? <Badge variant="secondary" className="w-fit">Vendido</Badge> : <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => openSellDialog(q.id, q.total)}>Vender</Button>}
+                            <FiscalStatusBadge status={q.fiscal?.status} className="text-[9px] py-0 px-1.5" />
+                          </div>
                         </TableCell>
+
                         <TableCell className="text-center">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="outline" size="sm" className="gap-1.5">
                                 <FileDown className="h-3.5 w-3.5" />
-                                Gerar
+                                NF-e / Docs
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="center" className="w-56">
+                            <DropdownMenuContent align="end" className="w-56">
+                              {!q.fiscal?.accessKey && (
+                                <DropdownMenuItem onClick={() => handleAuthorizeFiscal(q)} className="text-blue-600 font-semibold">
+                                  <ShieldCheck className="h-4 w-4 mr-2" />
+                                  Autorizar NF-e (Oficial)
+                                </DropdownMenuItem>
+                              )}
+
                               <DropdownMenuItem onClick={() => handlePreview(q)}>
                                 <Eye className="h-4 w-4 mr-2 text-primary" />Pré-visualizar
                               </DropdownMenuItem>

@@ -330,7 +330,7 @@ export const Dashboard = ({ quotations, onDelete, onEdit, onSave, onDuplicate }:
     if (!selectedQuotation || !nfeNumber) return;
 
     // Generate and download NFe PDF
-    await downloadNFePDF(selectedQuotation, nfeNumber);
+    await downloadNFePDF(selectedQuotation);
     
     toast({
       title: 'NFe Gerada com Sucesso!',

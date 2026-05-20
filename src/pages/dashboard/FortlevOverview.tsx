@@ -20,7 +20,11 @@ import { downloadPDF, downloadPNG } from "@/utils/pdfGenerator";
 import { downloadNFePDF } from "@/utils/nfeGenerator";
 import { toast } from "@/hooks/use-toast";
 import { QuotationPreview } from "@/components/QuotationPreview";
-import { Quotation } from "@/types/quotation";
+import { Quotation, FiscalStatus } from "@/types/quotation";
+import { FiscalStatusBadge } from "@/components/FiscalStatusBadge";
+import { authorizeFiscalQuotation } from "@/utils/fiscalService";
+import { ShieldCheck } from "lucide-react";
+
 
 function currencyToNumber(raw: string) {
   const cleaned = raw.replace(/[^0-9,.-]/g, "").replace(".", "").replace(",", ".");
@@ -30,7 +34,7 @@ function currencyToNumber(raw: string) {
 
 export default function FortlevOverview() {
   const navigate = useNavigate();
-  const { quotations, deleteQuotation, duplicateQuotation } = useQuotations();
+  const { quotations, deleteQuotation, duplicateQuotation, refetchQuotations } = useQuotations();
   const { sales, salesByQuotationId, createSale } = useSales("fortlev");
 
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
@@ -151,7 +155,7 @@ export default function FortlevOverview() {
   const handleDownloadNFe = async (q: typeof quotations[0]) => {
     try {
       const nfeNumber = q.number.slice(0, 9).padStart(9, "0");
-      await downloadNFePDF(q, nfeNumber);
+      await downloadNFePDF(q);
       toast({ title: "Nota Fiscal gerada com sucesso" });
     } catch { toast({ title: "Erro ao gerar NFe", variant: "destructive" }); }
   };
@@ -160,6 +164,25 @@ export default function FortlevOverview() {
     setPreviewQuotation(q);
     setPreviewOpen(true);
   };
+
+  const handleAuthorizeFiscal = async (q: Quotation) => {
+    try {
+      const updated = await authorizeFiscalQuotation(q, true);
+      toast({ 
+        title: "Nota Autorizada", 
+        description: `NF-e ${updated.fiscal?.invoiceNumber} emitida com sucesso.` 
+      });
+      refetchQuotations();
+
+    } catch (error: any) {
+      toast({ 
+        title: "Erro na Autorização", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  };
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
@@ -355,21 +378,32 @@ export default function FortlevOverview() {
                         <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(q.createdAt))}</TableCell>
                         <TableCell className="text-right font-semibold">{formatCurrency(q.total)}</TableCell>
                         <TableCell>
-                          {sold ? (
-                            <Badge>Vendido</Badge>
-                          ) : (
-                            <Button variant="outline" size="sm" onClick={() => openSellDialog(q.id, q.total)}>Registrar</Button>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {sold ? (
+                              <Badge variant="secondary" className="w-fit">Vendido</Badge>
+                            ) : (
+                              <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => openSellDialog(q.id, q.total)}>Vender</Button>
+                            )}
+                            <FiscalStatusBadge status={q.fiscal?.status} className="text-[9px] py-0 px-1.5" />
+                          </div>
                         </TableCell>
+
                         <TableCell className="text-center">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="outline" size="sm" className="gap-1.5">
                                 <FileDown className="h-3.5 w-3.5" />
-                                Gerar
+                                NF-e / Docs
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="center" className="w-56">
+                            <DropdownMenuContent align="end" className="w-56">
+                              {!q.fiscal?.accessKey && (
+                                <DropdownMenuItem onClick={() => handleAuthorizeFiscal(q)} className="text-blue-600 font-semibold">
+                                  <ShieldCheck className="h-4 w-4 mr-2" />
+                                  Autorizar NF-e (Oficial)
+                                </DropdownMenuItem>
+                              )}
+
                                <DropdownMenuItem onClick={() => handlePreview(q as any)}>
                                 <Eye className="h-4 w-4 mr-2 text-primary" />Pré-visualizar
                               </DropdownMenuItem>

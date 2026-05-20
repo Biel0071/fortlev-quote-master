@@ -81,15 +81,13 @@ export const generateNFePDF = async (quotation: Quotation, nfeNumber: string): P
   const margin = 10;
   const contentWidth = pageWidth - (margin * 2);
   
-  // Professional color palette
-  const primaryBlue = [0, 56, 109] as const;      // Fortlev #00386D
-  const darkBlue = [0, 40, 80] as const;          // Darker blue
-  const lightBlue = [230, 240, 250] as const;     // Light blue background
-  const white = [255, 255, 255] as const;
+  // Professional black and white palette for DANFE
+  const primaryBlack = [0, 0, 0] as const;
   const darkGray = [50, 50, 50] as const;
-  const mediumGray = [120, 120, 120] as const;
-  const lightGray = [245, 247, 250] as const;
-  const borderGray = [200, 205, 210] as const;
+  const mediumGray = [100, 100, 100] as const;
+  const lightGray = [240, 240, 240] as const;
+  const borderGray = [0, 0, 0] as const;
+  const white = [255, 255, 255] as const;
   
   const accessKey = generateAccessKey();
   const protocolNumber = Math.floor(Math.random() * 999999999999).toString().padStart(15, '0');

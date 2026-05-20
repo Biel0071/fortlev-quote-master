@@ -31,8 +31,7 @@ const QuotationsIndex = () => {
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
   const editLoaded = useRef(false);
   const [factories, setFactories] = useState<any[]>([]);
-  const [isRouting, setIsRouting] = useState(false);
-
+  
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: '', cnpj: '', address: '', phone: '', email: '', website: '', sellerName: '', sellerRole: 'Gerente de Vendas',
   });
@@ -125,109 +124,21 @@ const QuotationsIndex = () => {
     toast({ title: 'Modo de edição', description: `Editando orçamento ${source.number}` });
   }, [editId, quotations, loading]);
 
-  // Load smart quotation data
-  useEffect(() => {
-    const rawItems = sessionStorage.getItem("smart_quotation_items");
-    const rawFactory = sessionStorage.getItem("smart_quotation_factory");
-    const rawCustomer = sessionStorage.getItem("smart_quotation_customer");
-
-    if (rawItems) {
-      try {
-        const parsedItems = JSON.parse(rawItems);
-        const quotationItems = parsedItems.map((item: any) => ({
-          id: crypto.randomUUID(),
-          product: {
-            id: 'manual-' + Math.random().toString(36).substr(2, 9),
-            name: item.productName || item.name,
-            capacity: 0,
-            unit: item.unit || 'un',
-            height: '',
-            diameter: '',
-            basePrice: item.price || item.unitPrice || 0,
-            type: 'caixa' as const
-          },
-          quantity: item.quantity,
-          unitPrice: item.price || item.unitPrice || 0,
-          subtotal: (item.price || item.unitPrice || 0) * item.quantity
-        }));
-        setItems(quotationItems);
-        sessionStorage.removeItem("smart_quotation_items");
-      } catch (e) {
-        console.error("Error parsing smart items", e);
-      }
-    }
-
-    if (rawFactory) {
-      try {
-        const factory = JSON.parse(rawFactory);
-        setCompanyInfo(prev => ({
-          ...prev,
-          name: factory.name,
-          cnpj: factory.cnpj,
-          address: factory.address,
-          phone: factory.phone,
-          email: factory.email,
-          website: factory.website || '',
-        }));
-        sessionStorage.removeItem("smart_quotation_factory");
-      } catch (e) {
-        console.error("Error parsing smart factory", e);
-      }
-    }
-
-    if (rawCustomer) {
-      try {
-        const customerData = JSON.parse(rawCustomer);
-        setCustomer(prev => ({
-          ...prev,
-          name: customerData.name || prev.name,
-          cnpj: customerData.document || prev.cnpj,
-          email: customerData.email || prev.email,
-          phone: customerData.phone || prev.phone,
-          address: customerData.address || prev.address,
-        }));
-        
-        if (customerData.observations) {
-          setObservations(prev => prev ? `${prev}\n${customerData.observations}` : customerData.observations);
-        }
-        
-        if (customerData.validity) {
-          setValidity(customerData.validity);
-        }
-        
-        if (customerData.deliveryTime) {
-          setDeliveryTime(customerData.deliveryTime);
-        }
-
-        if (customerData.freight !== undefined && customerData.freight !== null) {
-          setFreight(customerData.freight);
-        }
-
-        if (customerData.sellerName) {
-          setCompanyInfo(prev => ({ ...prev, sellerName: customerData.sellerName }));
-        }
-
-        sessionStorage.removeItem("smart_quotation_customer");
-      } catch (e) {
-        console.error("Error parsing smart customer", e);
-      }
-    }
-  }, []);
-
   const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
   const total = subtotal - discount + freight;
 
-  const getTokenContext = () => {
-    if (!publicToken) return null;
-    const raw = localStorage.getItem('public_quotation_token_ctx');
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw) as { token?: string; tokenId?: string; storeId?: string };
-      if (parsed?.token && parsed.token !== publicToken) return null;
-      return parsed;
-    } catch {
-      return null;
-    }
+  const handleAddItem = (item: QuotationItem) => {
+    setItems(prev => [...prev, item]);
+    toast({ title: 'Item adicionado', description: `${item.product.name} adicionado` });
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+    toast({ title: 'Item removido', variant: 'destructive' });
+  };
+
+  const handleUpdateQuantity = (id: string, quantity: number) => {
+    setItems(prev => prev.map(item => item.id === id ? { ...item, quantity, subtotal: item.unitPrice * quantity } : item));
   };
 
   const createQuotationObject = (): Quotation => ({
@@ -387,7 +298,7 @@ const QuotationsIndex = () => {
         </div>
 
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
-          <ItemsList items={items} onRemoveItem={handleRemoveItem} onUpdateQuantity={handleUpdateQuantity} />
+          <ItemsList items={items} onRemoveItem={handleRemoveItem} onUpdateQuantity={handleUpdateQuantity} total={total} />
         </div>
 
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">

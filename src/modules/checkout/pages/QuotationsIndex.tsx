@@ -408,9 +408,13 @@ const QuotationsIndex = () => {
   const handlePreviewDownloadPNG = async () => {
     if (!previewQuotation) return;
     if (editingQuotationId) updateQuotation(editingQuotationId, previewQuotation); else saveQuotation(previewQuotation);
-    await downloadPNG(previewQuotation);
-    resetForm();
-    setPreviewOpen(false);
+    
+    // Give time for DOM to be stable if just opened, though it's already visible in preview
+    setTimeout(async () => {
+      await downloadPNG(previewQuotation);
+      resetForm();
+      setPreviewOpen(false);
+    }, 100);
   };
 
   const resetForm = () => {

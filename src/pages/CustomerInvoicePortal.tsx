@@ -75,23 +75,26 @@ export const CustomerInvoicePortal = () => {
 
         if (!data) return;
 
+        const row = data as any;
+
         // Map data to Quotation type
         const mapped: Quotation = {
-          id: data.id,
-          number: data.number,
-          customer: data.customer_json as any,
-          companyInfo: data.company_info_json as any,
-          items: data.items_json as any,
-          subtotal: Number(data.subtotal),
-          discount: Number(data.discount),
-          freight: Number(data.freight),
-          total: Number(data.total),
-          validity: data.validity,
-          observations: data.observations,
-          paymentConditions: (data.payment_conditions_json || { installments: (data as any).payment_method || "" }) as any,
-          deliveryTime: data.delivery_time || (data as any).delivery_date || "",
-          showClientData: data.show_client_data,
-          createdAt: new Date(data.created_at),
+          id: row.id,
+          number: row.number,
+          customer: row.customer_json as any,
+          companyInfo: row.company_info_json as any,
+          items: row.items_json as any,
+          subtotal: Number(row.subtotal),
+          discount: Number(row.discount),
+          freight: Number(row.freight),
+          total: Number(row.total),
+          validity: row.validity,
+          observations: row.observations,
+          paymentConditions: (row.payment_conditions_json || { installments: row.payment_method || "" }) as any,
+          deliveryTime: row.delivery_time || row.delivery_date || "",
+          showClientData: row.show_client_data,
+          createdAt: new Date(row.created_at),
+
           status: data.status as any,
           fiscal: {
             status: data.fiscal_status as any,

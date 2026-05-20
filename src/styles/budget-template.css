@@ -1,0 +1,59 @@
+/* Budget Template Styles */
+.budget-container {
+  background-color: #ffffff !important;
+  color: #1e1e1e !important;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  padding: 0 !important;
+}
+
+.budget-header-bar {
+  background-color: #004a97 !important; /* Fortlev Blue */
+  height: 12px;
+  width: 100%;
+}
+
+.budget-title-section {
+  text-align: center;
+  padding: 20px 0;
+  color: #004a97 !important;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+
+.budget-blue-text {
+  color: #004a97 !important;
+}
+
+.budget-red-text {
+  color: #e71212 !important; /* Fortlev Red */
+}
+
+.budget-table-head {
+  background-color: #004a97 !important;
+  color: #ffffff !important;
+  font-weight: bold;
+}
+
+.budget-section-title {
+  color: #004a97 !important;
+  border-bottom: 2px solid #004a97 !important;
+  font-weight: bold;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.budget-box {
+  border: 1px solid #004a97 !important;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.budget-totals-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+}

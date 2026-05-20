@@ -309,7 +309,7 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
 
 export const downloadPDF = (quotation: Quotation) => {
   const doc = generatePDF(quotation);
-  doc.save(`Orcamento_${quotation.number}_${quotation.customer.name.replace(/\s/g, '_')}.pdf`);
+  doc.save(`orcamento-${quotation.number}.pdf`);
 };
 
 export const downloadPNG = async (quotation: Quotation) => {
@@ -428,7 +428,7 @@ export const downloadPNG = async (quotation: Quotation) => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `Orcamento_${quotation.number}.png`;
+      link.download = `orcamento-${quotation.number}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

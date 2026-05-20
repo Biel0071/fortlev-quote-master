@@ -350,5 +350,5 @@ export const generateNFePDF = async (quotation: Quotation, nfeNumber: string): P
 
 export const downloadNFePDF = async (quotation: Quotation, nfeNumber: string) => {
   const doc = await generateNFePDF(quotation, nfeNumber);
-  doc.save(`DANFE_${nfeNumber}.pdf`);
+  doc.save(`danfe-${nfeNumber}.pdf`);
 };

@@ -313,19 +313,16 @@ export const downloadPDF = (quotation: Quotation) => {
 };
 
 export const downloadPNG = async (quotation: Quotation) => {
-  // Use html2canvas to capture the exact DOM structure from QuotationPreview
-  // We need to wait for the dialog to be open and the element to be present
   const element = document.querySelector('.danfe-container');
   if (!element) {
-    console.warn("DANFE container not found for PNG generation, using canvas fallback");
-    generateCanvasPNG(quotation);
+    console.warn("DANFE container not found for PNG generation");
     return;
   }
 
   try {
     const html2canvas = (await import('html2canvas')).default;
     const canvas = await html2canvas(element as HTMLElement, {
-      scale: 2, // Higher quality
+      scale: 3,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
@@ -337,9 +334,9 @@ export const downloadPNG = async (quotation: Quotation) => {
     link.click();
   } catch (error) {
     console.error("Error generating PNG via html2canvas:", error);
-    generateCanvasPNG(quotation);
   }
 };
+
 
 const generateCanvasPNG = (quotation: Quotation) => {
   const canvas = document.createElement('canvas');

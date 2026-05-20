@@ -122,6 +122,7 @@ export const generateNFePDF = async (quotation: Quotation, nfeNumber: string): P
   // DANFE Title (Center)
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...primaryBlack);
   doc.text('DANFE', pageWidth / 2, y + 12, { align: 'center' });
   
   doc.setFontSize(6);

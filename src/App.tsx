@@ -29,6 +29,8 @@ const PublicQuotationAccess = lazy(() => import("@/pages/store/PublicQuotationAc
 const QuotationsIndex = lazy(() => import("@/modules/checkout/pages/QuotationsIndex"));
 const Construction = lazy(() => import("@/modules/checkout/pages/Construction"));
 const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
+const CustomerInvoicePortal = lazy(() => import("@/pages/CustomerInvoicePortal"));
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -93,6 +95,8 @@ const App = () => (
               <Route path="/orcamentos" element={<QuotationsIndex />} />
               <Route path="/orcamento/:slug/:token" element={<PublicQuotationAccess />} />
               <Route path="/orcamento-publico" element={<PublicQuotationAccess />} />
+              <Route path="/nota/:accessKey" element={<CustomerInvoicePortal />} />
+
 
               <Route path="/dashboard" element={<Navigate to="/admin/orcamentos" replace />} />
               <Route path="/dashboard/*" element={<Navigate to="/admin/orcamentos" replace />} />

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Quotation } from '@/types/quotation';
 import { formatCurrency } from '@/utils/formatters';
 import { getBrazilDocumentLabel } from '@/utils/formatters';
-import { FileText, Image, X } from 'lucide-react';
+import { FileText, Image, X, FileDown, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';

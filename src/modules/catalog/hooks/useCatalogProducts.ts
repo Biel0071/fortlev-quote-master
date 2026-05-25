@@ -13,6 +13,8 @@ export function useFortlevCatalogProducts() {
     let cancelled = false;
 
     async function load() {
+      try {
+
       const { data, error } = await cloud
         .from("fortlev_catalog_products")
         .select("id, legacy_id, name, capacity, unit, height, diameter, base_price, type")
@@ -38,7 +40,12 @@ export function useFortlevCatalogProducts() {
       }));
 
       setDbProducts(mapped);
+      } catch (err) {
+        console.error("Error loading Fortlev products:", err);
+        if (!cancelled) setDbProducts([]);
+      }
     }
+
 
     load();
     return () => {
@@ -104,6 +111,8 @@ export function useConstructionCatalogProducts() {
     let cancelled = false;
 
     async function load() {
+      try {
+
       // Fetch from construction_catalog_products
       const { data: constructionData } = await cloud
         .from("construction_catalog_products")
@@ -141,7 +150,12 @@ export function useConstructionCatalogProducts() {
       [...products1, ...products2].forEach(p => mergedMap.set(p.id, p));
       
       setDbProducts(Array.from(mergedMap.values()));
+      } catch (err) {
+        console.error("Error loading construction products:", err);
+        if (!cancelled) setDbProducts([]);
+      }
     }
+
 
     load();
     return () => {

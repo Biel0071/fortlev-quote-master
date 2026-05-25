@@ -17,9 +17,10 @@ export function useFortlevCatalogProducts() {
 
       const { data, error } = await cloud
         .from("fortlev_catalog_products")
-        .select("id, legacy_id, name, capacity, unit, height, diameter, base_price, type")
+        .select("*")
         .eq("active", true)
         .order("capacity", { ascending: true });
+
 
 
 

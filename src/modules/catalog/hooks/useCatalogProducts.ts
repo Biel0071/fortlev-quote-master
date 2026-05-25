@@ -119,9 +119,10 @@ export function useConstructionCatalogProducts() {
       // Fetch from construction_catalog_products
       const { data: constructionData } = await cloud
         .from("construction_catalog_products")
-        .select("id, legacy_id, name, unit, base_price, category")
+        .select("*")
         .eq("active", true)
         .order("name", { ascending: true });
+
 
       // Fetch from store_products (general materials)
       const { data: storeData } = await cloud

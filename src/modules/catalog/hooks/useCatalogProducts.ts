@@ -13,11 +13,16 @@ export function useFortlevCatalogProducts() {
     let cancelled = false;
 
     async function load() {
+      try {
+
       const { data, error } = await cloud
         .from("fortlev_catalog_products")
-        .select("id, legacy_id, name, capacity, unit, height, diameter, base_price, type")
+        .select("*")
         .eq("active", true)
         .order("capacity", { ascending: true });
+
+
+
 
       if (cancelled) return;
 
@@ -38,7 +43,12 @@ export function useFortlevCatalogProducts() {
       }));
 
       setDbProducts(mapped);
+      } catch (err) {
+        console.error("Error loading Fortlev products:", err);
+        if (!cancelled) setDbProducts([]);
+      }
     }
+
 
     load();
     return () => {
@@ -55,11 +65,25 @@ export function useFortlevCatalogProducts() {
   }, []);
 
   return useMemo(() => {
-    // Prefer DB products when available; otherwise fallback to legacy.
-    const base = (dbProducts && dbProducts.length > 0 ? dbProducts : legacyFortlevProducts) ?? [];
+    // Use legacy products as base, and override with DB products if they exist
+    const base = legacyFortlevProducts ?? [];
+    const dbMap = new Map<string, Product>();
+    if (dbProducts && dbProducts.length > 0) {
+      dbProducts.forEach(p => dbMap.set(p.id, p));
+    }
+
     const byId = new Map<string, Product>();
-    [...custom, ...base].forEach((p) => byId.set(p.id, p));
+    // Add legacy first
+    base.forEach(p => byId.set(p.id, p));
+    // Add/Override with DB
+    if (dbProducts) {
+      dbProducts.forEach(p => byId.set(p.id, p));
+    }
+    // Add custom
+    custom.forEach((p) => byId.set(p.id, p));
+    
     return Array.from(byId.values());
+
   }, [custom, dbProducts]);
 }
 
@@ -90,19 +114,23 @@ export function useConstructionCatalogProducts() {
     let cancelled = false;
 
     async function load() {
+      try {
+
       // Fetch from construction_catalog_products
       const { data: constructionData } = await cloud
         .from("construction_catalog_products")
-        .select("id, legacy_id, name, unit, base_price, category")
+        .select("*")
         .eq("active", true)
         .order("name", { ascending: true });
+
 
       // Fetch from store_products (general materials)
       const { data: storeData } = await cloud
         .from("store_products")
-        .select("id, name, unit, price, category")
+        .select("*")
         .eq("status", "published")
         .order("name", { ascending: true });
+
 
       if (cancelled) return;
 
@@ -127,7 +155,12 @@ export function useConstructionCatalogProducts() {
       [...products1, ...products2].forEach(p => mergedMap.set(p.id, p));
       
       setDbProducts(Array.from(mergedMap.values()));
+      } catch (err) {
+        console.error("Error loading construction products:", err);
+        if (!cancelled) setDbProducts([]);
+      }
     }
+
 
     load();
     return () => {
@@ -144,9 +177,18 @@ export function useConstructionCatalogProducts() {
   }, []);
 
   return useMemo(() => {
-    const base = (dbProducts && dbProducts.length > 0 ? dbProducts : legacyConstructionProducts) ?? [];
+    const base = legacyConstructionProducts ?? [];
     const byId = new Map<string, ConstructionProduct>();
-    [...custom, ...base].forEach((p) => byId.set(p.id, p));
+    // Add legacy first
+    base.forEach(p => byId.set(p.id, p));
+    // Add/Override with DB
+    if (dbProducts) {
+      dbProducts.forEach(p => byId.set(p.id, p));
+    }
+    // Add custom
+    custom.forEach((p) => byId.set(p.id, p));
+    
     return Array.from(byId.values());
+
   }, [custom, dbProducts]);
 }

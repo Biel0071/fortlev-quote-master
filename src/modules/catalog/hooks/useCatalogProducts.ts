@@ -127,9 +127,10 @@ export function useConstructionCatalogProducts() {
       // Fetch from store_products (general materials)
       const { data: storeData } = await cloud
         .from("store_products")
-        .select("id, name, unit, price, category")
+        .select("*")
         .eq("status", "published")
         .order("name", { ascending: true });
+
 
       if (cancelled) return;
 

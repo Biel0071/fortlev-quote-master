@@ -10,20 +10,21 @@ const INDUSTRIAL_MULTIPLIER = 1.12;
 const GREEN_MULTIPLIER = 1.10;
 
 // Preços base conhecidos (Caixa d'Água de Polietileno padrão):
-// 100L = R$ 89,00 (estimado)
-// 150L = R$ 115,00 (estimado)
-// 250L = R$ 149,00 (estimado)
-// 310L = R$ 169,00 (estimado)
-// 500L = R$ 190,00
-// 750L = R$ 219,00 (estimado)
-// 1000L = R$ 249,00
-// 1500L = R$ 399,00 (estimado)
-// 2000L = R$ 520,00
-// 3000L = R$ 650,00
-// 5000L = R$ 1.699,00
-// 7500L = R$ 2.699,00
-// 10000L = R$ 2.999,00
-// 15000L = R$ 4.200,00
+// 100L = R$ 139,00
+// 150L = R$ 159,00
+// 250L = R$ 179,00
+// 310L = R$ 199,00
+// 500L = R$ 229,00
+// 750L = R$ 289,00
+// 1000L = R$ 338,00
+// 1500L = R$ 549,00
+// 2000L = R$ 689,00
+// 3000L = R$ 976,00
+// 5000L = R$ 1.999,00
+// 7500L = R$ 2.899,00
+// 10000L = R$ 3.499,00
+// 15000L = R$ 4.900,00
+
 
 // Caixas d'Água de Polietileno (Modelo Padrão)
 export const caixasPolietileno: Product[] = [
@@ -34,7 +35,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '41 cm',
     diameter: '56 cm',
-    basePrice: 89.00,
+    basePrice: 139.00,
     type: 'caixa',
   },
   {
@@ -44,7 +45,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '48 cm',
     diameter: '64 cm',
-    basePrice: 115.00,
+    basePrice: 159.00,
     type: 'caixa',
   },
   {
@@ -54,7 +55,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '55 cm',
     diameter: '77 cm',
-    basePrice: 149.00,
+    basePrice: 179.00,
     type: 'caixa',
   },
   {
@@ -64,7 +65,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '60 cm',
     diameter: '82 cm',
-    basePrice: 169.00,
+    basePrice: 199.00,
     type: 'caixa',
   },
   {
@@ -74,7 +75,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '69 cm',
     diameter: '98 cm',
-    basePrice: 190.00,
+    basePrice: 229.00,
     type: 'caixa',
   },
   {
@@ -84,7 +85,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '80 cm',
     diameter: '110 cm',
-    basePrice: 219.00,
+    basePrice: 289.00,
     type: 'caixa',
   },
   {
@@ -94,7 +95,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '88 cm',
     diameter: '122 cm',
-    basePrice: 249.00,
+    basePrice: 338.00,
     type: 'caixa',
   },
   {
@@ -104,7 +105,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '100 cm',
     diameter: '140 cm',
-    basePrice: 399.00,
+    basePrice: 549.00,
     type: 'caixa',
   },
   {
@@ -114,7 +115,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '110 cm',
     diameter: '154 cm',
-    basePrice: 520.00,
+    basePrice: 689.00,
     type: 'caixa',
   },
   {
@@ -124,7 +125,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '128 cm',
     diameter: '176 cm',
-    basePrice: 650.00,
+    basePrice: 976.00,
     type: 'caixa',
   },
   {
@@ -134,7 +135,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '153 cm',
     diameter: '208 cm',
-    basePrice: 1699.00,
+    basePrice: 1999.00,
     type: 'caixa',
   },
   {
@@ -144,7 +145,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '175 cm',
     diameter: '240 cm',
-    basePrice: 2699.00,
+    basePrice: 2899.00,
     type: 'caixa',
   },
   {
@@ -154,7 +155,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '193 cm',
     diameter: '264 cm',
-    basePrice: 2999.00,
+    basePrice: 3499.00,
     type: 'caixa',
   },
   {
@@ -164,7 +165,7 @@ export const caixasPolietileno: Product[] = [
     unit: 'L',
     height: '222 cm',
     diameter: '300 cm',
-    basePrice: 4200.00,
+    basePrice: 4900.00,
     type: 'caixa',
   },
 ];

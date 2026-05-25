@@ -158,9 +158,18 @@ export function useConstructionCatalogProducts() {
   }, []);
 
   return useMemo(() => {
-    const base = (dbProducts && dbProducts.length > 0 ? dbProducts : legacyConstructionProducts) ?? [];
+    const base = legacyConstructionProducts ?? [];
     const byId = new Map<string, ConstructionProduct>();
-    [...custom, ...base].forEach((p) => byId.set(p.id, p));
+    // Add legacy first
+    base.forEach(p => byId.set(p.id, p));
+    // Add/Override with DB
+    if (dbProducts) {
+      dbProducts.forEach(p => byId.set(p.id, p));
+    }
+    // Add custom
+    custom.forEach((p) => byId.set(p.id, p));
+    
     return Array.from(byId.values());
+
   }, [custom, dbProducts]);
 }

@@ -21,6 +21,7 @@ export function useFortlevCatalogProducts() {
         .eq("active", true)
         .order("capacity", { ascending: true });
 
+
       if (cancelled) return;
 
       if (error || !data) {

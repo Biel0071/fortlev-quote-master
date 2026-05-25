@@ -55,11 +55,25 @@ export function useFortlevCatalogProducts() {
   }, []);
 
   return useMemo(() => {
-    // Prefer DB products when available; otherwise fallback to legacy.
-    const base = (dbProducts && dbProducts.length > 0 ? dbProducts : legacyFortlevProducts) ?? [];
+    // Use legacy products as base, and override with DB products if they exist
+    const base = legacyFortlevProducts ?? [];
+    const dbMap = new Map<string, Product>();
+    if (dbProducts && dbProducts.length > 0) {
+      dbProducts.forEach(p => dbMap.set(p.id, p));
+    }
+
     const byId = new Map<string, Product>();
-    [...custom, ...base].forEach((p) => byId.set(p.id, p));
+    // Add legacy first
+    base.forEach(p => byId.set(p.id, p));
+    // Add/Override with DB
+    if (dbProducts) {
+      dbProducts.forEach(p => byId.set(p.id, p));
+    }
+    // Add custom
+    custom.forEach((p) => byId.set(p.id, p));
+    
     return Array.from(byId.values());
+
   }, [custom, dbProducts]);
 }
 

@@ -13,7 +13,7 @@ import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { StoreProductCard } from "@/components/store/home/StoreProductCard";
 import { useSearchParams } from "react-router-dom";
 import { expandSearchTerms, smartMatch, smartScore } from "@/utils/smartSearch";
-import { VGrid } from "virtua";
+import { Virtualizer } from "virtua";
 
 export default function StoreCatalog() {
   const cart = useCart();
@@ -158,20 +158,15 @@ export default function StoreCatalog() {
             </CardContent>
           </Card>
         ) : (
-          <VGrid
-            data={filtered}
-            count={filtered.length}
-            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5"
-            style={{ display: "grid" }}
-          >
-            {(p) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
+            {filtered.map((p: any) => (
               <StoreProductCard
                 key={p.id}
                 product={p}
                 onAdd={(productId, qty) => onAdd(p, qty)}
               />
-            )}
-          </VGrid>
+            ))}
+          </div>
         )}
       </main>
     </div>

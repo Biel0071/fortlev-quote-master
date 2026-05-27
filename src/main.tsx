@@ -77,18 +77,3 @@ if (rootElement) {
 }
 
 
-const rootElement = document.getElementById("root");
-if (rootElement) {
-  const root = ReactDOM.createRoot(rootElement);
-  
-  // Render directly to avoid white screen on micro-task delays
-  root.render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <StoreProvider>
-          <App />
-        </StoreProvider>
-      </ErrorBoundary>
-    </React.StrictMode>
-  );
-}

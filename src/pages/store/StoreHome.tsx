@@ -244,12 +244,13 @@ export default function StoreHome() {
             </Link>
           </div>
           <HomeProductsByIds
-            loading={loading}
+            loading={loading && !homeOffers.length}
             productIds={homeOffers.map((o) => o.id)}
             products={homeOffers as any}
             onAdd={onAdd}
             limit={8}
           />
+
         </HomeSection>
       ) : null}
 
@@ -263,11 +264,12 @@ export default function StoreHome() {
           </Link>
         }
       >
-        {!phase.featured ? (
-          <ProductGridSkeleton count={8} />
+        {!phase.featured || (productsLoading && !activeProducts.length) ? (
+          <ProductGridSkeleton count={10} />
         ) : (
           <HomeProductsByIds loading={loading} productIds={featuredIds} products={activeProducts as any} onAdd={onAdd} limit={12} />
         )}
+
       </HomeSection>
 
       {phase.additional ? (
@@ -282,12 +284,13 @@ export default function StoreHome() {
           }
         >
           <HomeProductsByIds
-            loading={loading}
+            loading={loading && !activeProducts.length}
             productIds={topClickedIds}
             products={activeProducts as any}
             onAdd={onAdd}
             limit={8}
           />
+
         </HomeSection>
       ) : null}
 

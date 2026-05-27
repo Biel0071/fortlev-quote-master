@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import { Flame } from "lucide-react";
 import { useOfferProducts } from "@/hooks/useOfferProducts";
@@ -23,11 +23,11 @@ import { createMicroLoader } from "@/utils/microLoader";
 
 function CategorySkeleton() {
   return (
-    <div className="flex gap-4 overflow-hidden pb-4">
+    <div className="flex gap-4 overflow-hidden pb-4 px-1">
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="flex flex-col items-center gap-2 shrink-0">
-          <div className="h-20 w-20 rounded-full bg-muted/40 animate-pulse" />
-          <div className="h-3 w-16 rounded bg-muted/40 animate-pulse" />
+          <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-muted/30 animate-pulse" />
+          <div className="h-3 w-14 rounded bg-muted/20 animate-pulse" />
         </div>
       ))}
     </div>
@@ -36,17 +36,18 @@ function CategorySkeleton() {
 
 function ProductGridSkeleton({ count = 4 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="space-y-3">
-          <div className="aspect-square rounded-2xl bg-muted/30 animate-pulse" />
-          <div className="h-4 w-3/4 rounded bg-muted/20 animate-pulse" />
-          <div className="h-8 w-full rounded-xl bg-muted/20 animate-pulse" />
+          <div className="aspect-square rounded-2xl bg-muted/20 animate-pulse" />
+          <div className="h-4 w-3/4 rounded bg-muted/10 animate-pulse" />
+          <div className="h-8 w-full rounded-xl bg-muted/10 animate-pulse" />
         </div>
       ))}
     </div>
   );
 }
+
 
 export default function StoreHome() {
   const cart = useCart();
@@ -106,7 +107,7 @@ export default function StoreHome() {
   }, [home.seo?.og_image_path]);
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
-  const loading = productsLoading || categoriesLoading || home.loading || merch.loading;
+  const loading = (productsLoading && !activeProducts.length) || (categoriesLoading && !activeCategories.length) || (home.loading && !home.banners.length) || merch.loading;
 
   const onAdd = (productId: string, qty: number) => {
     const product: any = offerList.find((item: any) => item.id === productId)
@@ -217,11 +218,12 @@ export default function StoreHome() {
           </Link>
         }
       >
-        {!phase.categories || categoriesLoading ? (
+        {!phase.categories || (categoriesLoading && !activeCategories.length) ? (
           <CategorySkeleton />
         ) : (
           <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
         )}
+
       </HomeSection>
 
       {/* 🔥 Ofertas section — always shows thanks to fallback */}
@@ -242,12 +244,13 @@ export default function StoreHome() {
             </Link>
           </div>
           <HomeProductsByIds
-            loading={loading}
+            loading={loading && !homeOffers.length}
             productIds={homeOffers.map((o) => o.id)}
             products={homeOffers as any}
             onAdd={onAdd}
             limit={8}
           />
+
         </HomeSection>
       ) : null}
 
@@ -261,11 +264,12 @@ export default function StoreHome() {
           </Link>
         }
       >
-        {!phase.featured ? (
-          <ProductGridSkeleton count={8} />
+        {!phase.featured || (productsLoading && !activeProducts.length) ? (
+          <ProductGridSkeleton count={10} />
         ) : (
           <HomeProductsByIds loading={loading} productIds={featuredIds} products={activeProducts as any} onAdd={onAdd} limit={12} />
         )}
+
       </HomeSection>
 
       {phase.additional ? (
@@ -280,12 +284,13 @@ export default function StoreHome() {
           }
         >
           <HomeProductsByIds
-            loading={loading}
+            loading={loading && !activeProducts.length}
             productIds={topClickedIds}
             products={activeProducts as any}
             onAdd={onAdd}
             limit={8}
           />
+
         </HomeSection>
       ) : null}
 

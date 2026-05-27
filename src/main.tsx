@@ -46,33 +46,40 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 }
 
+
+// Critical: Clear problematic service workers or cache that could cause white screen
+try {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (let registration of registrations) {
+        registration.unregister();
+      }
+    });
+  }
+} catch (e) {}
+
 const rootElement = document.getElementById("root");
 if (rootElement) {
   try {
     const root = ReactDOM.createRoot(rootElement);
     
-    // Immediate render to prevent white screen
+    // Immediate render. Removing StrictMode for maximum compatibility in this high-performance context
     root.render(
-      <React.StrictMode>
-        <ErrorBoundary>
-          <StoreProvider>
-            <App />
-          </StoreProvider>
-        </ErrorBoundary>
-      </React.StrictMode>
+      <ErrorBoundary>
+        <StoreProvider>
+          <App />
+        </StoreProvider>
+      </ErrorBoundary>
     );
   } catch (err) {
-    console.error("Critical error during initial mount:", err);
-    // Fallback UI if ReactDOM fails
-    if (rootElement) {
-      rootElement.innerHTML = `
-        <div style="display:flex;height:100vh;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;padding:20px;">
-          <h2>Erro de Inicialização</h2>
-          <p>O navegador não conseguiu carregar os recursos necessários.</p>
-          <button onclick="location.reload()" style="padding:10px 20px;border-radius:20px;background:#2563eb;color:white;border:none;cursor:pointer;font-weight:bold;">Tentar Novamente</button>
-        </div>
-      `;
-    }
+    console.error("Critical mount error:", err);
+    rootElement.innerHTML = `
+      <div style="display:flex;height:100vh;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;background:white;padding:20px;">
+        <h2 style="margin-bottom:10px;">Sistema em Manutenção</h2>
+        <p style="color:#666;margin-bottom:20px;">Estamos otimizando o carregamento. Por favor, tente recarregar.</p>
+        <button onclick="localStorage.clear();sessionStorage.clear();location.reload();" style="padding:12px 24px;border-radius:30px;background:#2563eb;color:white;border:none;cursor:pointer;font-weight:bold;box-shadow:0 4px 6px rgba(0,0,0,0.1);">Recarregar Sistema</button>
+      </div>
+    `;
   }
 }
 

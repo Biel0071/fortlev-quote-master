@@ -78,7 +78,9 @@ const App = () => (
           <CookieConsentBanner />
           <Suspense fallback={<PageSkeleton />}>
             <Routes>
+              {/* Rota raiz explicitamente definida */}
               <Route path="/" element={<StoreHome />} />
+              
               <Route path="/materiais" element={<Navigate to="/" replace />} />
               <Route path="/loja" element={<StoreCatalog />} />
               <Route path="/catalogo" element={<CatalogRedirect />} />

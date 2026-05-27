@@ -30,7 +30,7 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const PAGE_SIZE = 1000;
+        const PAGE_SIZE = 500;
         let allData: any[] = [];
         let from = 0;
         let hasMore = true;
@@ -50,25 +50,24 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
           allData = [...allData, ...batch];
           hasMore = batch.length === PAGE_SIZE;
           from += PAGE_SIZE;
+          
+          // Yield to main thread if we have many pages
+          if (hasMore) await new Promise(r => setTimeout(r, 0));
         }
 
         const mapped: ProductWithImages[] = allData
+          .filter((p: any) => p && p.id && p.name)
           .map((p: any) => ({
             ...p,
-            id: String(p?.id ?? "").trim(),
-            name: String(p?.name ?? "").trim(),
-            price: Number(p?.price ?? 0),
-            promo_price: Number(p?.promo_price ?? 0),
-            stock: Number(p?.stock ?? 0),
+            id: String(p.id).trim(),
+            name: String(p.name).trim(),
+            price: Number(p.price ?? 0),
+            promo_price: Number(p.promo_price ?? 0),
+            stock: Number(p.stock ?? 0),
             images: (p.store_product_images ?? [])
               .filter((im: any) => !!im?.path)
               .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
-          }))
-          .filter((p: any) => {
-            const ok = !!p.id && !!p.name;
-            if (!ok) console.warn("[useStoreProducts] produto inválido ignorado", p);
-            return ok;
-          });
+          }));
 
         setProducts(mapped);
         setSmartCache(PRODUCTS_CACHE_KEY, mapped, PRODUCTS_CACHE_TTL_MS);

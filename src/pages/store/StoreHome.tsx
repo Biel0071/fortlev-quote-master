@@ -44,9 +44,10 @@ export default function StoreHome() {
   useEffect(() => {
     const loader = createMicroLoader({ chunkSize: 1, idleTimeoutMs: 120 });
 
-    loader.addTask({ priority: "high", run: () => setPhase((p) => ({ ...p, categories: true })) });
-    loader.addTask({ priority: "normal", run: () => setPhase((p) => ({ ...p, featured: true })) });
-    loader.addTask({ priority: "low", run: () => setPhase((p) => ({ ...p, additional: true })) });
+    // Parallelize core data loading tasks
+    loader.addTask({ priority: "critical", run: () => setPhase((p) => ({ ...p, categories: true })) });
+    loader.addTask({ priority: "high", run: () => setPhase((p) => ({ ...p, featured: true })) });
+    loader.addTask({ priority: "normal", run: () => setPhase((p) => ({ ...p, additional: true })) });
     loader.addTask({ priority: "low", run: () => setPhase((p) => ({ ...p, secondary: true })) });
 
     return () => loader.clear();

@@ -101,11 +101,13 @@ export function createSmartCache(options?: SmartCacheOptions) {
     memory.delete(key);
     pending.delete(key);
     removeFromSession(key);
+    cacheSync?.postMessage({ type: "invalidate", key });
   };
 
   const clear = () => {
     memory.clear();
     pending.clear();
+    cacheSync?.postMessage({ type: "clear" });
 
     if (!allowSessionFallback || !safeStorageAvailable()) return;
     try {
@@ -157,7 +159,22 @@ export function createSmartCache(options?: SmartCacheOptions) {
   };
 }
 
-export const smartCache = createSmartCache();
+export const smartCache = createSmartCache({ 
+  prefix: "smart-cache:v2",
+  fallbackToSessionStorage: true 
+});
+
+// Cache coordination using BroadcastChannel for multi-tab speed
+const cacheSync = typeof window !== "undefined" ? new BroadcastChannel("smart-cache-sync") : null;
+if (cacheSync) {
+  cacheSync.onmessage = (event) => {
+    if (event.data?.type === "invalidate") {
+      smartCache.invalidate(event.data.key);
+    } else if (event.data?.type === "clear") {
+      smartCache.clear();
+    }
+  };
+}
 
 // Backward-compatible API used by existing hooks
 export function getSmartCache<T>(key: string, maxAgeMs: number): T | null {

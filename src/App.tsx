@@ -35,7 +35,8 @@ const CustomerInvoicePortal = lazy(() => import("@/pages/CustomerInvoicePortal")
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
+      staleTime: 60_000, // Increase stale time for better performance
+      gcTime: 1000 * 60 * 60, // 1 hour cache
       refetchOnWindowFocus: false,
       retry: 1,
     },
@@ -52,8 +53,18 @@ function CatalogRedirect() {
   return <Navigate to={`/loja${search}`} replace />;
 }
 
-function RouteSkeleton() {
-  return <div className="min-h-[40vh] w-full animate-pulse bg-muted/30" />;
+function PageSkeleton() {
+  return (
+    <div className="flex flex-col w-full min-h-screen bg-background p-4 space-y-4">
+      <div className="h-16 w-full rounded-2xl bg-muted/20 animate-pulse" />
+      <div className="h-48 w-full rounded-2xl bg-muted/30 animate-pulse" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-64 rounded-2xl bg-muted/20 animate-pulse" />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const App = () => (
@@ -65,7 +76,7 @@ const App = () => (
         <BrowserRouter>
           <ScrollToTop />
           <CookieConsentBanner />
-          <Suspense fallback={<RouteSkeleton />}>
+          <Suspense fallback={<PageSkeleton />}>
             <Routes>
               <Route path="/" element={<StoreHome />} />
               <Route path="/materiais" element={<Navigate to="/" replace />} />

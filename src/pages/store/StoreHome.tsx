@@ -21,11 +21,28 @@ import { useHomeMerchandising } from "@/hooks/useHomeMerchandising";
 import { HomeGuaranteesMiniBar } from "@/components/store/home/HomeGuaranteesMiniBar";
 import { createMicroLoader } from "@/utils/microLoader";
 
-function SectionSkeleton({ rows = 1 }: { rows?: number }) {
+function CategorySkeleton() {
   return (
-    <div className="space-y-3">
-      {Array.from({ length: rows }).map((_, idx) => (
-        <div key={idx} className="h-24 rounded-xl bg-muted/60 animate-pulse" />
+    <div className="flex gap-4 overflow-hidden pb-4">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex flex-col items-center gap-2 shrink-0">
+          <div className="h-20 w-20 rounded-full bg-muted/40 animate-pulse" />
+          <div className="h-3 w-16 rounded bg-muted/40 animate-pulse" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProductGridSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="space-y-3">
+          <div className="aspect-square rounded-2xl bg-muted/30 animate-pulse" />
+          <div className="h-4 w-3/4 rounded bg-muted/20 animate-pulse" />
+          <div className="h-8 w-full rounded-xl bg-muted/20 animate-pulse" />
+        </div>
       ))}
     </div>
   );

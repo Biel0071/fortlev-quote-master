@@ -218,7 +218,7 @@ export default function StoreHome() {
         }
       >
         {!phase.categories || categoriesLoading ? (
-          <SectionSkeleton rows={1} />
+          <CategorySkeleton />
         ) : (
           <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
         )}
@@ -262,7 +262,7 @@ export default function StoreHome() {
         }
       >
         {!phase.featured ? (
-          <SectionSkeleton rows={2} />
+          <ProductGridSkeleton count={8} />
         ) : (
           <HomeProductsByIds loading={loading} productIds={featuredIds} products={activeProducts as any} onAdd={onAdd} limit={12} />
         )}

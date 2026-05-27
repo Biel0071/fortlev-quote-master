@@ -165,7 +165,8 @@ export function StoreProductCard({
           src={imageSrc}
           alt={product?.name ?? "Produto"}
           className="max-h-full max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.03]"
-         loading="lazy"
+          loading="lazy"
+          fetchPriority="low"
           decoding="async"
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";

@@ -127,6 +127,7 @@ export function StoreTopbar({
                   alt={`${brandLabel} - logo`}
                   className="logo"
                   loading="eager"
+                  fetchPriority="high"
                 />
               </Link>
             </div>

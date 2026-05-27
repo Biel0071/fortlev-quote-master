@@ -90,17 +90,17 @@ export function useHomeMerchandising(options?: UseHomeMerchandisingOptions) {
           .select("product_id, created_at, type")
           .eq("type", "product_view")
           .gte("created_at", sinceWeek)
-          .limit(1000),
+          .limit(200),
         cloud
           .from("store_order_items")
           .select("product_id, quantity, created_at")
           .gte("created_at", sinceWeek)
-          .limit(1000),
+          .limit(200),
         cloud
           .from("store_order_items")
           .select("product_id, quantity, created_at")
           .gte("created_at", sinceMonth)
-          .limit(1000),
+          .limit(200),
       ]);
 
       const firstError = viewsRes.error || weekItemsRes.error || monthItemsRes.error;

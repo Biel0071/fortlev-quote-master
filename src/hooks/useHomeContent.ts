@@ -130,67 +130,24 @@ export function useHomeContent(options?: UseHomeContentOptions) {
     setError(null);
 
     try {
-      const [b, ben, pol, sec, f, deps, off, s] = await Promise.all([
-        cloud
-          .from("store_banners")
-          .select(
-            "id, title, subtitle, button_label, link_url, link, image_path, image_desktop_path, image_mobile_path, sort_order, position, active, is_active",
-          )
-          .or("is_active.eq.true,active.eq.true")
-          .order("position", { ascending: true })
-          .order("sort_order", { ascending: true }),
-        cloud
-          .from("home_benefits")
-          .select("id, title, subtitle, icon, sort_order, active")
-          .eq("active", true)
-          .order("sort_order", { ascending: true }),
-        cloud
-          .from("home_policies")
-          .select("id, title, subtitle, icon, link_url, sort_order, active")
-          .eq("active", true)
-          .order("sort_order", { ascending: true }),
-        cloud
-          .from("home_sections")
-          .select("id, category_id, title_override, subtitle_override, sort_order, active")
-          .eq("active", true)
-          .order("sort_order", { ascending: true }),
-        cloud
-          .from("home_footer")
-          .select("id, key, logo_path, store_name, address, whatsapp, hours, extra_note, instagram_url, facebook_url, active")
-          .eq("active", true)
-          .eq("key", "main")
-          .maybeSingle(),
-        cloud
-          .from("home_departments")
-          .select("id, kind, label, icon, link_url, category_id, sort_order, active")
-          .eq("active", true)
-          .order("sort_order", { ascending: true }),
-        cloud
-          .from("home_offers")
-          .select("id, product_id, badge_text, promo_price, starts_at, ends_at, sort_order, active")
-          .order("sort_order", { ascending: true }),
-        cloud
-          .from("home_seo")
-          .select("id, key, meta_title, meta_description, og_image_path, active")
-          .eq("active", true)
-          .eq("key", "store_home")
-          .maybeSingle(),
+      // Parallelize with individual error handling to prevent one failure from blocking everything
+      const results = await Promise.all([
+        cloud.from("store_banners").select("id, title, subtitle, button_label, link_url, link, image_path, image_desktop_path, image_mobile_path, sort_order, position, active, is_active").or("is_active.eq.true,active.eq.true").order("position", { ascending: true }).order("sort_order", { ascending: true }),
+        cloud.from("home_benefits").select("id, title, subtitle, icon, sort_order, active").eq("active", true).order("sort_order", { ascending: true }),
+        cloud.from("home_policies").select("id, title, subtitle, icon, link_url, sort_order, active").eq("active", true).order("sort_order", { ascending: true }),
+        cloud.from("home_sections").select("id, category_id, title_override, subtitle_override, sort_order, active").eq("active", true).order("sort_order", { ascending: true }),
+        cloud.from("home_footer").select("id, key, logo_path, store_name, address, whatsapp, hours, extra_note, instagram_url, facebook_url, active").eq("active", true).eq("key", "main").maybeSingle(),
+        cloud.from("home_departments").select("id, kind, label, icon, link_url, category_id, sort_order, active").eq("active", true).order("sort_order", { ascending: true }),
+        cloud.from("home_offers").select("id, product_id, badge_text, promo_price, starts_at, ends_at, sort_order, active").order("sort_order", { ascending: true }),
+        cloud.from("home_seo").select("id, key, meta_title, meta_description, og_image_path, active").eq("active", true).eq("key", "store_home").maybeSingle(),
       ]);
 
-      const firstError = b.error || ben.error || pol.error || sec.error || f.error || deps.error || off.error || s.error;
-      if (firstError) {
-        setError(firstError.message);
-        setBanners([]);
-        setBenefits([]);
-        setPolicies([]);
-        setSections([]);
-        setFooter(null);
-        setDepartments([]);
-        setOffers([]);
-        setSeo(null);
-        setLoading(false);
-        return;
-      }
+      const [b, ben, pol, sec, f, deps, off, s] = results;
+
+      // Log errors but don't crash the whole process unless it's a critical failure
+      results.forEach((res, i) => {
+        if (res.error) console.error(`[useHomeContent] Query ${i} failed:`, res.error);
+      });
 
       const normalizedBanners = ((b.data ?? []) as any[]).map((row) => ({
         ...row,
@@ -223,16 +180,9 @@ export function useHomeContent(options?: UseHomeContentOptions) {
       setSeo(payload.seo);
       setSmartCache(HOME_CONTENT_CACHE_KEY, payload);
     } catch (error) {
+      console.error("[useHomeContent] Error loading home content:", error);
       const message = error instanceof Error ? error.message : "Falha ao carregar conteúdo da Home";
       setError(message);
-      setBanners([]);
-      setBenefits([]);
-      setPolicies([]);
-      setSections([]);
-      setFooter(null);
-      setDepartments([]);
-      setOffers([]);
-      setSeo(null);
     } finally {
       setLoading(false);
     }

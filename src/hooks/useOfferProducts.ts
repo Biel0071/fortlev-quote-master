@@ -209,16 +209,38 @@ export function useOfferProducts(activeProducts: any[]): {
   offerProducts: OfferProduct[];
 } {
   const offerProducts = useMemo(() => {
+    if (!activeProducts || activeProducts.length === 0) {
+      return OFFER_SEEDS.map(createMockOffer);
+    }
+
     const usedIds = new Set<string>();
+    
+    // Pre-calculate normalized names to speed up matching
+    const productsWithNorm = activeProducts.map(p => ({
+      p,
+      norm: normalizeText(p.name || ""),
+      compact: compactOfferText(p.name || "")
+    }));
 
     return OFFER_SEEDS.map((seed) => {
-      const directProduct = getBestOfferMatch(activeProducts ?? [], seed, usedIds, 120);
+      // Optimization: Try to find a direct match quickly first
+      const directMatch = productsWithNorm.find(item => 
+        !usedIds.has(item.p.id) && 
+        (item.norm === normalizeText(seed.name) || seed.searchTerms.some(st => item.norm === normalizeText(st)))
+      );
+
+      if (directMatch) {
+        usedIds.add(directMatch.p.id);
+        return buildOfferProduct(seed, directMatch.p, "direct");
+      }
+
+      const directProduct = getBestOfferMatch(activeProducts, seed, usedIds, 120);
       if (directProduct) {
         usedIds.add(directProduct.id);
         return buildOfferProduct(seed, directProduct, "direct");
       }
 
-      const similarProduct = getBestOfferMatch(activeProducts ?? [], seed, usedIds, 48);
+      const similarProduct = getBestOfferMatch(activeProducts, seed, usedIds, 48);
       if (similarProduct) {
         usedIds.add(similarProduct.id);
         return buildOfferProduct(seed, similarProduct, "similar");

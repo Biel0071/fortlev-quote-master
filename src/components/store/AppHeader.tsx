@@ -23,18 +23,28 @@ export function AppHeader({
     const root = rootRef.current;
     if (!root) return;
 
+    let lastHeight = 0;
     const updateHeight = () => {
       const height = Math.ceil(root.getBoundingClientRect().height);
-      document.documentElement.style.setProperty("--store-header-offset", `${height}px`);
+      if (height > 0 && Math.abs(height - lastHeight) > 1) {
+        lastHeight = height;
+        document.documentElement.style.setProperty("--store-header-offset", `${height}px`);
+      }
     };
 
-    updateHeight();
+    // Initial check
+    const timeoutId = setTimeout(updateHeight, 100);
 
-    const resizeObserver = new ResizeObserver(updateHeight);
+    const resizeObserver = new ResizeObserver(() => {
+      // Use requestAnimationFrame to avoid "ResizeObserver loop limit exceeded"
+      window.requestAnimationFrame(updateHeight);
+    });
+
     resizeObserver.observe(root);
     window.addEventListener("resize", updateHeight);
 
     return () => {
+      clearTimeout(timeoutId);
       resizeObserver.disconnect();
       window.removeEventListener("resize", updateHeight);
     };

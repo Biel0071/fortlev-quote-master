@@ -4,18 +4,27 @@ import App from "./App";
 import "./index.css";
 import { StoreProvider } from "@/contexts/StoreContext";
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+// Global error handlers for absolute resilience
+window.onerror = (message, source, lineno, colno, error) => {
+  console.error("Global window error:", { message, source, lineno, colno, error });
+};
+
+window.onunhandledrejection = (event) => {
+  console.error("Unhandled promise rejection:", event.reason);
+};
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorInfo: string }> {
   constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, errorInfo: "" };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorInfo: error.message };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Critical app error:", error, errorInfo);
+    console.error("Critical app error caught by Boundary:", error, errorInfo);
   }
 
   render() {
@@ -23,20 +32,32 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
       return (
         <div className="flex h-screen w-full flex-col items-center justify-center bg-white p-6 text-center">
           <div className="max-w-md">
-            <h1 className="text-2xl font-bold text-gray-900">Ops! Algo deu errado.</h1>
-            <p className="mt-3 text-gray-600">Ocorreu um erro inesperado ao carregar o sistema. Por favor, tente recarregar.</p>
+            <h1 className="text-2xl font-bold text-gray-900">Sistema em Manutenção</h1>
+            <p className="mt-3 text-gray-600">
+              Estamos otimizando a sua experiência. Se a tela continuar branca, tente limpar o cache.
+            </p>
+            {this.state.errorInfo && (
+              <pre className="mt-4 overflow-auto rounded-lg bg-gray-50 p-3 text-left text-[10px] text-gray-400">
+                {this.state.errorInfo}
+              </pre>
+            )}
             <button 
               onClick={() => {
-                // Clear state and reload
                 try {
+                  localStorage.clear();
                   sessionStorage.clear();
-                  localStorage.removeItem("supabase.auth.token");
+                  // Try to unregister any problematic service workers
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(registrations => {
+                      for (let reg of registrations) reg.unregister();
+                    });
+                  }
                 } catch(e) {}
-                window.location.reload();
+                window.location.href = window.location.origin + "?cache_clear=" + Date.now();
               }} 
-              className="mt-6 inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-all"
+              className="mt-6 inline-flex items-center justify-center rounded-full bg-blue-600 px-8 py-3 text-sm font-semibold text-white shadow-lg hover:bg-blue-500 transition-all active:scale-95"
             >
-              Recarregar e Limpar Cache
+              Recarregar e Limpar Tudo
             </button>
           </div>
         </div>
@@ -46,41 +67,17 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 }
 
-
-// Critical: Clear problematic service workers or cache that could cause white screen
-try {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-      for (let registration of registrations) {
-        registration.unregister();
-      }
-    });
-  }
-} catch (e) {}
-
 const rootElement = document.getElementById("root");
+
 if (rootElement) {
-  try {
-    const root = ReactDOM.createRoot(rootElement);
-    
-    // Immediate render. Removing StrictMode for maximum compatibility in this high-performance context
-    root.render(
-      <ErrorBoundary>
-        <StoreProvider>
-          <App />
-        </StoreProvider>
-      </ErrorBoundary>
-    );
-  } catch (err) {
-    console.error("Critical mount error:", err);
-    rootElement.innerHTML = `
-      <div style="display:flex;height:100vh;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;background:white;padding:20px;">
-        <h2 style="margin-bottom:10px;">Sistema em Manutenção</h2>
-        <p style="color:#666;margin-bottom:20px;">Estamos otimizando o carregamento. Por favor, tente recarregar.</p>
-        <button onclick="localStorage.clear();sessionStorage.clear();location.reload();" style="padding:12px 24px;border-radius:30px;background:#2563eb;color:white;border:none;cursor:pointer;font-weight:bold;box-shadow:0 4px 6px rgba(0,0,0,0.1);">Recarregar Sistema</button>
-      </div>
-    `;
-  }
+  const root = ReactDOM.createRoot(rootElement);
+  
+  // High-performance, highly-resilient render
+  root.render(
+    <ErrorBoundary>
+      <StoreProvider>
+        <App />
+      </StoreProvider>
+    </ErrorBoundary>
+  );
 }
-
-

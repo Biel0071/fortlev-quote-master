@@ -10,6 +10,8 @@ type ProductWithImages = ProductRow & { images: StoreProductImage[] };
 
 const PRODUCTS_CACHE_KEY = "store_products:list";
 const PRODUCTS_CACHE_TTL_MS = 1000 * 60 * 3;
+let sharedProductsInflight: Promise<ProductWithImages[]> | null = null;
+let lastSilentRefreshAt = 0;
 
 type UseStoreProductsOptions = {
   enabled?: boolean;
@@ -28,64 +30,72 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
 
     const maxRetries = opts?.retries ?? 2;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        const PAGE_SIZE = 500;
-        let allData: any[] = [];
-        let from = 0;
-        let hasMore = true;
-        let safetyCounter = 0;
+    const fetchAllProducts = async () => {
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const PAGE_SIZE = 500;
+          let allData: any[] = [];
+          let from = 0;
+          let hasMore = true;
+          let safetyCounter = 0;
 
-        while (hasMore && safetyCounter < 50) { // Safety limit: max 25,000 products
-          safetyCounter++;
-          const { data, error: fetchError } = await cloud
-            .from("store_products")
-            .select(
-              "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order)",
-            )
-            .order("name", { ascending: true })
-            .range(from, from + PAGE_SIZE - 1);
+          while (hasMore && safetyCounter < 50) {
+            safetyCounter++;
+            const { data, error: fetchError } = await cloud
+              .from("store_products")
+              .select(
+                "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order)",
+              )
+              .order("name", { ascending: true })
+              .range(from, from + PAGE_SIZE - 1);
 
-          if (fetchError) throw new Error(fetchError.message);
+            if (fetchError) throw new Error(fetchError.message);
 
-          const batch = data ?? [];
-          allData = [...allData, ...batch];
-          hasMore = batch.length === PAGE_SIZE;
-          from += PAGE_SIZE;
-          
-          if (hasMore) {
-            // Use a slightly longer yield to keep UI responsive
-            await new Promise(r => setTimeout(r, 10));
+            const batch = data ?? [];
+            allData = [...allData, ...batch];
+            hasMore = batch.length === PAGE_SIZE;
+            from += PAGE_SIZE;
+
+            if (hasMore) await new Promise((r) => setTimeout(r, 10));
           }
-        }
 
-        const mapped: ProductWithImages[] = allData
-          .filter((p: any) => p && p.id && p.name)
-          .map((p: any) => ({
-            ...p,
-            id: String(p.id).trim(),
-            name: String(p.name).trim(),
-            price: Number(p.price ?? 0),
-            promo_price: Number(p.promo_price ?? 0),
-            stock: Number(p.stock ?? 0),
-            images: (p.store_product_images ?? [])
-              .filter((im: any) => !!im?.path)
-              .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
-          }));
-
-        setProducts(mapped);
-        setSmartCache(PRODUCTS_CACHE_KEY, mapped, PRODUCTS_CACHE_TTL_MS);
-        setLoading(false);
-        return; 
-      } catch (err: any) {
-        console.error(`Attempt ${attempt} failed:`, err);
-        if (attempt < maxRetries) {
+          return allData
+            .filter((p: any) => p && p.id && p.name)
+            .map((p: any) => ({
+              ...p,
+              id: String(p.id).trim(),
+              name: String(p.name).trim(),
+              price: Number(p.price ?? 0),
+              promo_price: Number(p.promo_price ?? 0),
+              stock: Number(p.stock ?? 0),
+              images: (p.store_product_images ?? [])
+                .filter((im: any) => !!im?.path)
+                .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+            })) as ProductWithImages[];
+        } catch (err: any) {
+          console.error(`Attempt ${attempt} failed:`, err);
+          if (attempt >= maxRetries) throw err;
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
-          continue;
         }
-        setError(err?.message ?? "Erro ao carregar produtos");
-        setLoading(false);
       }
+
+      return [] as ProductWithImages[];
+    };
+
+    try {
+      if (!sharedProductsInflight) {
+        sharedProductsInflight = fetchAllProducts().finally(() => {
+          sharedProductsInflight = null;
+        });
+      }
+
+      const mapped = await sharedProductsInflight;
+      setProducts(mapped);
+      setSmartCache(PRODUCTS_CACHE_KEY, mapped, PRODUCTS_CACHE_TTL_MS);
+      setLoading(false);
+    } catch (err: any) {
+      setError(err?.message ?? "Erro ao carregar produtos");
+      setLoading(false);
     }
   };
 
@@ -99,7 +109,11 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
     if (cached) {
       setProducts(cached);
       setLoading(false);
-      runApiMicrotask(() => load({ silent: true }));
+      const now = Date.now();
+      if (now - lastSilentRefreshAt > 30_000) {
+        lastSilentRefreshAt = now;
+        runApiMicrotask(() => load({ silent: true }));
+      }
       return;
     }
 

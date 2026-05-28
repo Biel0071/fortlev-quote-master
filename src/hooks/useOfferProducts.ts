@@ -39,6 +39,26 @@ const OFFER_STOP_WORDS = new Set([
   "a", "o", "de", "da", "do", "das", "dos", "e", "em", "para", "com", "sem", "l", "kg", "lts", "litros",
 ]);
 
+type NormalizedSeed = OfferSeed & {
+  normalizedName: string;
+  normalizedTerms: string[];
+  compactTerms: string[];
+  termTokens: string[][];
+  termNumbers: number[][];
+};
+
+const NORMALIZED_OFFER_SEEDS: NormalizedSeed[] = OFFER_SEEDS.map((seed) => {
+  const allTerms = [seed.name, ...seed.searchTerms];
+  return {
+    ...seed,
+    normalizedName: normalizeText(seed.name),
+    normalizedTerms: allTerms.map((term) => normalizeText(term)),
+    compactTerms: allTerms.map((term) => compactOfferText(term)),
+    termTokens: allTerms.map((term) => tokenizeOfferText(term)),
+    termNumbers: allTerms.map((term) => extractNumbers(term)),
+  };
+});
+
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
@@ -72,11 +92,16 @@ function buildOriginalPrice(seed: OfferSeed) {
   return roundMoney(seed.promoPrice / (1 - deterministicMarkup(seed.name)));
 }
 
-function scoreOfferTerm(productName: string, term: string) {
-  const productNorm = normalizeText(productName);
-  const productCompact = compactOfferText(productName);
-  const termNorm = normalizeText(term);
-  const termCompact = compactOfferText(term);
+function scoreOfferTerm(
+  productNorm: string,
+  productCompact: string,
+  productTokens: string[],
+  productNumbers: number[],
+  termNorm: string,
+  termCompact: string,
+  termTokens: string[],
+  termNumbers: number[],
+) {
 
   if (!productNorm || !termNorm) return 0;
 
@@ -85,9 +110,6 @@ function scoreOfferTerm(productName: string, term: string) {
   if (productNorm === termNorm) score += 320;
   if (productNorm.includes(termNorm)) score += 180;
   if (termCompact && productCompact.includes(termCompact)) score += 140;
-
-  const productTokens = tokenizeOfferText(productNorm);
-  const termTokens = tokenizeOfferText(termNorm);
 
   let exactHits = 0;
   let partialHits = 0;
@@ -109,9 +131,6 @@ function scoreOfferTerm(productName: string, term: string) {
   if (termTokens.length > 0 && exactHits === termTokens.length) score += 60;
   if (termTokens.length > 0 && exactHits + partialHits === termTokens.length) score += 25;
 
-  const productNumbers = extractNumbers(productNorm);
-  const termNumbers = extractNumbers(termNorm);
-
   for (const termNumber of termNumbers) {
     const minDelta = productNumbers.reduce<number>((smallest, productNumber) => {
       return Math.min(smallest, Math.abs(productNumber - termNumber));
@@ -127,7 +146,30 @@ function scoreOfferTerm(productName: string, term: string) {
 }
 
 function scoreOfferProduct(product: any, seed: OfferSeed) {
-  return Math.max(0, ...[seed.name, ...seed.searchTerms].map((term) => scoreOfferTerm(product?.name ?? "", term)));
+  const productNorm = normalizeText(product?.name ?? "");
+  const productCompact = compactOfferText(product?.name ?? "");
+  const productTokens = tokenizeOfferText(productNorm);
+  const productNumbers = extractNumbers(productNorm);
+  const normalizedSeed = NORMALIZED_OFFER_SEEDS.find((s) => s.name === seed.name);
+
+  if (!normalizedSeed) return 0;
+
+  let best = 0;
+  for (let i = 0; i < normalizedSeed.normalizedTerms.length; i++) {
+    const score = scoreOfferTerm(
+      productNorm,
+      productCompact,
+      productTokens,
+      productNumbers,
+      normalizedSeed.normalizedTerms[i],
+      normalizedSeed.compactTerms[i],
+      normalizedSeed.termTokens[i],
+      normalizedSeed.termNumbers[i],
+    );
+    if (score > best) best = score;
+  }
+
+  return best;
 }
 
 function getBestOfferMatch(products: any[], seed: OfferSeed, usedIds: Set<string>, minimumScore: number) {
@@ -214,19 +256,18 @@ export function useOfferProducts(activeProducts: any[]): {
     }
 
     const usedIds = new Set<string>();
-    
-    // Pre-calculate normalized names to speed up matching
-    const productsWithNorm = activeProducts.map(p => ({
+
+    const productsWithNorm = activeProducts.map((p) => ({
       p,
       norm: normalizeText(p.name || ""),
-      compact: compactOfferText(p.name || "")
     }));
 
-    return OFFER_SEEDS.map((seed) => {
+    return NORMALIZED_OFFER_SEEDS.map((seed) => {
       // Optimization: Try to find a direct match quickly first
-      const directMatch = productsWithNorm.find(item => 
-        !usedIds.has(item.p.id) && 
-        (item.norm === normalizeText(seed.name) || seed.searchTerms.some(st => item.norm === normalizeText(st)))
+      const directMatch = productsWithNorm.find(
+        (item) =>
+          !usedIds.has(item.p.id) &&
+          (item.norm === seed.normalizedName || seed.normalizedTerms.includes(item.norm)),
       );
 
       if (directMatch) {

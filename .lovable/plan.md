@@ -1,37 +1,23 @@
-## Proposed Improvements for the Quotation and DANFE System
+text
+1. Diagnose and fix the "white screen / frozen" issue:
+   - Identify an infinite loop in `AppHeader.tsx` where a `ResizeObserver` updates a CSS variable that causes a layout shift, triggering the observer again.
+   - Fix the loop by using a more stable height detection or adding a threshold.
+   - Refactor `main.tsx` to be extremely resilient, with a robust `ErrorBoundary` and clear initialization path.
+   - Clean up `App.tsx` to ensure all providers are correctly nested and stable.
 
-I will implement a comprehensive set of fixes and enhancements to the quotation management system, focusing on reliability, professional document generation, and a premium responsive experience.
+2. Optimize data loading performance:
+   - Refactor `useStoreProducts.ts` to be more robust, avoiding potential infinite loops in pagination and ensuring it handles network errors gracefully without freezing the UI.
+   - Ensure `useVisitorTracker.ts` doesn't cause redundant re-renders or navigation loops.
 
-### 1. Robust PNG Download
-*   **Fix**: Resolve the "Download PNG" bug by ensuring the generation process properly targets the correct content and triggers a browser-level download.
-*   **Process**: Implement a dedicated hidden rendering container to ensure high-quality PNG generation even when the document isn't visible on screen.
-*   **Feedback**: Add individual loading indicators for each action (PDF, PNG, DANFE) and explicit toast notifications for success and failure.
+3. Enhance UI Feedback:
+   - Ensure skeleton loaders are correctly visible and don't flicker.
+   - Fix any potential white-on-white text issues in the empty cart state.
 
-### 2. Professional DANFE (NF-e)
-*   **Standardization**: Upgrade the DANFE layout to follow the official Brazilian standard (MOC 7.0).
-*   **Structure**: Include all mandatory sections:
-    *   Receipt acknowledgment (Canhoto) at the top.
-    *   Standardized header with Access Key, Barcode, and Protocol.
-    *   Complete Tax Calculation block (BC ICMS, IPI, etc.).
-    *   Transportation and Volumes block.
-    *   Professional density and typography typical of fiscal documents.
+4. Stability Improvements:
+   - Remove manual service worker unregistration logic from the top level of `main.tsx` and move it to a safer place if needed, or rely on standard browser behavior.
+   - Standardize the error boundaries to provide a "Clear Cache & Reload" button that actually works.
 
-### 3. Responsive Preview & Layout
-*   **Mobile Preview**: Fix the broken preview on mobile using an intelligent scaling system (CSS transforms) to maintain the A4 aspect ratio without cutting off content.
-*   **General Responsiveness**: Refine the dashboard and quotation pages to ensure buttons, tables, and cards adapt perfectly to mobile, tablet, and desktop screens.
-*   **Premium Visuals**: Apply subtle enhancements to shadows, borders, and typography to provide a "Premium" feel.
-
-### 4. Streamlined Actions
-*   **Reorganization**: Standardize the document generation buttons across the system:
-    1.  **Preview**: Quick visual check.
-    2.  **Download PDF**: Commercial budget version.
-    3.  **Download PNG**: Image version for easy sharing.
-    4.  **Download DANFE**: Professional fiscal version.
-*   **Validation**: Implement logic to disable the DANFE button if required fiscal data (CNPJ, IE, tax codes) is missing, providing clear guidance to the user.
-
-### Technical Details
-*   **Tools**: Using `jspdf` and `jspdf-autotable` for documents, `html2canvas` for PNGs, and Tailwind CSS for the responsive UI.
-*   **Branding**: Dynamically load the logo and company data from the `issuing_companies` configuration instead of hardcoded values.
-*   **Refactoring**: Centralize document generation logic to avoid duplication and inconsistencies between the dashboard and preview views.
-
-I will begin by fixing the PNG download and reorganizing the buttons, followed by the responsive layout and the professional DANFE upgrade.
+Technical Details:
+- Replace `ResizeObserver` in `AppHeader.tsx` with a more controlled version or a simple `onResize` listener with a debounce.
+- Add `window.onerror` and `window.onunhandledrejection` handlers to `main.tsx` for ultimate debugging.
+- Simplify `StoreProvider` logic to avoid multiple state updates during initialization.

@@ -60,21 +60,24 @@ export function StoreProvider({ children }: StoreProviderProps) {
     const host = window.location.hostname;
 
     // Try matching by domain
-    const matched = dbStores.find(
+    const matchedByDomain = dbStores.find(
       (s) => s.domain && s.domain.toLowerCase() === host.toLowerCase()
     );
-    if (matched) {
-      setStoreRaw(matched.slug);
-      setActiveStoreId(matched.id);
+
+    if (matchedByDomain) {
+      if (store !== matchedByDomain.slug || activeStoreId !== matchedByDomain.id) {
+        setStoreRaw(matchedByDomain.slug);
+        setActiveStoreId(matchedByDomain.id);
+      }
       return;
     }
 
-    // If no domain match, keep current selection but resolve its ID
+    // Resolve activeStoreId for current slug if missing
     const current = dbStores.find((s) => s.slug === store);
-    if (current && !activeStoreId) {
+    if (current && activeStoreId !== current.id) {
       setActiveStoreId(current.id);
     }
-  }, [dbStores, store]);
+  }, [dbStores, store, activeStoreId]);
 
   const setStore = (newStore: AppStore) => {
     setStoreRaw(newStore);

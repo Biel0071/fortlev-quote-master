@@ -34,8 +34,10 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
         let allData: any[] = [];
         let from = 0;
         let hasMore = true;
+        let safetyCounter = 0;
 
-        while (hasMore) {
+        while (hasMore && safetyCounter < 50) { // Safety limit: max 25,000 products
+          safetyCounter++;
           const { data, error: fetchError } = await cloud
             .from("store_products")
             .select(
@@ -51,8 +53,10 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
           hasMore = batch.length === PAGE_SIZE;
           from += PAGE_SIZE;
           
-          // Yield to main thread if we have many pages
-          if (hasMore) await new Promise(r => setTimeout(r, 0));
+          if (hasMore) {
+            // Use a slightly longer yield to keep UI responsive
+            await new Promise(r => setTimeout(r, 10));
+          }
         }
 
         const mapped: ProductWithImages[] = allData
@@ -72,14 +76,14 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
         setProducts(mapped);
         setSmartCache(PRODUCTS_CACHE_KEY, mapped, PRODUCTS_CACHE_TTL_MS);
         setLoading(false);
-        return; // success
+        return; 
       } catch (err: any) {
+        console.error(`Attempt ${attempt} failed:`, err);
         if (attempt < maxRetries) {
-          await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
           continue;
         }
         setError(err?.message ?? "Erro ao carregar produtos");
-        setProducts([]);
         setLoading(false);
       }
     }

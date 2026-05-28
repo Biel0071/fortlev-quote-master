@@ -17,7 +17,6 @@ import { getBannerImageUrls } from "@/utils/bannerStorage";
 import { HomeSection } from "@/components/store/home/HomeSection";
 import { HomeCategoriesCarousel } from "@/components/store/home/HomeCategoriesCarousel";
 import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
-import { useHomeMerchandising } from "@/hooks/useHomeMerchandising";
 import { HomeGuaranteesMiniBar } from "@/components/store/home/HomeGuaranteesMiniBar";
 import { createMicroLoader } from "@/utils/microLoader";
 
@@ -74,7 +73,6 @@ export default function StoreHome() {
   const home = useHomeContent({ enabled: true });
   const { activeCategories, loading: categoriesLoading } = useStoreCategories({ enabled: phase.categories });
   const { activeProducts, loading: productsLoading } = useStoreProducts({ enabled: phase.featured || phase.additional });
-  const merch = useHomeMerchandising({ enabled: phase.additional });
   const { offerProducts: offerList } = useOfferProducts(activeProducts);
 
   const [cartOpen, setCartOpen] = useState(false);
@@ -107,7 +105,7 @@ export default function StoreHome() {
   }, [home.seo?.og_image_path]);
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
-  const loading = (productsLoading && !activeProducts.length) || (categoriesLoading && !activeCategories.length) || (home.loading && !home.banners.length) || merch.loading;
+  const loading = (productsLoading && !activeProducts.length) || (categoriesLoading && !activeCategories.length) || (home.loading && !home.banners.length);
 
   const onAdd = (productId: string, qty: number) => {
     const product: any = offerList.find((item: any) => item.id === productId)

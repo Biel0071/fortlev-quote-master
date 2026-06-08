@@ -46,7 +46,7 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
           let hasMore = true;
           let safetyCounter = 0;
 
-          while (hasMore && safetyCounter < 50) {
+          while (hasMore && safetyCounter < 100) {
             safetyCounter++;
             const { data, error: fetchError } = await cloud
               .from("store_products")

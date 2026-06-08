@@ -30,6 +30,7 @@ const PublicQuotationAccess = lazy(() => import("@/pages/store/PublicQuotationAc
 const QuotationsIndex = lazy(() => import("@/modules/checkout/pages/QuotationsIndex"));
 const Construction = lazy(() => import("@/modules/checkout/pages/Construction"));
 const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
+const MasterAdmin = lazy(() => import("@/pages/admin/MasterAdmin"));
 const CustomerInvoicePortal = lazy(() => import("@/pages/CustomerInvoicePortal"));
 
 
@@ -101,6 +102,7 @@ const App = () => (
                 <Route path="/pedidos" element={<OrdersPage />} />
                 <Route path="/rastreio/:id" element={<TrackingPage />} />
 
+                <Route path="/admin/master/*" element={<MasterAdmin />} />
                 <Route path="/admin/*" element={<AdminApp />} />
 
                 <Route path="/auth/login" element={<LoginPage />} />

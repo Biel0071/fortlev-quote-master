@@ -1,0 +1,303 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Check, ArrowRight, ArrowLeft, Layers, Palette, Cpu, Globe, Rocket, Store } from "lucide-react";
+import { toast } from "sonner";
+
+interface StoreFactoryProps {
+  onSuccess: () => void;
+}
+
+const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    name: "",
+    slug: "",
+    blueprintId: "",
+    templateId: "",
+    selectedModules: [] as string[],
+    domain: ""
+  });
+
+  const { data: blueprints } = useQuery({
+    queryKey: ['factory-blueprints'],
+    queryFn: async () => (await supabase.from('store_blueprints').select('*')).data
+  });
+
+  const { data: templates } = useQuery({
+    queryKey: ['factory-templates'],
+    queryFn: async () => (await supabase.from('store_templates').select('*')).data
+  });
+
+  const { data: moduleDefs } = useQuery({
+    queryKey: ['factory-modules'],
+    queryFn: async () => (await supabase.from('store_module_definitions').select('*')).data
+  });
+
+  const handleCreateStore = async () => {
+    setLoading(true);
+    try {
+      // 1. Get Tenant (Using a default for now, or could select one)
+      const { data: tenant } = await supabase.from('tenants').select('id').limit(1).single();
+      if (!tenant) throw new Error("Tenant não encontrado");
+
+      // 2. Create Store
+      const { data: store, error: storeError } = await supabase
+        .from('stores')
+        .insert({
+          name: formData.name,
+          slug: formData.slug,
+          tenant_id: tenant.id,
+          active: true
+        })
+        .select()
+        .single();
+
+      if (storeError) throw storeError;
+
+      // 3. Apply Blueprint logic (create categories, etc.)
+      const blueprint = blueprints?.find(b => b.id === formData.blueprintId);
+      if (blueprint) {
+        const config = blueprint.config as any;
+        if (config.categories) {
+          const categories = config.categories.map((cat: string) => ({
+            name: cat,
+            store_id: store.id,
+            active: true
+          }));
+          await supabase.from('store_categories').insert(categories);
+        }
+      }
+
+      // 4. Set Theme
+      const template = templates?.find(t => t.id === formData.templateId);
+      if (template) {
+        await supabase.from('store_themes').insert({
+          store_id: store.id,
+          colors: (template.theme_config as any).colors,
+          fonts: (template.theme_config as any).fonts,
+        });
+      }
+
+      // 5. Install Modules
+      if (formData.selectedModules.length > 0) {
+        const modules = formData.selectedModules.map(key => ({
+          store_id: store.id,
+          module_key: key,
+          is_enabled: true
+        }));
+        await supabase.from('store_modules').insert(modules);
+      }
+
+      // 6. Config Domain
+      if (formData.domain) {
+        await supabase.from('store_domains').insert({
+          store_id: store.id,
+          domain: formData.domain,
+          is_primary: true,
+          status: 'pending'
+        });
+      }
+
+      toast.success("Plataforma configurada com sucesso!");
+      onSuccess();
+    } catch (error: any) {
+      toast.error("Erro ao criar loja: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const steps = [
+    { id: 1, title: "Negócio", icon: Layers, description: "Escolha o Blueprint" },
+    { id: 2, title: "Visual", icon: Palette, description: "Escolha o Template" },
+    { id: 3, title: "Módulos", icon: Cpu, description: "Ative Funcionalidades" },
+    { id: 4, title: "Identidade", icon: Globe, description: "Nome e Domínio" },
+    { id: 5, title: "Finalizar", icon: Rocket, description: "Revisar e Lançar" }
+  ];
+
+  return (
+    <div className="flex flex-col min-h-[500px]">
+      <div className="mb-8">
+        <div className="flex justify-between relative mb-2">
+          {steps.map((s, idx) => (
+            <div key={s.id} className="flex flex-col items-center relative z-10">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
+                step >= s.id ? "bg-primary border-primary text-primary-foreground" : "bg-background border-muted text-muted-foreground"
+              }`}>
+                {step > s.id ? <Check size={20} /> : <s.icon size={20} />}
+              </div>
+              <span className={`text-[10px] mt-2 font-medium ${step >= s.id ? "text-primary" : "text-muted-foreground"}`}>
+                {s.title}
+              </span>
+            </div>
+          ))}
+          <div className="absolute top-5 left-0 w-full h-[2px] bg-muted -z-0" />
+          <div className="absolute top-5 left-0 h-[2px] bg-primary transition-all duration-300 -z-0" 
+               style={{ width: `${(step - 1) * 25}%` }} />
+        </div>
+      </div>
+
+      <div className="flex-1">
+        {step === 1 && (
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold">Qual o tipo do negócio?</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {blueprints?.map((bp) => (
+                <Card 
+                  key={bp.id} 
+                  className={`cursor-pointer transition-all ${formData.blueprintId === bp.id ? "ring-2 ring-primary border-primary" : "hover:border-primary/50"}`}
+                  onClick={() => setFormData({ ...formData, blueprintId: bp.id })}
+                >
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="p-2 bg-muted rounded-md"><Store size={24} /></div>
+                    <div>
+                      <p className="font-bold">{bp.name}</p>
+                      <p className="text-xs text-muted-foreground">{bp.category}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold">Escolha a aparência</h3>
+            <div className="grid grid-cols-3 gap-4">
+              {templates?.map((t) => (
+                <Card 
+                  key={t.id} 
+                  className={`cursor-pointer transition-all ${formData.templateId === t.id ? "ring-2 ring-primary border-primary" : "hover:border-primary/50"}`}
+                  onClick={() => setFormData({ ...formData, templateId: t.id })}
+                >
+                  <CardContent className="p-0">
+                    <div className="h-24 bg-muted border-b flex items-center justify-center">
+                      <Palette size={32} className="opacity-20" />
+                    </div>
+                    <div className="p-3">
+                      <p className="font-medium text-sm">{t.name}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold">Módulos Instaláveis</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {moduleDefs?.map((mod) => (
+                <Card 
+                  key={mod.key} 
+                  className={`cursor-pointer transition-all ${formData.selectedModules.includes(mod.key) ? "ring-2 ring-primary border-primary" : "hover:border-primary/50"}`}
+                  onClick={() => {
+                    const exists = formData.selectedModules.includes(mod.key);
+                    setFormData({
+                      ...formData,
+                      selectedModules: exists 
+                        ? formData.selectedModules.filter(m => m !== mod.key)
+                        : [...formData.selectedModules, mod.key]
+                    });
+                  }}
+                >
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-muted rounded-md"><Cpu size={20} /></div>
+                      <div>
+                        <p className="font-medium text-sm">{mod.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{mod.description}</p>
+                      </div>
+                    </div>
+                    {formData.selectedModules.includes(mod.key) && <Check size={16} className="text-primary" />}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold">Identidade da Loja</h3>
+            <div className="space-y-4">
+              <div className="grid gap-2">
+                <Label>Nome da Loja</Label>
+                <Input 
+                  placeholder="Minha Nova Loja" 
+                  value={formData.name}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    const slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]/g, '');
+                    setFormData({ ...formData, name, slug });
+                  }}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Domínio Customizado (opcional)</Label>
+                <Input 
+                  placeholder="www.minhaloja.com.br" 
+                  value={formData.domain}
+                  onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 5 && (
+          <div className="space-y-4 text-center py-4">
+            <div className="inline-flex p-4 rounded-full bg-primary/10 text-primary mb-4">
+              <Rocket size={48} />
+            </div>
+            <h3 className="text-2xl font-bold">Quase lá!</h3>
+            <p className="text-muted-foreground">Tudo pronto para criar a sua nova plataforma multi-loja.</p>
+            <div className="mt-6 p-4 bg-muted rounded-lg text-left inline-block w-full max-w-sm">
+              <p className="text-sm font-bold mb-2">Resumo:</p>
+              <ul className="text-xs space-y-1">
+                <li>• Nome: <strong>{formData.name}</strong></li>
+                <li>• Blueprint: <strong>{blueprints?.find(b => b.id === formData.blueprintId)?.name}</strong></li>
+                <li>• Template: <strong>{templates?.find(t => t.id === formData.templateId)?.name}</strong></li>
+                <li>• Módulos: <strong>{formData.selectedModules.length} selecionados</strong></li>
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-between mt-8 pt-4 border-t">
+        <Button variant="ghost" onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step === 1 || loading}>
+          <ArrowLeft className="mr-2" size={18} /> Anterior
+        </Button>
+        {step < 5 ? (
+          <Button 
+            onClick={() => setStep(s => s + 1)} 
+            disabled={
+              (step === 1 && !formData.blueprintId) || 
+              (step === 2 && !formData.templateId) ||
+              (step === 4 && !formData.name)
+            }
+          >
+            Próximo <ArrowRight className="ml-2" size={18} />
+          </Button>
+        ) : (
+          <Button onClick={handleCreateStore} disabled={loading}>
+            {loading ? "Criando..." : "Criar Loja Master"} <Check className="ml-2" size={18} />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default StoreFactory;

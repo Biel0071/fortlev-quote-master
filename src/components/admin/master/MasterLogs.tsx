@@ -64,7 +64,7 @@ const MasterLogs = () => {
                 </TableCell>
                 <TableCell>{log.stores?.name || "Global"}</TableCell>
                 <TableCell className="text-xs">{log.user_id ? log.user_id.substring(0, 8) : "Visitante"}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{log.ip_address || "127.0.0.1"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{log.ip || "127.0.0.1"}</TableCell>
                 <TableCell className="text-xs">
                   {new Date(log.created_at).toLocaleString()}
                 </TableCell>

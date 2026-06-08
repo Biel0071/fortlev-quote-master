@@ -5,6 +5,7 @@ import StoresList from "@/components/admin/master/StoresList";
 import BlueprintsManager from "@/components/admin/master/BlueprintsManager";
 import ModulesManager from "@/components/admin/master/ModulesManager";
 import MasterAICentral from "@/components/admin/master/MasterAICentral";
+import MasterLogs from "@/components/admin/master/MasterLogs";
 
 const MasterAdmin = () => {
   const menuItems = [
@@ -62,6 +63,7 @@ const MasterAdmin = () => {
             <Route path="modules" element={<ModulesManager />} />
             <Route path="ia" element={<MasterAICentral />} />
             <Route path="domains" element={<div className="p-4">Gerenciamento de Domínios em breve...</div>} />
+            <Route path="logs" element={<MasterLogs />} />
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/admin/master" replace />} />
           </Routes>

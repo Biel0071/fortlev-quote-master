@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreHorizontal, ExternalLink, Copy, Trash2, Archive, History, Layers, Settings, Globe, Cpu, Sparkles, Activity, CreditCard, ShieldCheck } from "lucide-react";
+import { Plus, Search, MoreHorizontal, ExternalLink, Copy, Trash2, Archive, History, Layers, Settings, Globe, Cpu, Sparkles, Activity, CreditCard, ShieldCheck, AlertCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import StoreFactory from "./StoreFactory";
@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useBlueprintManager } from "@/hooks/useBlueprintManager";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
+import { storeUrlService } from "@/services/url/storeUrlService";
+
 
 
 
@@ -130,8 +132,16 @@ const StoresList = () => {
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhuma loja encontrada.</TableCell>
               </TableRow>
-            ) : filteredStores?.map((store) => (
-              <TableRow key={store.id}>
+              {filteredStores?.map((store) => {
+                const publicUrl = storeUrlService.getStorePublicUrl(store, store.store_domains);
+                const adminUrl = storeUrlService.getStoreAdminUrl(store.id);
+                const cockpitUrl = storeUrlService.getStoreMasterCockpitUrl(store.id);
+                const subscription = store.tenants?.saas_subscriptions?.[0];
+                const planName = subscription?.saas_plans?.name;
+
+                return (
+                  <TableRow key={store.id}>
+
                 <TableCell>
                   <div>
                     <p className="font-medium">{store.name}</p>
@@ -141,21 +151,29 @@ const StoresList = () => {
                 <TableCell>
                   <div className="flex flex-col gap-1">
                     <span className="font-medium">{store.tenants?.name || "N/A"}</span>
-                    {store.tenants?.saas_subscriptions?.[0] && (
+                    {subscription ? (
                       <Badge variant="outline" className="w-fit text-[10px] py-0">
-                        {store.tenants.saas_subscriptions[0].saas_plans?.name} - {store.tenants.saas_subscriptions[0].status}
+                        {planName} - {subscription.status}
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive" className="w-fit text-[10px] py-0 flex gap-1">
+                        <AlertCircle size={8} /> Sem Plano
                       </Badge>
                     )}
+
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm">{store.store_domains?.[0]?.domain || `${store.slug}.plataforma.com`}</span>
+                    <span className="text-xs font-mono truncate max-w-[120px]" title={publicUrl}>
+                      {publicUrl.replace('https://', '').replace('http://', '')}
+                    </span>
                     {store.store_domains?.[0] && (
-                      <Badge variant={store.store_domains[0].verified ? "default" : "secondary"} className="w-fit text-[10px] py-0 bg-green-500/10 text-green-600 border-green-200">
+                      <Badge variant={store.store_domains[0].verified ? "default" : "secondary"} className={`w-fit text-[10px] py-0 ${store.store_domains[0].verified ? "bg-green-500/10 text-green-600 border-green-200" : ""}`}>
                         {store.store_domains[0].verified ? "Verificado" : "Pendente"}
                       </Badge>
                     )}
+
                   </div>
                 </TableCell>
                 <TableCell>
@@ -185,15 +203,16 @@ const StoresList = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Ações Master</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => navigate(`/admin/master/stores/${store.id}`)}>
+                      <DropdownMenuItem onClick={() => navigate(cockpitUrl)}>
                         <Settings size={14} className="mr-2" /> Cockpit da Loja
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.open(`/${store.slug}`, '_blank')}>
+                      <DropdownMenuItem onClick={() => window.open(publicUrl, '_blank')}>
                         <ExternalLink size={14} className="mr-2" /> Abrir Loja Pública
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate(`/admin/store/${store.id}/dashboard`)}>
+                      <DropdownMenuItem onClick={() => navigate(adminUrl)}>
                         <ShieldCheck size={14} className="mr-2 text-primary" /> Entrar no Admin
                       </DropdownMenuItem>
+
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => navigate(`/admin/master/domains?storeId=${store.id}`)}>
                         <Globe size={14} className="mr-2" /> Gerenciar Domínios
@@ -238,8 +257,10 @@ const StoresList = () => {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
-              </TableRow>
-            ))}
+                  </TableRow>
+                );
+              })}
+
           </TableBody>
         </Table>
       </div>

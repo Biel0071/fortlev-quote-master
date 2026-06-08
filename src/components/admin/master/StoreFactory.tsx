@@ -194,7 +194,21 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
             store_id: store.id
           });
         }
+
+        // 3.5 Auto-install default modules from blueprint
+        if (config.modules && Array.isArray(config.config_modules || config.modules)) {
+          const defaultModules = (config.config_modules || config.modules).map((mod: any) => ({
+            store_id: store.id,
+            module_key: typeof mod === 'string' ? mod : mod.key,
+            is_enabled: true
+          }));
+          
+          if (defaultModules.length > 0) {
+            await supabase.from('store_modules').insert(defaultModules);
+          }
+        }
       }
+
 
       // 4. Set Theme
       const template = templates?.find(t => t.id === formData.templateId);

@@ -190,11 +190,11 @@ const ModulesManager = () => {
                   <div className="mt-4 flex flex-col gap-2">
                     <div className="flex justify-between text-xs mb-2">
                       <span className="text-muted-foreground">Preço:</span>
-                      <span className="font-bold">R$ {mod.price || 0}</span>
+                      <span className="font-bold">R$ {(mod as any).price || 0}</span>
                     </div>
                     <div className="flex justify-between text-xs mb-2">
                       <span className="text-muted-foreground">Requisito:</span>
-                      <Badge variant="outline" className="py-0">{mod.required_plan || "Free"}</Badge>
+                      <Badge variant="outline" className="py-0">{(mod as any).required_plan || "Free"}</Badge>
                     </div>
                     <div className="flex gap-2 pt-2 border-t">
                       <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => handleEdit(mod)}>

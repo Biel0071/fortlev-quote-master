@@ -12,7 +12,7 @@ export const MasterRouteGuard = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     const checkAuth = async () => {
       const hostname = window.location.hostname;
-      const isLovable = hostname.includes('lovable.app') || hostname === 'localhost' || hostname === '127.0.0.1';
+      const isLovable = hostname.includes('lovable.app') || hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('lovable.project');
       
       // Bloqueio preventivo: Master Admin só deve ser acessível via domínio da plataforma
       if (!isLovable) {

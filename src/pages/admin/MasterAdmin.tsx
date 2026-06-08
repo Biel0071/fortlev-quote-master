@@ -1,5 +1,5 @@
 import { Outlet, NavLink, Routes, Route, Navigate } from "react-router-dom";
-import { LayoutDashboard, Store, Layers, FileCode2, Cpu, Globe, BarChart3, Settings, ShieldCheck, Activity } from "lucide-react";
+import { LayoutDashboard, Store, Layers, FileCode2, Cpu, Globe, BarChart3, Settings, ShieldCheck, Activity, Sparkles } from "lucide-react";
 import MasterDashboard from "@/components/admin/master/MasterDashboard";
 import StoresList from "@/components/admin/master/StoresList";
 import BlueprintsManager from "@/components/admin/master/BlueprintsManager";

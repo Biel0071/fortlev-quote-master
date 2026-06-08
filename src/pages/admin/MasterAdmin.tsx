@@ -9,6 +9,7 @@ import MasterLogs from "@/components/admin/master/MasterLogs";
 import SaaSPlansManager from "@/components/admin/master/SaaSPlansManager";
 import FinanceManager from "@/components/admin/master/FinanceManager";
 import WhiteLabelSettings from "@/components/admin/master/WhiteLabelSettings";
+import DomainsManager from "@/components/admin/master/DomainsManager";
 
 const MasterAdmin = () => {
   const menuItems = [

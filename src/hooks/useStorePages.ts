@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useTenant } from "@/providers/TenantProvider";
 
 export type StorePage = {
   id: string;
@@ -11,17 +12,21 @@ export type StorePage = {
 };
 
 export function useStorePages() {
+  const { store } = useTenant();
   const [pages, setPages] = useState<StorePage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
+    if (!store?.id) return;
+    
     setLoading(true);
     setError(null);
 
     const { data, error } = await cloud
       .from("store_pages")
       .select("id, slug, title, content_md, published, sort_order")
+      .eq("store_id", store.id)
       .order("sort_order", { ascending: true })
       .order("title", { ascending: true });
 
@@ -39,7 +44,7 @@ export function useStorePages() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [store?.id]);
 
   const publishedPages = useMemo(() => pages.filter((p) => p.published), [pages]);
 

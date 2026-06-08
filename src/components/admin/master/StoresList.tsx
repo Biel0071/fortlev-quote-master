@@ -148,8 +148,15 @@ const StoresList = () => {
                       <DropdownMenuItem onClick={() => window.open(`/${store.slug}`, '_blank')}>
                         <ExternalLink size={14} className="mr-2" /> Acessar Loja
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        setSelectedStoreForSnapshot(store);
+                        setSnapshotLabel(`v1.0 - ${new Date().toLocaleDateString()}`);
+                        setIsSnapshotDialogOpen(true);
+                      }}>
+                        <Layers size={14} className="mr-2" /> Salvar como Blueprint
+                      </DropdownMenuItem>
                       <DropdownMenuItem>
-                        <Copy size={14} className="mr-2" /> Duplicar
+                        <Copy size={14} className="mr-2" /> Clonar Loja
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem>
@@ -173,8 +180,41 @@ const StoresList = () => {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={isSnapshotDialogOpen} onOpenChange={setIsSnapshotDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gerar Blueprint de {selectedStoreForSnapshot?.name}</DialogTitle>
+            <DialogDescription>
+              Isso capturará categorias, banners, páginas, tema, módulos e IA desta loja para um modelo replicável.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="snap-label">Etiqueta da Versão</Label>
+              <Input 
+                id="snap-label" 
+                value={snapshotLabel} 
+                onChange={(e) => setSnapshotLabel(e.target.value)}
+                placeholder="Ex: Versão de Natal" 
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSnapshotDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={async () => {
+              await saveStoreAsBlueprint(selectedStoreForSnapshot.id, snapshotLabel);
+              setIsSnapshotDialogOpen(false);
+              queryClient.invalidateQueries({ queryKey: ['master-blueprints'] });
+            }} disabled={savingBp}>
+              {savingBp ? "Processando Snapshot..." : "Gerar Blueprint"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
+
 
 export default StoresList;

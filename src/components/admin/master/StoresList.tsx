@@ -261,7 +261,9 @@ const StoresList = () => {
                 </TableCell>
                   </TableRow>
                 );
-              })}
+              })
+            )}
+
 
           </TableBody>
         </Table>

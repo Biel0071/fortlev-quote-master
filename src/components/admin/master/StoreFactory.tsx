@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, ArrowRight, ArrowLeft, Layers, Palette, Cpu, Globe, Rocket, Store, AlertTriangle } from "lucide-react";
+import { Check, ArrowRight, ArrowLeft, Layers, Palette, Cpu, Globe, Rocket, Store, AlertTriangle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useTenant } from "@/providers/TenantProvider";
+import { logSystemEvent } from "@/services/systemLogs";
+import { useNavigate } from "react-router-dom";
 
 interface StoreFactoryProps {
   onSuccess: () => void;
@@ -16,8 +18,11 @@ interface StoreFactoryProps {
 
 const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
   const { tenant } = useTenant();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [isMaster, setIsMaster] = useState(false);
+  const [limitExceeded, setLimitExceeded] = useState(false);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -25,8 +30,17 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
     blueprintId: "",
     templateId: "",
     selectedModules: [] as string[],
-    domain: ""
+    domain: "",
+    tenantId: ""
   });
+
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data } = await supabase.rpc('is_master_admin');
+      setIsMaster(!!data);
+    };
+    checkRole();
+  }, []);
 
   const { data: blueprints } = useQuery({
     queryKey: ['factory-blueprints'],
@@ -43,11 +57,20 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
     queryFn: async () => (await supabase.from('store_module_definitions').select('*')).data
   });
 
+  const { data: allTenants } = useQuery({
+    queryKey: ['master-all-tenants'],
+    queryFn: async () => {
+      if (!isMaster) return null;
+      const { data } = await supabase.from('tenants').select('id, name').order('name');
+      return data;
+    },
+    enabled: isMaster
+  });
+
   const handleCreateStore = async () => {
     setLoading(true);
     try {
-      // 1. Get Tenant and Check Limits
-      const currentTenantId = tenant?.id || (await supabase.from('tenants').select('id').limit(1).single()).data?.id;
+      const currentTenantId = formData.tenantId || tenant?.id || (await supabase.from('tenants').select('id').limit(1).single()).data?.id;
       if (!currentTenantId) throw new Error("Tenant não encontrado");
 
       // Check Store Limit
@@ -56,9 +79,29 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', currentTenantId);
 
-      const maxStores = tenant?.subscription?.plan?.limits?.max_stores || 1;
+      // Obter limites do tenant alvo (não necessariamente do logado)
+      const { data: targetTenant } = await supabase
+        .from('tenants')
+        .select(`
+          id,
+          saas_subscriptions (
+            saas_plans (limits)
+          )
+        `)
+        .eq('id', currentTenantId)
+        .single();
+
+      const limits = (targetTenant?.saas_subscriptions?.[0]?.saas_plans as any)?.limits;
+      const maxStores = limits?.max_stores || 1;
+      
+      let isOverride = false;
       if (storeCount !== null && storeCount >= maxStores) {
-        throw new Error(`Limite de lojas atingido (${storeCount}/${maxStores}). Faça upgrade do plano.`);
+        if (isMaster) {
+          isOverride = true;
+          toast.info("Override administrativo: Limite do plano ignorado pelo Master.");
+        } else {
+          throw new Error(`Limite de lojas atingido (${storeCount}/${maxStores}). Faça upgrade do plano.`);
+        }
       }
 
       // 2. Create Store
@@ -76,10 +119,9 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
 
       if (storeError) throw storeError;
 
-      // 3. Apply Blueprint logic (Restaurar categorias, banners, páginas, módulos, temas, IA)
+      // 3. Apply Blueprint logic
       const blueprint = blueprints?.find(b => b.id === formData.blueprintId);
       if (blueprint) {
-        // Buscar a versão mais recente do blueprint
         const { data: latestVersion } = await supabase
           .from('blueprint_versions')
           .select('*')
@@ -90,7 +132,6 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
 
         const config = (latestVersion?.config || blueprint.config) as any;
         
-        // Categorias
         if (config.categories && Array.isArray(config.categories)) {
           const categories = config.categories.map((cat: any) => ({
             name: typeof cat === 'string' ? cat : cat.name,
@@ -100,17 +141,15 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
           await supabase.from('store_categories').insert(categories);
         }
 
-        // Banners
         if (config.banners && Array.isArray(config.banners)) {
           const banners = config.banners.map((banner: any) => ({
             ...banner,
-            id: undefined, // Deixar o DB gerar novo ID
+            id: undefined,
             store_id: store.id
           }));
           await supabase.from('store_banners').insert(banners);
         }
 
-        // Páginas
         if (config.pages && Array.isArray(config.pages)) {
           const pages = config.pages.map((page: any) => ({
             ...page,
@@ -120,7 +159,6 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
           await supabase.from('store_pages').insert(pages);
         }
 
-        // IA Config
         if (config.ai_config) {
           await supabase.from('store_ai_configs').insert({
             ...config.ai_config,
@@ -129,7 +167,6 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
           });
         }
       }
-
 
       // 4. Set Theme
       const template = templates?.find(t => t.id === formData.templateId);
@@ -151,7 +188,17 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
         await supabase.from('store_modules').insert(modules);
       }
 
-      // 6. Config Domain
+      // 6. Config Domain (Fallback)
+      await supabase.from('store_domains').insert({
+        store_id: store.id,
+        tenant_id: currentTenantId,
+        domain: `${store.slug}.lovable.app`,
+        is_primary: !formData.domain,
+        is_fallback: true,
+        verified: true
+      });
+
+      // 7. Config Custom Domain if provided
       if (formData.domain) {
         await supabase.from('store_domains').insert({
           store_id: store.id,
@@ -162,8 +209,16 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
         });
       }
 
+      // 8. Log Event
+      await logSystemEvent({
+        event_type: 'store_creation',
+        message: `Loja ${store.name} criada${isOverride ? ' com override de limite' : ''}.`,
+        metadata: { store_id: store.id, tenant_id: currentTenantId, is_override: isOverride }
+      });
+
       toast.success("Plataforma configurada com sucesso!");
       onSuccess();
+      navigate(`/admin/master/stores/${store.id}`);
     } catch (error: any) {
       toast.error("Erro ao criar loja: " + error.message);
     } finally {
@@ -304,6 +359,21 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
           <div className="space-y-4">
             <h3 className="text-xl font-bold">Identidade da Loja</h3>
             <div className="space-y-4">
+              {isMaster && (
+                <div className="grid gap-2">
+                  <Label>Vincular ao Tenant</Label>
+                  <select 
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={formData.tenantId}
+                    onChange={(e) => setFormData({ ...formData, tenantId: e.target.value })}
+                  >
+                    <option value="">(Seu Tenant Atual)</option>
+                    {allTenants?.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label>Nome da Loja</Label>
                 <Input 

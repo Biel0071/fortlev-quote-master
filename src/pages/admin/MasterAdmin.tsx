@@ -10,6 +10,7 @@ import SaaSPlansManager from "@/components/admin/master/SaaSPlansManager";
 import FinanceManager from "@/components/admin/master/FinanceManager";
 import WhiteLabelSettings from "@/components/admin/master/WhiteLabelSettings";
 import DomainsManager from "@/components/admin/master/DomainsManager";
+import StoreDetails from "@/components/admin/master/StoreDetails";
 
 const MasterAdmin = () => {
   const menuItems = [
@@ -66,6 +67,7 @@ const MasterAdmin = () => {
           <Routes>
             <Route index element={<MasterDashboard />} />
             <Route path="stores" element={<StoresList />} />
+            <Route path="stores/:storeId" element={<StoreDetails />} />
             <Route path="plans" element={<SaaSPlansManager />} />
             <Route path="finance" element={<FinanceManager />} />
             <Route path="blueprints" element={<BlueprintsManager />} />

@@ -19,13 +19,9 @@ export const MasterRouteGuard = ({ children }: { children: React.ReactNode }) =>
       }
 
       // Check if user is in admin_users or has admin role in app_metadata
-      const { data: adminUser, error } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
+      const { data: isMaster } = await supabase.rpc('is_master_admin');
 
-      if (error || !adminUser) {
+      if (!isMaster) {
         toast({
           title: "Acesso Negado",
           description: "Você não tem permissão para acessar o Master Admin.",

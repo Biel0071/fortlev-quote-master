@@ -3932,7 +3932,10 @@ export type Database = {
           created_at: string
           domain: string
           id: string
+          is_fallback: boolean | null
           is_primary: boolean
+          last_check_at: string | null
+          ssl_active: boolean | null
           store_id: string
           tenant_id: string | null
           updated_at: string
@@ -3942,7 +3945,10 @@ export type Database = {
           created_at?: string
           domain: string
           id?: string
+          is_fallback?: boolean | null
           is_primary?: boolean
+          last_check_at?: string | null
+          ssl_active?: boolean | null
           store_id: string
           tenant_id?: string | null
           updated_at?: string
@@ -3952,7 +3958,10 @@ export type Database = {
           created_at?: string
           domain?: string
           id?: string
+          is_fallback?: boolean | null
           is_primary?: boolean
+          last_check_at?: string | null
+          ssl_active?: boolean | null
           store_id?: string
           tenant_id?: string | null
           updated_at?: string
@@ -5544,6 +5553,7 @@ export type Database = {
         Returns: undefined
       }
       is_master: { Args: { _user_id: string }; Returns: boolean }
+      is_master_admin: { Args: never; Returns: boolean }
       log_token_action: {
         Args: {
           _action: string

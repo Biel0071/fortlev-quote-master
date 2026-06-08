@@ -98,7 +98,7 @@ export default function StoreHome() {
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
   const { isLoading: tenantLoading } = useTenant();
-  const loading = tenantLoading || (productsLoading && !activeProducts.length) || (categoriesLoading && !activeCategories.length);
+  const loading = tenantLoading || (productsLoading && activeProducts.length === 0) || (categoriesLoading && activeCategories.length === 0);
   
   if (tenantLoading) {
     return (
@@ -167,7 +167,8 @@ export default function StoreHome() {
   // Offer products from the new hook (always populated)
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
-  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && !home.loading && !categoriesLoading;
+  // Improved empty store detection
+  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && !home.loading && !categoriesLoading && !home.banners.length;
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen pt-[var(--store-header-offset,80px)]">

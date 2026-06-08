@@ -1,7 +1,7 @@
 import { publicImageUrl } from "@/utils/storage";
 
 const INVALID_TERMS = [
-  "background", "hero",
+  "background", "hero", "fallback", "placeholder"
 ];
 
 /**

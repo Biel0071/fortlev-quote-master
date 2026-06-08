@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Store, ShoppingCart, DollarSign, Users, Globe, Cpu, TrendingUp, ArrowUpRight, Award, Zap, Brain } from "lucide-react";
+import { Store, ShoppingCart, DollarSign, Users, Globe, Cpu, TrendingUp, ArrowUpRight, Award, Zap, Brain, Layers } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";

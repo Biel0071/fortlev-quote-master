@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { 
   Store, Globe, ShieldCheck, Cpu, Sparkles, Zap, Activity, Layers, 
-  CreditCard, Palette, ExternalLink, ArrowLeft, RefreshCcw, Settings 
+  CreditCard, Palette, ExternalLink, ArrowLeft, RefreshCcw, Settings, AlertCircle 
 } from "lucide-react";
 import { toast } from "sonner";
+import { storeUrlService } from "@/services/url/storeUrlService";
+
 
 const StoreDetails = () => {
   const { storeId } = useParams();
@@ -49,8 +51,11 @@ const StoreDetails = () => {
   if (isLoading) return <div className="p-8 text-center">Carregando detalhes da loja...</div>;
   if (!store) return <div className="p-8 text-center">Loja não encontrada.</div>;
 
-  const primaryDomain = store.store_domains?.find((d: any) => d.is_primary)?.domain || `${store.slug}.lovable.app`;
+  const publicUrl = storeUrlService.getStorePublicUrl(store, store.store_domains);
+  const adminUrl = storeUrlService.getStoreAdminUrl(store.id);
   const subscription = store.tenants?.saas_subscriptions?.[0];
+  const hasPlan = !!subscription?.saas_plans;
+
 
   return (
     <div className="space-y-6">
@@ -68,12 +73,13 @@ const StoreDetails = () => {
           <p className="text-muted-foreground">ID: {store.id} • Slug: /{store.slug}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => window.open(`/${store.slug}`, '_blank')}>
+          <Button variant="outline" className="gap-2" onClick={() => window.open(publicUrl, '_blank')}>
             <ExternalLink size={16} /> Ver Site
           </Button>
-          <Button className="gap-2" onClick={() => navigate(`/admin/store/${store.id}/dashboard`)}>
+          <Button className="gap-2" onClick={() => navigate(adminUrl)}>
             <ShieldCheck size={16} /> Entrar no Admin
           </Button>
+
         </div>
       </div>
 
@@ -94,7 +100,8 @@ const StoreDetails = () => {
                 <CardTitle className="text-sm font-medium">Domínio Principal</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold break-all">{primaryDomain}</div>
+                <div className="text-xl font-bold break-all truncate" title={publicUrl}>{publicUrl.replace('https://', '')}</div>
+
                 <Button variant="link" className="p-0 h-auto text-xs" onClick={() => setActiveTab("domains")}>
                   Gerenciar todos os domínios
                 </Button>
@@ -105,8 +112,17 @@ const StoreDetails = () => {
                 <CardTitle className="text-sm font-medium">Plano Atual</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">{subscription?.saas_plans?.name || "Nenhum"}</div>
-                <Badge variant="outline" className="mt-1">{subscription?.status || "Inativo"}</Badge>
+                <div className={`text-xl font-bold ${!hasPlan ? "text-destructive" : ""}`}>
+                  {subscription?.saas_plans?.name || "Sem Plano Ativo"}
+                </div>
+                {!hasPlan ? (
+                  <Button variant="link" className="p-0 h-auto text-xs text-destructive gap-1" onClick={() => navigate(`/admin/master/plans?tenantId=${store.tenant_id}`)}>
+                    <AlertCircle size={10} /> Vincular plano agora
+                  </Button>
+                ) : (
+                  <Badge variant="outline" className="mt-1">{subscription?.status || "Inativo"}</Badge>
+                )}
+
               </CardContent>
             </Card>
             <Card>

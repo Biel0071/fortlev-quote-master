@@ -1,11 +1,24 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Layers, Edit2, Trash2, Eye } from "lucide-react";
+import { Plus, Layers, Edit2, Trash2, Eye, History, Save, Play } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useBlueprintManager } from "@/hooks/useBlueprintManager";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const BlueprintsManager = () => {
+  const queryClient = useQueryClient();
+  const { saveStoreAsBlueprint, loading: savingBp } = useBlueprintManager();
+  const [selectedBp, setSelectedBp] = useState<any>(null);
+  const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
+  const [snapshotLabel, setSnapshotLabel] = useState("");
+  const [targetStoreId, setTargetStoreId] = useState("");
+
   const { data: blueprints, isLoading } = useQuery({
     queryKey: ['master-blueprints'],
     queryFn: async () => {
@@ -14,6 +27,22 @@ const BlueprintsManager = () => {
       return data;
     }
   });
+
+  const { data: versions, isLoading: loadingVersions } = useQuery({
+    queryKey: ['blueprint-versions', selectedBp?.id],
+    queryFn: async () => {
+      if (!selectedBp) return [];
+      const { data, error } = await supabase
+        .from('blueprint_versions')
+        .select('*')
+        .eq('blueprint_id', selectedBp.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedBp
+  });
+
 
   return (
     <div className="space-y-6">

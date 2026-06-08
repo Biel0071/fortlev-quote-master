@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, Suspense, lazy } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Flame, Store, Package, LayoutGrid, Info } from "lucide-react";
 import { useOfferProducts } from "@/hooks/useOfferProducts";
@@ -19,7 +19,7 @@ import { HomeSection } from "@/components/store/home/HomeSection";
 import { HomeCategoriesCarousel } from "@/components/store/home/HomeCategoriesCarousel";
 import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
 import { HomeGuaranteesMiniBar } from "@/components/store/home/HomeGuaranteesMiniBar";
-import { createMicroLoader } from "@/utils/microLoader";
+
 
 function CategorySkeleton() {
   return (
@@ -54,23 +54,12 @@ export default function StoreHome() {
   const { store: tenantStore } = useTenant();
 
   const [phase, setPhase] = useState({
-    categories: false,
-    featured: false,
-    additional: false,
-    secondary: false,
+    categories: true,
+    featured: true,
+    additional: true,
+    secondary: true,
   });
 
-  useEffect(() => {
-    const loader = createMicroLoader({ chunkSize: 1, idleTimeoutMs: 100 });
-
-    // Parallelize core data loading tasks - faster intervals
-    loader.addTask({ priority: "critical", run: () => setPhase((p) => ({ ...p, categories: true })) });
-    loader.addTask({ priority: "critical", run: () => setPhase((p) => ({ ...p, featured: true })) });
-    loader.addTask({ priority: "high", run: () => setPhase((p) => ({ ...p, additional: true })) });
-    loader.addTask({ priority: "normal", run: () => setPhase((p) => ({ ...p, secondary: true })) });
-
-    return () => loader.clear();
-  }, []);
 
   const home = useHomeContent({ enabled: true });
   const { activeCategories, loading: categoriesLoading } = useStoreCategories({ enabled: phase.categories });

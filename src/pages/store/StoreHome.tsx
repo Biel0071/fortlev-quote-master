@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
-import { Flame } from "lucide-react";
+import { Flame, Store, Package, LayoutGrid, Info } from "lucide-react";
 import { useOfferProducts } from "@/hooks/useOfferProducts";
 import { AppHeader } from "@/components/store/AppHeader";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
@@ -8,6 +8,7 @@ import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useHomeContent } from "@/hooks/useHomeContent";
+import { useTenant } from "@/providers/TenantProvider";
 import { HomeHeroCarousel } from "@/components/store/home/HomeHeroCarousel";
 import { CartDrawer } from "@/components/store/CartDrawer";
 import { StoreFooter } from "@/components/store/StoreFooter";
@@ -50,6 +51,7 @@ function ProductGridSkeleton({ count = 4 }: { count?: number }) {
 
 export default function StoreHome() {
   const cart = useCart();
+  const { store: tenantStore } = useTenant();
 
   const [phase, setPhase] = useState({
     categories: false,
@@ -79,12 +81,13 @@ export default function StoreHome() {
   const [pageLinks, setPageLinks] = useState<Array<{ title: string; slug: string }>>([]);
 
   useEffect(() => {
-    if (!phase.secondary) return;
+    if (!phase.secondary || !tenantStore?.id) return;
 
     let alive = true;
     cloud
       .from("store_pages")
       .select("title, slug, sort_order")
+      .eq("store_id", tenantStore.id)
       .eq("published", true)
       .order("sort_order", { ascending: true })
       .then(({ data }) => {
@@ -95,7 +98,7 @@ export default function StoreHome() {
     return () => {
       alive = false;
     };
-  }, [phase.secondary]);
+  }, [phase.secondary, tenantStore?.id]);
 
 
   const seo = useMemo(() => pickHomeSeo(home.seo), [home.seo]);

@@ -199,6 +199,7 @@ export default function StoreHome() {
             <HomeHeroCarousel banners={home.banners} loading={home.loading} />
           </div>
 
+
           <HomeSection
             title="Categorias"
             tone="plain"

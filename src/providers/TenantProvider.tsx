@@ -127,11 +127,11 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             .order('created_at', { ascending: false });
           
           if (fallbackStores && fallbackStores.length > 0) {
-            // Find store "Construção (Orçamentos)" or "Materiais de Construção" if they exist
+            // Priority list for resolving the "correct" store when multiple exist
             const preferred = fallbackStores.find(s => 
-              s.name.toLowerCase().includes('construção') || 
-              s.name.toLowerCase().includes('materiais') ||
-              s.name.toLowerCase().includes('mf atacadista')
+              s.name.toLowerCase().includes('mf atacadista') ||
+              s.name.toLowerCase().includes('construção (orçamentos)') ||
+              s.name.toLowerCase().includes('materiais de construção')
             );
             const defaultStore = preferred || fallbackStores.find(s => s.active) || fallbackStores[0];
             storeId = defaultStore.id;

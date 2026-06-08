@@ -71,53 +71,54 @@ function PageSkeleton() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <ThemeBoot>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <ScrollToTop />
-          <CookieConsentBanner />
-          <Suspense fallback={<PageSkeleton />}>
-            <Routes>
-              {/* Rota raiz explicitamente definida */}
-              <Route path="/" element={<StoreHome />} />
-              
-              <Route path="/materiais" element={<Navigate to="/" replace />} />
-              <Route path="/loja" element={<StoreCatalog />} />
-              <Route path="/catalogo" element={<CatalogRedirect />} />
-              <Route path="/catálogo" element={<CatalogRedirect />} />
-              <Route path="/ofertas" element={<OffersPage />} />
-              <Route path="/produto/:slug" element={<ProductPage />} />
-              <Route path="/carrinho" element={<CartPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/checkout/pagamento" element={<PaymentPendingPage />} />
-              <Route path="/p/:slug" element={<StorePage />} />
-              <Route path="/r/:slug" element={<ShortLinkRedirect />} />
-              <Route path="/api/apk/:token" element={<ApiApkDownloadRedirect />} />
-              <Route path="/institucional/:slug" element={<InstitutionalRedirect />} />
+      <TenantProvider>
+        <ThemeBoot>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <ScrollToTop />
+            <CookieConsentBanner />
+            <Suspense fallback={<PageSkeleton />}>
+              <Routes>
+                {/* Rota raiz explicitamente definida */}
+                <Route path="/" element={<StoreHome />} />
+                
+                <Route path="/materiais" element={<Navigate to="/" replace />} />
+                <Route path="/loja" element={<StoreCatalog />} />
+                <Route path="/catalogo" element={<CatalogRedirect />} />
+                <Route path="/catálogo" element={<CatalogRedirect />} />
+                <Route path="/ofertas" element={<OffersPage />} />
+                <Route path="/produto/:slug" element={<ProductPage />} />
+                <Route path="/carrinho" element={<CartPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/checkout/pagamento" element={<PaymentPendingPage />} />
+                <Route path="/p/:slug" element={<StorePage />} />
+                <Route path="/r/:slug" element={<ShortLinkRedirect />} />
+                <Route path="/api/apk/:token" element={<ApiApkDownloadRedirect />} />
+                <Route path="/institucional/:slug" element={<InstitutionalRedirect />} />
 
-              <Route path="/conta" element={<AccountPage />} />
-              <Route path="/pedidos" element={<OrdersPage />} />
-              <Route path="/rastreio/:id" element={<TrackingPage />} />
+                <Route path="/conta" element={<AccountPage />} />
+                <Route path="/pedidos" element={<OrdersPage />} />
+                <Route path="/rastreio/:id" element={<TrackingPage />} />
 
-              <Route path="/admin/*" element={<AdminApp />} />
+                <Route path="/admin/*" element={<AdminApp />} />
 
-              <Route path="/auth/login" element={<LoginPage />} />
-              <Route path="/auth/signup" element={<SignupPage />} />
+                <Route path="/auth/login" element={<LoginPage />} />
+                <Route path="/auth/signup" element={<SignupPage />} />
 
-              <Route path="/construcao" element={<Construction />} />
-              <Route path="/orcamentos" element={<QuotationsIndex />} />
-              <Route path="/orcamento/:slug/:token" element={<PublicQuotationAccess />} />
-              <Route path="/orcamento-publico" element={<PublicQuotationAccess />} />
-              <Route path="/nota/:accessKey" element={<CustomerInvoicePortal />} />
+                <Route path="/construcao" element={<Construction />} />
+                <Route path="/orcamentos" element={<QuotationsIndex />} />
+                <Route path="/orcamento/:slug/:token" element={<PublicQuotationAccess />} />
+                <Route path="/orcamento-publico" element={<PublicQuotationAccess />} />
+                <Route path="/nota/:accessKey" element={<CustomerInvoicePortal />} />
 
 
-              <Route path="/dashboard" element={<Navigate to="/admin/orcamentos" replace />} />
-              <Route path="/dashboard/*" element={<Navigate to="/admin/orcamentos" replace />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
+                <Route path="/dashboard" element={<Navigate to="/admin/orcamentos" replace />} />
+                <Route path="/dashboard/*" element={<Navigate to="/admin/orcamentos" replace />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
         </ThemeBoot>
       </TenantProvider>
     </TooltipProvider>

@@ -17,7 +17,12 @@ import { Label } from "@/components/ui/label";
 const StoresList = () => {
   const [search, setSearch] = useState("");
   const [isFactoryOpen, setIsFactoryOpen] = useState(false);
+  const [isSnapshotDialogOpen, setIsSnapshotDialogOpen] = useState(false);
+  const [selectedStoreForSnapshot, setSelectedStoreForSnapshot] = useState<any>(null);
+  const [snapshotLabel, setSnapshotLabel] = useState("");
+  const { saveStoreAsBlueprint, loading: savingBp } = useBlueprintManager();
   const queryClient = useQueryClient();
+
 
   const { data: stores, isLoading } = useQuery({
     queryKey: ['master-stores'],

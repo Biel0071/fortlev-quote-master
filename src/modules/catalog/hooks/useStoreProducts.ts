@@ -28,7 +28,10 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
   const PRODUCTS_CACHE_KEY = useMemo(() => `${PRODUCTS_CACHE_BASE_KEY}:${store?.id ?? 'default'}`, [store?.id]);
 
   const load = async (opts?: { silent?: boolean; retries?: number }) => {
-    if (!enabled || !store) return;
+    if (!enabled || !store?.id) {
+      console.warn("[useStoreProducts] Skipping load: not enabled or no store ID", { enabled, storeId: store?.id });
+      return;
+    }
     if (!opts?.silent) setLoading(true);
     setError(null);
 
@@ -51,6 +54,7 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
                 "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order)",
               )
               .eq("store_id", store.id)
+              .eq("active", true)
               .order("name", { ascending: true })
               .range(from, from + PAGE_SIZE - 1);
 

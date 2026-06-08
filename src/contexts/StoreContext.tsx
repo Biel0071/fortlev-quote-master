@@ -108,7 +108,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
     if (current && activeStoreId !== current.id) {
       setActiveStoreId(current.id);
     }
-  }, [dbStores, store, activeStoreId, window.location.pathname]);
+  }, [dbStores, store, activeStoreId, window.location.pathname, window.location.hostname]);
 
   const setStore = (newStore: AppStore) => {
     setStoreRaw(newStore);

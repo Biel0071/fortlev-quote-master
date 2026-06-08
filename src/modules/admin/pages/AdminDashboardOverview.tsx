@@ -102,7 +102,7 @@ export default function AdminDashboardOverview() {
         date: new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
         count,
       })));
-    } catch { /* silent */ }
+    } catch (e) { console.error("Error loading dashboard metrics:", e); }
     setLoading(false);
   };
 

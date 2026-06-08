@@ -31,7 +31,7 @@ export function useStoreCategories(options?: UseStoreCategoriesOptions) {
   const CATEGORIES_CACHE_KEY = useMemo(() => `${CATEGORIES_CACHE_BASE_KEY}:${store?.id ?? 'default'}`, [store?.id]);
 
   const load = async (opts?: { silent?: boolean }) => {
-    if (!enabled || !store) return;
+    if (!enabled || !store?.id) return;
     if (!opts?.silent) setLoading(true);
     setError(null);
 

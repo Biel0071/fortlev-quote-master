@@ -188,7 +188,7 @@ export default function AdminLayout() {
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const nav = useNavigate();
   const location = useLocation();
-  const { routes, label } = useStore();
+  const { routes, label, activeStoreId } = useStore();
 
   const isStoreSelectorPage = location.pathname === "/admin";
 
@@ -209,7 +209,7 @@ export default function AdminLayout() {
     );
   }
 
-  if (isStoreSelectorPage) {
+  if (isStoreSelectorPage && !activeStoreId) {
     return (
       <div className="min-h-screen bg-background">
         <header className="h-14 flex items-center justify-between gap-3 border-b border-border bg-background/80 backdrop-blur px-3 sm:px-4">

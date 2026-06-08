@@ -39,7 +39,7 @@ const StoresList = () => {
               saas_plans (name)
             )
           ),
-          store_domains (domain, is_primary, status)
+          store_domains (domain, is_primary, verified)
         `)
         .order('created_at', { ascending: false });
       

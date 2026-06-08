@@ -138,12 +138,6 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             tenantId = defaultStore.tenant_id;
           }
         }
-          
-          if (defaultStore) {
-            storeId = defaultStore.id;
-            tenantId = defaultStore.tenant_id;
-          }
-        }
 
         // 5. Finalize Store Data
         if (storeId) {

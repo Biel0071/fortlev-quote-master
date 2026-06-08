@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Plus, Cpu, Settings2, Trash2, ShoppingBag, CheckCircle2, Star, Zap, Bot, Lock } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTenant } from "@/providers/TenantProvider";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ModulesManager = () => {
   const { tenant } = useTenant();

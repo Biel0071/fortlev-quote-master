@@ -8,6 +8,7 @@ import { useStorePages } from "@/hooks/useStorePages";
 import { Button } from "@/components/ui/button";
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { useHomeContent } from "@/hooks/useHomeContent";
+import { useTenant } from "@/providers/TenantProvider";
 import { cloud } from "@/lib/cloud";
 import { useDynamicSeo } from "@/hooks/useDynamicSeo";
 import { getInstitutionalModel } from "@/content/institutionalCopy";
@@ -122,6 +123,7 @@ function copyForSlug(slug: string) {
 export default function StorePage() {
   const cart = useCart();
   const { slug = "" } = useParams();
+  const { store } = useTenant();
   const { publishedPages, loading, error } = useStorePages();
   const contact = useStoreContact();
   const home = useHomeContent();
@@ -146,10 +148,13 @@ export default function StorePage() {
   const sections = useMemo(() => (page ? splitIntoSections(parseMd(page.content_md)) : []), [page]);
 
   useEffect(() => {
+    if (!store?.id) return;
+    
     let alive = true;
     cloud
       .from("store_pages")
       .select("title, slug, sort_order")
+      .eq("store_id", store.id)
       .eq("published", true)
       .order("sort_order", { ascending: true })
       .then(({ data }) => {
@@ -160,7 +165,7 @@ export default function StorePage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [store?.id]);
 
   const headerSubtitle =
     model?.subtitle ??

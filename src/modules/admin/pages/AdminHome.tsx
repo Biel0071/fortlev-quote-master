@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -134,6 +135,7 @@ type SimpleProduct = {
 };
 
 export default function AdminHome() {
+  const { activeStoreId } = useStore();
   const nav = useNavigate();
   const [loading, setLoading] = useState(true);
 
@@ -150,6 +152,7 @@ export default function AdminHome() {
   const [allProducts, setAllProducts] = useState<SimpleProduct[]>([]);
 
   const loadAll = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
     const [b, ben, pol, f, cats, sec, deps, off, seo] = await Promise.all([
       cloud
@@ -157,31 +160,37 @@ export default function AdminHome() {
         .select(
           "id, title, subtitle, image_path, image_desktop_path, image_mobile_path, link_url, button_label, sort_order, active",
         )
+        .eq("store_id", activeStoreId)
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: false }),
-      cloud.from("home_benefits").select("id, title, subtitle, icon, sort_order, active").order("sort_order", { ascending: true }),
+      cloud.from("home_benefits").select("id, title, subtitle, icon, sort_order, active").eq("store_id", activeStoreId).order("sort_order", { ascending: true }),
       cloud
         .from("home_policies")
         .select("id, title, subtitle, icon, link_url, sort_order, active")
+        .eq("store_id", activeStoreId)
         .order("sort_order", { ascending: true }),
-      cloud.from("home_footer").select("*").eq("key", "main").maybeSingle(),
-      cloud.from("store_categories").select("id, name, slug, featured, sort_order, image_path, active").order("sort_order", { ascending: true }),
+      cloud.from("home_footer").select("*").eq("key", "main").eq("store_id", activeStoreId).maybeSingle(),
+      cloud.from("store_categories").select("id, name, slug, featured, sort_order, image_path, active").eq("store_id", activeStoreId).order("sort_order", { ascending: true }),
       cloud
         .from("home_sections")
         .select("id, category_id, title_override, subtitle_override, sort_order, active")
+        .eq("store_id", activeStoreId)
         .order("sort_order", { ascending: true }),
       cloud
         .from("home_departments")
         .select("id, kind, label, icon, link_url, category_id, sort_order, active")
+        .eq("store_id", activeStoreId)
         .order("sort_order", { ascending: true }),
       cloud
         .from("home_offers")
         .select("id, product_id, badge_text, promo_price, starts_at, ends_at, sort_order, active")
+        .eq("store_id", activeStoreId)
         .order("sort_order", { ascending: true }),
       cloud
         .from("home_seo")
         .select("id, key, meta_title, meta_description, og_image_path, active")
         .eq("key", "store_home")
+        .eq("store_id", activeStoreId)
         .maybeSingle(),
     ]);
 
@@ -209,6 +218,7 @@ export default function AdminHome() {
     const { data: prodRows } = await cloud
       .from("store_products")
       .select("id, name, price, promo_price, featured, best_seller, clicks, active, category, category_id, store_product_images(path, sort_order)")
+      .eq("store_id", activeStoreId)
       .eq("active", true)
       .order("name", { ascending: true })
       .limit(1000);
@@ -230,7 +240,7 @@ export default function AdminHome() {
 
   useEffect(() => {
     loadAll();
-  }, []);
+  }, [activeStoreId]);
 
   const bannerUrl = (path?: string | null) => publicImageUrl("banner-images", path);
   const categoryUrl = (path?: string | null) => publicImageUrl("category-images", path);
@@ -299,6 +309,7 @@ export default function AdminHome() {
       active: bActive,
       image_desktop_path: normalizedDesktop || null,
       image_mobile_path: normalizedMobile || null,
+      store_id: activeStoreId,
     } as any);
 
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -373,6 +384,7 @@ export default function AdminHome() {
       icon: benIcon || null,
       sort_order: Number(benOrder) || 0,
       active: benActive,
+      store_id: activeStoreId,
     } as any);
 
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -437,6 +449,7 @@ export default function AdminHome() {
       active: secActive,
       title_override: secTitle.trim() || null,
       subtitle_override: secSubtitle.trim() || null,
+      store_id: activeStoreId,
     } as any);
 
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +68,7 @@ type DailyRun = {
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 export default function AdminReviews() {
+  const { activeStoreId } = useStore();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewImageIds, setReviewImageIds] = useState<Set<string>>(new Set());
   const [reviewImageMap, setReviewImageMap] = useState<Map<string, string[]>>(new Map());
@@ -103,10 +105,11 @@ export default function AdminReviews() {
 
   /* ---------- data loading ---------- */
   const load = useCallback(async () => {
+    if (!activeStoreId) return;
     setLoading(true);
-    const reviewsQ = cloud.from("product_reviews").select("*, store_products(name)").order("created_at", { ascending: false }).limit(1000);
-    const logsQ = cloud.from("system_event_logs").select("*").in("source", ["review-system", "daily-reviews-engine"]).order("created_at", { ascending: false }).limit(50);
-    const productsQ = cloud.from("store_products").select("id", { count: "exact", head: true }).eq("active", true).eq("status", "published");
+    const reviewsQ = cloud.from("product_reviews").select("*, store_products(name)").eq("store_id", activeStoreId).order("created_at", { ascending: false }).limit(1000);
+    const logsQ = cloud.from("system_event_logs").select("*").eq("metadata->>store_id", activeStoreId).in("source", ["review-system", "daily-reviews-engine"]).order("created_at", { ascending: false }).limit(50);
+    const productsQ = cloud.from("store_products").select("id", { count: "exact", head: true }).eq("store_id", activeStoreId).eq("active", true).eq("status", "published");
 
     const [reviewsRes, logsRes, productsRes] = await Promise.all([reviewsQ, logsQ, productsQ]);
 
@@ -257,7 +260,7 @@ export default function AdminReviews() {
 
         while (true) {
           const { data, error } = await cloud.functions.invoke("generate-reviews", {
-            body: { action: "catalog", limit: productLimit, batch_index: batchIndex },
+            body: { action: "catalog", limit: productLimit, batch_index: batchIndex, store_id: activeStoreId },
           });
           if (error) throw error;
           const result = data as any;
@@ -291,6 +294,7 @@ export default function AdminReviews() {
         const { data: products } = await cloud
           .from("store_products")
           .select("id")
+          .eq("store_id", activeStoreId)
           .eq("active", true)
           .eq("status", "published")
           .limit(limit);

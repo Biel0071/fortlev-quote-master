@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
 const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "#f59e0b", "#10b981", "#8b5cf6"];
 
 export default function AdminDashboardOverview() {
+  const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState({
     totalSessions: 0, totalEvents: 0, hotLeads: 0,
@@ -29,18 +31,25 @@ export default function AdminDashboardOverview() {
   const [funnelData, setFunnelData] = useState<{ stage: string; value: number }[]>([]);
 
   const loadTracking = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
     try {
       // Sessions
       const { data: sessions } = await cloud.from("tracking_sessions")
-        .select("id, score, temperature, device").limit(1000);
+        .select("id, score, temperature, device")
+        .eq("store_id", activeStoreId)
+        .limit(1000);
       const allSessions = sessions ?? [];
 
       // Events
       const { data: events } = await cloud.from("tracking_events")
-        .select("type, created_at").limit(1000);
+        .select("type, created_at")
+        .eq("store_id", activeStoreId)
+        .limit(1000);
       const { data: vEvents } = await cloud.from("visitor_events")
-        .select("type, created_at").limit(1000);
+        .select("type, created_at")
+        .eq("store_id", activeStoreId)
+        .limit(1000);
       const allEvents = [...(events ?? []), ...(vEvents ?? [])];
 
       // Count types
@@ -97,15 +106,21 @@ export default function AdminDashboardOverview() {
     setLoading(false);
   };
 
-  useEffect(() => { loadTracking(); }, []);
+  useEffect(() => { loadTracking(); }, [activeStoreId]);
 
   // Orders
   const { data: orders } = useQuery({
-    queryKey: ["dash-orders-stats"],
+    queryKey: ["dash-orders-stats", activeStoreId],
     queryFn: async () => {
-      const { data } = await supabase.from("store_orders").select("id, status, total, payment_method, created_at").order("created_at", { ascending: false }).limit(500);
+      if (!activeStoreId) return [];
+      const { data } = await supabase.from("store_orders")
+        .select("id, status, total, payment_method, created_at")
+        .eq("store_id", activeStoreId)
+        .order("created_at", { ascending: false })
+        .limit(500);
       return data || [];
     },
+    enabled: !!activeStoreId,
   });
 
   const paidOrders = orders?.filter((o) => o.status === "pago") || [];

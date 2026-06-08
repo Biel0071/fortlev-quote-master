@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSession } from "@/hooks/useSession";
+import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import type { StorePage } from "@/hooks/useStorePages";
 export default function AdminPages() {
   const { user, loading: sessionLoading } = useSession();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
+  const { activeStoreId } = useStore();
   const nav = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -28,10 +30,12 @@ export default function AdminPages() {
   const [sortOrder, setSortOrder] = useState<number>(0);
 
   const load = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
     const { data, error } = await cloud
       .from("store_pages")
       .select("id, slug, title, content_md, published, sort_order")
+      .eq("store_id", activeStoreId)
       .order("sort_order", { ascending: true })
       .order("title", { ascending: true });
 
@@ -45,9 +49,9 @@ export default function AdminPages() {
   };
 
   useEffect(() => {
-    if (user && isAdmin) load();
+    if (user && isAdmin && activeStoreId) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isAdmin]);
+  }, [user, isAdmin, activeStoreId]);
 
   useEffect(() => {
     if (!editing) {
@@ -92,7 +96,7 @@ export default function AdminPages() {
 
     const { error } = await cloud
       .from("store_pages")
-      .insert({ title: t, slug: s, content_md: content ?? "", published, sort_order: sortOrder });
+      .insert({ title: t, slug: s, content_md: content ?? "", published, sort_order: sortOrder, store_id: activeStoreId });
 
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
 

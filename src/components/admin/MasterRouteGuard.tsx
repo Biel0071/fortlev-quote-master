@@ -11,6 +11,16 @@ export const MasterRouteGuard = ({ children }: { children: React.ReactNode }) =>
 
   useEffect(() => {
     const checkAuth = async () => {
+      const hostname = window.location.hostname;
+      const isLovable = hostname.includes('lovable.app') || hostname === 'localhost' || hostname === '127.0.0.1';
+      
+      // Bloqueio preventivo: Master Admin só deve ser acessível via domínio da plataforma
+      if (!isLovable) {
+        console.warn("Bloqueio de segurança: Master Admin acessado via domínio customizado.");
+        navigate("/");
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {

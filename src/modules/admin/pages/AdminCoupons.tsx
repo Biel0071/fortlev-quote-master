@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ type Coupon = {
 };
 
 export default function AdminCoupons() {
+  const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Coupon[]>([]);
 
@@ -33,10 +35,12 @@ export default function AdminCoupons() {
   const [active, setActive] = useState(true);
 
   const load = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
     const { data, error } = await cloud
       .from("store_coupons")
       .select("id, code, discount_type, discount_value, starts_at, ends_at, min_subtotal, active, uses_count, max_uses")
+      .eq("store_id", activeStoreId)
       .order("created_at", { ascending: false });
 
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -46,7 +50,7 @@ export default function AdminCoupons() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [activeStoreId]);
 
   const create = async () => {
     const c = code.trim().toUpperCase();
@@ -59,6 +63,7 @@ export default function AdminCoupons() {
       min_subtotal: Number(minSubtotal) || 0,
       max_uses: maxUses > 0 ? Number(maxUses) : null,
       active,
+      store_id: activeStoreId,
     } as any);
 
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });

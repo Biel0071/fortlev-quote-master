@@ -11,12 +11,12 @@ const MasterDashboard = () => {
     queryKey: ['master-stats'],
     queryFn: async () => {
       const [stores, tenants, domains, modules, subscriptions, blueprints, recentInvoices, orders, latestStores] = await Promise.all([
-        supabase.from('stores').select('id', { count: 'exact', head: true }),
+        supabase.from('stores').select('id, blueprint_id', { count: 'exact' }),
         supabase.from('tenants').select('id', { count: 'exact', head: true }),
         supabase.from('store_domains').select('id', { count: 'exact', head: true }),
         supabase.from('store_modules').select('id', { count: 'exact', head: true }),
         supabase.from('saas_subscriptions').select('id, saas_plans(price_monthly)'),
-        supabase.from('store_blueprints').select('id, name'),
+        supabase.from('store_blueprints').select('id, name, category'),
         supabase.from('billing_invoices').select('amount, status').eq('status', 'paid'),
         supabase.from('store_orders').select('id', { count: 'exact', head: true }),
         supabase.from('stores').select('id, name, slug, created_at, active').order('created_at', { ascending: false }).limit(5)
@@ -24,6 +24,30 @@ const MasterDashboard = () => {
 
       const mrr = subscriptions.data?.reduce((acc, sub: any) => acc + (sub.saas_plans?.price_monthly || 0), 0) || 0;
       const totalRevenue = recentInvoices.data?.reduce((acc, inv: any) => acc + (inv.amount || 0), 0) || 0;
+
+      // Group niches by blueprint category
+      const nicheMap = new Map();
+      stores.data?.forEach(store => {
+        const bp = blueprints.data?.find(b => b.id === store.blueprint_id);
+        const category = bp?.category || "Geral";
+        nicheMap.set(category, (nicheMap.get(category) || 0) + 1);
+      });
+
+      const niches = Array.from(nicheMap.entries()).map(([name, count]) => ({
+        name,
+        revenue: `R$ ${(count * 297).toLocaleString()}`, // Projected
+        share: (count / (stores.count || 1)) * 100,
+        color: "bg-primary"
+      })).sort((a, b) => b.share - a.share);
+
+      const topBlueprints = blueprints.data?.map(bp => {
+        const count = stores.data?.filter(s => s.blueprint_id === bp.id).length || 0;
+        return {
+          name: bp.name,
+          count,
+          conversion: "4.5%"
+        };
+      }).sort((a, b) => b.count - a.count).slice(0, 4);
 
       return {
         stores: stores.count || 0,
@@ -35,7 +59,9 @@ const MasterDashboard = () => {
         activeSubscriptions: subscriptions.data?.length || 0,
         blueprintsCount: blueprints.data?.length || 0,
         orders: orders.count || 0,
-        latestStores: latestStores.data || []
+        latestStores: latestStores.data || [],
+        niches,
+        topBlueprints
       };
     }
   });

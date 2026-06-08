@@ -6,14 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, ArrowRight, ArrowLeft, Layers, Palette, Cpu, Globe, Rocket, Store } from "lucide-react";
+import { Check, ArrowRight, ArrowLeft, Layers, Palette, Cpu, Globe, Rocket, Store, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { useTenant } from "@/providers/TenantProvider";
 
 interface StoreFactoryProps {
   onSuccess: () => void;
 }
 
 const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
+  const { tenant } = useTenant();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   
@@ -44,9 +46,20 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
   const handleCreateStore = async () => {
     setLoading(true);
     try {
-      // 1. Get Tenant (Using a default for now, or could select one)
-      const { data: tenant } = await supabase.from('tenants').select('id').limit(1).single();
-      if (!tenant) throw new Error("Tenant não encontrado");
+      // 1. Get Tenant and Check Limits
+      const currentTenantId = tenant?.id || (await supabase.from('tenants').select('id').limit(1).single()).data?.id;
+      if (!currentTenantId) throw new Error("Tenant não encontrado");
+
+      // Check Store Limit
+      const { count: storeCount } = await supabase
+        .from('stores')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', currentTenantId);
+
+      const maxStores = tenant?.subscription?.plan?.limits?.max_stores || 1;
+      if (storeCount !== null && storeCount >= maxStores) {
+        throw new Error(`Limite de lojas atingido (${storeCount}/${maxStores}). Faça upgrade do plano.`);
+      }
 
       // 2. Create Store
       const { data: store, error: storeError } = await supabase
@@ -54,7 +67,7 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
         .insert({
           name: formData.name,
           slug: formData.slug,
-          tenant_id: tenant.id,
+          tenant_id: currentTenantId,
           active: true
         })
         .select()
@@ -166,6 +179,23 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
 
   return (
     <div className="flex flex-col min-h-[500px]">
+      {tenant?.subscription?.plan && (
+        <div className="mb-6 p-4 bg-muted/50 rounded-lg flex items-center justify-between border">
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+              Plano {tenant.subscription.plan.name}
+            </Badge>
+            <span className="text-sm text-muted-foreground">
+              Limites: <strong>{tenant.subscription.plan.limits.max_stores} lojas</strong> • 
+              <strong> {tenant.subscription.plan.limits.max_products} produtos</strong>
+            </span>
+          </div>
+          <Button variant="outline" size="sm" className="h-8 gap-1">
+            <Rocket size={14} className="text-primary" /> Upgrade
+          </Button>
+        </div>
+      )}
+
       <div className="mb-8">
         <div className="flex justify-between relative mb-2">
           {steps.map((s, idx) => (

@@ -3,10 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Cpu, Settings2, Trash2, ShoppingBag, CheckCircle2, Star, Zap, Bot } from "lucide-react";
+import { Plus, Cpu, Settings2, Trash2, ShoppingBag, CheckCircle2, Star, Zap, Bot, Lock } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTenant } from "@/providers/TenantProvider";
 
 const ModulesManager = () => {
+  const { tenant } = useTenant();
   const { data: modules, isLoading } = useQuery({
     queryKey: ['master-module-definitions'],
     queryFn: async () => {
@@ -17,9 +19,9 @@ const ModulesManager = () => {
   });
 
   const marketplaceItems = [
-    { id: 1, name: "WhatsApp IA Pro", desc: "Atendimento automático via GPT-4", price: "R$ 49/mês", icon: Bot, category: "IA" },
-    { id: 2, name: "SEO Optimizer Engine", desc: "Indexação ultra-rápida no Google", price: "Grátis", icon: Zap, category: "Marketing" },
-    { id: 3, name: "Checkout Transparente", desc: "Pagamentos integrados sem redirecionamento", price: "1% p/ transação", icon: ShoppingBag, category: "Pagamentos" }
+    { id: 1, name: "WhatsApp IA Pro", desc: "Atendimento automático via GPT-4", price: "R$ 49/mês", icon: Bot, category: "IA", minPlan: "Basic" },
+    { id: 2, name: "SEO Optimizer Engine", desc: "Indexação ultra-rápida no Google", price: "Grátis", icon: Zap, category: "Marketing", minPlan: "Free" },
+    { id: 3, name: "Checkout Transparente", desc: "Pagamentos integrados sem redirecionamento", price: "1% p/ transação", icon: ShoppingBag, category: "Pagamentos", minPlan: "Pro" }
   ];
 
   return (
@@ -113,8 +115,12 @@ const ModulesManager = () => {
                   <CardDescription>{item.desc}</CardDescription>
                 </CardHeader>
                 <CardFooter className="bg-muted/30 p-4">
-                  <Button className="w-full gap-2">
-                    <ShoppingBag size={16} /> Instalar na Rede
+                  <Button className="w-full gap-2" variant={item.minPlan === "Pro" && tenant?.subscription?.plan?.name !== "Pro" ? "outline" : "default"}>
+                    {item.minPlan === "Pro" && tenant?.subscription?.plan?.name !== "Pro" ? (
+                      <><Lock size={16} /> Upgrade para Instalar</>
+                    ) : (
+                      <><ShoppingBag size={16} /> Instalar na Rede</>
+                    )}
                   </Button>
                 </CardFooter>
               </Card>

@@ -1,20 +1,26 @@
 import { Outlet, NavLink, Routes, Route, Navigate } from "react-router-dom";
-import { LayoutDashboard, Store, Layers, FileCode2, Cpu, Globe, BarChart3, Settings, ShieldCheck, Activity, Sparkles } from "lucide-react";
+import { LayoutDashboard, Store, Layers, FileCode2, Cpu, Globe, BarChart3, Settings, ShieldCheck, Activity, Sparkles, CreditCard, DollarSign, Palette } from "lucide-react";
 import MasterDashboard from "@/components/admin/master/MasterDashboard";
 import StoresList from "@/components/admin/master/StoresList";
 import BlueprintsManager from "@/components/admin/master/BlueprintsManager";
 import ModulesManager from "@/components/admin/master/ModulesManager";
 import MasterAICentral from "@/components/admin/master/MasterAICentral";
 import MasterLogs from "@/components/admin/master/MasterLogs";
+import SaaSPlansManager from "@/components/admin/master/SaaSPlansManager";
+import FinanceManager from "@/components/admin/master/FinanceManager";
+import WhiteLabelSettings from "@/components/admin/master/WhiteLabelSettings";
 
 const MasterAdmin = () => {
   const menuItems = [
     { name: "Dashboard", path: "/admin/master", icon: LayoutDashboard },
     { name: "Lojas", path: "/admin/master/stores", icon: Store },
+    { name: "Planos SaaS", path: "/admin/master/plans", icon: CreditCard },
+    { name: "Financeiro", path: "/admin/master/finance", icon: DollarSign },
     { name: "Blueprints", path: "/admin/master/blueprints", icon: Layers },
     { name: "Templates", path: "/admin/master/templates", icon: FileCode2 },
     { name: "Módulos", path: "/admin/master/modules", icon: Cpu },
     { name: "IA Central", path: "/admin/master/ia", icon: Sparkles },
+    { name: "White Label", path: "/admin/master/whitelabel", icon: Palette },
     { name: "Domínios", path: "/admin/master/domains", icon: Globe },
     { name: "Analytics", path: "/admin/master/analytics", icon: BarChart3 },
     { name: "Logs", path: "/admin/master/logs", icon: Activity },
@@ -59,9 +65,12 @@ const MasterAdmin = () => {
           <Routes>
             <Route index element={<MasterDashboard />} />
             <Route path="stores" element={<StoresList />} />
+            <Route path="plans" element={<SaaSPlansManager />} />
+            <Route path="finance" element={<FinanceManager />} />
             <Route path="blueprints" element={<BlueprintsManager />} />
             <Route path="modules" element={<ModulesManager />} />
             <Route path="ia" element={<MasterAICentral />} />
+            <Route path="whitelabel" element={<WhiteLabelSettings />} />
             <Route path="domains" element={<div className="p-4">Gerenciamento de Domínios em breve...</div>} />
             <Route path="logs" element={<MasterLogs />} />
             {/* Fallback */}

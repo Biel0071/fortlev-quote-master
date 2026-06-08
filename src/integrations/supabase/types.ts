@@ -3420,6 +3420,39 @@ export type Database = {
           },
         ]
       }
+      store_blueprints: {
+        Row: {
+          category: string
+          config: Json
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          preview_url: string | null
+          slug: string
+        }
+        Insert: {
+          category: string
+          config?: Json
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          preview_url?: string | null
+          slug: string
+        }
+        Update: {
+          category?: string
+          config?: Json
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          preview_url?: string | null
+          slug?: string
+        }
+        Relationships: []
+      }
       store_categories: {
         Row: {
           active: boolean
@@ -3606,6 +3639,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      store_module_definitions: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_premium: boolean | null
+          key: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_premium?: boolean | null
+          key: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_premium?: boolean | null
+          key?: string
+          name?: string
+        }
+        Relationships: []
       }
       store_modules: {
         Row: {
@@ -4145,6 +4208,33 @@ export type Database = {
           key?: string
           updated_at?: string
           value?: string | null
+        }
+        Relationships: []
+      }
+      store_templates: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          preview_image: string | null
+          slug: string
+          theme_config: Json
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          preview_image?: string | null
+          slug: string
+          theme_config?: Json
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          preview_image?: string | null
+          slug?: string
+          theme_config?: Json
         }
         Relationships: []
       }

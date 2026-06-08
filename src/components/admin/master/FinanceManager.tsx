@@ -7,14 +7,29 @@ const FinanceManager = () => {
   const { data: metrics } = useQuery({
     queryKey: ['saas-metrics'],
     queryFn: async () => {
-      // Mocked for now, in real scenario would query invoices/subscriptions
+      const [subscriptions, invoices] = await Promise.all([
+        supabase.from('saas_subscriptions').select('id, saas_plans(price_monthly), status'),
+        supabase.from('billing_invoices').select('id, amount, status, created_at, tenants(name), saas_subscriptions(saas_plans(name))')
+      ]);
+
+      const activeSubs = subscriptions.data?.filter(s => s.status === 'active' || s.status === 'trial') || [];
+      const mrr = activeSubs.reduce((acc, sub: any) => acc + (sub.saas_plans?.price_monthly || 0), 0);
+      const arr = mrr * 12;
+      
+      const paidInvoices = invoices.data?.filter(i => i.status === 'paid') || [];
+      const pendingInvoices = invoices.data?.filter(i => i.status === 'open' || i.status === 'draft').length || 0;
+      
+      const totalRevenue = paidInvoices.reduce((acc, inv) => acc + Number(inv.amount), 0);
+      const ltv = activeSubs.length > 0 ? totalRevenue / activeSubs.length : 0;
+
       return {
-        mrr: 12450,
-        arr: 149400,
-        churn: 1.2,
-        activeSubscriptions: 48,
-        pendingInvoices: 3,
-        ltv: 1850
+        mrr,
+        arr,
+        churn: 1.2, // Mocked for now
+        activeSubscriptions: activeSubs.length,
+        pendingInvoices,
+        ltv,
+        recentInvoices: invoices.data?.slice(0, 10) || []
       };
     }
   });

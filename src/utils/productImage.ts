@@ -1,8 +1,7 @@
 import { publicImageUrl } from "@/utils/storage";
 
 const INVALID_TERMS = [
-  "fallback", "cover",
-  "house", "background", "hero", "slide",
+  "fallback", "background", "hero",
 ];
 
 /**
@@ -14,7 +13,11 @@ export function getValidProductImagePath(
 ): string | null {
   if (!images || images.length === 0) return null;
 
-  const valid = images.find((img) => !!img?.path);
+  const valid = images.find((img) => {
+    if (!img?.path) return false;
+    const path = String(img.path).toLowerCase();
+    return !INVALID_TERMS.some(term => path.includes(term));
+  });
 
   return valid?.path ?? null;
 }

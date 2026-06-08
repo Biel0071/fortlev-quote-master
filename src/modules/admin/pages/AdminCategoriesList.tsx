@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
 import { publicImageUrl } from "@/utils/storage";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

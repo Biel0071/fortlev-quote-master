@@ -32,6 +32,7 @@ const Construction = lazy(() => import("@/modules/checkout/pages/Construction"))
 const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
 const MasterAdmin = lazy(() => import("@/pages/admin/MasterAdmin"));
 const CustomerInvoicePortal = lazy(() => import("@/pages/CustomerInvoicePortal"));
+const MasterRouteGuard = lazy(() => import("@/components/admin/MasterRouteGuard").then(m => ({ default: m.MasterRouteGuard })));
 
 
 const queryClient = new QueryClient({

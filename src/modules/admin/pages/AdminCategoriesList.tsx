@@ -32,18 +32,21 @@ type Cat = {
 };
 export default function AdminCategoriesList() {
   const nav = useNavigate();
+  const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Cat[]>([]);
   const [q, setQ] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Cat | null>(null);
 
   const load = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
 
     // Fetch categories
     const catRes = await cloud
       .from("store_categories")
       .select("id, name, slug, description, sort_order, featured, active, image_path")
+      .eq("store_id", activeStoreId)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
 
@@ -57,6 +60,7 @@ export default function AdminCategoriesList() {
       const { data } = await cloud
         .from("store_products")
         .select("id, category_id")
+        .eq("store_id", activeStoreId)
         .range(from, from + PAGE - 1);
       if (!data || data.length === 0) break;
       allProducts.push(...(data as Array<{ id: string; category_id: string | null }>));
@@ -75,7 +79,7 @@ export default function AdminCategoriesList() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [activeStoreId]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();

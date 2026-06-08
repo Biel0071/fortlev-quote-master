@@ -69,21 +69,23 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     async function resolveStore() {
+      setIsLoading(true);
       try {
         const hostname = window.location.hostname;
-        const pathParts = window.location.pathname.split('/');
+        const pathname = window.location.pathname;
+        const pathParts = pathname.split('/');
         
-        // 1. Resolve Store and Tenant
         let storeId: string | undefined;
         let tenantId: string | undefined;
 
-        // Check if we are in a Master Admin session impersonating a store
-        if (pathParts[1] === 'admin' && pathParts[2] === 'store' && pathParts[3]) {
-          storeId = pathParts[3];
-          // We'll fetch the store data below to get the tenantId
+        // 1. Resolve Store and Tenant by Route Params (Master Impersonation)
+        // Check for /admin/store/:storeId
+        const adminStoreMatch = pathname.match(/\/admin\/store\/([^\/]+)/);
+        if (adminStoreMatch && adminStoreMatch[1]) {
+          storeId = adminStoreMatch[1];
         }
 
-        // Check domains table if not impersonating
+        // 2. Resolve by Domain
         if (!storeId) {
           const { data: domainData } = await supabase
             .from('store_domains')
@@ -91,47 +93,63 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             .eq('domain', hostname)
             .maybeSingle();
 
-          storeId = domainData?.store_id;
-          tenantId = domainData?.tenant_id;
+          if (domainData) {
+            storeId = domainData.store_id;
+            tenantId = domainData.tenant_id;
+          }
         }
 
-        // Fallback to slug if still not found
+        // 3. Resolve by Slug (/p/:slug)
         if (!storeId) {
-          const possibleSlug = pathParts[1];
-          if (possibleSlug && !['admin', 'auth', 'master'].includes(possibleSlug)) {
-             const { data: slugData } = await supabase
+          const pMatch = pathname.match(/\/p\/([^\/]+)/);
+          const possibleSlug = pMatch ? pMatch[1] : (pathParts[1] && !['admin', 'auth', 'master'].includes(pathParts[1]) ? pathParts[1] : null);
+          
+          if (possibleSlug) {
+            const { data: slugData } = await supabase
               .from('stores')
               .select('id, tenant_id')
               .eq('slug', possibleSlug)
               .maybeSingle();
-             storeId = slugData?.id;
-             tenantId = slugData?.tenant_id;
+            
+            if (slugData) {
+              storeId = slugData.id;
+              tenantId = slugData.tenant_id;
+            }
           }
         }
 
-        // Final fallback: Get default
-        if (!storeId) {
+        // 4. Default Fallback (Only for root or non-admin/non-master routes)
+        if (!storeId && (pathname === '/' || !['admin', 'master', 'auth'].includes(pathParts[1]))) {
           const { data: defaultStore } = await supabase
             .from('stores')
             .select('id, name, slug, tenant_id')
+            .order('created_at', { ascending: true })
             .limit(1)
-            .single();
+            .maybeSingle();
           
           if (defaultStore) {
             storeId = defaultStore.id;
             tenantId = defaultStore.tenant_id;
-            setStore(defaultStore);
           }
-        } else {
-          const { data: storeData } = await supabase
+        }
+
+        // 5. Finalize Store Data
+        if (storeId) {
+          const { data: storeData, error: storeErr } = await supabase
             .from('stores')
             .select('id, name, slug, tenant_id')
             .eq('id', storeId)
             .single();
-          setStore(storeData);
+          
+          if (!storeErr && storeData) {
+            setStore(storeData);
+            tenantId = storeData.tenant_id;
+          }
+        } else {
+          setStore(null);
         }
 
-        // 2. Fetch Tenant Data with Subscription and White Label
+        // 6. Fetch Tenant Data with Subscription and White Label
         if (tenantId) {
           const { data: tenantData } = await supabase
             .from('tenants')
@@ -169,6 +187,8 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               whiteLabel: tenantData.tenant_white_label?.[0]
             });
           }
+        } else {
+          setTenant(null);
         }
       } catch (err: any) {
         console.error('Error resolving tenant:', err);
@@ -179,7 +199,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     resolveStore();
-  }, []);
+  }, [window.location.pathname, window.location.hostname]);
 
   return (
     <TenantContext.Provider value={{ tenant, store, isLoading, error, hasFeature }}>

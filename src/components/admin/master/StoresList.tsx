@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreHorizontal, ExternalLink, Copy, Trash2, Archive, History, Layers, Settings, Globe, Cpu, Sparkles, Activity, CreditCard } from "lucide-react";
+import { Plus, Search, MoreHorizontal, ExternalLink, Copy, Trash2, Archive, History, Layers, Settings, Globe, Cpu, Sparkles, Activity, CreditCard, ShieldCheck } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import StoreFactory from "./StoreFactory";

@@ -128,8 +128,12 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             .order('created_at', { ascending: false });
           
           if (fallbackStores && fallbackStores.length > 0) {
-            const preferred = fallbackStores.find(s => s.name.toLowerCase().includes('construção')) || 
-                              fallbackStores.find(s => s.name.toLowerCase().includes('mf atacadista')) ||
+            // Priority ordering:
+            // 1. MF Atacadista (User explicitly mentioned this should have the products)
+            // 2. Construção (Orçamentos)
+            // 3. Any other active store
+            const preferred = fallbackStores.find(s => s.name.toLowerCase().includes('mf atacadista')) || 
+                              fallbackStores.find(s => s.name.toLowerCase().includes('construção')) ||
                               fallbackStores[0];
             
             storeId = preferred.id;

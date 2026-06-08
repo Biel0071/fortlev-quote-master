@@ -103,7 +103,7 @@ const App = () => (
                 <Route path="/pedidos" element={<OrdersPage />} />
                 <Route path="/rastreio/:id" element={<TrackingPage />} />
 
-                <Route path="/admin/master/*" element={<MasterAdmin />} />
+                <Route path="/admin/master/*" element={<MasterRouteGuard><MasterAdmin /></MasterRouteGuard>} />
                 <Route path="/admin/*" element={<AdminApp />} />
 
                 <Route path="/auth/login" element={<LoginPage />} />

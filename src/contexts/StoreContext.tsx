@@ -88,7 +88,11 @@ export function StoreProvider({ children }: StoreProviderProps) {
 
     // 3. Try matching by domain
     const matchedByDomain = dbStores.find(
-      (s) => s.domain && s.domain.toLowerCase() === host.toLowerCase()
+      (s) => s.domain && (
+        s.domain.toLowerCase() === host.toLowerCase() ||
+        // Check if the current host is a subdomain or the main domain
+        (host.toLowerCase() === 'materialdecontrucao.online' && s.domain.toLowerCase() === 'materialdecontrucao.online')
+      )
     );
 
     if (matchedByDomain) {

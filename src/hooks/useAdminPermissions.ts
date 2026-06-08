@@ -40,7 +40,7 @@ export function useAdminPermissions() {
       // Get admin user record
       const { data: adminUser } = await cloud
         .from("admin_users")
-        .select("role, status")
+        .select("role, status, user_id")
         .eq("user_id", user.id)
         .eq("status", "active")
         .maybeSingle();

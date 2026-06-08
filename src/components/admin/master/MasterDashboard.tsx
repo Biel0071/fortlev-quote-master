@@ -159,19 +159,21 @@ const MasterDashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+            {stats?.latestStores?.map((store) => (
+              <div key={store.id} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center gap-4">
                   <div className="p-2 bg-blue-50 rounded-lg">
                     <Store className="text-blue-500" size={18} />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">Nova Loja Multi-Nicho #{i}</p>
-                    <p className="text-xs text-muted-foreground">Blueprint: Construção v2 • Ativada há {i * 15}min</p>
+                    <p className="font-medium text-sm">{store.name}</p>
+                    <p className="text-xs text-muted-foreground">/{store.slug} • Ativada em {new Date(store.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-green-500">Online</Badge>
+                  <Badge className={store.active ? "bg-green-500" : "bg-yellow-500"}>
+                    {store.active ? "Online" : "Pendente"}
+                  </Badge>
                   <Button variant="ghost" size="sm">Gerenciar</Button>
                 </div>
               </div>

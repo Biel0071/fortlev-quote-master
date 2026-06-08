@@ -41,7 +41,7 @@ const MasterDashboard = () => {
       })).sort((a, b) => b.share - a.share);
 
       const topBlueprints = blueprints.data?.map(bp => {
-        const count = stores.data?.filter(s => s.blueprint_id === bp.id).length || 0;
+        const count = stores.data?.filter(s => (s as any).blueprint_id === bp.id).length || 0;
         return {
           name: bp.name,
           count,

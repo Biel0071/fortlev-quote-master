@@ -695,6 +695,66 @@ export type Database = {
           },
         ]
       }
+      billing_invoices: {
+        Row: {
+          amount: number
+          billing_reason: string | null
+          created_at: string | null
+          currency: string | null
+          id: string
+          pdf_url: string | null
+          period_end: string | null
+          period_start: string | null
+          status: string
+          subscription_id: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          billing_reason?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          pdf_url?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          subscription_id?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          billing_reason?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          pdf_url?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          subscription_id?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "saas_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blueprint_versions: {
         Row: {
           blueprint_id: string
@@ -3113,6 +3173,126 @@ export type Database = {
         }
         Relationships: []
       }
+      saas_plans: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          limits: Json
+          name: string
+          price_monthly: number | null
+          price_yearly: number | null
+          trial_days: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          limits?: Json
+          name: string
+          price_monthly?: number | null
+          price_yearly?: number | null
+          trial_days?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          limits?: Json
+          name?: string
+          price_monthly?: number | null
+          price_yearly?: number | null
+          trial_days?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      saas_rbac_permissions: {
+        Row: {
+          action: string
+          id: string
+          is_allowed: boolean | null
+          resource: string
+          role_name: string
+        }
+        Insert: {
+          action: string
+          id?: string
+          is_allowed?: boolean | null
+          resource: string
+          role_name: string
+        }
+        Update: {
+          action?: string
+          id?: string
+          is_allowed?: boolean | null
+          resource?: string
+          role_name?: string
+        }
+        Relationships: []
+      }
+      saas_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          created_at: string | null
+          current_period_end: string
+          current_period_start: string
+          gateway_customer_id: string | null
+          gateway_subscription_id: string | null
+          id: string
+          plan_id: string
+          status: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string
+          current_period_start?: string
+          gateway_customer_id?: string | null
+          gateway_subscription_id?: string | null
+          id?: string
+          plan_id: string
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string
+          current_period_start?: string
+          gateway_customer_id?: string | null
+          gateway_subscription_id?: string | null
+          id?: string
+          plan_id?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "saas_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saas_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_records: {
         Row: {
           created_at: string
@@ -4628,6 +4808,68 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      tenant_white_label: {
+        Row: {
+          created_at: string | null
+          custom_domain: string | null
+          custom_domain_verified: boolean | null
+          favicon_url: string | null
+          id: string
+          logo_url: string | null
+          platform_name: string | null
+          primary_color: string | null
+          privacy_url: string | null
+          secondary_color: string | null
+          support_email: string | null
+          support_phone: string | null
+          tenant_id: string
+          terms_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          custom_domain?: string | null
+          custom_domain_verified?: boolean | null
+          favicon_url?: string | null
+          id?: string
+          logo_url?: string | null
+          platform_name?: string | null
+          primary_color?: string | null
+          privacy_url?: string | null
+          secondary_color?: string | null
+          support_email?: string | null
+          support_phone?: string | null
+          tenant_id: string
+          terms_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          custom_domain?: string | null
+          custom_domain_verified?: boolean | null
+          favicon_url?: string | null
+          id?: string
+          logo_url?: string | null
+          platform_name?: string | null
+          primary_color?: string | null
+          privacy_url?: string | null
+          secondary_color?: string | null
+          support_email?: string | null
+          support_phone?: string | null
+          tenant_id?: string
+          terms_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_white_label_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tenants: {
         Row: {

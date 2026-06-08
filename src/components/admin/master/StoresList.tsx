@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreHorizontal, ExternalLink, Copy, Trash2, Archive, History, Layers } from "lucide-react";
+import { Plus, Search, MoreHorizontal, ExternalLink, Copy, Trash2, Archive, History, Layers, Settings, Globe, Cpu, Sparkles, Activity, CreditCard } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import StoreFactory from "./StoreFactory";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useBlueprintManager } from "@/hooks/useBlueprintManager";
 import { Label } from "@/components/ui/label";
+import { useNavigate } from "react-router-dom";
+
 
 
 const StoresList = () => {
@@ -22,6 +24,8 @@ const StoresList = () => {
   const [snapshotLabel, setSnapshotLabel] = useState("");
   const { saveStoreAsBlueprint, loading: savingBp } = useBlueprintManager();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
 
 
   const { data: stores, isLoading } = useQuery({
@@ -167,10 +171,33 @@ const StoresList = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Opções</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => window.open(`/${store.slug}`, '_blank')}>
-                        <ExternalLink size={14} className="mr-2" /> Acessar Loja
+                      <DropdownMenuLabel>Ações Master</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => navigate(`/admin/master/stores/${store.id}`)}>
+                        <Settings size={14} className="mr-2" /> Cockpit da Loja
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => window.open(`/${store.slug}`, '_blank')}>
+                        <ExternalLink size={14} className="mr-2" /> Abrir Loja Pública
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/admin/store/${store.id}/dashboard`)}>
+                        <ShieldCheck size={14} className="mr-2 text-primary" /> Entrar no Admin
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate(`/admin/master/domains?storeId=${store.id}`)}>
+                        <Globe size={14} className="mr-2" /> Gerenciar Domínios
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/admin/master/modules?storeId=${store.id}`)}>
+                        <Cpu size={14} className="mr-2" /> Gerenciar Módulos
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/admin/master/ia?storeId=${store.id}`)}>
+                        <Sparkles size={14} className="mr-2" /> Gerenciar IA
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/admin/master/logs?storeId=${store.id}`)}>
+                        <Activity size={14} className="mr-2" /> Ver Logs
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/admin/master/plans?tenantId=${store.tenant_id}`)}>
+                        <CreditCard size={14} className="mr-2" /> Ver Plano/Assinatura
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => {
                         setSelectedStoreForSnapshot(store);
                         setSnapshotLabel(`v1.0 - ${new Date().toLocaleDateString()}`);

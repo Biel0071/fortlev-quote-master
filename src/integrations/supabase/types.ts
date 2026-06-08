@@ -695,6 +695,47 @@ export type Database = {
           },
         ]
       }
+      blueprint_versions: {
+        Row: {
+          blueprint_id: string
+          config: Json
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          version_label: string | null
+          version_number: number
+        }
+        Insert: {
+          blueprint_id: string
+          config?: Json
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          version_label?: string | null
+          version_number: number
+        }
+        Update: {
+          blueprint_id?: string
+          config?: Json
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          version_label?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blueprint_versions_blueprint_id_fkey"
+            columns: ["blueprint_id"]
+            isOneToOne: false
+            referencedRelation: "store_blueprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cache_product_interpretation: {
         Row: {
           ai_image_prompt: string | null
@@ -3355,6 +3396,50 @@ export type Database = {
           },
         ]
       }
+      store_automations: {
+        Row: {
+          action_type: string
+          config: Json
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          last_run_at: string | null
+          name: string
+          store_id: string
+          trigger_type: string
+        }
+        Insert: {
+          action_type: string
+          config?: Json
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          name: string
+          store_id: string
+          trigger_type: string
+        }
+        Update: {
+          action_type?: string
+          config?: Json
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          name?: string
+          store_id?: string
+          trigger_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_automations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_banners: {
         Row: {
           active: boolean
@@ -3422,6 +3507,7 @@ export type Database = {
       }
       store_blueprints: {
         Row: {
+          ai_config: Json | null
           category: string
           config: Json
           created_at: string | null
@@ -3432,6 +3518,7 @@ export type Database = {
           slug: string
         }
         Insert: {
+          ai_config?: Json | null
           category: string
           config?: Json
           created_at?: string | null
@@ -3442,6 +3529,7 @@ export type Database = {
           slug: string
         }
         Update: {
+          ai_config?: Json | null
           category?: string
           config?: Json
           created_at?: string | null
@@ -5043,6 +5131,7 @@ export type Database = {
         Returns: undefined
       }
       bulk_import_products: { Args: { _data: Json }; Returns: number }
+      capture_store_snapshot: { Args: { p_store_id: string }; Returns: Json }
       check_rate_limit: {
         Args: {
           _event_type: string

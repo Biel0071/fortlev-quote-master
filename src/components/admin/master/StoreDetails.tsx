@@ -180,32 +180,55 @@ const StoreDetails = () => {
               <CardDescription>Gerencie o acesso público desta loja.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {store.store_domains?.map((d: any) => (
-                  <div key={d.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Globe size={18} className="text-primary" />
-                      <div>
-                        <p className="font-medium">{d.domain}</p>
-                        <div className="flex gap-2 mt-1">
-                          {d.is_primary && <Badge variant="default" className="text-[10px] h-4">Principal</Badge>}
-                          {d.is_fallback && <Badge variant="outline" className="text-[10px] h-4">Sistema</Badge>}
-                          <Badge variant={d.verified ? "default" : "destructive"} className={`text-[10px] h-4 ${d.verified ? "bg-green-500" : ""}`}>
-                            {d.verified ? "Verificado" : "Pendente"}
-                          </Badge>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Domínios Configurados</h4>
+                  <div className="space-y-2">
+                    {store.store_domains?.filter((d: any) => !d.is_fallback).map((d: any) => (
+                      <div key={d.id} className="flex items-center justify-between p-3 border rounded-lg bg-accent/5">
+                        <div className="flex items-center gap-3">
+                          <Globe size={18} className="text-primary" />
+                          <div>
+                            <p className="font-medium">{d.domain}</p>
+                            <div className="flex gap-2 mt-1">
+                              {d.is_primary && <Badge variant="default" className="text-[10px] h-4">Principal</Badge>}
+                              <Badge variant={d.verified ? "default" : "destructive"} className={`text-[10px] h-4 ${d.verified ? "bg-green-500" : ""}`}>
+                                {d.verified ? "Verificado" : "Pendente"}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => window.open(`https://${d.domain}`, '_blank')}>
+                            <ExternalLink size={14} />
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => window.open(`https://${d.domain}`, '_blank')}>
-                        <ExternalLink size={14} />
-                      </Button>
-                      {!d.verified && <Button variant="outline" size="sm">Verificar</Button>}
-                    </div>
+                    ))}
+                    {(!store.store_domains || store.store_domains.filter((d: any) => !d.is_fallback).length === 0) && (
+                      <p className="text-xs text-muted-foreground italic border p-3 rounded-lg border-dashed">Nenhum domínio customizado vinculado.</p>
+                    )}
                   </div>
-                ))}
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Ambiente de Preview (Lovable)</h4>
+                  <div className="p-3 border rounded-lg bg-muted/20 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Zap size={18} className="text-amber-500" />
+                      <div>
+                        <p className="text-xs font-mono">{publicUrl}</p>
+                        <p className="text-[10px] text-muted-foreground">Use esta URL para testar a loja internamente.</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => window.open(publicUrl, '_blank')}>
+                      Abrir Preview
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
+
           </Card>
         </TabsContent>
         

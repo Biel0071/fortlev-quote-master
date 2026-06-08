@@ -3171,6 +3171,47 @@ export type Database = {
         }
         Relationships: []
       }
+      store_ai_configs: {
+        Row: {
+          id: string
+          instructions: string | null
+          is_active: boolean | null
+          model: string | null
+          persona: string | null
+          provider: string | null
+          store_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          model?: string | null
+          persona?: string | null
+          provider?: string | null
+          store_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          model?: string | null
+          persona?: string | null
+          provider?: string | null
+          store_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_ai_configs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_apps: {
         Row: {
           active: boolean
@@ -3441,6 +3482,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "store_domains_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_modules: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_enabled: boolean | null
+          module_key: string
+          settings: Json | null
+          store_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          module_key: string
+          settings?: Json | null
+          store_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          module_key?: string
+          settings?: Json | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_modules_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -3923,6 +3999,44 @@ export type Database = {
         }
         Relationships: []
       }
+      store_themes: {
+        Row: {
+          colors: Json | null
+          custom_css: string | null
+          fonts: Json | null
+          id: string
+          layout_settings: Json | null
+          store_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          colors?: Json | null
+          custom_css?: string | null
+          fonts?: Json | null
+          id?: string
+          layout_settings?: Json | null
+          store_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          colors?: Json | null
+          custom_css?: string | null
+          fonts?: Json | null
+          id?: string
+          layout_settings?: Json | null
+          store_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_themes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           active: boolean
@@ -3936,6 +4050,7 @@ export type Database = {
           segment: string | null
           slug: string
           suspended: boolean
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -3950,6 +4065,7 @@ export type Database = {
           segment?: string | null
           slug: string
           suspended?: boolean
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -3964,6 +4080,7 @@ export type Database = {
           segment?: string | null
           slug?: string
           suspended?: boolean
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3972,6 +4089,13 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "store_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stores_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -4164,6 +4288,33 @@ export type Database = {
           phone?: string
           resume_path?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      tenants: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          plan_type: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          plan_type?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          plan_type?: string | null
+          status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }

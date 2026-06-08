@@ -99,6 +99,20 @@ export default function StoreHome() {
 
   const { isLoading: tenantLoading } = useTenant();
   const loading = tenantLoading || (productsLoading && !activeProducts.length) || (categoriesLoading && !activeCategories.length);
+  
+  if (tenantLoading) {
+    return (
+      <div className="flex flex-col w-full min-h-screen bg-background p-4 space-y-4">
+        <div className="h-16 w-full rounded-2xl bg-muted/20 animate-pulse" />
+        <div className="h-48 w-full rounded-2xl bg-muted/30 animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-64 rounded-2xl bg-muted/20 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const onAdd = (productId: string, qty: number) => {
     const product: any = offerList.find((item: any) => item.id === productId)
@@ -153,7 +167,7 @@ export default function StoreHome() {
   // Offer products from the new hook (always populated)
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
-  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && !home.loading;
+  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && !home.loading && !categoriesLoading;
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen pt-[var(--store-header-offset,80px)]">

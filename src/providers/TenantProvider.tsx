@@ -120,18 +120,15 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         // 4. Default Fallback (Only for root or non-admin/non-master routes)
         if (!storeId && (pathname === '/' || !['admin', 'master', 'auth'].includes(pathParts[1]))) {
-          // Priority: 1. Primary domain stores, 2. Most recent active stores with products
+          // Priority: 1. MF Atacadista, 2. Most recent active stores
           const { data: fallbackStores } = await supabase
             .from('stores')
             .select('id, name, slug, tenant_id, active')
             .order('created_at', { ascending: false });
           
           if (fallbackStores && fallbackStores.length > 0) {
-            // Priority list for resolving the "correct" store when multiple exist
             const preferred = fallbackStores.find(s => 
-              s.name.toLowerCase().includes('mf atacadista') ||
-              s.name.toLowerCase().includes('construção (orçamentos)') ||
-              s.name.toLowerCase().includes('materiais de construção')
+              s.name.toLowerCase().includes('mf atacadista')
             );
             const defaultStore = preferred || fallbackStores.find(s => s.active) || fallbackStores[0];
             storeId = defaultStore.id;

@@ -68,6 +68,7 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
           name: formData.name,
           slug: formData.slug,
           tenant_id: currentTenantId,
+          blueprint_id: formData.blueprintId,
           active: true
         })
         .select()

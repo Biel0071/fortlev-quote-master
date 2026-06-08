@@ -28,7 +28,7 @@ const MasterDashboard = () => {
       // Group niches by blueprint category
       const nicheMap = new Map();
       stores.data?.forEach(store => {
-        const bp = blueprints.data?.find(b => b.id === store.blueprint_id);
+        const bp = blueprints.data?.find(b => b.id === (store as any).blueprint_id);
         const category = bp?.category || "Geral";
         nicheMap.set(category, (nicheMap.get(category) || 0) + 1);
       });

@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -121,7 +123,9 @@ function getTemp(s: Session) {
 
 /* ---------- main ---------- */
 export default function AdminCustomers() {
+  const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
+
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selected, setSelected] = useState<Session | null>(null);
   const [events, setEvents] = useState<TrackingEvent[]>([]);
@@ -130,13 +134,16 @@ export default function AdminCustomers() {
   const [tempFilter, setTempFilter] = useState<string>("todos");
 
   const loadSessions = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
     // Query tracking_sessions which has real data
     const { data } = await cloud
       .from("tracking_sessions")
       .select("*")
+      .eq("store_id", activeStoreId)
       .order("last_seen_at", { ascending: false })
       .limit(500);
+
     setSessions((data ?? []).map((d: any) => ({
       id: d.id,
       session_token: d.session_token,
@@ -175,7 +182,7 @@ export default function AdminCustomers() {
     setEventsLoading(false);
   };
 
-  useEffect(() => { loadSessions(); }, []);
+  useEffect(() => { loadSessions(); }, [activeStoreId]);
 
   const openSession = (s: Session) => {
     setSelected(s);

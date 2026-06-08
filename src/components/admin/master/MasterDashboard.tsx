@@ -10,12 +10,15 @@ const MasterDashboard = () => {
   const { data: stats } = useQuery({
     queryKey: ['master-stats'],
     queryFn: async () => {
-      const [stores, tenants, domains, modules] = await Promise.all([
+      const [stores, tenants, domains, modules, subscriptions] = await Promise.all([
         supabase.from('stores').select('id', { count: 'exact', head: true }),
         supabase.from('tenants').select('id', { count: 'exact', head: true }),
         supabase.from('store_domains').select('id', { count: 'exact', head: true }),
         supabase.from('store_modules').select('id', { count: 'exact', head: true }),
+        supabase.from('saas_subscriptions').select('id, saas_plans(price_monthly)')
       ]);
+
+      const mrr = subscriptions.data?.reduce((acc, sub: any) => acc + (sub.saas_plans?.price_monthly || 0), 0) || 0;
 
       return {
         stores: stores.count || 0,
@@ -23,18 +26,20 @@ const MasterDashboard = () => {
         domains: domains.count || 0,
         modules: modules.count || 0,
         orders: 1250,
-        revenue: 450000,
+        revenue: mrr,
+        mrr: mrr,
+        activeSubscriptions: subscriptions.data?.length || 0,
       };
     }
   });
 
   const cards = [
     { title: "Lojas Ativas", value: stats?.stores, icon: Store, color: "text-blue-500", trend: "+12%" },
-    { title: "Assinaturas SaaS", value: stats?.tenants, icon: Users, color: "text-green-500", trend: "+5%" },
+    { title: "Assinaturas Ativas", value: stats?.activeSubscriptions, icon: Users, color: "text-green-500", trend: "+5%" },
     { title: "Ecossistema de Domínios", value: stats?.domains, icon: Globe, color: "text-purple-500", trend: "+8%" },
     { title: "Módulos Ativados", value: stats?.modules, icon: Cpu, color: "text-orange-500", trend: "+25%" },
     { title: "Vendas na Rede", value: stats?.orders, icon: ShoppingCart, color: "text-red-500", trend: "+18%" },
-    { title: "Receita GMV Global", value: stats?.revenue ? `R$ ${stats.revenue.toLocaleString()}` : '...', icon: DollarSign, color: "text-emerald-500", trend: "+15%" },
+    { title: "MRR (Receita Recorrente)", value: stats?.revenue ? `R$ ${stats.revenue.toLocaleString()}` : '...', icon: DollarSign, color: "text-emerald-500", trend: "+15%" },
   ];
 
   return (

@@ -772,6 +772,7 @@ export type Database = {
           created_by: string | null
           id: string
           is_active: boolean | null
+          snapshot_metadata: Json | null
           version_label: string | null
           version_number: number
         }
@@ -782,6 +783,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          snapshot_metadata?: Json | null
           version_label?: string | null
           version_number: number
         }
@@ -792,6 +794,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          snapshot_metadata?: Json | null
           version_label?: string | null
           version_number?: number
         }
@@ -4623,6 +4626,7 @@ export type Database = {
       stores: {
         Row: {
           active: boolean
+          blueprint_id: string | null
           branding: Json | null
           created_at: string
           domain: string | null
@@ -4639,6 +4643,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          blueprint_id?: string | null
           branding?: Json | null
           created_at?: string
           domain?: string | null
@@ -4655,6 +4660,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          blueprint_id?: string | null
           branding?: Json | null
           created_at?: string
           domain?: string | null
@@ -4670,6 +4676,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "stores_blueprint_id_fkey"
+            columns: ["blueprint_id"]
+            isOneToOne: false
+            referencedRelation: "store_blueprints"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stores_plan_id_fkey"
             columns: ["plan_id"]

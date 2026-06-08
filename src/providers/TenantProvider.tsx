@@ -131,9 +131,10 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // Find store "Construção (Orçamentos)" or "Materiais de Construção" if they exist
             const preferred = fallbackStores.find(s => 
               s.name.toLowerCase().includes('construção') || 
-              s.name.toLowerCase().includes('materiais')
+              s.name.toLowerCase().includes('materiais') ||
+              s.name.toLowerCase().includes('mf atacadista')
             );
-            const defaultStore = preferred || fallbackStores[0];
+            const defaultStore = preferred || fallbackStores.find(s => s.active) || fallbackStores[0];
             storeId = defaultStore.id;
             tenantId = defaultStore.tenant_id;
           }

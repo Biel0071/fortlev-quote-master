@@ -121,9 +121,7 @@ export default function StoreHome() {
 
   const featuredIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
-    const featured = list.filter((p) => p?.featured || p?.best_seller).map((p) => p.id) as string[];
-    if (featured.length === 0) return list.slice(0, 8).map((p) => p.id);
-
+    
     // Priority products to appear first (from curated list)
     const priorityIds = [
       "31f0affc-e596-413e-b113-9c17ef3ecab2", // Caixa 1000L FORTLEV
@@ -148,9 +146,12 @@ export default function StoreHome() {
       "9a4875e3-2067-4d8e-b936-56f36fe6b7e4", // Bloco 10
     ];
 
-    const existingPriority = priorityIds.filter((id) => featured.includes(id));
-    const rest = featured.filter((id) => !priorityIds.includes(id));
-    return [...existingPriority, ...rest];
+    const availablePriority = priorityIds.filter(id => list.some(p => p.id === id));
+    const featured = list.filter((p) => p?.featured || p?.best_seller).map((p) => p.id) as string[];
+    
+    const combined = Array.from(new Set([...availablePriority, ...featured]));
+    if (combined.length === 0) return list.slice(0, 12).map((p) => p.id);
+    return combined;
   }, [activeProducts]);
 
   const topClickedIds = useMemo(() => {

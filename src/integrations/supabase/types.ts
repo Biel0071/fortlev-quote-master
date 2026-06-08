@@ -450,6 +450,9 @@ export type Database = {
           created_at: string
           id: string
           key: string
+          platform_colors: Json | null
+          platform_logo: string | null
+          platform_name: string | null
           updated_at: string
           value: string | null
         }
@@ -457,6 +460,9 @@ export type Database = {
           created_at?: string
           id?: string
           key: string
+          platform_colors?: Json | null
+          platform_logo?: string | null
+          platform_name?: string | null
           updated_at?: string
           value?: string | null
         }
@@ -464,6 +470,9 @@ export type Database = {
           created_at?: string
           id?: string
           key?: string
+          platform_colors?: Json | null
+          platform_logo?: string | null
+          platform_name?: string | null
           updated_at?: string
           value?: string | null
         }
@@ -3965,31 +3974,43 @@ export type Database = {
       }
       store_module_definitions: {
         Row: {
+          category: string | null
           created_at: string | null
           description: string | null
           icon: string | null
           id: string
+          is_active: boolean | null
           is_premium: boolean | null
           key: string
           name: string
+          price: number | null
+          required_plan: string | null
         }
         Insert: {
+          category?: string | null
           created_at?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean | null
           is_premium?: boolean | null
           key: string
           name: string
+          price?: number | null
+          required_plan?: string | null
         }
         Update: {
+          category?: string | null
           created_at?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean | null
           is_premium?: boolean | null
           key?: string
           name?: string
+          price?: number | null
+          required_plan?: string | null
         }
         Relationships: []
       }

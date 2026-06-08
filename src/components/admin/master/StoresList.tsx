@@ -107,7 +107,7 @@ const StoresList = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Nome / Slug</TableHead>
-              <TableHead>Tenant</TableHead>
+              <TableHead>Tenant / Plano</TableHead>
               <TableHead>Domínio</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Data Criação</TableHead>

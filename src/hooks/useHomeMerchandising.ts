@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useTenant } from "@/providers/TenantProvider";
 import { getSmartCache, runApiMicrotask, setSmartCache } from "@/utils/smartCache";
 
 function isoDaysAgo(days: number) {

@@ -123,17 +123,17 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           // Priority: 1. Primary domain stores, 2. Most recent active stores with products
           const { data: fallbackStores } = await supabase
             .from('stores')
-            .select('id, name, slug, tenant_id')
-            .eq('active', true)
+            .select('id, name, slug, tenant_id, active')
             .order('created_at', { ascending: false });
           
           if (fallbackStores && fallbackStores.length > 0) {
             // Find store "Construção (Orçamentos)" or "Materiais de Construção" if they exist
             const preferred = fallbackStores.find(s => 
               s.name.toLowerCase().includes('construção') || 
-              s.name.toLowerCase().includes('materiais')
+              s.name.toLowerCase().includes('materiais') ||
+              s.name.toLowerCase().includes('mf atacadista')
             );
-            const defaultStore = preferred || fallbackStores[0];
+            const defaultStore = preferred || fallbackStores.find(s => s.active) || fallbackStores[0];
             storeId = defaultStore.id;
             tenantId = defaultStore.tenant_id;
           }

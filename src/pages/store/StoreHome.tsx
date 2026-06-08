@@ -122,28 +122,18 @@ export default function StoreHome() {
   const featuredIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
     
-    // Priority products to appear first (from curated list)
+    // Manual curated list from products that are known to exist in the database
     const priorityIds = [
-      "31f0affc-e596-413e-b113-9c17ef3ecab2", // Caixa 1000L FORTLEV
-      "1f6a420a-b46b-4d75-b888-8aa6c1e4ee2a", // Caixa 2000L FORTLEV
-      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3", // Caixa 3000L FORTLEV
-      "8b13a472-154d-422b-b567-fb8c726eaada", // Caixa 5000L FORTLEV
-      "a787085e-0984-481a-9644-61c08f796870", // Caixa 10000L FORTLEV
-      "978068df-f401-4997-803b-81354d216453", // Caixa 500L FORTLEV
-      "494af806-59f1-4f5d-bd1a-4cd7b14e3c16", // Caixa 750L FORTLEV
-      "cb426409-f5fd-4d4f-9f44-0f94ec5937c0", // Caixa 1500L FORTLEV
-      "e5c8e09d-ecba-4da6-b401-aa8fac3cc961", // Caixa 7500L FORTLEV
-      "dff3c30d-69d7-47bc-870e-87137e201b4c", // Caixa 15000L FORTLEV
-      "daeadbc0-b89e-477f-b8da-28f1eda6688d", // Caixa 20000L FORTLEV
-      "9b4e6839-85d2-4310-a249-b8468ece0c83", // Fossa Séptica FORTLEV
-      "ea44340a-1b19-42e0-98d7-b19c1e9059d4", // Tanque 5000L FORTLEV
-      "710399a9-a49a-46ba-a6d6-8c695ee750d0", // Tanque 10000L FORTLEV
-      "c7dd4267-f322-4147-a2cd-6969800c5453", // Caixa 310L FORTLEV
-      "38c51f55-fbf0-41c4-b223-b9993e7efb40", // LIZ CP4
-      "df447713-81f6-4326-acba-fc83645bfc7c", // LIZ CP2
-      "c85ead3d-ae2b-4823-b3a0-75de80041b7c", // Betoneira 400L
-      "fef0b373-84d1-4ba7-b341-13f03cbcef38", // Bloco 20
-      "9a4875e3-2067-4d8e-b936-56f36fe6b7e4", // Bloco 10
+      "03819be8-a77b-4d60-96d2-b6c8cc9e7def", // Rejunte Porcelanato Quartzolit Cinza
+      "032c1f20-b0d2-4e67-b0df-e9131a721b1b", // Copan Cinza Esmaltado Retificado Polido
+      "02ab63db-9e50-47a1-841d-9a1a91578ece", // Quantum Carrara Monoporosa Retificado
+      "01d93094-4e12-42ce-8c7d-89a806d1a952", // Tanque Simples 0,60x0,60
+      "01812cf2-293a-449e-9d33-e52e0f23a97b", // Porcelanato Esmaltado Retificado Polido Merapi
+      "01591e6e-ef8a-4099-a573-c0911afa44d4", // Porcelanato Retificado Acetinado Red Wood
+      "0121fee5-4597-4587-8db7-1c995433a6f2", // Lavatório 57,5x44,5
+      "010e5819-8c4e-4805-a717-bd3a7c78caa3", // Lâmpada Bulbo 20w
+      "00f3d990-e252-4b41-ae25-1a265a5c63dc", // Porcelanato Retificado Acetinado Cannes
+      "00947366-bb2b-42f4-b2bb-9b7f6c7c0269", // Composite Cinza Retificado
     ];
 
     const availablePriority = priorityIds.filter(id => list.some(p => p.id === id));
@@ -172,14 +162,13 @@ export default function StoreHome() {
 
     // Fallback logic if we don't have enough best sellers
     const curatedBestSellers = [
-      "31f0affc-e596-413e-b113-9c17ef3ecab2",
-      "1f6a420a-b46b-4d75-b888-8aa6c1e4ee2a",
-      "0b1202d1-d3a5-4271-ad13-eeead2a3f0b3",
-      "8b13a472-154d-422b-b567-fb8c726eaada",
-      "a787085e-0984-481a-9644-61c08f796870",
-      "978068df-f401-4997-803b-81354d216453",
-      "bc3df43c-6a0a-421d-8a6b-cd53c16acd43",
-      "88cbebc5-0da4-4de9-819b-558eadd7bfd9",
+      "02de1596-a108-46a4-b573-d2ad45f34f03", // TUBO PVC SOLDAVEL
+      "02f62535-85fc-468c-902d-59102be9ec2e", // Ducha Higiênica MK Metais
+      "03683b00-e191-45c6-8ce5-083411155f5d", // Moulin Plus Retificado
+      "009a5f35-914e-4d59-a049-8e4768f3bb42", // Revestimento Brilhante Branco Neve
+      "00519ccf-7977-4fb0-9b31-d53ded4319ec", // Chuveiro Redondo Touch Clean
+      "0021e9ab-44b0-4d4c-b4aa-ead382213c4f", // Porcelanato Retificado Detroit Sand
+      "001fb53a-ea75-4803-88b6-449cc269133b", // Valvula N2 Pia Amanco
     ];
     const existingIds = new Set(list.map((p) => p.id));
     const validCurated = curatedBestSellers.filter((id) => existingIds.has(id));

@@ -194,6 +194,8 @@ export default function StoreHome() {
   // Offer products from the new hook (always populated)
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
+  const isEmptyStore = !loading && activeProducts.length === 0 && activeCategories.length === 0 && home.banners.length === 0;
+
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">
       <AppHeader
@@ -205,101 +207,132 @@ export default function StoreHome() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <div className="main-content w-full overflow-hidden">
-        <HomeHeroCarousel banners={home.banners} loading={home.loading} />
-      </div>
-
-      <HomeSection
-        title="Categorias"
-        tone="plain"
-        className="pt-3 pb-8 sm:py-12"
-        action={
-          <Link to="/loja" className="text-sm font-semibold underline underline-offset-4">
-            Ver catálogo
-          </Link>
-        }
-      >
-        {!phase.categories || (categoriesLoading && !activeCategories.length) ? (
-          <CategorySkeleton />
-        ) : (
-          <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
-        )}
-
-      </HomeSection>
-
-      {/* 🔥 Ofertas section — always shows thanks to fallback */}
-      {phase.featured && homeOffers.length > 0 ? (
-        <HomeSection
-          id="ofertas"
-          title=""
-          tone="plain"
-          className="pt-2 pb-2 sm:pt-4 sm:pb-4"
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground animate-pulse">
-              <Flame className="h-3.5 w-3.5" />
-              Ofertas do dia
-            </span>
-            <Link to="/ofertas" className="text-xs font-semibold text-muted-foreground underline underline-offset-4 ml-auto">
-              Ver todas
-            </Link>
+      {isEmptyStore ? (
+        <div className="flex-1 flex flex-col items-center justify-center py-24 px-6 text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+           <div className="relative">
+              <div className="absolute -inset-4 bg-primary/5 rounded-full blur-2xl animate-pulse" />
+              <Store size={80} className="text-primary/20 relative" />
+           </div>
+           <div className="space-y-2 max-w-md mx-auto">
+             <h2 className="text-2xl font-bold tracking-tight">Loja em Construção</h2>
+             <p className="text-muted-foreground">
+               Seja bem-vindo à <strong>{tenantStore?.name || "nossa nova loja"}</strong>. 
+               Estamos preparando o catálogo e as melhores ofertas para você.
+             </p>
+           </div>
+           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl pt-8">
+              {[
+                { icon: Package, title: "Produtos", desc: "Em breve um catálogo completo." },
+                { icon: LayoutGrid, title: "Categorias", desc: "Tudo organizado por departamento." },
+                { icon: Info, title: "Institucional", desc: "Saiba mais sobre nossa história." },
+              ].map((item, i) => (
+                <div key={i} className="p-4 rounded-2xl border bg-card/50 space-y-2">
+                  <item.icon size={20} className="text-primary/60 mx-auto" />
+                  <p className="font-semibold text-sm">{item.title}</p>
+                  <p className="text-[11px] text-muted-foreground">{item.desc}</p>
+                </div>
+              ))}
+           </div>
+        </div>
+      ) : (
+        <>
+          <div className="main-content w-full overflow-hidden">
+            <HomeHeroCarousel banners={home.banners} loading={home.loading} />
           </div>
-          <HomeProductsByIds
-            loading={loading && !homeOffers.length}
-            productIds={homeOffers.map((o) => o.id)}
-            products={homeOffers as any}
-            onAdd={onAdd}
-            limit={8}
-          />
 
-        </HomeSection>
-      ) : null}
+          <HomeSection
+            title="Categorias"
+            tone="plain"
+            className="pt-3 pb-8 sm:py-12"
+            action={
+              <Link to="/loja" className="text-sm font-semibold underline underline-offset-4">
+                Ver catálogo
+              </Link>
+            }
+          >
+            {!phase.categories || (categoriesLoading && !activeCategories.length) ? (
+              <CategorySkeleton />
+            ) : (
+              <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
+            )}
 
-      <HomeSection
-        id="destaques"
-        title="Produtos em destaque"
-        tone="plain"
-        action={
-          <Link to="/loja" className="text-sm font-semibold underline underline-offset-4">
-            Ver catálogo
-          </Link>
-        }
-      >
-        {!phase.featured || (productsLoading && !activeProducts.length) ? (
-          <ProductGridSkeleton count={10} />
-        ) : (
-          <HomeProductsByIds loading={loading} productIds={featuredIds} products={activeProducts as any} onAdd={onAdd} limit={12} />
-        )}
+          </HomeSection>
 
-      </HomeSection>
+          {/* 🔥 Ofertas section — always shows thanks to fallback */}
+          {phase.featured && homeOffers.length > 0 ? (
+            <HomeSection
+              id="ofertas"
+              title=""
+              tone="plain"
+              className="pt-2 pb-2 sm:pt-4 sm:pb-4"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground animate-pulse">
+                  <Flame className="h-3.5 w-3.5" />
+                  Ofertas do dia
+                </span>
+                <Link to="/ofertas" className="text-xs font-semibold text-muted-foreground underline underline-offset-4 ml-auto">
+                  Ver todas
+                </Link>
+              </div>
+              <HomeProductsByIds
+                loading={loading && !homeOffers.length}
+                productIds={homeOffers.map((o) => o.id)}
+                products={homeOffers as any}
+                onAdd={onAdd}
+                limit={8}
+              />
 
-      {phase.additional ? (
-        <HomeSection
-          id="mais-vendidos"
-          title="Mais vendidos"
-          tone="plain"
-          action={
-            <Link to="/loja?sort=popular" className="text-sm font-semibold underline underline-offset-4">
-              Ver ranking
-            </Link>
-          }
-        >
-          <HomeProductsByIds
-            loading={loading && !activeProducts.length}
-            productIds={topClickedIds}
-            products={activeProducts as any}
-            onAdd={onAdd}
-            limit={8}
-          />
+            </HomeSection>
+          ) : null}
 
-        </HomeSection>
-      ) : null}
+          <HomeSection
+            id="destaques"
+            title="Produtos em destaque"
+            tone="plain"
+            action={
+              <Link to="/loja" className="text-sm font-semibold underline underline-offset-4">
+                Ver catálogo
+              </Link>
+            }
+          >
+            {!phase.featured || (productsLoading && !activeProducts.length) ? (
+              <ProductGridSkeleton count={10} />
+            ) : (
+              <HomeProductsByIds loading={loading} productIds={featuredIds} products={activeProducts as any} onAdd={onAdd} limit={12} />
+            )}
 
-      {phase.secondary ? (
-        <HomeSection title="" tone="plain">
-          <HomeGuaranteesMiniBar />
-        </HomeSection>
-      ) : null}
+          </HomeSection>
+
+          {phase.additional ? (
+            <HomeSection
+              id="mais-vendidos"
+              title="Mais vendidos"
+              tone="plain"
+              action={
+                <Link to="/loja?sort=popular" className="text-sm font-semibold underline underline-offset-4">
+                  Ver ranking
+                </Link>
+              }
+            >
+              <HomeProductsByIds
+                loading={loading && !activeProducts.length}
+                productIds={topClickedIds}
+                products={activeProducts as any}
+                onAdd={onAdd}
+                limit={8}
+              />
+
+            </HomeSection>
+          ) : null}
+
+          {phase.secondary ? (
+            <HomeSection title="" tone="plain">
+              <HomeGuaranteesMiniBar />
+            </HomeSection>
+          ) : null}
+        </>
+      )}
 
       <StoreFooter footer={home.footer} pageLinks={pageLinks} />
     </div>

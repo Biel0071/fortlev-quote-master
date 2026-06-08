@@ -71,26 +71,33 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     async function resolveStore() {
       try {
         const hostname = window.location.hostname;
+        const pathParts = window.location.pathname.split('/');
         
         // 1. Resolve Store and Tenant
         let storeId: string | undefined;
         let tenantId: string | undefined;
 
-        // Check domains table
-        const { data: domainData } = await supabase
-          .from('store_domains')
-          .select('store_id, tenant_id')
-          .eq('domain', hostname)
-          .maybeSingle();
+        // Check if we are in a Master Admin session impersonating a store
+        if (pathParts[1] === 'admin' && pathParts[2] === 'store' && pathParts[3]) {
+          storeId = pathParts[3];
+          // We'll fetch the store data below to get the tenantId
+        }
 
-        storeId = domainData?.store_id;
-        tenantId = domainData?.tenant_id;
-
-        // Fallback to slug
+        // Check domains table if not impersonating
         if (!storeId) {
-          const pathParts = window.location.pathname.split('/');
+          const { data: domainData } = await supabase
+            .from('store_domains')
+            .select('store_id, tenant_id')
+            .eq('domain', hostname)
+            .maybeSingle();
+
+          storeId = domainData?.store_id;
+          tenantId = domainData?.tenant_id;
+        }
+
+        // Fallback to slug if still not found
+        if (!storeId) {
           const possibleSlug = pathParts[1];
-          
           if (possibleSlug && !['admin', 'auth', 'master'].includes(possibleSlug)) {
              const { data: slugData } = await supabase
               .from('stores')

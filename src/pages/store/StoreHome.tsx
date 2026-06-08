@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, Suspense, lazy } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Flame, Store, Package, LayoutGrid, Info } from "lucide-react";
 import { useOfferProducts } from "@/hooks/useOfferProducts";
@@ -19,7 +19,7 @@ import { HomeSection } from "@/components/store/home/HomeSection";
 import { HomeCategoriesCarousel } from "@/components/store/home/HomeCategoriesCarousel";
 import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
 import { HomeGuaranteesMiniBar } from "@/components/store/home/HomeGuaranteesMiniBar";
-import { createMicroLoader } from "@/utils/microLoader";
+
 
 function CategorySkeleton() {
   return (
@@ -60,9 +60,6 @@ export default function StoreHome() {
     secondary: true,
   });
 
-  useEffect(() => {
-    // Phase set to true by default for immediate rendering
-  }, []);
 
   const home = useHomeContent({ enabled: true });
   const { activeCategories, loading: categoriesLoading } = useStoreCategories({ enabled: phase.categories });

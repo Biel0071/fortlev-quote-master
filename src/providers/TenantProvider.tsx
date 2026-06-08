@@ -123,8 +123,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           // Priority: 1. Primary domain stores, 2. Most recent active stores with products
           const { data: fallbackStores } = await supabase
             .from('stores')
-            .select('id, name, slug, tenant_id')
-            .eq('active', true)
+            .select('id, name, slug, tenant_id, active')
             .order('created_at', { ascending: false });
           
           if (fallbackStores && fallbackStores.length > 0) {

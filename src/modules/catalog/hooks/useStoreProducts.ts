@@ -54,7 +54,6 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
                 "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order)",
               )
               .eq("store_id", store.id)
-              .eq("active", true)
               .order("name", { ascending: true })
               .range(from, from + PAGE_SIZE - 1);
 

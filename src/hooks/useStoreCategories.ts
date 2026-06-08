@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useTenant } from "@/providers/TenantProvider";
 import { getSmartCache, runApiMicrotask, setSmartCache } from "@/utils/smartCache";
 
 export type StoreCategory = {
@@ -13,7 +14,7 @@ export type StoreCategory = {
   active: boolean;
 };
 
-const CATEGORIES_CACHE_KEY = "store_categories:list";
+const CATEGORIES_CACHE_BASE_KEY = "store_categories:list";
 const CATEGORIES_CACHE_TTL_MS = 1000 * 60 * 5;
 
 type UseStoreCategoriesOptions = {
@@ -21,19 +22,23 @@ type UseStoreCategoriesOptions = {
 };
 
 export function useStoreCategories(options?: UseStoreCategoriesOptions) {
-  const enabled = options?.enabled ?? true;
+  const { store } = useTenant();
+  const enabled = (options?.enabled ?? true) && !!store;
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
+  const CATEGORIES_CACHE_KEY = useMemo(() => `${CATEGORIES_CACHE_BASE_KEY}:${store?.id ?? 'default'}`, [store?.id]);
+
   const load = async (opts?: { silent?: boolean }) => {
-    if (!enabled) return;
+    if (!enabled || !store) return;
     if (!opts?.silent) setLoading(true);
     setError(null);
 
     const { data, error } = await cloud
       .from("store_categories")
       .select("id, name, slug, description, image_path, sort_order, featured, active")
+      .eq("store_id", store.id)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
 
@@ -66,7 +71,7 @@ export function useStoreCategories(options?: UseStoreCategoriesOptions) {
 
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [enabled, store?.id, CATEGORIES_CACHE_KEY]);
 
   const activeCategories = useMemo(() => categories.filter((c) => c.active), [categories]);
   const featuredCategories = useMemo(() => activeCategories.filter((c) => c.featured), [activeCategories]);

@@ -172,5 +172,3 @@ const MasterDashboard = () => {
 };
 
 export default MasterDashboard;
-
-export default MasterDashboard;

@@ -194,7 +194,7 @@ export default function StoreHome() {
   // Offer products from the new hook (always populated)
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
-  const isEmptyStore = !loading && activeProducts.length === 0 && activeCategories.length === 0 && (home.banners?.length === 0 || !home.banners);
+  const isEmptyStore = !loading && activeProducts.length === 0 && activeCategories.length === 0 && (home.banners?.length === 0 || !home.banners) && !categoriesLoading && !productsLoading;
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">

@@ -111,7 +111,8 @@ type UseHomeContentOptions = {
 };
 
 export function useHomeContent(options?: UseHomeContentOptions) {
-  const enabled = options?.enabled ?? true;
+  const { store } = useTenant();
+  const enabled = (options?.enabled ?? true) && !!store;
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,13 +126,14 @@ export function useHomeContent(options?: UseHomeContentOptions) {
   const [offers, setOffers] = useState<HomeOffer[]>([]);
   const [seo, setSeo] = useState<HomeSeo | null>(null);
 
+  const HOME_CONTENT_CACHE_KEY = useMemo(() => `${HOME_CONTENT_CACHE_BASE_KEY}:${store?.id ?? 'default'}`, [store?.id]);
+
   const load = async (opts?: { silent?: boolean }) => {
-    if (!enabled) return;
+    if (!enabled || !store) return;
     if (!opts?.silent) setLoading(true);
     setError(null);
 
     try {
-      // Parallelize with individual error handling to prevent one failure from blocking everything
       const results = await Promise.all([
         cloud.from("store_banners").select("id, title, subtitle, button_label, link_url, link, image_path, image_desktop_path, image_mobile_path, sort_order, position, active, is_active").or("is_active.eq.true,active.eq.true").eq("store_id", store.id).order("position", { ascending: true }).order("sort_order", { ascending: true }),
         cloud.from("home_benefits").select("id, title, subtitle, icon, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
@@ -145,7 +147,6 @@ export function useHomeContent(options?: UseHomeContentOptions) {
 
       const [b, ben, pol, sec, f, deps, off, s] = results;
 
-      // Log errors but don't crash the whole process unless it's a critical failure
       results.forEach((res, i) => {
         if (res.error) console.error(`[useHomeContent] Query ${i} failed:`, res.error);
       });
@@ -190,7 +191,7 @@ export function useHomeContent(options?: UseHomeContentOptions) {
   };
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || !store) {
       setLoading(false);
       return;
     }
@@ -212,7 +213,7 @@ export function useHomeContent(options?: UseHomeContentOptions) {
 
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, HOME_CONTENT_CACHE_KEY]);
+  }, [enabled, store?.id, HOME_CONTENT_CACHE_KEY]);
 
   const hasHero = useMemo(() => banners.length > 0, [banners]);
 

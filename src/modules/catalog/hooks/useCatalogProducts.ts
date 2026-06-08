@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useTenant } from "@/providers/TenantProvider";
 import type { Product } from "@/types/quotation";
 import type { ConstructionProduct, ConstructionCategory } from "@/types/construction";
 import { products as legacyFortlevProducts } from "@/data/products";
@@ -7,18 +8,21 @@ import { constructionProducts as legacyConstructionProducts } from "@/data/const
 import { getCustomConstructionProducts, getCustomFortlevProducts } from "@/utils/customCatalog";
 
 export function useFortlevCatalogProducts() {
+  const { store } = useTenant();
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      if (!store) return;
       try {
 
       const { data, error } = await cloud
         .from("fortlev_catalog_products")
         .select("*")
         .eq("active", true)
+        .eq("store_id", store.id)
         .order("capacity", { ascending: true });
 
 
@@ -54,7 +58,7 @@ export function useFortlevCatalogProducts() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [store]);
 
   const custom = useMemo(() => {
     try {
@@ -108,12 +112,14 @@ function mapToConstructionCategory(cat: string): ConstructionCategory {
 }
 
 export function useConstructionCatalogProducts() {
+  const { store } = useTenant();
   const [dbProducts, setDbProducts] = useState<ConstructionProduct[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      if (!store) return;
       try {
 
       // Fetch from construction_catalog_products
@@ -121,6 +127,7 @@ export function useConstructionCatalogProducts() {
         .from("construction_catalog_products")
         .select("*")
         .eq("active", true)
+        .eq("store_id", store.id)
         .order("name", { ascending: true });
 
 
@@ -129,6 +136,7 @@ export function useConstructionCatalogProducts() {
         .from("store_products")
         .select("*")
         .eq("status", "published")
+        .eq("store_id", store.id)
         .order("name", { ascending: true });
 
 
@@ -166,7 +174,7 @@ export function useConstructionCatalogProducts() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [store]);
 
   const custom = useMemo(() => {
     try {

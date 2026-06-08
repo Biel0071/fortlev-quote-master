@@ -928,6 +928,7 @@ export type Database = {
           id: string
           legacy_id: string | null
           name: string
+          store_id: string | null
           unit: string
           updated_at: string
         }
@@ -939,6 +940,7 @@ export type Database = {
           id?: string
           legacy_id?: string | null
           name: string
+          store_id?: string | null
           unit?: string
           updated_at?: string
         }
@@ -950,10 +952,19 @@ export type Database = {
           id?: string
           legacy_id?: string | null
           name?: string
+          store_id?: string | null
           unit?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "construction_catalog_products_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       construction_quotations: {
         Row: {
@@ -1293,6 +1304,7 @@ export type Database = {
           id: string
           legacy_id: string | null
           name: string
+          store_id: string | null
           type: string
           unit: string
           updated_at: string
@@ -1307,6 +1319,7 @@ export type Database = {
           id?: string
           legacy_id?: string | null
           name: string
+          store_id?: string | null
           type?: string
           unit?: string
           updated_at?: string
@@ -1321,11 +1334,20 @@ export type Database = {
           id?: string
           legacy_id?: string | null
           name?: string
+          store_id?: string | null
           type?: string
           unit?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fortlev_catalog_products_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fortlev_quotations: {
         Row: {
@@ -1470,6 +1492,7 @@ export type Database = {
           icon: string | null
           id: string
           sort_order: number
+          store_id: string | null
           subtitle: string | null
           title: string
           updated_at: string
@@ -1480,6 +1503,7 @@ export type Database = {
           icon?: string | null
           id?: string
           sort_order?: number
+          store_id?: string | null
           subtitle?: string | null
           title: string
           updated_at?: string
@@ -1490,11 +1514,20 @@ export type Database = {
           icon?: string | null
           id?: string
           sort_order?: number
+          store_id?: string | null
           subtitle?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "home_benefits_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       home_departments: {
         Row: {
@@ -1507,6 +1540,7 @@ export type Database = {
           label: string
           link_url: string | null
           sort_order: number
+          store_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1519,6 +1553,7 @@ export type Database = {
           label: string
           link_url?: string | null
           sort_order?: number
+          store_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1531,6 +1566,7 @@ export type Database = {
           label?: string
           link_url?: string | null
           sort_order?: number
+          store_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1539,6 +1575,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "store_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "home_departments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -1555,6 +1598,7 @@ export type Database = {
           instagram_url: string | null
           key: string
           logo_path: string | null
+          store_id: string | null
           store_name: string | null
           updated_at: string
           whatsapp: string | null
@@ -1570,6 +1614,7 @@ export type Database = {
           instagram_url?: string | null
           key?: string
           logo_path?: string | null
+          store_id?: string | null
           store_name?: string | null
           updated_at?: string
           whatsapp?: string | null
@@ -1585,11 +1630,20 @@ export type Database = {
           instagram_url?: string | null
           key?: string
           logo_path?: string | null
+          store_id?: string | null
           store_name?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "home_footer_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       home_offers: {
         Row: {
@@ -1602,6 +1656,7 @@ export type Database = {
           promo_price: number | null
           sort_order: number
           starts_at: string | null
+          store_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1614,6 +1669,7 @@ export type Database = {
           promo_price?: number | null
           sort_order?: number
           starts_at?: string | null
+          store_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1626,6 +1682,7 @@ export type Database = {
           promo_price?: number | null
           sort_order?: number
           starts_at?: string | null
+          store_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1634,6 +1691,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "home_offers_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -1646,6 +1710,7 @@ export type Database = {
           id: string
           link_url: string | null
           sort_order: number
+          store_id: string | null
           subtitle: string | null
           title: string
           updated_at: string
@@ -1657,6 +1722,7 @@ export type Database = {
           id?: string
           link_url?: string | null
           sort_order?: number
+          store_id?: string | null
           subtitle?: string | null
           title: string
           updated_at?: string
@@ -1668,11 +1734,20 @@ export type Database = {
           id?: string
           link_url?: string | null
           sort_order?: number
+          store_id?: string | null
           subtitle?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "home_policies_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       home_sections: {
         Row: {
@@ -1681,6 +1756,7 @@ export type Database = {
           created_at: string
           id: string
           sort_order: number
+          store_id: string | null
           subtitle_override: string | null
           title_override: string | null
           updated_at: string
@@ -1691,6 +1767,7 @@ export type Database = {
           created_at?: string
           id?: string
           sort_order?: number
+          store_id?: string | null
           subtitle_override?: string | null
           title_override?: string | null
           updated_at?: string
@@ -1701,6 +1778,7 @@ export type Database = {
           created_at?: string
           id?: string
           sort_order?: number
+          store_id?: string | null
           subtitle_override?: string | null
           title_override?: string | null
           updated_at?: string
@@ -1711,6 +1789,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: true
             referencedRelation: "store_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "home_sections_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -1724,6 +1809,7 @@ export type Database = {
           meta_description: string | null
           meta_title: string | null
           og_image_path: string | null
+          store_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1734,6 +1820,7 @@ export type Database = {
           meta_description?: string | null
           meta_title?: string | null
           og_image_path?: string | null
+          store_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1744,9 +1831,18 @@ export type Database = {
           meta_description?: string | null
           meta_title?: string | null
           og_image_path?: string | null
+          store_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "home_seo_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       image_import_logs: {
         Row: {
@@ -3171,6 +3267,47 @@ export type Database = {
         }
         Relationships: []
       }
+      store_ai_configs: {
+        Row: {
+          id: string
+          instructions: string | null
+          is_active: boolean | null
+          model: string | null
+          persona: string | null
+          provider: string | null
+          store_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          model?: string | null
+          persona?: string | null
+          provider?: string | null
+          store_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          model?: string | null
+          persona?: string | null
+          provider?: string | null
+          store_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_ai_configs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_apps: {
         Row: {
           active: boolean
@@ -3232,6 +3369,7 @@ export type Database = {
           link_url: string | null
           position: number | null
           sort_order: number
+          store_id: string | null
           subtitle: string | null
           title: string
           updated_at: string
@@ -3249,6 +3387,7 @@ export type Database = {
           link_url?: string | null
           position?: number | null
           sort_order?: number
+          store_id?: string | null
           subtitle?: string | null
           title: string
           updated_at?: string
@@ -3266,11 +3405,20 @@ export type Database = {
           link_url?: string | null
           position?: number | null
           sort_order?: number
+          store_id?: string | null
           subtitle?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "store_banners_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       store_categories: {
         Row: {
@@ -3283,6 +3431,7 @@ export type Database = {
           name: string
           slug: string
           sort_order: number
+          store_id: string | null
           updated_at: string
         }
         Insert: {
@@ -3295,6 +3444,7 @@ export type Database = {
           name: string
           slug: string
           sort_order?: number
+          store_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -3307,9 +3457,18 @@ export type Database = {
           name?: string
           slug?: string
           sort_order?: number
+          store_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "store_categories_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       store_coupons: {
         Row: {
@@ -3441,6 +3600,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "store_domains_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_modules: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_enabled: boolean | null
+          module_key: string
+          settings: Json | null
+          store_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          module_key: string
+          settings?: Json | null
+          store_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          module_key?: string
+          settings?: Json | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_modules_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -3676,6 +3870,7 @@ export type Database = {
           published: boolean
           slug: string
           sort_order: number
+          store_id: string | null
           title: string
           updated_at: string
         }
@@ -3686,6 +3881,7 @@ export type Database = {
           published?: boolean
           slug: string
           sort_order?: number
+          store_id?: string | null
           title: string
           updated_at?: string
         }
@@ -3696,10 +3892,19 @@ export type Database = {
           published?: boolean
           slug?: string
           sort_order?: number
+          store_id?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "store_pages_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       store_permissions: {
         Row: {
@@ -3782,6 +3987,7 @@ export type Database = {
           path: string
           product_id: string
           sort_order: number
+          store_id: string | null
           usage_count: number
         }
         Insert: {
@@ -3790,6 +3996,7 @@ export type Database = {
           path: string
           product_id: string
           sort_order?: number
+          store_id?: string | null
           usage_count?: number
         }
         Update: {
@@ -3798,6 +4005,7 @@ export type Database = {
           path?: string
           product_id?: string
           sort_order?: number
+          store_id?: string | null
           usage_count?: number
         }
         Relationships: [
@@ -3806,6 +4014,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_product_images_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -3833,6 +4048,7 @@ export type Database = {
           source_id: string | null
           status: string
           stock: number
+          store_id: string | null
           unit: string | null
           updated_at: string
           views: number
@@ -3859,6 +4075,7 @@ export type Database = {
           source_id?: string | null
           status?: string
           stock?: number
+          store_id?: string | null
           unit?: string | null
           updated_at?: string
           views?: number
@@ -3885,6 +4102,7 @@ export type Database = {
           source_id?: string | null
           status?: string
           stock?: number
+          store_id?: string | null
           unit?: string | null
           updated_at?: string
           views?: number
@@ -3895,6 +4113,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "store_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_products_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -3923,6 +4148,44 @@ export type Database = {
         }
         Relationships: []
       }
+      store_themes: {
+        Row: {
+          colors: Json | null
+          custom_css: string | null
+          fonts: Json | null
+          id: string
+          layout_settings: Json | null
+          store_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          colors?: Json | null
+          custom_css?: string | null
+          fonts?: Json | null
+          id?: string
+          layout_settings?: Json | null
+          store_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          colors?: Json | null
+          custom_css?: string | null
+          fonts?: Json | null
+          id?: string
+          layout_settings?: Json | null
+          store_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_themes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           active: boolean
@@ -3936,6 +4199,7 @@ export type Database = {
           segment: string | null
           slug: string
           suspended: boolean
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -3950,6 +4214,7 @@ export type Database = {
           segment?: string | null
           slug: string
           suspended?: boolean
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -3964,6 +4229,7 @@ export type Database = {
           segment?: string | null
           slug?: string
           suspended?: boolean
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3972,6 +4238,13 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "store_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stores_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -4090,6 +4363,7 @@ export type Database = {
           id: string
           primary_color: string
           primary_hover: string
+          store_id: string | null
           surface_color: string
           text_primary: string
           text_secondary: string
@@ -4104,6 +4378,7 @@ export type Database = {
           id?: string
           primary_color?: string
           primary_hover?: string
+          store_id?: string | null
           surface_color?: string
           text_primary?: string
           text_secondary?: string
@@ -4118,12 +4393,21 @@ export type Database = {
           id?: string
           primary_color?: string
           primary_hover?: string
+          store_id?: string | null
           surface_color?: string
           text_primary?: string
           text_secondary?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "system_theme_settings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       talent_applications: {
         Row: {
@@ -4164,6 +4448,33 @@ export type Database = {
           phone?: string
           resume_path?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      tenants: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          plan_type: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          plan_type?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          plan_type?: string | null
+          status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }

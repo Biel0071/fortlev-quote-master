@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useTenant } from "@/providers/TenantProvider";
 import { getSmartCache, runApiMicrotask, setSmartCache } from "@/utils/smartCache";
 
 export type HomeBanner = {
@@ -102,7 +103,7 @@ type HomeContentCache = {
   seo: HomeSeo | null;
 };
 
-const HOME_CONTENT_CACHE_KEY = "home_content:v1";
+const HOME_CONTENT_CACHE_BASE_KEY = "home_content:v1";
 const HOME_CONTENT_CACHE_TTL_MS = 1000 * 60 * 3;
 
 type UseHomeContentOptions = {
@@ -110,7 +111,8 @@ type UseHomeContentOptions = {
 };
 
 export function useHomeContent(options?: UseHomeContentOptions) {
-  const enabled = options?.enabled ?? true;
+  const { store } = useTenant();
+  const enabled = (options?.enabled ?? true) && !!store;
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,27 +126,27 @@ export function useHomeContent(options?: UseHomeContentOptions) {
   const [offers, setOffers] = useState<HomeOffer[]>([]);
   const [seo, setSeo] = useState<HomeSeo | null>(null);
 
+  const HOME_CONTENT_CACHE_KEY = useMemo(() => `${HOME_CONTENT_CACHE_BASE_KEY}:${store?.id ?? 'default'}`, [store?.id]);
+
   const load = async (opts?: { silent?: boolean }) => {
-    if (!enabled) return;
+    if (!enabled || !store) return;
     if (!opts?.silent) setLoading(true);
     setError(null);
 
     try {
-      // Parallelize with individual error handling to prevent one failure from blocking everything
       const results = await Promise.all([
-        cloud.from("store_banners").select("id, title, subtitle, button_label, link_url, link, image_path, image_desktop_path, image_mobile_path, sort_order, position, active, is_active").or("is_active.eq.true,active.eq.true").order("position", { ascending: true }).order("sort_order", { ascending: true }),
-        cloud.from("home_benefits").select("id, title, subtitle, icon, sort_order, active").eq("active", true).order("sort_order", { ascending: true }),
-        cloud.from("home_policies").select("id, title, subtitle, icon, link_url, sort_order, active").eq("active", true).order("sort_order", { ascending: true }),
-        cloud.from("home_sections").select("id, category_id, title_override, subtitle_override, sort_order, active").eq("active", true).order("sort_order", { ascending: true }),
-        cloud.from("home_footer").select("id, key, logo_path, store_name, address, whatsapp, hours, extra_note, instagram_url, facebook_url, active").eq("active", true).eq("key", "main").maybeSingle(),
-        cloud.from("home_departments").select("id, kind, label, icon, link_url, category_id, sort_order, active").eq("active", true).order("sort_order", { ascending: true }),
-        cloud.from("home_offers").select("id, product_id, badge_text, promo_price, starts_at, ends_at, sort_order, active").order("sort_order", { ascending: true }),
-        cloud.from("home_seo").select("id, key, meta_title, meta_description, og_image_path, active").eq("active", true).eq("key", "store_home").maybeSingle(),
+        cloud.from("store_banners").select("id, title, subtitle, button_label, link_url, link, image_path, image_desktop_path, image_mobile_path, sort_order, position, active, is_active").or("is_active.eq.true,active.eq.true").eq("store_id", store.id).order("position", { ascending: true }).order("sort_order", { ascending: true }),
+        cloud.from("home_benefits").select("id, title, subtitle, icon, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
+        cloud.from("home_policies").select("id, title, subtitle, icon, link_url, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
+        cloud.from("home_sections").select("id, category_id, title_override, subtitle_override, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
+        cloud.from("home_footer").select("id, key, logo_path, store_name, address, whatsapp, hours, extra_note, instagram_url, facebook_url, active").eq("active", true).eq("key", "main").eq("store_id", store.id).maybeSingle(),
+        cloud.from("home_departments").select("id, kind, label, icon, link_url, category_id, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
+        cloud.from("home_offers").select("id, product_id, badge_text, promo_price, starts_at, ends_at, sort_order, active").eq("store_id", store.id).order("sort_order", { ascending: true }),
+        cloud.from("home_seo").select("id, key, meta_title, meta_description, og_image_path, active").eq("active", true).eq("key", "store_home").eq("store_id", store.id).maybeSingle(),
       ]);
 
       const [b, ben, pol, sec, f, deps, off, s] = results;
 
-      // Log errors but don't crash the whole process unless it's a critical failure
       results.forEach((res, i) => {
         if (res.error) console.error(`[useHomeContent] Query ${i} failed:`, res.error);
       });
@@ -189,7 +191,7 @@ export function useHomeContent(options?: UseHomeContentOptions) {
   };
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || !store) {
       setLoading(false);
       return;
     }
@@ -211,7 +213,7 @@ export function useHomeContent(options?: UseHomeContentOptions) {
 
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [enabled, store?.id, HOME_CONTENT_CACHE_KEY]);
 
   const hasHero = useMemo(() => banners.length > 0, [banners]);
 

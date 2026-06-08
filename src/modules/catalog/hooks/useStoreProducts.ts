@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useTenant } from "@/providers/TenantProvider";
 import type { StoreProduct, StoreProductImage } from "@/types/store";
 import { constructionProducts } from "@/data/constructionProducts";
 import { getSmartCache, runApiMicrotask, setSmartCache } from "@/utils/smartCache";
@@ -8,7 +9,7 @@ type ProductRow = StoreProduct;
 
 type ProductWithImages = ProductRow & { images: StoreProductImage[] };
 
-const PRODUCTS_CACHE_KEY = "store_products:list";
+const PRODUCTS_CACHE_BASE_KEY = "store_products:list";
 const PRODUCTS_CACHE_TTL_MS = 1000 * 60 * 3;
 let sharedProductsInflight: Promise<ProductWithImages[]> | null = null;
 let lastSilentRefreshAt = 0;
@@ -18,13 +19,16 @@ type UseStoreProductsOptions = {
 };
 
 export function useStoreProducts(options?: UseStoreProductsOptions) {
-  const enabled = options?.enabled ?? true;
+  const { store } = useTenant();
+  const enabled = (options?.enabled ?? true) && !!store;
   const [products, setProducts] = useState<ProductWithImages[]>([]);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
+  const PRODUCTS_CACHE_KEY = useMemo(() => `${PRODUCTS_CACHE_BASE_KEY}:${store?.id ?? 'default'}`, [store?.id]);
+
   const load = async (opts?: { silent?: boolean; retries?: number }) => {
-    if (!enabled) return;
+    if (!enabled || !store) return;
     if (!opts?.silent) setLoading(true);
     setError(null);
 
@@ -46,6 +50,7 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
               .select(
                 "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order)",
               )
+              .eq("store_id", store.id)
               .order("name", { ascending: true })
               .range(from, from + PAGE_SIZE - 1);
 
@@ -119,7 +124,7 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
 
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [enabled, PRODUCTS_CACHE_KEY]);
 
   const activeProducts = useMemo(() => products.filter((p) => p.active), [products]);
 

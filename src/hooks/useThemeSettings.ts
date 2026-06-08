@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useTenant } from "@/providers/TenantProvider";
 import { hexToHslTuple } from "@/utils/color";
 import { theme as defaultTheme } from "@/theme/themeConfig";
 
@@ -118,18 +119,21 @@ function applyThemeToRoot(s: Partial<ThemeSettingsRow>) {
 }
 
 export function useThemeSettings() {
+  const { store } = useTenant();
   const [settings, setSettings] = useState<ThemeSettingsRow | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
     (async () => {
+      if (!store) return;
       setLoading(true);
       const { data, error } = await cloud
         .from("system_theme_settings")
         .select(
           "id, primary_color, primary_hover, accent_color, accent_hover, background_color, surface_color, text_primary, text_secondary, border_color",
         )
+        .eq("store_id", store.id)
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -150,7 +154,7 @@ export function useThemeSettings() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [store]);
 
   const api = useMemo(
     () => ({
@@ -158,11 +162,13 @@ export function useThemeSettings() {
       settings,
       loading,
       refresh: async () => {
+        if (!store) return;
         const { data } = await cloud
           .from("system_theme_settings")
           .select(
             "id, primary_color, primary_hover, accent_color, accent_hover, background_color, surface_color, text_primary, text_secondary, border_color",
           )
+          .eq("store_id", store.id)
           .order("created_at", { ascending: true })
           .limit(1)
           .maybeSingle();
@@ -170,7 +176,7 @@ export function useThemeSettings() {
         applyThemeToRoot((data as any) ?? {});
       },
     }),
-    [settings, loading],
+    [settings, loading, store],
   );
 
   return api;

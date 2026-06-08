@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +49,8 @@ export default function AdminProductForm() {
   const editingId = id ?? null;
   const nav = useNavigate();
   const location = useLocation();
+  const { activeStoreId } = useStore();
+
 
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<StoreCategory[]>([]);
@@ -120,8 +124,10 @@ export default function AdminProductForm() {
       const { data, error } = await cloud
         .from("store_products")
         .select("id, name, category_id, category, unit, sku")
+        .eq("store_id", activeStoreId)
         .order("created_at", { ascending: true })
         .limit(1000);
+
       if (error) throw error;
 
       const list = (data ?? []) as any[];
@@ -164,14 +170,18 @@ export default function AdminProductForm() {
   };
 
   const load = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
+
 
     const [catRes, prodRes, imgRes, previewRes] = await Promise.all([
       cloud
         .from("store_categories")
         .select("id, name, slug, description, sort_order, featured, active")
+        .eq("store_id", activeStoreId)
         .order("sort_order", { ascending: true })
         .order("name", { ascending: true }),
+
       editingId
         ? cloud
             .from("store_products")
@@ -236,7 +246,8 @@ export default function AdminProductForm() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingId]);
+  }, [editingId, activeStoreId]);
+
 
   const saveProduct = async () => {
     const shouldAutoFillDescription = !description.trim();
@@ -268,7 +279,9 @@ export default function AdminProductForm() {
       featured,
       best_seller: bestSeller,
       active,
+      store_id: activeStoreId,
     };
+
 
     if (!payload.name) return toast({ title: "Atenção", description: "Informe o nome." });
 
@@ -295,9 +308,11 @@ export default function AdminProductForm() {
 
       const inserts = uploadedPaths.map((path, idx) => ({
         product_id: editingId,
+        store_id: activeStoreId,
         path,
         sort_order: nextSortBase + idx,
       }));
+
 
       const { error } = await cloud.from("store_product_images").insert(inserts as any);
       if (error) throw error;

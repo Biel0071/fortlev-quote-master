@@ -54,22 +54,14 @@ export default function StoreHome() {
   const { store: tenantStore } = useTenant();
 
   const [phase, setPhase] = useState({
-    categories: false,
-    featured: false,
-    additional: false,
-    secondary: false,
+    categories: true,
+    featured: true,
+    additional: true,
+    secondary: true,
   });
 
   useEffect(() => {
-    const loader = createMicroLoader({ chunkSize: 1, idleTimeoutMs: 100 });
-
-    // Parallelize core data loading tasks - faster intervals
-    loader.addTask({ priority: "critical", run: () => setPhase((p) => ({ ...p, categories: true })) });
-    loader.addTask({ priority: "critical", run: () => setPhase((p) => ({ ...p, featured: true })) });
-    loader.addTask({ priority: "high", run: () => setPhase((p) => ({ ...p, additional: true })) });
-    loader.addTask({ priority: "normal", run: () => setPhase((p) => ({ ...p, secondary: true })) });
-
-    return () => loader.clear();
+    // Phase set to true by default for immediate rendering
   }, []);
 
   const home = useHomeContent({ enabled: true });

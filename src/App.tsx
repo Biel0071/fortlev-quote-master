@@ -32,6 +32,7 @@ const Construction = lazy(() => import("@/modules/checkout/pages/Construction"))
 const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
 const MasterAdmin = lazy(() => import("@/pages/admin/MasterAdmin"));
 const CustomerInvoicePortal = lazy(() => import("@/pages/CustomerInvoicePortal"));
+const MasterRouteGuard = lazy(() => import("@/components/admin/MasterRouteGuard").then(m => ({ default: m.MasterRouteGuard })));
 
 
 const queryClient = new QueryClient({
@@ -102,7 +103,7 @@ const App = () => (
                 <Route path="/pedidos" element={<OrdersPage />} />
                 <Route path="/rastreio/:id" element={<TrackingPage />} />
 
-                <Route path="/admin/master/*" element={<MasterAdmin />} />
+                <Route path="/admin/master/*" element={<MasterRouteGuard><MasterAdmin /></MasterRouteGuard>} />
                 <Route path="/admin/*" element={<AdminApp />} />
 
                 <Route path="/auth/login" element={<LoginPage />} />

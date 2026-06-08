@@ -7,25 +7,40 @@ const FinanceManager = () => {
   const { data: metrics } = useQuery({
     queryKey: ['saas-metrics'],
     queryFn: async () => {
-      // Mocked for now, in real scenario would query invoices/subscriptions
+      const [subscriptions, invoices] = await Promise.all([
+        supabase.from('saas_subscriptions').select('id, saas_plans(price_monthly), status'),
+        supabase.from('billing_invoices').select('id, amount, status, created_at, tenants(name), saas_subscriptions(saas_plans(name))')
+      ]);
+
+      const activeSubs = subscriptions.data?.filter(s => s.status === 'active' || s.status === 'trial') || [];
+      const mrr = activeSubs.reduce((acc, sub: any) => acc + (sub.saas_plans?.price_monthly || 0), 0);
+      const arr = mrr * 12;
+      
+      const paidInvoices = invoices.data?.filter(i => i.status === 'paid') || [];
+      const pendingInvoicesCount = invoices.data?.filter(i => i.status === 'open' || i.status === 'draft').length || 0;
+      
+      const totalRevenue = paidInvoices.reduce((acc, inv) => acc + Number(inv.amount), 0);
+      const ltv = activeSubs.length > 0 ? totalRevenue / activeSubs.length : 0;
+
       return {
-        mrr: 12450,
-        arr: 149400,
-        churn: 1.2,
-        activeSubscriptions: 48,
-        pendingInvoices: 3,
-        ltv: 1850
+        mrr,
+        arr,
+        churn: 1.2, // Mocked for now
+        activeSubscriptions: activeSubs.length,
+        pendingInvoicesCount,
+        ltv,
+        recentInvoices: invoices.data?.slice(0, 10) || []
       };
     }
   });
 
   const cards = [
-    { title: "MRR (Recorrência Mensal)", value: `R$ ${metrics?.mrr.toLocaleString()}`, icon: DollarSign, color: "text-green-500", trend: "+12%" },
-    { title: "ARR (Anual Projetado)", value: `R$ ${metrics?.arr.toLocaleString()}`, icon: TrendingUp, color: "text-blue-500", trend: "+8%" },
-    { title: "Assinaturas Ativas", value: metrics?.activeSubscriptions, icon: Users, color: "text-purple-500", trend: "+4" },
-    { title: "Taxa de Churn", value: `${metrics?.churn}%`, icon: TrendingDown, color: "text-red-500", trend: "-0.5%" },
-    { title: "LTV (Valor do Cliente)", value: `R$ ${metrics?.ltv.toLocaleString()}`, icon: CreditCard, color: "text-orange-500", trend: "+15%" },
-    { title: "Faturas Pendentes", value: metrics?.pendingInvoices, icon: Receipt, color: "text-yellow-500", trend: "Estável" },
+    { title: "MRR (Recorrência Mensal)", value: `R$ ${metrics?.mrr?.toLocaleString() || '0'}`, icon: DollarSign, color: "text-green-500", trend: "+12%" },
+    { title: "ARR (Anual Projetado)", value: `R$ ${metrics?.arr?.toLocaleString() || '0'}`, icon: TrendingUp, color: "text-blue-500", trend: "+8%" },
+    { title: "Assinaturas Ativas", value: metrics?.activeSubscriptions || 0, icon: Users, color: "text-purple-500", trend: "+4" },
+    { title: "Taxa de Churn", value: `${metrics?.churn || 0}%`, icon: TrendingDown, color: "text-red-500", trend: "-0.5%" },
+    { title: "LTV (Valor do Cliente)", value: `R$ ${metrics?.ltv?.toLocaleString() || '0'}`, icon: CreditCard, color: "text-orange-500", trend: "+15%" },
+    { title: "Faturas Pendentes", value: metrics?.pendingInvoicesCount || 0, icon: Receipt, color: "text-yellow-500", trend: "Estável" },
   ];
 
   return (
@@ -71,23 +86,24 @@ const FinanceManager = () => {
                 </tr>
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
-                {[
-                  { tenant: "Loja do João", plan: "Pro", amount: "R$ 297,00", status: "Pago", date: "08/06/2026" },
-                  { tenant: "Construtora Silva", plan: "Enterprise", amount: "R$ 997,00", status: "Pago", date: "07/06/2026" },
-                  { tenant: "Bebidas SA", plan: "Basic", amount: "R$ 97,00", status: "Pendente", date: "06/06/2026" },
-                ].map((inv, i) => (
-                  <tr key={i} className="border-b transition-colors hover:bg-muted/50">
-                    <td className="p-4 align-middle font-medium">{inv.tenant}</td>
-                    <td className="p-4 align-middle">{inv.plan}</td>
-                    <td className="p-4 align-middle">{inv.amount}</td>
+                {metrics?.recentInvoices?.map((inv: any) => (
+                  <tr key={inv.id} className="border-b transition-colors hover:bg-muted/50">
+                    <td className="p-4 align-middle font-medium">{inv.tenants?.name || "N/A"}</td>
+                    <td className="p-4 align-middle">{inv.saas_subscriptions?.saas_plans?.name || "N/A"}</td>
+                    <td className="p-4 align-middle">R$ {Number(inv.amount).toLocaleString()}</td>
                     <td className="p-4 align-middle">
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${inv.status === 'Pago' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                        {inv.status}
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${inv.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                        {inv.status === 'paid' ? 'Pago' : inv.status}
                       </span>
                     </td>
-                    <td className="p-4 align-middle">{inv.date}</td>
+                    <td className="p-4 align-middle">{new Date(inv.created_at).toLocaleDateString()}</td>
                   </tr>
                 ))}
+                {metrics?.recentInvoices?.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-4 text-center text-muted-foreground italic">Nenhuma fatura encontrada.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

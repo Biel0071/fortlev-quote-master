@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Store, ShoppingCart, DollarSign, Users, Globe, Cpu, TrendingUp, ArrowUpRight, Award, Zap, Brain } from "lucide-react";
+import { Store, ShoppingCart, DollarSign, Users, Globe, Cpu, TrendingUp, ArrowUpRight, Award, Zap, Brain, Layers } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -10,25 +10,58 @@ const MasterDashboard = () => {
   const { data: stats } = useQuery({
     queryKey: ['master-stats'],
     queryFn: async () => {
-      const [stores, tenants, domains, modules, subscriptions] = await Promise.all([
-        supabase.from('stores').select('id', { count: 'exact', head: true }),
+      const [stores, tenants, domains, modules, subscriptions, blueprints, recentInvoices, orders, latestStores] = await Promise.all([
+        supabase.from('stores').select('id, blueprint_id', { count: 'exact' }),
         supabase.from('tenants').select('id', { count: 'exact', head: true }),
         supabase.from('store_domains').select('id', { count: 'exact', head: true }),
         supabase.from('store_modules').select('id', { count: 'exact', head: true }),
-        supabase.from('saas_subscriptions').select('id, saas_plans(price_monthly)')
+        supabase.from('saas_subscriptions').select('id, saas_plans(price_monthly)'),
+        supabase.from('store_blueprints').select('id, name, category'),
+        supabase.from('billing_invoices').select('amount, status').eq('status', 'paid'),
+        supabase.from('store_orders').select('id', { count: 'exact', head: true }),
+        supabase.from('stores').select('id, name, slug, created_at, active').order('created_at', { ascending: false }).limit(5)
       ]);
 
       const mrr = subscriptions.data?.reduce((acc, sub: any) => acc + (sub.saas_plans?.price_monthly || 0), 0) || 0;
+      const totalRevenue = recentInvoices.data?.reduce((acc, inv: any) => acc + (inv.amount || 0), 0) || 0;
+
+      // Group niches by blueprint category
+      const nicheMap = new Map();
+      stores.data?.forEach(store => {
+        const bp = blueprints.data?.find(b => b.id === (store as any).blueprint_id);
+        const category = bp?.category || "Geral";
+        nicheMap.set(category, (nicheMap.get(category) || 0) + 1);
+      });
+
+      const niches = Array.from(nicheMap.entries()).map(([name, count]) => ({
+        name,
+        revenue: `R$ ${(count * 297).toLocaleString()}`, // Projected
+        share: (count / (stores.count || 1)) * 100,
+        color: "bg-primary"
+      })).sort((a, b) => b.share - a.share);
+
+      const topBlueprints = blueprints.data?.map(bp => {
+        const count = stores.data?.filter(s => (s as any).blueprint_id === bp.id).length || 0;
+        return {
+          name: bp.name,
+          count,
+          conversion: "4.5%"
+        };
+      }).sort((a, b) => b.count - a.count).slice(0, 4);
 
       return {
         stores: stores.count || 0,
         tenants: tenants.count || 0,
         domains: domains.count || 0,
         modules: modules.count || 0,
-        orders: 1250,
-        revenue: mrr,
+        revenue: totalRevenue,
         mrr: mrr,
         activeSubscriptions: subscriptions.data?.length || 0,
+        blueprintsCount: blueprints.data?.length || 0,
+        orders: orders.count || 0,
+        latestStores: latestStores.data || [],
+        niches,
+        topBlueprints
       };
     }
   });
@@ -36,10 +69,10 @@ const MasterDashboard = () => {
   const cards = [
     { title: "Lojas Ativas", value: stats?.stores, icon: Store, color: "text-blue-500", trend: "+12%" },
     { title: "Assinaturas Ativas", value: stats?.activeSubscriptions, icon: Users, color: "text-green-500", trend: "+5%" },
-    { title: "Ecossistema de Domínios", value: stats?.domains, icon: Globe, color: "text-purple-500", trend: "+8%" },
+    { title: "Blueprints Disponíveis", value: stats?.blueprintsCount, icon: Layers, color: "text-purple-500", trend: "+8%" },
     { title: "Módulos Ativados", value: stats?.modules, icon: Cpu, color: "text-orange-500", trend: "+25%" },
     { title: "Vendas na Rede", value: stats?.orders, icon: ShoppingCart, color: "text-red-500", trend: "+18%" },
-    { title: "MRR (Receita Recorrente)", value: stats?.revenue ? `R$ ${stats.revenue.toLocaleString()}` : '...', icon: DollarSign, color: "text-emerald-500", trend: "+15%" },
+    { title: "MRR (Receita Recorrente)", value: stats?.mrr ? `R$ ${stats.mrr.toLocaleString()}` : '...', icon: DollarSign, color: "text-emerald-500", trend: "+15%" },
   ];
 
   return (
@@ -152,19 +185,21 @@ const MasterDashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+            {stats?.latestStores?.map((store) => (
+              <div key={store.id} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center gap-4">
                   <div className="p-2 bg-blue-50 rounded-lg">
                     <Store className="text-blue-500" size={18} />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">Nova Loja Multi-Nicho #{i}</p>
-                    <p className="text-xs text-muted-foreground">Blueprint: Construção v2 • Ativada há {i * 15}min</p>
+                    <p className="font-medium text-sm">{store.name}</p>
+                    <p className="text-xs text-muted-foreground">/{store.slug} • Ativada em {new Date(store.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-green-500">Online</Badge>
+                  <Badge className={store.active ? "bg-green-500" : "bg-yellow-500"}>
+                    {store.active ? "Online" : "Pendente"}
+                  </Badge>
                   <Button variant="ghost" size="sm">Gerenciar</Button>
                 </div>
               </div>

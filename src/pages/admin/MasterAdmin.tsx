@@ -9,6 +9,7 @@ import MasterLogs from "@/components/admin/master/MasterLogs";
 import SaaSPlansManager from "@/components/admin/master/SaaSPlansManager";
 import FinanceManager from "@/components/admin/master/FinanceManager";
 import WhiteLabelSettings from "@/components/admin/master/WhiteLabelSettings";
+import DomainsManager from "@/components/admin/master/DomainsManager";
 
 const MasterAdmin = () => {
   const menuItems = [
@@ -71,7 +72,7 @@ const MasterAdmin = () => {
             <Route path="modules" element={<ModulesManager />} />
             <Route path="ia" element={<MasterAICentral />} />
             <Route path="whitelabel" element={<WhiteLabelSettings />} />
-            <Route path="domains" element={<div className="p-4">Gerenciamento de Domínios em breve...</div>} />
+            <Route path="domains" element={<DomainsManager />} />
             <Route path="logs" element={<MasterLogs />} />
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/admin/master" replace />} />

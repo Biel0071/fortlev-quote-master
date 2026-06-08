@@ -450,6 +450,9 @@ export type Database = {
           created_at: string
           id: string
           key: string
+          platform_colors: Json | null
+          platform_logo: string | null
+          platform_name: string | null
           updated_at: string
           value: string | null
         }
@@ -457,6 +460,9 @@ export type Database = {
           created_at?: string
           id?: string
           key: string
+          platform_colors?: Json | null
+          platform_logo?: string | null
+          platform_name?: string | null
           updated_at?: string
           value?: string | null
         }
@@ -464,6 +470,9 @@ export type Database = {
           created_at?: string
           id?: string
           key?: string
+          platform_colors?: Json | null
+          platform_logo?: string | null
+          platform_name?: string | null
           updated_at?: string
           value?: string | null
         }
@@ -763,6 +772,7 @@ export type Database = {
           created_by: string | null
           id: string
           is_active: boolean | null
+          snapshot_metadata: Json | null
           version_label: string | null
           version_number: number
         }
@@ -773,6 +783,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          snapshot_metadata?: Json | null
           version_label?: string | null
           version_number: number
         }
@@ -783,6 +794,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          snapshot_metadata?: Json | null
           version_label?: string | null
           version_number?: number
         }
@@ -3965,31 +3977,43 @@ export type Database = {
       }
       store_module_definitions: {
         Row: {
+          category: string | null
           created_at: string | null
           description: string | null
           icon: string | null
           id: string
+          is_active: boolean | null
           is_premium: boolean | null
           key: string
           name: string
+          price: number | null
+          required_plan: string | null
         }
         Insert: {
+          category?: string | null
           created_at?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean | null
           is_premium?: boolean | null
           key: string
           name: string
+          price?: number | null
+          required_plan?: string | null
         }
         Update: {
+          category?: string | null
           created_at?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean | null
           is_premium?: boolean | null
           key?: string
           name?: string
+          price?: number | null
+          required_plan?: string | null
         }
         Relationships: []
       }
@@ -4602,6 +4626,7 @@ export type Database = {
       stores: {
         Row: {
           active: boolean
+          blueprint_id: string | null
           branding: Json | null
           created_at: string
           domain: string | null
@@ -4618,6 +4643,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          blueprint_id?: string | null
           branding?: Json | null
           created_at?: string
           domain?: string | null
@@ -4634,6 +4660,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          blueprint_id?: string | null
           branding?: Json | null
           created_at?: string
           domain?: string | null
@@ -4649,6 +4676,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "stores_blueprint_id_fkey"
+            columns: ["blueprint_id"]
+            isOneToOne: false
+            referencedRelation: "store_blueprints"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stores_plan_id_fkey"
             columns: ["plan_id"]

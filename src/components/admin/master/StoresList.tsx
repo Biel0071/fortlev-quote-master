@@ -31,8 +31,15 @@ const StoresList = () => {
         .from('stores')
         .select(`
           *,
-          tenants (name),
-          store_domains (domain)
+          tenants (
+            id,
+            name,
+            saas_subscriptions (
+              status,
+              saas_plans (name)
+            )
+          ),
+          store_domains (domain, is_primary, verified)
         `)
         .order('created_at', { ascending: false });
       
@@ -100,7 +107,7 @@ const StoresList = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Nome / Slug</TableHead>
-              <TableHead>Tenant</TableHead>
+              <TableHead>Tenant / Plano</TableHead>
               <TableHead>Domínio</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Data Criação</TableHead>
@@ -124,9 +131,25 @@ const StoresList = () => {
                     <p className="text-xs text-muted-foreground">/{store.slug}</p>
                   </div>
                 </TableCell>
-                <TableCell>{store.tenants?.name || "N/A"}</TableCell>
                 <TableCell>
-                  {store.store_domains?.[0]?.domain || `${store.slug}.plataforma.com`}
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium">{store.tenants?.name || "N/A"}</span>
+                    {store.tenants?.saas_subscriptions?.[0] && (
+                      <Badge variant="outline" className="w-fit text-[10px] py-0">
+                        {store.tenants.saas_subscriptions[0].saas_plans?.name} - {store.tenants.saas_subscriptions[0].status}
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm">{store.store_domains?.[0]?.domain || `${store.slug}.plataforma.com`}</span>
+                    {store.store_domains?.[0] && (
+                      <Badge variant={store.store_domains[0].verified ? "default" : "secondary"} className="w-fit text-[10px] py-0 bg-green-500/10 text-green-600 border-green-200">
+                        {store.store_domains[0].verified ? "Verificado" : "Pendente"}
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant={store.active ? "default" : "secondary"}>

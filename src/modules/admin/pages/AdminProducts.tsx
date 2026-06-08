@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
+
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSession } from "@/hooks/useSession";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +19,9 @@ import type { StoreProduct } from "@/types/store";
 export default function AdminProducts() {
   const { user, loading: sessionLoading } = useSession();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
+  const { activeStoreId } = useStore();
   const nav = useNavigate();
+
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<StoreProduct[]>([]);
@@ -30,11 +34,14 @@ export default function AdminProducts() {
   const [active, setActive] = useState(true);
 
   const load = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
     const { data, error } = await cloud
       .from("store_products")
       .select("id, source_id, name, description, category, unit, price, stock, active")
+      .eq("store_id", activeStoreId)
       .order("name", { ascending: true });
+
 
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -48,7 +55,8 @@ export default function AdminProducts() {
   useEffect(() => {
     if (user && isAdmin) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isAdmin]);
+  }, [user, isAdmin, activeStoreId]);
+
 
   useEffect(() => {
     if (!editing) return;

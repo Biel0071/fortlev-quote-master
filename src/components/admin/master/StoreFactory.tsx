@@ -359,6 +359,21 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
           <div className="space-y-4">
             <h3 className="text-xl font-bold">Identidade da Loja</h3>
             <div className="space-y-4">
+              {isMaster && (
+                <div className="grid gap-2">
+                  <Label>Vincular ao Tenant</Label>
+                  <select 
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={formData.tenantId}
+                    onChange={(e) => setFormData({ ...formData, tenantId: e.target.value })}
+                  >
+                    <option value="">(Seu Tenant Atual)</option>
+                    {allTenants?.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label>Nome da Loja</Label>
                 <Input 

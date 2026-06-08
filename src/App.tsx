@@ -104,6 +104,7 @@ const App = () => (
                 <Route path="/rastreio/:id" element={<TrackingPage />} />
 
                 <Route path="/admin/master/*" element={<MasterRouteGuard><MasterAdmin /></MasterRouteGuard>} />
+                <Route path="/admin/store/:storeId/*" element={<AdminApp />} />
                 <Route path="/admin/*" element={<AdminApp />} />
 
                 <Route path="/auth/login" element={<LoginPage />} />

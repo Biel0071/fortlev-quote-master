@@ -122,26 +122,10 @@ export default function StoreHome() {
   const featuredIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
     
-    // Manual curated list from products that are known to exist in the database
-    const priorityIds = [
-      "03819be8-a77b-4d60-96d2-b6c8cc9e7def", // Rejunte Porcelanato Quartzolit Cinza
-      "032c1f20-b0d2-4e67-b0df-e9131a721b1b", // Copan Cinza Esmaltado Retificado Polido
-      "02ab63db-9e50-47a1-841d-9a1a91578ece", // Quantum Carrara Monoporosa Retificado
-      "01d93094-4e12-42ce-8c7d-89a806d1a952", // Tanque Simples 0,60x0,60
-      "01812cf2-293a-449e-9d33-e52e0f23a97b", // Porcelanato Esmaltado Retificado Polido Merapi
-      "01591e6e-ef8a-4099-a573-c0911afa44d4", // Porcelanato Retificado Acetinado Red Wood
-      "0121fee5-4597-4587-8db7-1c995433a6f2", // Lavatório 57,5x44,5
-      "010e5819-8c4e-4805-a717-bd3a7c78caa3", // Lâmpada Bulbo 20w
-      "00f3d990-e252-4b41-ae25-1a265a5c63dc", // Porcelanato Retificado Acetinado Cannes
-      "00947366-bb2b-42f4-b2bb-9b7f6c7c0269", // Composite Cinza Retificado
-    ];
-
-    const availablePriority = priorityIds.filter(id => list.some(p => p.id === id));
     const featured = list.filter((p) => p?.featured || p?.best_seller).map((p) => p.id) as string[];
     
-    const combined = Array.from(new Set([...availablePriority, ...featured]));
-    if (combined.length === 0) return list.slice(0, 12).map((p) => p.id);
-    return combined;
+    if (featured.length === 0) return list.slice(0, 12).map((p) => p.id);
+    return featured;
   }, [activeProducts]);
 
   const topClickedIds = useMemo(() => {
@@ -159,28 +143,13 @@ export default function StoreHome() {
       .map((p) => p.id) as string[];
 
     if (bestSellers.length >= 8) return bestSellers.slice(0, 10);
-
-    // Fallback logic if we don't have enough best sellers
-    const curatedBestSellers = [
-      "02de1596-a108-46a4-b573-d2ad45f34f03", // TUBO PVC SOLDAVEL
-      "02f62535-85fc-468c-902d-59102be9ec2e", // Ducha Higiênica MK Metais
-      "03683b00-e191-45c6-8ce5-083411155f5d", // Moulin Plus Retificado
-      "009a5f35-914e-4d59-a049-8e4768f3bb42", // Revestimento Brilhante Branco Neve
-      "00519ccf-7977-4fb0-9b31-d53ded4319ec", // Chuveiro Redondo Touch Clean
-      "0021e9ab-44b0-4d4c-b4aa-ead382213c4f", // Porcelanato Retificado Detroit Sand
-      "001fb53a-ea75-4803-88b6-449cc269133b", // Valvula N2 Pia Amanco
-    ];
-    const existingIds = new Set(list.map((p) => p.id));
-    const validCurated = curatedBestSellers.filter((id) => existingIds.has(id));
-    
-    const combined = Array.from(new Set([...bestSellers, ...validCurated]));
-    return combined.slice(0, 12);
+    return list.slice(0, 12).map((p) => p.id);
   }, [activeProducts]);
 
   // Offer products from the new hook (always populated)
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
-  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && (activeCategories?.length === 0 || !activeCategories) && (home.banners?.length === 0 || !home.banners);
+  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && (activeCategories?.length === 0 || !activeCategories);
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">

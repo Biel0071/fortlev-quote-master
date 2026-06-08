@@ -122,7 +122,7 @@ export default function StoreHome() {
   const featuredIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
     
-    const featured = list.filter((p) => p?.featured || p?.best_seller).map((p) => p.id) as string[];
+    const featured = list.filter((p) => p?.featured).map((p) => p.id) as string[];
     
     if (featured.length === 0) return list.slice(0, 12).map((p) => p.id);
     return featured;
@@ -131,7 +131,12 @@ export default function StoreHome() {
   const topClickedIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
     
-    // Sort by sales first, then clicks
+    // Use best_seller flag first, then fallback to sort
+    const taggedBestSellers = list.filter(p => p.best_seller);
+    if (taggedBestSellers.length > 0) {
+      return taggedBestSellers.slice(0, 10).map(p => p.id);
+    }
+
     const bestSellers = list
       .filter((p) => p.active)
       .sort((a, b) => {
@@ -149,10 +154,10 @@ export default function StoreHome() {
   // Offer products from the new hook (always populated)
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
-  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && (activeCategories?.length === 0 || !activeCategories);
+  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0;
 
   return (
-    <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">
+    <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen pt-[var(--store-header-offset,80px)]">
       <AppHeader
         cartCount={cart.totalItems}
         onCartClick={() => setCartOpen(true)}

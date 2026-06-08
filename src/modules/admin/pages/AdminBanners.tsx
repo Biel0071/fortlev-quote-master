@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,6 +105,7 @@ async function uploadToBucket(bucket: string, file: File) {
 }
 
 export default function AdminBanners() {
+  const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Banner[]>([]);
   const [createForm, setCreateForm] = useState<BannerForm>(emptyForm());
@@ -217,11 +219,13 @@ export default function AdminBanners() {
   }, [normalizeBannerRow]);
 
   const load = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
     try {
       const { data, error } = await cloud
         .from("store_banners")
         .select("id, title, subtitle, image_path, image_desktop_path, image_mobile_path, link_url, link, button_label, sort_order, position, active, is_active")
+        .eq("store_id", activeStoreId)
         .order("position", { ascending: true })
         .order("created_at", { ascending: false });
 
@@ -239,7 +243,7 @@ export default function AdminBanners() {
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [activeStoreId]);
 
   const createSize = useMemo(
     () => BANNER_PRESET_SIZES.find((s) => s.key === createForm.preview_size_key) ?? BANNER_PRESET_SIZES[0],
@@ -385,7 +389,7 @@ export default function AdminBanners() {
       return toast({ title: "Aguarde", description: "Conclua o upload da imagem antes de salvar." });
     }
 
-    const payload = buildBannerPayload(createForm);
+    const payload = { ...buildBannerPayload(createForm), store_id: activeStoreId };
     const hasAnyImage = Boolean(payload.image_desktop_path || payload.image_mobile_path || payload.image_path);
     if (!hasAnyImage) {
       return toast({ title: "Atenção", description: "Faça upload de ao menos uma imagem do banner." });

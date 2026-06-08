@@ -156,12 +156,21 @@ export default function StoreHome() {
 
   const topClickedIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
-    const clicked = list
-      .filter((p) => Number(p?.clicks ?? 0) > 0)
-      .sort((a, b) => Number(b.clicks ?? 0) - Number(a.clicks ?? 0))
+    
+    // Sort by sales first, then clicks
+    const bestSellers = list
+      .filter((p) => p.active)
+      .sort((a, b) => {
+        const salesDiff = Number(b.sales ?? 0) - Number(a.sales ?? 0);
+        if (salesDiff !== 0) return salesDiff;
+        return Number(b.clicks ?? 0) - Number(a.clicks ?? 0);
+      })
       .slice(0, 20)
       .map((p) => p.id) as string[];
-    if (clicked.length >= 5) return clicked.slice(0, 8);
+
+    if (bestSellers.length >= 8) return bestSellers.slice(0, 10);
+
+    // Fallback logic if we don't have enough best sellers
     const curatedBestSellers = [
       "31f0affc-e596-413e-b113-9c17ef3ecab2",
       "1f6a420a-b46b-4d75-b888-8aa6c1e4ee2a",
@@ -169,20 +178,14 @@ export default function StoreHome() {
       "8b13a472-154d-422b-b567-fb8c726eaada",
       "a787085e-0984-481a-9644-61c08f796870",
       "978068df-f401-4997-803b-81354d216453",
-      "38c51f55-fbf0-41c4-b223-b9993e7efb40",
-      "fef0b373-84d1-4ba7-b341-13f03cbcef38",
+      "bc3df43c-6a0a-421d-8a6b-cd53c16acd43",
+      "88cbebc5-0da4-4de9-819b-558eadd7bfd9",
     ];
     const existingIds = new Set(list.map((p) => p.id));
     const validCurated = curatedBestSellers.filter((id) => existingIds.has(id));
-    const seen = new Set(clicked);
-    const merged = [...clicked];
-    for (const id of validCurated) {
-      if (!seen.has(id) && merged.length < 8) {
-        seen.add(id);
-        merged.push(id);
-      }
-    }
-    return merged;
+    
+    const combined = Array.from(new Set([...bestSellers, ...validCurated]));
+    return combined.slice(0, 12);
   }, [activeProducts]);
 
   // Offer products from the new hook (always populated)

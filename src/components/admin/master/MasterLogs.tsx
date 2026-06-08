@@ -90,16 +90,18 @@ const MasterLogs = () => {
                   <TableRow key={log.id} className="hover:bg-accent/5 transition-colors">
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        {log.action?.includes('blueprint') ? <Cpu size={14} className="text-blue-500" /> : <Activity size={14} className="text-muted-foreground" />}
-                        {log.action || "System Access"}
+                        {log.event_type?.includes('blueprint') ? <Cpu size={14} className="text-blue-500" /> : <Activity size={14} className="text-muted-foreground" />}
+                        {log.message || "System Event"}
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="font-mono text-[10px]">
-                        {log.stores?.name || "Plataforma Master"}
+                        {log.source || "System"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs font-mono text-muted-foreground">{log.ip || "127.0.0.1"}</TableCell>
+                    <TableCell className="text-xs font-mono text-muted-foreground">
+                      {typeof log.metadata === 'object' ? JSON.stringify(log.metadata) : "N/A"}
+                    </TableCell>
                     <TableCell className="text-xs">
                       {new Date(log.created_at).toLocaleString('pt-BR')}
                     </TableCell>

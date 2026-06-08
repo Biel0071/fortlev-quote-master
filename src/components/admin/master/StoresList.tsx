@@ -126,13 +126,14 @@ const StoresList = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Carregando lojas...</TableCell>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando lojas...</TableCell>
               </TableRow>
             ) : filteredStores?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhuma loja encontrada.</TableCell>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma loja encontrada.</TableCell>
               </TableRow>
-              {filteredStores?.map((store) => {
+            ) : (
+              filteredStores?.map((store) => {
                 const publicUrl = storeUrlService.getStorePublicUrl(store, store.store_domains);
                 const adminUrl = storeUrlService.getStoreAdminUrl(store.id);
                 const cockpitUrl = storeUrlService.getStoreMasterCockpitUrl(store.id);
@@ -141,6 +142,7 @@ const StoresList = () => {
 
                 return (
                   <TableRow key={store.id}>
+
 
                 <TableCell>
                   <div>

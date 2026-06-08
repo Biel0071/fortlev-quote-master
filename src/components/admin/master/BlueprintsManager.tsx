@@ -202,5 +202,3 @@ const BlueprintsManager = () => {
 };
 
 export default BlueprintsManager;
-
-export default BlueprintsManager;

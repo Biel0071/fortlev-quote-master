@@ -62,19 +62,60 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
 
       if (storeError) throw storeError;
 
-      // 3. Apply Blueprint logic (create categories, etc.)
+      // 3. Apply Blueprint logic (Restaurar categorias, banners, páginas, módulos, temas, IA)
       const blueprint = blueprints?.find(b => b.id === formData.blueprintId);
       if (blueprint) {
-        const config = blueprint.config as any;
-        if (config.categories) {
-          const categories = config.categories.map((cat: string) => ({
-            name: cat,
+        // Buscar a versão mais recente do blueprint
+        const { data: latestVersion } = await supabase
+          .from('blueprint_versions')
+          .select('*')
+          .eq('blueprint_id', blueprint.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const config = (latestVersion?.config || blueprint.config) as any;
+        
+        // Categorias
+        if (config.categories && Array.isArray(config.categories)) {
+          const categories = config.categories.map((cat: any) => ({
+            name: typeof cat === 'string' ? cat : cat.name,
             store_id: store.id,
             active: true
           }));
           await supabase.from('store_categories').insert(categories);
         }
+
+        // Banners
+        if (config.banners && Array.isArray(config.banners)) {
+          const banners = config.banners.map((banner: any) => ({
+            ...banner,
+            id: undefined, // Deixar o DB gerar novo ID
+            store_id: store.id
+          }));
+          await supabase.from('store_banners').insert(banners);
+        }
+
+        // Páginas
+        if (config.pages && Array.isArray(config.pages)) {
+          const pages = config.pages.map((page: any) => ({
+            ...page,
+            id: undefined,
+            store_id: store.id
+          }));
+          await supabase.from('store_pages').insert(pages);
+        }
+
+        // IA Config
+        if (config.ai_config) {
+          await supabase.from('store_ai_configs').insert({
+            ...config.ai_config,
+            id: undefined,
+            store_id: store.id
+          });
+        }
       }
+
 
       // 4. Set Theme
       const template = templates?.find(t => t.id === formData.templateId);

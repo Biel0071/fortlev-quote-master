@@ -5,16 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreHorizontal, ExternalLink, Copy, Trash2, Archive } from "lucide-react";
+import { Plus, Search, MoreHorizontal, ExternalLink, Copy, Trash2, Archive, History, Layers } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import StoreFactory from "./StoreFactory";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useBlueprintManager } from "@/hooks/useBlueprintManager";
+import { Label } from "@/components/ui/label";
+
 
 const StoresList = () => {
   const [search, setSearch] = useState("");
   const [isFactoryOpen, setIsFactoryOpen] = useState(false);
+  const [isSnapshotDialogOpen, setIsSnapshotDialogOpen] = useState(false);
+  const [selectedStoreForSnapshot, setSelectedStoreForSnapshot] = useState<any>(null);
+  const [snapshotLabel, setSnapshotLabel] = useState("");
+  const { saveStoreAsBlueprint, loading: savingBp } = useBlueprintManager();
   const queryClient = useQueryClient();
+
 
   const { data: stores, isLoading } = useQuery({
     queryKey: ['master-stores'],
@@ -140,8 +148,15 @@ const StoresList = () => {
                       <DropdownMenuItem onClick={() => window.open(`/${store.slug}`, '_blank')}>
                         <ExternalLink size={14} className="mr-2" /> Acessar Loja
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        setSelectedStoreForSnapshot(store);
+                        setSnapshotLabel(`v1.0 - ${new Date().toLocaleDateString()}`);
+                        setIsSnapshotDialogOpen(true);
+                      }}>
+                        <Layers size={14} className="mr-2" /> Salvar como Blueprint
+                      </DropdownMenuItem>
                       <DropdownMenuItem>
-                        <Copy size={14} className="mr-2" /> Duplicar
+                        <Copy size={14} className="mr-2" /> Clonar Loja
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem>
@@ -165,8 +180,41 @@ const StoresList = () => {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={isSnapshotDialogOpen} onOpenChange={setIsSnapshotDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gerar Blueprint de {selectedStoreForSnapshot?.name}</DialogTitle>
+            <DialogDescription>
+              Isso capturará categorias, banners, páginas, tema, módulos e IA desta loja para um modelo replicável.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="snap-label">Etiqueta da Versão</Label>
+              <Input 
+                id="snap-label" 
+                value={snapshotLabel} 
+                onChange={(e) => setSnapshotLabel(e.target.value)}
+                placeholder="Ex: Versão de Natal" 
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSnapshotDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={async () => {
+              await saveStoreAsBlueprint(selectedStoreForSnapshot.id, snapshotLabel);
+              setIsSnapshotDialogOpen(false);
+              queryClient.invalidateQueries({ queryKey: ['master-blueprints'] });
+            }} disabled={savingBp}>
+              {savingBp ? "Processando Snapshot..." : "Gerar Blueprint"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
+
 
 export default StoresList;

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -69,7 +71,9 @@ function useDebounce(value: string, delay: number) {
 
 export default function AdminProductsList() {
   const nav = useNavigate();
+  const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
+
   const [rows, setRows] = useState<Row[]>([]);
   const [imageMap, setImageMap] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<Category[]>([]);
@@ -94,7 +98,9 @@ export default function AdminProductsList() {
   const [priceReport, setPriceReport] = useState<any>(null);
 
   const load = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
+
     const PAGE_SIZE = 1000;
     let allRows: Row[] = [];
     let from = 0;
@@ -104,7 +110,9 @@ export default function AdminProductsList() {
       const { data, error } = await cloud
         .from("store_products")
         .select("id, name, sku, price, promo_price, stock, active, status, category, category_id")
+        .eq("store_id", activeStoreId)
         .order("name", { ascending: true })
+
         .range(from, from + PAGE_SIZE - 1);
 
       if (error) {
@@ -129,7 +137,9 @@ export default function AdminProductsList() {
       const { data: imgs } = await cloud
         .from("store_product_images")
         .select("product_id, path")
+        .eq("store_id", activeStoreId)
         .order("sort_order", { ascending: true })
+
         .range(imgFrom, imgFrom + IMG_PAGE - 1);
       if (!imgs || imgs.length === 0) break;
       for (const img of imgs as any[]) {
@@ -142,14 +152,17 @@ export default function AdminProductsList() {
   };
 
   const loadCategories = async () => {
+    if (!activeStoreId) return;
     const { data } = await cloud
       .from("store_categories")
       .select("id, name, slug")
+      .eq("store_id", activeStoreId)
       .order("name", { ascending: true });
+
     setCategories((data ?? []) as Category[]);
   };
 
-  useEffect(() => { load(); loadCategories(); }, []);
+  useEffect(() => { load(); loadCategories(); }, [activeStoreId]);
 
   const runBatchAction = async (action: "validate_prices" | "download_images" | "both") => {
     setBatchAction(action);

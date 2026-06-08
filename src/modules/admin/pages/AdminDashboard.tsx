@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/utils/formatters";
@@ -13,7 +15,9 @@ type OrderRow = {
 };
 
 export default function AdminDashboard() {
+  const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
+
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [productsCount, setProductsCount] = useState(0);
   const [outOfStockCount, setOutOfStockCount] = useState(0);
@@ -23,26 +27,32 @@ export default function AdminDashboard() {
   const [todayOrdersCount, setTodayOrdersCount] = useState(0);
 
   const load = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
+
 
     const [ordersRes, productsRes, outRes, catRes, paidRes, todayRes] = await Promise.all([
       cloud
         .from("store_orders")
         .select("id, status, total, created_at, customer_name")
+        .eq("store_id", activeStoreId)
         .order("created_at", { ascending: false })
         .limit(8),
-      cloud.from("store_products").select("id", { count: "exact", head: true }),
-      cloud.from("store_products").select("id", { count: "exact", head: true }).lte("stock", 0),
-      cloud.from("store_categories").select("id", { count: "exact", head: true }).eq("active", true),
+      cloud.from("store_products").select("id", { count: "exact", head: true }).eq("store_id", activeStoreId),
+      cloud.from("store_products").select("id", { count: "exact", head: true }).eq("store_id", activeStoreId).lte("stock", 0),
+      cloud.from("store_categories").select("id", { count: "exact", head: true }).eq("store_id", activeStoreId).eq("active", true),
       cloud
         .from("store_orders")
         .select("total", { count: "exact" })
+        .eq("store_id", activeStoreId)
         .in("status", ["pago", "finalizado"])
         .limit(1000),
       cloud
         .from("store_orders")
         .select("id", { count: "exact", head: true })
+        .eq("store_id", activeStoreId)
         .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
+
     ]);
 
     setOrders((ordersRes.data ?? []) as any);
@@ -62,7 +72,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [activeStoreId]);
+
 
   const avgTicket = useMemo(() => {
     if (paidOrdersCount <= 0) return 0;

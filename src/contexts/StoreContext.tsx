@@ -54,12 +54,39 @@ export function StoreProvider({ children }: StoreProviderProps) {
       });
   }, []);
 
-  // Auto-detect store by hostname
+  // Auto-detect store by hostname or route
   useEffect(() => {
     if (dbStores.length === 0) return;
     const host = window.location.hostname;
+    const pathname = window.location.pathname;
 
-    // Try matching by domain
+    // 1. Check for /admin/store/:storeId
+    const adminStoreMatch = pathname.match(/\/admin\/store\/([^\/]+)/);
+    if (adminStoreMatch && adminStoreMatch[1]) {
+      const matchedById = dbStores.find(s => s.id === adminStoreMatch[1]);
+      if (matchedById) {
+        if (store !== matchedById.slug || activeStoreId !== matchedById.id) {
+          setStoreRaw(matchedById.slug);
+          setActiveStoreId(matchedById.id);
+        }
+        return;
+      }
+    }
+
+    // 2. Check for /p/:slug
+    const pMatch = pathname.match(/\/p\/([^\/]+)/);
+    if (pMatch && pMatch[1]) {
+      const matchedBySlug = dbStores.find(s => s.slug === pMatch[1]);
+      if (matchedBySlug) {
+        if (store !== matchedBySlug.slug || activeStoreId !== matchedBySlug.id) {
+          setStoreRaw(matchedBySlug.slug);
+          setActiveStoreId(matchedBySlug.id);
+        }
+        return;
+      }
+    }
+
+    // 3. Try matching by domain
     const matchedByDomain = dbStores.find(
       (s) => s.domain && s.domain.toLowerCase() === host.toLowerCase()
     );
@@ -72,39 +99,25 @@ export function StoreProvider({ children }: StoreProviderProps) {
       return;
     }
 
-    // Resolve activeStoreId for current slug if missing
+    // 4. Fallback to current state resolution
     const current = dbStores.find((s) => s.slug === store);
     if (current && activeStoreId !== current.id) {
       setActiveStoreId(current.id);
     }
-  }, [dbStores, store, activeStoreId]);
+  }, [dbStores, store, activeStoreId, window.location.pathname]);
 
   const setStore = (newStore: AppStore) => {
     setStoreRaw(newStore);
-    const found = dbStores.find((s) => s.slug === newStore);
-    setActiveStoreId(found?.id ?? null);
+    const found = dbStores.find((s) => s.slug === newStore || s.id === newStore);
+    if (found) {
+      setStoreRaw(found.slug);
+      setActiveStoreId(found.id);
+    }
   };
 
-  const value = useMemo<StoreContextValue>(() => {
-    const routesBySlug: Record<string, StoreContextValue["routes"]> = {
-      materiais: {
-        publicHome: "/materiais",
-        quotations: "/construcao",
-        dashboard: "/dashboard/construcao",
-      },
-      fortlev: {
-        publicHome: "/orcamentos",
-        quotations: "/orcamentos",
-        dashboard: "/dashboard/fortlev",
-      },
-      construcao: {
-        publicHome: "/construcao",
-        quotations: "/construcao",
-        dashboard: "/dashboard/construcao",
-      },
-    };
 
-    const dbStore = dbStores.find((s) => s.slug === store);
+  const value = useMemo<StoreContextValue>(() => {
+    const dbStore = dbStores.find((s) => s.slug === store || s.id === activeStoreId);
     const label = dbStore?.name ?? STORE_LABEL[store] ?? store;
 
     return {
@@ -113,13 +126,14 @@ export function StoreProvider({ children }: StoreProviderProps) {
       label,
       activeStoreId,
       setActiveStoreId,
-      routes: routesBySlug[store] ?? {
-        publicHome: "/",
-        quotations: "/construcao",
+      routes: {
+        publicHome: dbStore ? `/p/${dbStore.slug}` : "/",
+        quotations: "/orcamentos",
         dashboard: "/admin/dashboard",
       },
     };
   }, [store, activeStoreId, dbStores]);
+
 
   return (
     <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

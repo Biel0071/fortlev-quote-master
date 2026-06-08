@@ -104,6 +104,33 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
         }
       }
 
+      // 1.5 Ensure Subscription exists for the tenant
+      const { data: existingSub } = await supabase
+        .from('saas_subscriptions')
+        .select('id')
+        .eq('tenant_id', currentTenantId)
+        .eq('status', 'active')
+        .maybeSingle();
+      
+      if (!existingSub) {
+        // Find Free Plan
+        const { data: freePlan } = await supabase
+          .from('saas_plans')
+          .select('id')
+          .eq('name', 'Free')
+          .single();
+        
+        if (freePlan) {
+          await supabase.from('saas_subscriptions').insert({
+            tenant_id: currentTenantId,
+            plan_id: freePlan.id,
+            status: 'active',
+            billing_period: 'monthly'
+          });
+          toast.info("Plano Free vinculado automaticamente ao tenant.");
+        }
+      }
+
       // 2. Create Store
       const { data: store, error: storeError } = await supabase
         .from('stores')
@@ -116,6 +143,7 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
         })
         .select()
         .single();
+
 
       if (storeError) throw storeError;
 
@@ -166,7 +194,21 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
             store_id: store.id
           });
         }
+
+        // 3.5 Auto-install default modules from blueprint
+        if (config.modules && Array.isArray(config.config_modules || config.modules)) {
+          const defaultModules = (config.config_modules || config.modules).map((mod: any) => ({
+            store_id: store.id,
+            module_key: typeof mod === 'string' ? mod : mod.key,
+            is_enabled: true
+          }));
+          
+          if (defaultModules.length > 0) {
+            await supabase.from('store_modules').insert(defaultModules);
+          }
+        }
       }
+
 
       // 4. Set Theme
       const template = templates?.find(t => t.id === formData.templateId);

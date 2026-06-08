@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
+
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSession } from "@/hooks/useSession";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +18,8 @@ export default function AdminOrders() {
   const { user, loading: sessionLoading } = useSession();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const nav = useNavigate();
+  const { activeStoreId } = useStore();
+
 
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<StoreOrder[]>([]);
@@ -24,11 +28,14 @@ export default function AdminOrders() {
   const [loadingItems, setLoadingItems] = useState(false);
 
   const load = async () => {
+    if (!activeStoreId) return;
     setLoading(true);
     const { data, error } = await cloud
       .from("store_orders")
       .select("id, status, customer_id, customer_name, customer_email, customer_phone, cep, address, notes, subtotal, shipping, discount, total, checkout_mode, payment_method, whatsapp_sent, created_at")
+      .eq("store_id", activeStoreId)
       .order("created_at", { ascending: false });
+
 
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -59,7 +66,8 @@ export default function AdminOrders() {
   useEffect(() => {
     if (user && isAdmin) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isAdmin]);
+  }, [user, isAdmin, activeStoreId]);
+
 
   useEffect(() => {
     if (!selected) return;

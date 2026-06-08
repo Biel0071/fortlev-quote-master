@@ -3903,6 +3903,7 @@ export type Database = {
           id: string
           name: string | null
           phone: string | null
+          store_id: string | null
           updated_at: string
         }
         Insert: {
@@ -3913,6 +3914,7 @@ export type Database = {
           id?: string
           name?: string | null
           phone?: string | null
+          store_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -3923,9 +3925,18 @@ export type Database = {
           id?: string
           name?: string | null
           phone?: string | null
+          store_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "store_customers_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       store_domains: {
         Row: {
@@ -4224,6 +4235,7 @@ export type Database = {
           payment_method: string | null
           shipping: number
           status: string
+          store_id: string | null
           subtotal: number
           total: number
           updated_at: string
@@ -4245,6 +4257,7 @@ export type Database = {
           payment_method?: string | null
           shipping?: number
           status?: string
+          store_id?: string | null
           subtotal?: number
           total?: number
           updated_at?: string
@@ -4266,6 +4279,7 @@ export type Database = {
           payment_method?: string | null
           shipping?: number
           status?: string
+          store_id?: string | null
           subtotal?: number
           total?: number
           updated_at?: string
@@ -4277,6 +4291,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "store_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -5065,6 +5086,7 @@ export type Database = {
           path: string | null
           product_id: string | null
           session_id: string
+          store_id: string | null
           type: string
         }
         Insert: {
@@ -5075,6 +5097,7 @@ export type Database = {
           path?: string | null
           product_id?: string | null
           session_id: string
+          store_id?: string | null
           type: string
         }
         Update: {
@@ -5085,6 +5108,7 @@ export type Database = {
           path?: string | null
           product_id?: string | null
           session_id?: string
+          store_id?: string | null
           type?: string
         }
         Relationships: [
@@ -5093,6 +5117,13 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "tracking_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tracking_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -5107,6 +5138,7 @@ export type Database = {
           scroll_depth: number
           session_token: string
           source: string
+          store_id: string | null
           temperature: string
           total_clicks: number
           total_pages: number
@@ -5122,6 +5154,7 @@ export type Database = {
           scroll_depth?: number
           session_token: string
           source?: string
+          store_id?: string | null
           temperature?: string
           total_clicks?: number
           total_pages?: number
@@ -5137,13 +5170,22 @@ export type Database = {
           scroll_depth?: number
           session_token?: string
           source?: string
+          store_id?: string | null
           temperature?: string
           total_clicks?: number
           total_pages?: number
           total_time_seconds?: number
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tracking_sessions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_events: {
         Row: {

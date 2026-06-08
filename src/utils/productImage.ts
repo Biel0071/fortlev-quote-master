@@ -14,11 +14,7 @@ export function getValidProductImagePath(
 ): string | null {
   if (!images || images.length === 0) return null;
 
-  const valid = images.find((img) => {
-    if (!img?.path) return false;
-    const lower = img.path.toLowerCase();
-    return !INVALID_TERMS.some((t) => lower.includes(t));
-  });
+  const valid = images.find((img) => !!img?.path);
 
   return valid?.path ?? null;
 }

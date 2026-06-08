@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { 
   Store, Globe, ShieldCheck, Cpu, Sparkles, Zap, Activity, Layers, 
   CreditCard, Palette, ExternalLink, ArrowLeft, RefreshCcw, Settings 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -18,13 +18,20 @@ export const useBlueprintManager = () => {
       let { data: blueprint, error: bpError } = await supabase
         .from('store_blueprints')
         .select('id')
-        .eq('name', `Blueprint ${storeId}`)
-        .single();
+        .eq('slug', `blueprint-${storeId}`)
+        .maybeSingle();
       
+      if (bpError) throw bpError;
+
       if (!blueprint) {
         const { data: newBp, error: newBpErr } = await supabase
           .from('store_blueprints')
-          .insert({ name: `Blueprint ${storeId}`, description: 'Snapshot automático' })
+          .insert({ 
+            name: `Blueprint ${storeId}`, 
+            description: 'Snapshot automático',
+            slug: `blueprint-${storeId}`,
+            category: 'general'
+          })
           .select()
           .single();
         if (newBpErr) throw newBpErr;
@@ -38,7 +45,7 @@ export const useBlueprintManager = () => {
           blueprint_id: blueprint.id,
           version_number: Date.now(),
           version_label: label,
-          config: snapshot
+          config: snapshot as any
         });
       
       if (verError) throw verError;

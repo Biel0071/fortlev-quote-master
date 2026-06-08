@@ -3877,6 +3877,7 @@ export type Database = {
           id: string
           is_primary: boolean
           store_id: string
+          tenant_id: string | null
           updated_at: string
           verified: boolean
         }
@@ -3886,6 +3887,7 @@ export type Database = {
           id?: string
           is_primary?: boolean
           store_id: string
+          tenant_id?: string | null
           updated_at?: string
           verified?: boolean
         }
@@ -3895,6 +3897,7 @@ export type Database = {
           id?: string
           is_primary?: boolean
           store_id?: string
+          tenant_id?: string | null
           updated_at?: string
           verified?: boolean
         }
@@ -3904,6 +3907,13 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_domains_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -4547,6 +4557,7 @@ export type Database = {
       stores: {
         Row: {
           active: boolean
+          branding: Json | null
           created_at: string
           domain: string | null
           favicon_path: string | null
@@ -4562,6 +4573,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          branding?: Json | null
           created_at?: string
           domain?: string | null
           favicon_path?: string | null
@@ -4577,6 +4589,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          branding?: Json | null
           created_at?: string
           domain?: string | null
           favicon_path?: string | null

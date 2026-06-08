@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Brain, Sparkles, Wand2, History } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Brain, Sparkles, Wand2, History, Settings2 } from "lucide-react";
 
 const MasterAICentral = () => {
   return (
@@ -90,5 +91,4 @@ const MasterAICentral = () => {
   );
 };
 
-import { Settings2 } from "lucide-react";
 export default MasterAICentral;

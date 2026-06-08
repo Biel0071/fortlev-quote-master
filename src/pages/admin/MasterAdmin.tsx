@@ -4,6 +4,7 @@ import MasterDashboard from "@/components/admin/master/MasterDashboard";
 import StoresList from "@/components/admin/master/StoresList";
 import BlueprintsManager from "@/components/admin/master/BlueprintsManager";
 import ModulesManager from "@/components/admin/master/ModulesManager";
+import MasterAICentral from "@/components/admin/master/MasterAICentral";
 
 const MasterAdmin = () => {
   const menuItems = [
@@ -12,6 +13,7 @@ const MasterAdmin = () => {
     { name: "Blueprints", path: "/admin/master/blueprints", icon: Layers },
     { name: "Templates", path: "/admin/master/templates", icon: FileCode2 },
     { name: "Módulos", path: "/admin/master/modules", icon: Cpu },
+    { name: "IA Central", path: "/admin/master/ia", icon: Sparkles },
     { name: "Domínios", path: "/admin/master/domains", icon: Globe },
     { name: "Analytics", path: "/admin/master/analytics", icon: BarChart3 },
     { name: "Logs", path: "/admin/master/logs", icon: Activity },
@@ -58,6 +60,8 @@ const MasterAdmin = () => {
             <Route path="stores" element={<StoresList />} />
             <Route path="blueprints" element={<BlueprintsManager />} />
             <Route path="modules" element={<ModulesManager />} />
+            <Route path="ia" element={<MasterAICentral />} />
+            <Route path="domains" element={<div className="p-4">Gerenciamento de Domínios em breve...</div>} />
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/admin/master" replace />} />
           </Routes>

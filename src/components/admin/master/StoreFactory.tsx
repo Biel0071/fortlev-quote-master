@@ -179,6 +179,23 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
 
   return (
     <div className="flex flex-col min-h-[500px]">
+      {tenant?.subscription?.plan && (
+        <div className="mb-6 p-4 bg-muted/50 rounded-lg flex items-center justify-between border">
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+              Plano {tenant.subscription.plan.name}
+            </Badge>
+            <span className="text-sm text-muted-foreground">
+              Limites: <strong>{tenant.subscription.plan.limits.max_stores} lojas</strong> • 
+              <strong> {tenant.subscription.plan.limits.max_products} produtos</strong>
+            </span>
+          </div>
+          <Button variant="outline" size="sm" className="h-8 gap-1">
+            <Rocket size={14} className="text-primary" /> Upgrade
+          </Button>
+        </div>
+      )}
+
       <div className="mb-8">
         <div className="flex justify-between relative mb-2">
           {steps.map((s, idx) => (

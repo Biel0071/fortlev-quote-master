@@ -10,25 +10,28 @@ const MasterDashboard = () => {
   const { data: stats } = useQuery({
     queryKey: ['master-stats'],
     queryFn: async () => {
-      const [stores, tenants, domains, modules, subscriptions] = await Promise.all([
+      const [stores, tenants, domains, modules, subscriptions, blueprints, recentInvoices] = await Promise.all([
         supabase.from('stores').select('id', { count: 'exact', head: true }),
         supabase.from('tenants').select('id', { count: 'exact', head: true }),
         supabase.from('store_domains').select('id', { count: 'exact', head: true }),
         supabase.from('store_modules').select('id', { count: 'exact', head: true }),
-        supabase.from('saas_subscriptions').select('id, saas_plans(price_monthly)')
+        supabase.from('saas_subscriptions').select('id, saas_plans(price_monthly)'),
+        supabase.from('store_blueprints').select('id, name'),
+        supabase.from('billing_invoices').select('amount, status').eq('status', 'paid')
       ]);
 
       const mrr = subscriptions.data?.reduce((acc, sub: any) => acc + (sub.saas_plans?.price_monthly || 0), 0) || 0;
+      const totalRevenue = recentInvoices.data?.reduce((acc, inv: any) => acc + (inv.amount || 0), 0) || 0;
 
       return {
         stores: stores.count || 0,
         tenants: tenants.count || 0,
         domains: domains.count || 0,
         modules: modules.count || 0,
-        orders: 1250,
-        revenue: mrr,
+        revenue: totalRevenue,
         mrr: mrr,
         activeSubscriptions: subscriptions.data?.length || 0,
+        blueprintsCount: blueprints.data?.length || 0
       };
     }
   });

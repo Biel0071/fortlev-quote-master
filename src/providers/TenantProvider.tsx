@@ -120,7 +120,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         // 4. Default Fallback (Only for root or non-admin/non-master routes)
         if (!storeId && (pathname === '/' || !['admin', 'master', 'auth'].includes(pathParts[1]))) {
-          // Priority: 1. MF Atacadista (if active), 2. Store with most products, 3. Any active store
+          // Priority: 1. Store named "Construção", 2. MF Atacadista (if active), 3. Most recent active store
           const { data: fallbackStores } = await supabase
             .from('stores')
             .select('id, name, slug, tenant_id, active')
@@ -128,17 +128,12 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             .order('created_at', { ascending: false });
           
           if (fallbackStores && fallbackStores.length > 0) {
-            // Check which store actually has products
-            const { data: productCounts } = await supabase
-              .rpc('get_store_product_counts'); // We'll need to check if this exists or just query directly
+            const preferred = fallbackStores.find(s => s.name.toLowerCase().includes('construção')) || 
+                              fallbackStores.find(s => s.name.toLowerCase().includes('mf atacadista')) ||
+                              fallbackStores[0];
             
-            // Fallback to direct query if RPC fails
-            const storeWithProducts = fallbackStores.find(s => s.name.toLowerCase().includes('construção')) || 
-                                     fallbackStores.find(s => s.name.toLowerCase().includes('mf atacadista')) ||
-                                     fallbackStores[0];
-            
-            storeId = storeWithProducts.id;
-            tenantId = storeWithProducts.tenant_id;
+            storeId = preferred.id;
+            tenantId = preferred.tenant_id;
           }
         }
 

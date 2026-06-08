@@ -44,13 +44,7 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
   }, [banners]);
 
   if (slides.length === 0) {
-    return (
-      <div className="w-full overflow-hidden rounded-3xl border border-border bg-card">
-        <div className="w-full aspect-[9/10] sm:aspect-auto sm:h-[300px] md:h-[380px] lg:h-[400px] xl:h-[420px] bg-muted flex items-center justify-center text-sm text-muted-foreground">
-          Nenhum banner disponível
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

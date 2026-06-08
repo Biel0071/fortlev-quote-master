@@ -108,7 +108,7 @@ export default function StoreHome() {
   }, [home.seo?.og_image_path]);
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
-  const loading = (productsLoading && !activeProducts.length) || (categoriesLoading && !activeCategories.length) || (home.loading && !home.banners.length);
+  const loading = (productsLoading && !activeProducts.length) || (categoriesLoading && !activeCategories.length);
 
   const onAdd = (productId: string, qty: number) => {
     const product: any = offerList.find((item: any) => item.id === productId)

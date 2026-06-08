@@ -9,7 +9,7 @@ export function HomeHeroCarousel({
   banners: HomeBanner[];
   loading: boolean;
 }) {
-  if (loading) {
+  if (loading && banners.length === 0) {
     return (
       <section className="px-4 sm:px-6">
         <div className="w-full overflow-hidden rounded-3xl border border-border bg-card">

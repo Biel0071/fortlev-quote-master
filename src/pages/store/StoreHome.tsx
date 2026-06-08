@@ -153,7 +153,7 @@ export default function StoreHome() {
   // Offer products from the new hook (always populated)
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
-  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0;
+  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && !home.loading;
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen pt-[var(--store-header-offset,80px)]">

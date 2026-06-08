@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
+import { TenantProvider } from "@/providers/TenantProvider";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import ScrollToTop from "@/components/ScrollToTop";
 import "@/styles/budget-template.css";
@@ -117,7 +118,8 @@ const App = () => (
             </Routes>
           </Suspense>
         </BrowserRouter>
-      </ThemeBoot>
+        </ThemeBoot>
+      </TenantProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

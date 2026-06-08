@@ -41,10 +41,10 @@ const MasterDashboard = () => {
   const cards = [
     { title: "Lojas Ativas", value: stats?.stores, icon: Store, color: "text-blue-500", trend: "+12%" },
     { title: "Assinaturas Ativas", value: stats?.activeSubscriptions, icon: Users, color: "text-green-500", trend: "+5%" },
-    { title: "Ecossistema de Domínios", value: stats?.domains, icon: Globe, color: "text-purple-500", trend: "+8%" },
+    { title: "Blueprints Disponíveis", value: stats?.blueprintsCount, icon: Layers, color: "text-purple-500", trend: "+8%" },
     { title: "Módulos Ativados", value: stats?.modules, icon: Cpu, color: "text-orange-500", trend: "+25%" },
     { title: "Vendas na Rede", value: stats?.orders, icon: ShoppingCart, color: "text-red-500", trend: "+18%" },
-    { title: "MRR (Receita Recorrente)", value: stats?.revenue ? `R$ ${stats.revenue.toLocaleString()}` : '...', icon: DollarSign, color: "text-emerald-500", trend: "+15%" },
+    { title: "MRR (Receita Recorrente)", value: stats?.mrr ? `R$ ${stats.mrr.toLocaleString()}` : '...', icon: DollarSign, color: "text-emerald-500", trend: "+15%" },
   ];
 
   return (

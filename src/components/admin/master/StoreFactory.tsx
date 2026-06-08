@@ -155,9 +155,10 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
       if (formData.domain) {
         await supabase.from('store_domains').insert({
           store_id: store.id,
+          tenant_id: currentTenantId,
           domain: formData.domain,
           is_primary: true,
-          status: 'pending'
+          verified: false
         });
       }
 

@@ -97,20 +97,24 @@ export default function StoreHome() {
   }, [home.seo?.og_image_path]);
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
-  const loading = (productsLoading && !activeProducts.length) || (categoriesLoading && !activeCategories.length);
+  const { isLoading: tenantLoading } = useTenant();
+  const loading = tenantLoading || (productsLoading && !activeProducts.length) || (categoriesLoading && !activeCategories.length);
 
   const onAdd = (productId: string, qty: number) => {
     const product: any = offerList.find((item: any) => item.id === productId)
       ?? activeProducts.find((item: any) => item.id === productId);
-    const basePrice = Number(product?.price ?? 0);
-    const promoPrice = Number(product?.promo_price ?? 0);
+    
+    if (!product) return;
+
+    const basePrice = Number(product.price ?? 0);
+    const promoPrice = Number(product.promo_price ?? 0);
     const effectivePrice = promoPrice > 0 && promoPrice < basePrice ? promoPrice : basePrice;
 
     cart.add(productId, qty, {
-      name: product?.name ?? "Produto",
+      name: product.name ?? "Produto",
       unitPrice: effectivePrice,
-      unit: product?.unit ?? "un",
-      imagePath: product?.images?.[0]?.path ?? null,
+      unit: product.unit ?? "un",
+      imagePath: product.images?.[0]?.path ?? null,
     });
     setCartOpen(true);
   };
@@ -183,7 +187,7 @@ export default function StoreHome() {
   // Offer products from the new hook (always populated)
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
-  const isEmptyStore = !loading && activeProducts.length === 0 && activeCategories.length === 0 && (home.banners?.length === 0 || !home.banners) && !categoriesLoading && !productsLoading;
+  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && activeCategories.length === 0 && (home.banners?.length === 0 || !home.banners) && !categoriesLoading && !productsLoading;
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">

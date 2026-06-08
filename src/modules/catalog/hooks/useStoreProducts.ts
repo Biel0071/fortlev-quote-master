@@ -22,7 +22,7 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
   const { store } = useTenant();
   const enabled = (options?.enabled ?? true) && !!store;
   const [products, setProducts] = useState<ProductWithImages[]>([]);
-  const [loading, setLoading] = useState(enabled);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const PRODUCTS_CACHE_KEY = useMemo(() => `${PRODUCTS_CACHE_BASE_KEY}:${store?.id ?? 'default'}`, [store?.id]);

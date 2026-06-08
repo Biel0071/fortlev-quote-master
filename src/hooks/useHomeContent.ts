@@ -113,7 +113,7 @@ type UseHomeContentOptions = {
 export function useHomeContent(options?: UseHomeContentOptions) {
   const { store } = useTenant();
   const enabled = (options?.enabled ?? true) && !!store;
-  const [loading, setLoading] = useState(enabled);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [banners, setBanners] = useState<HomeBanner[]>([]);

@@ -25,7 +25,7 @@ export function useStoreCategories(options?: UseStoreCategoriesOptions) {
   const { store } = useTenant();
   const enabled = (options?.enabled ?? true) && !!store;
   const [categories, setCategories] = useState<StoreCategory[]>([]);
-  const [loading, setLoading] = useState(enabled);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const CATEGORIES_CACHE_KEY = useMemo(() => `${CATEGORIES_CACHE_BASE_KEY}:${store?.id ?? 'default'}`, [store?.id]);

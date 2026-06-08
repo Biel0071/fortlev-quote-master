@@ -100,8 +100,19 @@ export default function StoreHome() {
   const { isLoading: tenantLoading } = useTenant();
   const loading = tenantLoading || (productsLoading && !activeProducts.length) || (categoriesLoading && !activeCategories.length);
   
-  // Se estiver carregando o tenant, não mostramos nada para evitar o "flash" da loja errada
-  if (tenantLoading) return <PageSkeleton />;
+  if (tenantLoading) {
+    return (
+      <div className="flex flex-col w-full min-h-screen bg-background p-4 space-y-4">
+        <div className="h-16 w-full rounded-2xl bg-muted/20 animate-pulse" />
+        <div className="h-48 w-full rounded-2xl bg-muted/30 animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-64 rounded-2xl bg-muted/20 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const onAdd = (productId: string, qty: number) => {
     const product: any = offerList.find((item: any) => item.id === productId)

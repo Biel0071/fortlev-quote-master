@@ -13,11 +13,8 @@ const MasterLogs = () => {
     queryKey: ['master-logs'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('activity_logs')
-        .select(`
-          *,
-          stores (name)
-        `)
+        .from('system_event_logs')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
       

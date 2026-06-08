@@ -61,7 +61,8 @@ type UseHomeMerchandisingOptions = {
 };
 
 export function useHomeMerchandising(options?: UseHomeMerchandisingOptions) {
-  const enabled = options?.enabled ?? true;
+  const { store } = useTenant();
+  const enabled = (options?.enabled ?? true) && !!store;
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,8 +70,10 @@ export function useHomeMerchandising(options?: UseHomeMerchandisingOptions) {
   const [weeklyBadges, setWeeklyBadges] = useState<Record<string, string>>({});
   const [monthlyTopSales, setMonthlyTopSales] = useState<string[]>([]);
 
+  const STORE_MERCH_CACHE_KEY = useMemo(() => `${MERCH_CACHE_KEY}:${store?.id ?? 'default'}`, [store?.id]);
+
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || !store) {
       setLoading(false);
       return;
     }
@@ -89,16 +92,19 @@ export function useHomeMerchandising(options?: UseHomeMerchandisingOptions) {
           .from("tracking_events")
           .select("product_id, created_at, type")
           .eq("type", "product_view")
+          .eq("store_id", store.id)
           .gte("created_at", sinceWeek)
           .limit(200),
         cloud
           .from("store_order_items")
           .select("product_id, quantity, created_at")
+          .eq("store_id", store.id)
           .gte("created_at", sinceWeek)
           .limit(200),
         cloud
           .from("store_order_items")
           .select("product_id, quantity, created_at")
+          .eq("store_id", store.id)
           .gte("created_at", sinceMonth)
           .limit(200),
       ]);
@@ -136,7 +142,7 @@ export function useHomeMerchandising(options?: UseHomeMerchandisingOptions) {
       setWeeklyBadges(badges);
       setMonthlyTopSales(topSoldMonthly.slice(0, 8));
       setSmartCache<MerchCache>(
-        MERCH_CACHE_KEY,
+        STORE_MERCH_CACHE_KEY,
         {
           weeklyPicks: weekly,
           weeklyBadges: badges,
@@ -147,7 +153,7 @@ export function useHomeMerchandising(options?: UseHomeMerchandisingOptions) {
       setLoading(false);
     };
 
-    const cached = getSmartCache<MerchCache>(MERCH_CACHE_KEY, MERCH_CACHE_TTL_MS);
+    const cached = getSmartCache<MerchCache>(STORE_MERCH_CACHE_KEY, MERCH_CACHE_TTL_MS);
     if (cached) {
       setWeeklyPicks(cached.weeklyPicks ?? []);
       setWeeklyBadges(cached.weeklyBadges ?? {});
@@ -161,7 +167,7 @@ export function useHomeMerchandising(options?: UseHomeMerchandisingOptions) {
     return () => {
       alive = false;
     };
-  }, [enabled]);
+  }, [enabled, store?.id, STORE_MERCH_CACHE_KEY]);
 
   return useMemo(
     () => ({ loading, error, weeklyPicks, weeklyBadges, monthlyTopSales }),

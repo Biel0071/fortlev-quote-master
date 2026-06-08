@@ -31,8 +31,15 @@ const StoresList = () => {
         .from('stores')
         .select(`
           *,
-          tenants (name),
-          store_domains (domain)
+          tenants (
+            id,
+            name,
+            saas_subscriptions (
+              status,
+              saas_plans (name)
+            )
+          ),
+          store_domains (domain, is_primary, status)
         `)
         .order('created_at', { ascending: false });
       

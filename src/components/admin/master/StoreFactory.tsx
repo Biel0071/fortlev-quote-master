@@ -104,6 +104,33 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
         }
       }
 
+      // 1.5 Ensure Subscription exists for the tenant
+      const { data: existingSub } = await supabase
+        .from('saas_subscriptions')
+        .select('id')
+        .eq('tenant_id', currentTenantId)
+        .eq('status', 'active')
+        .maybeSingle();
+      
+      if (!existingSub) {
+        // Find Free Plan
+        const { data: freePlan } = await supabase
+          .from('saas_plans')
+          .select('id')
+          .eq('name', 'Free')
+          .single();
+        
+        if (freePlan) {
+          await supabase.from('saas_subscriptions').insert({
+            tenant_id: currentTenantId,
+            plan_id: freePlan.id,
+            status: 'active',
+            billing_period: 'monthly'
+          });
+          toast.info("Plano Free vinculado automaticamente ao tenant.");
+        }
+      }
+
       // 2. Create Store
       const { data: store, error: storeError } = await supabase
         .from('stores')
@@ -116,6 +143,7 @@ const StoreFactory = ({ onSuccess }: StoreFactoryProps) => {
         })
         .select()
         .single();
+
 
       if (storeError) throw storeError;
 

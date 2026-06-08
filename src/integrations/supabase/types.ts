@@ -3293,6 +3293,51 @@ export type Database = {
           },
         ]
       }
+      saas_user_access: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["saas_role"]
+          store_id: string | null
+          tenant_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["saas_role"]
+          store_id?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["saas_role"]
+          store_id?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_user_access_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saas_user_access_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_records: {
         Row: {
           created_at: string
@@ -5566,6 +5611,7 @@ export type Database = {
     Enums: {
       admin_role: "master" | "admin" | "operator" | "gerente" | "visualizador"
       app_role: "admin"
+      saas_role: "owner" | "admin" | "manager" | "seller" | "support" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5695,6 +5741,7 @@ export const Constants = {
     Enums: {
       admin_role: ["master", "admin", "operator", "gerente", "visualizador"],
       app_role: ["admin"],
+      saas_role: ["owner", "admin", "manager", "seller", "support", "viewer"],
     },
   },
 } as const

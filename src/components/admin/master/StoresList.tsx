@@ -43,7 +43,9 @@ const StoresList = () => {
               saas_plans (name)
             )
           ),
-          store_domains (domain, is_primary, verified)
+          store_domains (domain, is_primary, verified),
+          store_modules (id),
+          store_ai_configs (id)
         `)
         .order('created_at', { ascending: false });
       
@@ -113,6 +115,7 @@ const StoresList = () => {
               <TableHead>Nome / Slug</TableHead>
               <TableHead>Tenant / Plano</TableHead>
               <TableHead>Domínio</TableHead>
+              <TableHead>Módulos / IA</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Data Criação</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -156,7 +159,17 @@ const StoresList = () => {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={store.active ? "default" : "secondary"}>
+                  <div className="flex gap-1 flex-wrap max-w-[150px]">
+                    <Badge variant="outline" className="text-[9px] h-4 gap-1">
+                      <Cpu size={10} /> {store.store_modules?.length || 0}
+                    </Badge>
+                    <Badge variant="outline" className={`text-[9px] h-4 gap-1 ${store.store_ai_configs?.[0] ? "text-primary border-primary/30" : ""}`}>
+                      <Sparkles size={10} /> {store.store_ai_configs?.[0] ? "ON" : "OFF"}
+                    </Badge>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={store.active ? "default" : "secondary"} className={store.active ? "bg-green-500" : ""}>
                     {store.active ? "Ativa" : "Inativa"}
                   </Badge>
                 </TableCell>

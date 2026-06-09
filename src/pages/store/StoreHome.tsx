@@ -19,6 +19,7 @@ import { HomeSection } from "@/components/store/home/HomeSection";
 import { HomeCategoriesCarousel } from "@/components/store/home/HomeCategoriesCarousel";
 import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
 import { HomeGuaranteesMiniBar } from "@/components/store/home/HomeGuaranteesMiniBar";
+import { Button } from "@/components/ui/button";
 
 
 function CategorySkeleton() {

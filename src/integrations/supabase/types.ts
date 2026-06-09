@@ -5564,6 +5564,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_user_is_owner: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       classify_user_session_status: {
         Args: { _score: number }
         Returns: string

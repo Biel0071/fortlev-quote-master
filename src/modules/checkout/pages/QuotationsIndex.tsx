@@ -79,7 +79,7 @@ const QuotationsContent = () => {
         const coords = getUFCoordinates(uf);
         if (coords) {
           const nearest = findNearestFactory(coords, factories);
-          if (nearest && nearest.name !== companyInfo.name) {
+          if (nearest && nearest.name && nearest.name !== companyInfo.name) {
             setCompanyInfo({
               name: nearest.name,
               cnpj: nearest.cnpj,

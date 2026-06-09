@@ -19,6 +19,7 @@ import { HomeSection } from "@/components/store/home/HomeSection";
 import { HomeCategoriesCarousel } from "@/components/store/home/HomeCategoriesCarousel";
 import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
 import { HomeGuaranteesMiniBar } from "@/components/store/home/HomeGuaranteesMiniBar";
+import { Button } from "@/components/ui/button";
 
 
 function CategorySkeleton() {
@@ -97,7 +98,7 @@ export default function StoreHome() {
   }, [home.seo?.og_image_path]);
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
-  const { isLoading: tenantLoading } = useTenant();
+  const { isLoading: tenantLoading, store: tenantStoreData } = useTenant();
   const loading = tenantLoading || (productsLoading && activeProducts.length === 0) || (categoriesLoading && activeCategories.length === 0);
   
   if (tenantLoading) {
@@ -110,6 +111,27 @@ export default function StoreHome() {
             <div key={i} className="h-64 rounded-2xl bg-muted/20 animate-pulse" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  // Se o tenant carregou mas não há loja ativa, mostrar fallback amigável em vez de travar
+  if (!tenantStoreData && !tenantLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 text-center space-y-6">
+        <div className="relative">
+          <div className="absolute -inset-4 bg-primary/5 rounded-full blur-2xl animate-pulse" />
+          <Store size={80} className="text-primary/20 relative" />
+        </div>
+        <div className="space-y-2 max-w-md mx-auto">
+          <h2 className="text-2xl font-bold tracking-tight">Sistema em Manutenção</h2>
+          <p className="text-muted-foreground">
+            Estamos otimizando a sua experiência. Se a tela continuar branca, tente limpar o cache.
+          </p>
+        </div>
+        <Button onClick={() => window.location.reload()} className="gap-2 rounded-full px-8">
+          Recarregar e Limpar Tudo
+        </Button>
       </div>
     );
   }

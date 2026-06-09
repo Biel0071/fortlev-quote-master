@@ -4,7 +4,18 @@ import { Quotation } from '@/types/quotation';
 import { formatCurrency, formatDate, getBrazilDocumentLabel } from './formatters';
 import { getProductFullDescription } from './taxCalculator';
 
-export const generatePDF = (quotation: Quotation): jsPDF => {
+const hexToRgb = (hex: string): [number, number, number] => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? [
+    parseInt(result[1], 16),
+    parseInt(result[2], 16),
+    parseInt(result[3], 16)
+  ] : [0, 0, 0];
+};
+
+type RGB = [number, number, number];
+
+export const generatePDF = (quotation: Quotation, config?: any): jsPDF => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -14,11 +25,11 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   };
   
   // Colors
-  const black = [0, 0, 0] as const;
-  const white = [255, 255, 255] as const;
-  const fortlevBlue = [0, 74, 151] as const; // Real Fortlev Blue
-  const fortlevRed = [231, 18, 18] as const; // Real Fortlev Red
-  const textDark = [30, 30, 30] as const;
+  const black: RGB = [0, 0, 0];
+  const white: RGB = [255, 255, 255];
+  const fortlevBlue: RGB = config?.primaryColor ? hexToRgb(config.primaryColor) : [0, 74, 151];
+  const fortlevRed: RGB = config?.secondaryColor ? hexToRgb(config.secondaryColor) : [231, 18, 18];
+  const textDark: RGB = [30, 30, 30];
   
   // Header bar (Fortlev Blue)
   doc.setDrawColor(...fortlevBlue);
@@ -29,7 +40,7 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   doc.setTextColor(...white);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('ORÇAMENTO DE PRODUTOS', pageWidth / 2, 8, { align: 'center' });
+  doc.text(config?.headerText || 'ORÇAMENTO DE PRODUTOS', pageWidth / 2, 8, { align: 'center' });
 
   let yPos = 25;
 
@@ -302,7 +313,7 @@ export const generatePDF = (quotation: Quotation): jsPDF => {
   
   doc.setTextColor(...white);
   doc.setFontSize(7);
-  doc.text('Fortlev - Líder em Reservatórios de Água e Tubulações', pageWidth / 2, doc.internal.pageSize.getHeight() - 4, { align: 'center' });
+  doc.text(config?.footerText || 'Fortlev - Líder em Reservatórios de Água e Tubulações', pageWidth / 2, doc.internal.pageSize.getHeight() - 4, { align: 'center' });
   
   return doc;
 };

@@ -252,7 +252,7 @@ export function useOfferProducts(activeProducts: any[]): {
 } {
   const offerProducts = useMemo(() => {
     if (!activeProducts || activeProducts.length === 0) {
-      return OFFER_SEEDS.map(createMockOffer);
+      return [];
     }
 
     const usedIds = new Set<string>();
@@ -287,8 +287,8 @@ export function useOfferProducts(activeProducts: any[]): {
         return buildOfferProduct(seed, similarProduct, "similar");
       }
 
-      return createMockOffer(seed);
-    });
+      return null;
+    }).filter(Boolean) as OfferProduct[];
   }, [activeProducts]);
 
   return { offerProducts };

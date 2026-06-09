@@ -190,7 +190,7 @@ export default function StoreHome() {
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
   // Improved empty store detection
-  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && !home.loading && !categoriesLoading;
+  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && !home.loading && !categoriesLoading && home.banners.length === 0;
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen pt-[var(--store-header-offset,80px)]">

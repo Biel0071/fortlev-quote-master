@@ -32,7 +32,7 @@ const ConstructionPage = () => {
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
 
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
-    name: 'Material de Construção',
+    name: 'MF atacadista',
     cnpj: '',
     address: '',
     phone: '',
@@ -49,7 +49,7 @@ const ConstructionPage = () => {
         .select('*')
         .eq('company_type', 'material')
         .eq('is_active', true)
-        .order('is_default', { ascending: false })
+        .order('name', { ascending: true })
         .limit(1);
       
       if (data && data.length > 0) {

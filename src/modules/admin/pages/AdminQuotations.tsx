@@ -9,6 +9,7 @@ const tabs = [
   { to: "/admin/orcamentos/empresas", label: "Empresas", icon: Shield },
   { to: "/admin/orcamentos/leads", label: "CRM / Leads", icon: Users },
   { to: "/admin/orcamentos/tokens", label: "Tokens", icon: Shield },
+  { to: "/admin/orcamentos/modelos", label: "Modelos", icon: FileText },
 ];
 
 export default function AdminQuotations() {

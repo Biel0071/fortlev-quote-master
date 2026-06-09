@@ -27,6 +27,7 @@ import {
   AdminQuotationTokens,
   AdminBulkImageSearch,
   AdminStoreSelector,
+  AdminQuotationModels,
   AdminProductsImport,
   AdminProductScraper,
   AdminReviews,
@@ -75,6 +76,7 @@ export default function AdminApp() {
           <Route path="empresas" element={<AdminIssuingCompanies />} />
           <Route path="leads" element={<AdminCrmLeads />} />
           <Route path="tokens" element={<AdminQuotationTokens />} />
+          <Route path="modelos" element={<AdminQuotationModels />} />
         </Route>
 
         <Route path="produtos" element={<AdminProductsList />} />

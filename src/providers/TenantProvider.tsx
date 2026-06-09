@@ -134,13 +134,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               s.slug === 'mf-atacadista'
             );
             
-            // Find Construção (second priority)
-            const construcao = fallbackStores.find(s => 
-              s.name.toLowerCase().includes('construção') || 
-              s.slug === 'construcao'
-            );
-
-            const preferred = mfAtacadista || construcao || fallbackStores[0];
+            const preferred = mfAtacadista || fallbackStores[0];
             
             storeId = preferred.id;
             tenantId = preferred.tenant_id;

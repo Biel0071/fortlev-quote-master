@@ -126,7 +126,6 @@ export function useConstructionCatalogProducts() {
       const { data: constructionData } = await cloud
         .from("construction_catalog_products")
         .select("*")
-        .eq("active", true)
         .eq("store_id", store.id)
         .order("name", { ascending: true });
 
@@ -135,7 +134,6 @@ export function useConstructionCatalogProducts() {
       const { data: storeData } = await cloud
         .from("store_products")
         .select("*")
-        .eq("status", "published")
         .eq("store_id", store.id)
         .order("name", { ascending: true });
 

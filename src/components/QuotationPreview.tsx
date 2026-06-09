@@ -76,7 +76,14 @@ export const QuotationPreview = ({
   const customer = quotation.customer || { name: '', cnpj: '', phone: '', address: '' };
   const paymentConditions = quotation.paymentConditions || { cashDiscount: '', installments: '', downPayment: '' };
   const branding = quotation.branding ?? { showBrand: true, brandText: 'FORTLEV' };
-  const formatDate = (date: Date) => format(new Date(date), "dd/MM/yyyy", { locale: ptBR });
+  const items = quotation.items || [];
+  const formatDate = (date: Date | string | number) => {
+    try {
+      return format(new Date(date), "dd/MM/yyyy", { locale: ptBR });
+    } catch (e) {
+      return format(new Date(), "dd/MM/yyyy", { locale: ptBR });
+    }
+  };
 
   const barcodeRef = useRef<SVGSVGElement>(null);
   const qrCodeRef = useRef<HTMLImageElement>(null);
@@ -196,7 +203,7 @@ export const QuotationPreview = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {quotation.items.map((item, idx) => (
+                      {items.map((item, idx) => (
                         <tr key={idx} className="border-b border-gray-200 text-[11px]">
                           <td className="p-3 font-medium">{item.product.name} {item.product.capacity > 0 ? `${item.product.capacity}${item.product.unit}` : ''}</td>
                           <td className="p-3 text-center">{item.quantity}</td>

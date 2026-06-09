@@ -372,7 +372,7 @@ const ConstructionPage = () => {
     };
 
     const qDoc = createQuotation(meta, items);
-    setPreviewQuotation(qDoc);
+    setPreviewQuotation({ ...qDoc });
     setPreviewOpen(true);
   };
 

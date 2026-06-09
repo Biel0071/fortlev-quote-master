@@ -3995,6 +3995,44 @@ export type Database = {
           },
         ]
       }
+      store_models: {
+        Row: {
+          active: boolean
+          config: Json
+          created_at: string
+          id: string
+          model_type: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          config?: Json
+          created_at?: string
+          id?: string
+          model_type: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          config?: Json
+          created_at?: string
+          id?: string
+          model_type?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_models_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_module_definitions: {
         Row: {
           category: string | null

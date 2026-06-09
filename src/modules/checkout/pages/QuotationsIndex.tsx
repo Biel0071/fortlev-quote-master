@@ -124,8 +124,8 @@ const QuotationsContent = () => {
     toast({ title: 'Modo de edição', description: `Editando orçamento ${source.number}` });
   }, [editId, quotations, loading]);
 
-  const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
-  const total = subtotal - discount + freight;
+  const subtotal = useMemo(() => items.reduce((acc, item) => acc + (item.subtotal || 0), 0), [items]);
+  const total = useMemo(() => subtotal - (discount || 0) + (freight || 0), [subtotal, discount, freight]);
 
   const handleAddItem = (item: QuotationItem) => {
     setItems(prev => [...prev, item]);

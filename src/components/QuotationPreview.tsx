@@ -204,11 +204,11 @@ export const QuotationPreview = ({
                     </thead>
                     <tbody>
                       {items.map((item, idx) => (
-                        <tr key={idx} className="border-b border-gray-200 text-[11px]">
-                          <td className="p-3 font-medium">{item.product.name} {item.product.capacity > 0 ? `${item.product.capacity}${item.product.unit}` : ''}</td>
-                          <td className="p-3 text-center">{item.quantity}</td>
-                          <td className="p-3 text-right">{formatCurrency(item.unitPrice).replace('R$', '').trim()}</td>
-                          <td className="p-3 text-right font-bold">{formatCurrency(item.subtotal).replace('R$', '').trim()}</td>
+                        <tr key={item.id || idx} className="border-b border-gray-200 text-[11px]">
+                          <td className="p-3 font-medium">{item.product?.name || 'Produto'} {item.product?.capacity > 0 ? `${item.product.capacity}${item.product.unit}` : ''}</td>
+                          <td className="p-3 text-center">{item.quantity || 0}</td>
+                          <td className="p-3 text-right">{formatCurrency(item.unitPrice || 0).replace('R$', '').trim()}</td>
+                          <td className="p-3 text-right font-bold">{formatCurrency(item.subtotal || 0).replace('R$', '').trim()}</td>
                         </tr>
                       ))}
                     </tbody>

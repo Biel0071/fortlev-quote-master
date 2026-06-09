@@ -5568,6 +5568,10 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      check_user_store_access: {
+        Args: { _store_id: string; _user_id: string }
+        Returns: boolean
+      }
       classify_user_session_status: {
         Args: { _score: number }
         Returns: string

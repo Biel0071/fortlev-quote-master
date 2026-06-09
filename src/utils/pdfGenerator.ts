@@ -10,8 +10,10 @@ const hexToRgb = (hex: string): [number, number, number] => {
     parseInt(result[1], 16),
     parseInt(result[2], 16),
     parseInt(result[3], 16)
-  ] : [0, 0, 0] as [number, number, number];
+  ] : [0, 0, 0];
 };
+
+type RGB = [number, number, number];
 
 export const generatePDF = (quotation: Quotation, config?: any): jsPDF => {
   const doc = new jsPDF();
@@ -23,11 +25,11 @@ export const generatePDF = (quotation: Quotation, config?: any): jsPDF => {
   };
   
   // Colors
-  const black = [0, 0, 0] as const;
-  const white = [255, 255, 255] as const;
-  const fortlevBlue = config?.primaryColor ? hexToRgb(config.primaryColor) : ([0, 74, 151] as const);
-  const fortlevRed = config?.secondaryColor ? hexToRgb(config.secondaryColor) : ([231, 18, 18] as const);
-  const textDark = [30, 30, 30] as const;
+  const black: RGB = [0, 0, 0];
+  const white: RGB = [255, 255, 255];
+  const fortlevBlue: RGB = config?.primaryColor ? hexToRgb(config.primaryColor) : [0, 74, 151];
+  const fortlevRed: RGB = config?.secondaryColor ? hexToRgb(config.secondaryColor) : [231, 18, 18];
+  const textDark: RGB = [30, 30, 30];
   
   // Header bar (Fortlev Blue)
   doc.setDrawColor(...fortlevBlue);

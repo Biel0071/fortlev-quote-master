@@ -169,7 +169,7 @@ const QuotationsContent = () => {
       saveQuotation(quotation);
     }
     action();
-    resetForm();
+    // resetForm(); // Do NOT reset automatically after action to avoid accidental loss if action fails or user wants more actions
   };
 
   const handleGeneratePDF = () => {

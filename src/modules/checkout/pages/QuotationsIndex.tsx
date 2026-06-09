@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { CompanyForm } from '@/components/CompanyForm';
@@ -13,14 +13,14 @@ import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
 import { downloadNFePDF } from '@/utils/nfeGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
-import { cloud } from '@/lib/cloud';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Pencil, FileText, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { findNearestFactory, getUFCoordinates } from '@/utils/proximity';
+import { ErrorBoundary } from 'react-error-boundary';
 
-const QuotationsIndex = () => {
+const QuotationsContent = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit');
@@ -324,6 +324,24 @@ const QuotationsIndex = () => {
         <p>Sistema de Orçamentos Fortlev • {new Date().getFullYear()}</p>
       </footer>
     </div>
+  );
+};
+
+const QuotationsIndex = () => {
+  return (
+    <ErrorBoundary
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="max-w-md w-full text-center space-y-4">
+            <h1 className="text-2xl font-bold">Sistema em Manutenção</h1>
+            <p className="text-muted-foreground">Estamos otimizando a sua experiência. Se a tela continuar branca, tente limpar o cache.</p>
+            <Button onClick={() => window.location.reload()}>Recarregar e Limpar Tudo</Button>
+          </div>
+        </div>
+      }
+    >
+      <QuotationsContent />
+    </ErrorBoundary>
   );
 };
 

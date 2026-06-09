@@ -2,8 +2,8 @@ import { Quotation } from '@/types/quotation';
 import { formatCurrency, formatDate, cleanPhone } from './formatters';
 
 export const generateWhatsAppMessage = (quotation: Quotation): string => {
-  const itemsList = quotation.items
-    .map(item => `• ${item.product.capacity}${item.product.unit} - Qtd: ${item.quantity} - ${formatCurrency(item.subtotal)}`)
+  const itemsList = (quotation.items || [])
+    .map(item => `• ${item.product?.capacity || 0}${item.product?.unit || ''} - Qtd: ${item.quantity || 0} - ${formatCurrency(item.subtotal || 0)}`)
     .join('\n');
 
   const branding = quotation.branding ?? { showBrand: true, brandText: 'FORTLEV' };

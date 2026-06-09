@@ -205,7 +205,7 @@ export const QuotationActions = ({
             <Input
               id="cashDiscount"
               placeholder="Ex: 7% de desconto"
-              value={paymentConditions.cashDiscount}
+              value={paymentConditions?.cashDiscount || ''}
               onChange={(e) => handlePaymentChange('cashDiscount', e.target.value)}
               className="h-11"
             />
@@ -218,7 +218,7 @@ export const QuotationActions = ({
             <Input
               id="installments"
               placeholder="Ex: 10x sem juros"
-              value={paymentConditions.installments}
+              value={paymentConditions?.installments || ''}
               onChange={(e) => handlePaymentChange('installments', e.target.value)}
               className="h-11"
             />
@@ -231,7 +231,7 @@ export const QuotationActions = ({
             <Input
               id="downPayment"
               placeholder="Ex: Sem juros - consultar"
-              value={paymentConditions.downPayment}
+              value={paymentConditions?.downPayment || ''}
               onChange={(e) => handlePaymentChange('downPayment', e.target.value)}
               className="h-11"
             />

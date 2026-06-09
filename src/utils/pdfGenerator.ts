@@ -140,10 +140,10 @@ export const generatePDF = (quotation: Quotation, config?: any): jsPDF => {
   // Items table
   // - Fortlev: usa descrição completa (tipo + capacidade + unidade)
   // - Construção: usa o nome do produto (capacidade costuma ser 0)
-  const tableData = quotation.items.map((item) => {
-    const label = item.product.capacity > 0
+  const tableData = (quotation.items || []).map((item) => {
+    const label = item.product?.capacity > 0
       ? getProductFullDescription(item.product.type, item.product.capacity, item.product.unit)
-      : item.product.name;
+      : (item.product?.name || 'Produto');
 
     return [
       label,
@@ -384,12 +384,12 @@ export const downloadPNG = async (quotation: Quotation) => {
               </tr>
             </thead>
             <tbody>
-              ${quotation.items.map(item => `
+              ${(quotation.items || []).map(item => `
                 <tr style="border-bottom: 1px solid #eee; font-size: 10px;">
-                  <td style="padding: 10px;">${item.product.name} ${item.product.capacity > 0 ? item.product.capacity + item.product.unit : ''}</td>
-                  <td style="padding: 10px; text-align: center;">${item.quantity}</td>
-                  <td style="padding: 10px; text-align: right;">${formatCurrency(item.unitPrice).replace('R$', '').trim()}</td>
-                  <td style="padding: 10px; text-align: right; font-weight: bold;">${formatCurrency(item.subtotal).replace('R$', '').trim()}</td>
+                  <td style="padding: 10px;">${item.product?.name || 'Produto'} ${item.product?.capacity > 0 ? item.product.capacity + item.product.unit : ''}</td>
+                  <td style="padding: 10px; text-align: center;">${item.quantity || 0}</td>
+                  <td style="padding: 10px; text-align: right;">${formatCurrency(item.unitPrice || 0).replace('R$', '').trim()}</td>
+                  <td style="padding: 10px; text-align: right; font-weight: bold;">${formatCurrency(item.subtotal || 0).replace('R$', '').trim()}</td>
                 </tr>
               `).join('')}
             </tbody>

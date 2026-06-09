@@ -10,7 +10,7 @@ const hexToRgb = (hex: string): [number, number, number] => {
     parseInt(result[1], 16),
     parseInt(result[2], 16),
     parseInt(result[3], 16)
-  ] : [0, 0, 0];
+  ] : [0, 0, 0] as [number, number, number];
 };
 
 export const generatePDF = (quotation: Quotation, config?: any): jsPDF => {

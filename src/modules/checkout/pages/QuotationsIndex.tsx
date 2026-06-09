@@ -207,7 +207,8 @@ const QuotationsIndex = () => {
 
   const handlePreview = () => {
     if (!validateForm()) return;
-    setPreviewQuotation(createQuotationObject());
+    const q = createQuotationObject();
+    setPreviewQuotation(q);
     setPreviewOpen(true);
   };
 

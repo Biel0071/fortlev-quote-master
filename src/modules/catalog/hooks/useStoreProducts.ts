@@ -118,7 +118,7 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
       setProducts(cached);
       setLoading(false);
       const now = Date.now();
-      if (now - lastSilentRefreshAt > 30_000) {
+      if (now - lastSilentRefreshAt > 60_000) {
         lastSilentRefreshAt = now;
         runApiMicrotask(() => load({ silent: true }));
       }

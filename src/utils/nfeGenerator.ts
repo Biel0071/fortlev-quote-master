@@ -337,13 +337,13 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
   doc.text('DADOS DOS PRODUTOS / SERVIÇOS', margin + 2, y + 3.5);
   y += 5;
 
-  const tableData = quotation.items.map((item, index) => [
+  const tableData = (quotation.items || []).map((item, index) => [
     (index + 1).toString().padStart(3, '0'),
-    item.product.name + (item.product.capacity > 0 ? ` ${item.product.capacity}${item.product.unit}` : ''),
-    getNcmCode(item.product.type),
-    '000', '5102', 'UN', item.quantity.toString(),
-    formatCurrency(item.unitPrice).replace('R$', '').trim(),
-    formatCurrency(item.subtotal).replace('R$', '').trim(),
+    (item.product?.name || 'Produto') + (item.product?.capacity > 0 ? ` ${item.product.capacity}${item.product.unit}` : ''),
+    getNcmCode(item.product?.type || 'caixa'),
+    '000', '5102', 'UN', (item.quantity || 0).toString(),
+    formatCurrency(item.unitPrice || 0).replace('R$', '').trim(),
+    formatCurrency(item.subtotal || 0).replace('R$', '').trim(),
     '0,00', '0,00', '0,00'
   ]);
 

@@ -16,6 +16,7 @@ import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend,
   Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import { ProjectTestingGuide } from "../components/ProjectTestingGuide";
 
 const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "#f59e0b", "#10b981", "#8b5cf6"];
 
@@ -241,6 +242,8 @@ export default function AdminDashboardOverview() {
           </CardContent>
         </Card>
       </div>
+
+      <ProjectTestingGuide />
     </div>
   );
 }

@@ -242,6 +242,8 @@ export default function AdminDashboardOverview() {
           </CardContent>
         </Card>
       </div>
+
+      <ProjectTestingGuide />
     </div>
   );
 }

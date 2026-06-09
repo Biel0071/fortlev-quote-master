@@ -12,10 +12,7 @@ import {
   Monitor, MousePointerClick, Receipt, RefreshCw, ShoppingCart, Smartphone,
   Snowflake, Target, ThermometerSun, TrendingUp, Users, XCircle,
 } from "lucide-react";
-import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend,
-  Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from "recharts";
+import { ProjectTestingGuide } from "../components/ProjectTestingGuide";
 
 const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "#f59e0b", "#10b981", "#8b5cf6"];
 

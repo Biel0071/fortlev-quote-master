@@ -83,7 +83,7 @@ export const ItemsList = ({ items, onRemoveItem, onUpdateQuantity, total }: Item
           </thead>
           <tbody>
             {items.map((item, index) => {
-              const typeInfo = getProductTypeLabel(item.product.type);
+              const typeInfo = getProductTypeLabel(item.product?.type || 'caixa');
               return (
                 <tr
                   key={item.id}
@@ -93,10 +93,10 @@ export const ItemsList = ({ items, onRemoveItem, onUpdateQuantity, total }: Item
                 >
                   <td className="px-4 py-3">
                     <div className="font-medium text-foreground">
-                      {item.product.capacity}{item.product.unit}
+                      {item.product?.capacity || 0}{item.product?.unit || ''}
                     </div>
                     <div className="text-sm text-muted-foreground sm:hidden">
-                      {item.product.height} x {item.product.diameter}
+                      {item.product?.height || ''} x {item.product?.diameter || ''}
                     </div>
                     <div className="sm:hidden mt-1">
                       <Badge variant={typeInfo.variant} className="text-xs">
@@ -110,7 +110,7 @@ export const ItemsList = ({ items, onRemoveItem, onUpdateQuantity, total }: Item
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-center text-sm text-muted-foreground hidden sm:table-cell">
-                    {item.product.height} x {item.product.diameter}
+                    {item.product?.height || ''} x {item.product?.diameter || ''}
                   </td>
                   <td className="px-4 py-3 text-center">
                     {editingId === item.id ? (
@@ -123,16 +123,16 @@ export const ItemsList = ({ items, onRemoveItem, onUpdateQuantity, total }: Item
                         autoFocus
                       />
                     ) : (
-                      <span className="font-medium">{item.quantity}</span>
+                      <span className="font-medium">{item.quantity || 0}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right text-sm hidden sm:table-cell">
-                    {formatCurrency(item.unitPrice)}
+                    {formatCurrency(item.unitPrice || 0)}
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-fortlev-navy">
                     {editingId === item.id 
-                      ? formatCurrency(item.unitPrice * editQuantity)
-                      : formatCurrency(item.subtotal)
+                      ? formatCurrency((item.unitPrice || 0) * (editQuantity || 0))
+                      : formatCurrency(item.subtotal || 0)
                     }
                   </td>
                   <td className="px-4 py-3">

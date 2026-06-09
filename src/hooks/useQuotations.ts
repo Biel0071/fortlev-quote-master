@@ -84,16 +84,22 @@ export const useQuotations = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchQuotations = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('fortlev_quotations')
-      .select('*, store_id')
-      .order('created_at', { ascending: false });
-    if (error) {
-      console.error('Error fetching quotations:', error);
-      return;
+    try {
+      const { data, error } = await supabase
+        .from('fortlev_quotations')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Error fetching quotations:', error);
+        toast({ title: 'Erro ao buscar orçamentos', description: error.message, variant: 'destructive' });
+        return;
+      }
+      setQuotations((data ?? []).map(rowToQuotation));
+    } catch (err: any) {
+      console.error('Unexpected error fetching quotations:', err);
+    } finally {
+      setLoading(false);
     }
-    setQuotations((data ?? []).map(rowToQuotation));
-    setLoading(false);
   }, []);
 
   useEffect(() => {

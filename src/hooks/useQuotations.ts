@@ -86,7 +86,7 @@ export const useQuotations = () => {
   const fetchQuotations = useCallback(async () => {
     const { data, error } = await supabase
       .from('fortlev_quotations')
-      .select('*')
+      .select('*, store_id')
       .order('created_at', { ascending: false });
     if (error) {
       console.error('Error fetching quotations:', error);

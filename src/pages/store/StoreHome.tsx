@@ -126,12 +126,21 @@ export default function StoreHome() {
         <div className="space-y-2 max-w-md mx-auto">
           <h2 className="text-2xl font-bold tracking-tight">Sistema em Manutenção</h2>
           <p className="text-muted-foreground">
-            Estamos otimizando a sua experiência. Se a tela continuar branca, tente limpar o cache.
+            O catálogo está sendo preparado. Por favor, tente recarregar a página.
           </p>
         </div>
-        <Button onClick={() => window.location.reload()} className="gap-2 rounded-full px-8">
-          Recarregar e Limpar Tudo
-        </Button>
+        <div className="flex flex-col gap-3">
+          <Button onClick={() => window.location.reload()} className="gap-2 rounded-full px-8">
+            Recarregar Página
+          </Button>
+          <Button variant="outline" onClick={() => {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload();
+          }} className="gap-2 rounded-full px-8">
+            Limpar Cache e Recarregar
+          </Button>
+        </div>
       </div>
     );
   }
@@ -190,7 +199,7 @@ export default function StoreHome() {
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
   // Improved empty store detection
-  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && !home.loading && !categoriesLoading && home.banners.length === 0;
+  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && !home.loading;
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen pt-[var(--store-header-offset,80px)]">

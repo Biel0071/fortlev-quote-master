@@ -20,8 +20,8 @@ export function HomeHeroCarousel({
   }
 
   const normalizedBanners = (banners ?? []).map((banner) => ({
-    image_desktop_path: banner.image_desktop_path,
-    image_mobile_path: banner.image_mobile_path,
+    image_desktop_path: banner.image_desktop_path || banner.image_path,
+    image_mobile_path: banner.image_mobile_path || banner.image_path,
     link_url: banner.link_url,
     position: Number(banner.position ?? 0),
   }));

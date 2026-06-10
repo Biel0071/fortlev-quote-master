@@ -151,15 +151,21 @@ export function useHomeContent(options?: UseHomeContentOptions) {
         if (res.error) console.error(`[useHomeContent] Query ${i} failed:`, res.error);
       });
 
-      const normalizedBanners = ((b.data ?? []) as any[]).map((row) => ({
-        ...row,
-        link_url: row.link_url ?? row.link ?? null,
-        link: row.link ?? row.link_url ?? null,
-        sort_order: Number(row.sort_order ?? row.position ?? 0),
-        position: Number(row.position ?? row.sort_order ?? 0),
-        active: Boolean(row.active ?? row.is_active ?? true),
-        is_active: Boolean(row.is_active ?? row.active ?? true),
-      })) as HomeBanner[];
+      const normalizedBanners = ((b.data ?? []) as any[]).map((row) => {
+        const imagePath = row.image_path || row.image_desktop_path || row.image_mobile_path;
+        return {
+          ...row,
+          image_path: imagePath,
+          image_desktop_path: row.image_desktop_path || imagePath,
+          image_mobile_path: row.image_mobile_path || imagePath,
+          link_url: row.link_url ?? row.link ?? null,
+          link: row.link ?? row.link_url ?? null,
+          sort_order: Number(row.sort_order ?? row.position ?? 0),
+          position: Number(row.position ?? row.sort_order ?? 0),
+          active: Boolean(row.active ?? row.is_active ?? true),
+          is_active: Boolean(row.is_active ?? row.active ?? true),
+        };
+      }) as HomeBanner[];
 
       const payload: HomeContentCache = {
         banners: normalizedBanners,

@@ -381,15 +381,27 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
   doc.text('DADOS DOS PRODUTOS / SERVIÇOS', margin + 2, y + 3.5);
   y += 5;
 
-  const tableData = (quotation.items || []).map((item, index) => [
-    (index + 1).toString().padStart(3, '0'),
-    (item.product?.name || 'Produto') + (item.product?.capacity > 0 ? ` ${item.product.capacity}${item.product.unit}` : ''),
-    getNcmCode(item.product?.type || 'caixa'),
-    '000', '5102', 'UN', (item.quantity || 0).toString(),
-    formatCurrency(item.unitPrice || 0).replace('R$', '').trim(),
-    formatCurrency(item.subtotal || 0).replace('R$', '').trim(),
-    '0,00', '0,00', '0,00'
-  ]);
+  const totalBase = taxCalc.baseCalculo || 0;
+  const totalIcms = taxCalc.icmsValue || 0;
+  const icmsRate = totalBase > 0 ? (totalIcms / totalBase) * 100 : 0;
+  const subtotalSum = (quotation.items || []).reduce((s, it) => s + (it.subtotal || 0), 0) || 1;
+
+  const tableData = (quotation.items || []).map((item, index) => {
+    const share = (item.subtotal || 0) / subtotalSum;
+    const itemBase = totalBase * share;
+    const itemIcms = totalIcms * share;
+    return [
+      (index + 1).toString().padStart(3, '0'),
+      (item.product?.name || 'Produto') + (item.product?.capacity > 0 ? ` ${item.product.capacity}${item.product.unit}` : ''),
+      getNcmCode(item.product?.type || 'caixa'),
+      '000', '5102', 'UN', (item.quantity || 0).toString(),
+      formatCurrency(item.unitPrice || 0).replace('R$', '').trim(),
+      formatCurrency(item.subtotal || 0).replace('R$', '').trim(),
+      formatCurrency(itemBase).replace('R$', '').trim(),
+      formatCurrency(itemIcms).replace('R$', '').trim(),
+      icmsRate.toFixed(2).replace('.', ','),
+    ];
+  });
 
   autoTable(doc, {
     startY: y,
@@ -412,35 +424,55 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
   doc.text('DADOS ADICIONAIS', margin + 2, y + 3.5);
   y += 5;
 
-  // INFORMAÇÕES COMPLEMENTARES
-  doc.rect(margin, y, contentWidth * 0.75, 25);
+  // INFORMAÇÕES COMPLEMENTARES — texto organizado por rótulos, sem barras
+  const infoWidth = contentWidth * 0.75;
+  const qrWidth = contentWidth * 0.25;
+  const blockHeight = 30;
+  doc.rect(margin, y, infoWidth, blockHeight);
   doc.setFontSize(4);
   doc.setFont('helvetica', 'normal');
-  doc.text('INFORMAÇÕES COMPLEMENTARES', margin + 1, y + 3);
-  doc.setFontSize(6);
-  doc.setFont('helvetica', 'bold');
-  doc.text(getStatusLabel(fiscal.status), margin + 1, y + 7);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.5);
-  const obs = `Validade: ${quotation.validity} | Entrega: ${quotation.deliveryTime} | ${quotation.observations || ''}`;
-  const splitObs = doc.splitTextToSize(obs, (contentWidth * 0.75) - 4);
-  doc.text(splitObs, margin + 1, y + 12);
+  doc.text('INFORMAÇÕES COMPLEMENTARES', margin + 1.5, y + 3);
 
-  // QR CODE BLOCK - INTERNAL PORTAL
-  doc.rect(margin + contentWidth * 0.75, y, contentWidth * 0.25, 25);
-  doc.setFontSize(4);
-  doc.text('CONSULTA NO PORTAL DO EMITENTE', margin + contentWidth * 0.75 + 1, y + 3);
-  
+  const infoX = margin + 2;
+  let infoY = y + 7;
+  const labelW = 30;
+  doc.setFontSize(6);
+  const drawLine = (label: string, value: string) => {
+    doc.setFont('helvetica', 'bold');
+    doc.text(label, infoX, infoY);
+    doc.setFont('helvetica', 'normal');
+    const lines = doc.splitTextToSize(value, infoWidth - labelW - 4);
+    doc.text(lines, infoX + labelW, infoY);
+    infoY += 3.5 * Math.max(1, lines.length);
+  };
+  drawLine('Validade da proposta:', quotation.validity || '—');
+  drawLine('Prazo de entrega:', quotation.deliveryTime || '—');
+  drawLine('Status fiscal:', getStatusLabel(fiscal.status));
+  if (quotation.observations?.trim()) {
+    drawLine('Observações:', quotation.observations.trim());
+  }
+  drawLine('Autorização:', 'Documento emitido e autorizado na SEFAZ.');
+
+  // QR CODE BLOCK - INTERNAL PORTAL (centralizado)
+  const qrX0 = margin + infoWidth;
+  doc.rect(qrX0, y, qrWidth, blockHeight);
+  const qrCenterX = qrX0 + qrWidth / 2;
+  doc.setFontSize(5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CONSULTA NO PORTAL DO EMITENTE', qrCenterX, y + 3.5, { align: 'center' });
+
   if (fiscal.accessKey && fiscal.portalToken) {
     const portalUrl = `${window.location.origin}/nota/${fiscal.accessKey}?token=${fiscal.portalToken}`;
-    const qrDataUrl = await QRCode.toDataURL(portalUrl, { margin: 1, width: 80 });
-    doc.addImage(qrDataUrl, 'PNG', margin + contentWidth * 0.82, y + 4, 18, 18);
+    const qrDataUrl = await QRCode.toDataURL(portalUrl, { margin: 1, width: 120 });
+    const qrSize = 18;
+    doc.addImage(qrDataUrl, 'PNG', qrCenterX - qrSize / 2, y + 5, qrSize, qrSize);
     doc.setFontSize(4);
-    doc.text('Escaneie para validar no portal', margin + contentWidth * 0.875, y + 23, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text('Escaneie para validar no portal', qrCenterX, y + blockHeight - 2, { align: 'center' });
   } else {
     doc.setFontSize(5);
-    doc.text('QR CODE INDISPONÍVEL', margin + contentWidth * 0.875, y + 13, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text('QR CODE INDISPONÍVEL', qrCenterX, y + blockHeight / 2, { align: 'center' });
   }
 
   return doc;

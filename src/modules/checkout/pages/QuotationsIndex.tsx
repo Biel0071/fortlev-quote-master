@@ -102,7 +102,7 @@ const QuotationsContent = () => {
 
     const timer = setTimeout(findNearest, 1000);
     return () => clearTimeout(timer);
-  }, [customer.address, factories, editingQuotationId]);
+  }, [customer.address, factories, editingQuotationId, companyLocked]);
 
   // Load quotation data when editing
   useEffect(() => {

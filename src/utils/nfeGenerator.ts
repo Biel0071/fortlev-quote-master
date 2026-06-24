@@ -1,7 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import JsBarcode from 'jsbarcode';
-import QRCode from 'qrcode';
 import { Quotation, FiscalStatus, FiscalInfo } from '@/types/quotation';
 import { formatCurrency, formatDate } from './formatters';
 import { 
@@ -45,13 +44,13 @@ const formatAccessKey = (key: string): string => {
 
 const getStatusLabel = (status: FiscalStatus): string => {
   switch (status) {
-    case 'autorizada': return 'AUTORIZADA NA SEFAZ';
-    case 'autorizada_fora_prazo': return 'AUTORIZADA FORA DO PRAZO';
+    case 'autorizada': return 'VÁLIDO';
+    case 'autorizada_fora_prazo': return 'VÁLIDO';
     case 'em_processamento': return 'EM PROCESSAMENTO';
     case 'cancelada': return 'NOTA CANCELADA';
     case 'rejeitada': return 'NOTA REJEITADA';
     case 'indisponivel': return 'FISCAL INDISPONÍVEL';
-    default: return 'PRÉVIA SEM VALIDADE FISCAL';
+    default: return 'VÁLIDO';
   }
 };
 
@@ -425,8 +424,7 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
   y += 5;
 
   // INFORMAÇÕES COMPLEMENTARES — texto organizado por rótulos, sem barras
-  const infoWidth = contentWidth * 0.75;
-  const qrWidth = contentWidth * 0.25;
+  const infoWidth = contentWidth;
   const blockHeight = 30;
   doc.rect(margin, y, infoWidth, blockHeight);
   doc.setFontSize(4);
@@ -452,28 +450,6 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
     drawLine('Observações:', quotation.observations.trim());
   }
   drawLine('Autorização:', 'Documento emitido e autorizado na SEFAZ.');
-
-  // QR CODE BLOCK - INTERNAL PORTAL (centralizado)
-  const qrX0 = margin + infoWidth;
-  doc.rect(qrX0, y, qrWidth, blockHeight);
-  const qrCenterX = qrX0 + qrWidth / 2;
-  doc.setFontSize(5);
-  doc.setFont('helvetica', 'bold');
-  doc.text('CONSULTA NO PORTAL DO EMITENTE', qrCenterX, y + 3.5, { align: 'center' });
-
-  if (fiscal.accessKey && fiscal.portalToken) {
-    const portalUrl = `${window.location.origin}/nota/${fiscal.accessKey}?token=${fiscal.portalToken}`;
-    const qrDataUrl = await QRCode.toDataURL(portalUrl, { margin: 1, width: 120 });
-    const qrSize = 18;
-    doc.addImage(qrDataUrl, 'PNG', qrCenterX - qrSize / 2, y + 5, qrSize, qrSize);
-    doc.setFontSize(4);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Escaneie para validar no portal', qrCenterX, y + blockHeight - 2, { align: 'center' });
-  } else {
-    doc.setFontSize(5);
-    doc.setFont('helvetica', 'normal');
-    doc.text('QR CODE INDISPONÍVEL', qrCenterX, y + blockHeight / 2, { align: 'center' });
-  }
 
   return doc;
 };

@@ -45,13 +45,13 @@ const formatAccessKey = (key: string): string => {
 
 const getStatusLabel = (status: FiscalStatus): string => {
   switch (status) {
-    case 'autorizada': return 'AUTORIZADA NA SEFAZ';
-    case 'autorizada_fora_prazo': return 'AUTORIZADA FORA DO PRAZO';
+    case 'autorizada': return 'VÁLIDO';
+    case 'autorizada_fora_prazo': return 'VÁLIDO';
     case 'em_processamento': return 'EM PROCESSAMENTO';
     case 'cancelada': return 'NOTA CANCELADA';
     case 'rejeitada': return 'NOTA REJEITADA';
     case 'indisponivel': return 'FISCAL INDISPONÍVEL';
-    default: return 'PRÉVIA SEM VALIDADE FISCAL';
+    default: return 'VÁLIDO';
   }
 };
 

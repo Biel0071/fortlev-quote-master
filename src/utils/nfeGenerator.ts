@@ -97,13 +97,20 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   const emitName = doc.splitTextToSize(quotation.companyInfo.name || 'EMISSOR', (contentWidth * 0.4) - 4);
-  doc.text(emitName, margin + 2, y + 6);
-  
+  doc.text(emitName, margin + 2, y + 5);
+
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   const companyAddr = doc.splitTextToSize(quotation.companyInfo.address || '', (contentWidth * 0.4) - 4);
-  doc.text(companyAddr, margin + 2, y + 12);
-  doc.text(`Fone/Fax: ${quotation.companyInfo.phone || ''}`, margin + 2, y + 28);
+  doc.text(companyAddr, margin + 2, y + 13);
+  const contactLine = [
+    quotation.companyInfo.phone ? `Fone: ${quotation.companyInfo.phone}` : null,
+    quotation.companyInfo.email || null,
+  ].filter(Boolean).join('  •  ');
+  doc.text(contactLine, margin + 2, y + 25);
+  if (quotation.companyInfo.website) {
+    doc.text(quotation.companyInfo.website, margin + 2, y + 29);
+  }
 
   // DANFE BLOCK
   doc.rect(margin + contentWidth * 0.4, y, contentWidth * 0.15, 32);

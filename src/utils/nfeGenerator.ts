@@ -1,7 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import JsBarcode from 'jsbarcode';
-import QRCode from 'qrcode';
 import { Quotation, FiscalStatus, FiscalInfo } from '@/types/quotation';
 import { formatCurrency, formatDate } from './formatters';
 import { 

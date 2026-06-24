@@ -235,6 +235,7 @@ const QuotationsContent = () => {
     setFreight(0);
     setEditingQuotationId(null);
     setQuotationNumber(null);
+    setCompanyLocked(false);
   };
 
   const handleCancelEdit = () => {

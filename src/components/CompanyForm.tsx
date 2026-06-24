@@ -13,9 +13,10 @@ import { supabase } from '@/integrations/supabase/client';
 interface CompanyFormProps {
   companyInfo: CompanyInfo;
   onChange: (companyInfo: CompanyInfo) => void;
+  onCompanyLock?: () => void;
 }
 
-export const CompanyForm = ({ companyInfo, onChange }: CompanyFormProps) => {
+export const CompanyForm = ({ companyInfo, onChange, onCompanyLock }: CompanyFormProps) => {
   const { companies: localSavedCompanies, saveCompany, deleteCompany } = useSavedCompanies();
   const { sellers, saveSeller, deleteSeller } = useSavedSellers();
   const [dbCompanies, setDbCompanies] = useState<any[]>([]);

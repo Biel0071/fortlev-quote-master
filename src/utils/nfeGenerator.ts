@@ -408,7 +408,7 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
   doc.setFontSize(5.5);
   const obs = `Validade: ${quotation.validity} | Entrega: ${quotation.deliveryTime} | ${quotation.observations || ''}`;
   const splitObs = doc.splitTextToSize(obs, (contentWidth * 0.75) - 4);
-  doc.text(splitObs, margin + 1, y + 10);
+  doc.text(splitObs, margin + 1, y + 12);
 
   // QR CODE BLOCK - INTERNAL PORTAL
   doc.rect(margin + contentWidth * 0.75, y, contentWidth * 0.25, 25);

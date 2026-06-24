@@ -426,22 +426,12 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
     doc.text('QR CODE INDISPONÍVEL', margin + contentWidth * 0.875, y + 13, { align: 'center' });
   }
 
-  // 10. PAGE WATERMARK IF NOT AUTHORIZED
-  if (!isAuthorized) {
-    doc.saveGraphicsState();
-    doc.setGState(new (doc as any).GState({ opacity: 0.1 }));
-    doc.setFontSize(60);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(200, 0, 0);
-    doc.text('SEM VALOR FISCAL', pageWidth / 2, pageHeight / 2, { align: 'center', angle: 45 });
-    doc.restoreGraphicsState();
-  }
-
   return doc;
 };
 
 export const downloadNFePDF = async (quotation: Quotation) => {
   const doc = await generateNFePDF(quotation);
-  const fileName = quotation.fiscal?.invoiceNumber ? `danfe-${quotation.fiscal.invoiceNumber}.pdf` : `danfe-previa-${quotation.number}.pdf`;
+  const invoice = quotation.fiscal?.invoiceNumber || quotation.number;
+  const fileName = `danfe-${invoice}.pdf`;
   doc.save(fileName);
 };

@@ -31,6 +31,7 @@ const QuotationsContent = () => {
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
   const editLoaded = useRef(false);
   const [factories, setFactories] = useState<any[]>([]);
+  const [companyLocked, setCompanyLocked] = useState(false);
   
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: '', cnpj: '', address: '', phone: '', email: '', website: '', sellerName: '', sellerRole: 'Gerente de Vendas',

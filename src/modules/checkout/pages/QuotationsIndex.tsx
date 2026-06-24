@@ -71,7 +71,7 @@ const QuotationsContent = () => {
 
   // Nearest Factory Routing
   useEffect(() => {
-    if (!customer.address || editingQuotationId || factories.length === 0) return;
+    if (!customer.address || editingQuotationId || companyLocked || factories.length === 0) return;
 
     const findNearest = async () => {
       const ufMatch = customer.address.match(/\b([A-Z]{2})\b/);

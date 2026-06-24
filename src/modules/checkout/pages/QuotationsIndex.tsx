@@ -281,7 +281,7 @@ const QuotationsContent = () => {
         )}
 
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
-          <CompanyForm companyInfo={companyInfo} onChange={setCompanyInfo} />
+          <CompanyForm companyInfo={companyInfo} onChange={setCompanyInfo} onCompanyLock={() => setCompanyLocked(true)} />
         </div>
 
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">

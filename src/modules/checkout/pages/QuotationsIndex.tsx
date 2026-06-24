@@ -31,6 +31,7 @@ const QuotationsContent = () => {
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
   const editLoaded = useRef(false);
   const [factories, setFactories] = useState<any[]>([]);
+  const [companyLocked, setCompanyLocked] = useState(false);
   
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: '', cnpj: '', address: '', phone: '', email: '', website: '', sellerName: '', sellerRole: 'Gerente de Vendas',
@@ -70,7 +71,7 @@ const QuotationsContent = () => {
 
   // Nearest Factory Routing
   useEffect(() => {
-    if (!customer.address || editingQuotationId || factories.length === 0) return;
+    if (!customer.address || editingQuotationId || companyLocked || factories.length === 0) return;
 
     const findNearest = async () => {
       const ufMatch = customer.address.match(/\b([A-Z]{2})\b/);
@@ -101,7 +102,7 @@ const QuotationsContent = () => {
 
     const timer = setTimeout(findNearest, 1000);
     return () => clearTimeout(timer);
-  }, [customer.address, factories, editingQuotationId]);
+  }, [customer.address, factories, editingQuotationId, companyLocked]);
 
   // Load quotation data when editing
   useEffect(() => {
@@ -234,6 +235,7 @@ const QuotationsContent = () => {
     setFreight(0);
     setEditingQuotationId(null);
     setQuotationNumber(null);
+    setCompanyLocked(false);
   };
 
   const handleCancelEdit = () => {
@@ -280,7 +282,7 @@ const QuotationsContent = () => {
         )}
 
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">
-          <CompanyForm companyInfo={companyInfo} onChange={setCompanyInfo} />
+          <CompanyForm companyInfo={companyInfo} onChange={setCompanyInfo} onCompanyLock={() => setCompanyLocked(true)} />
         </div>
 
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 space-y-6">

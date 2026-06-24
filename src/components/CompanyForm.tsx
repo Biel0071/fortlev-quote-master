@@ -13,9 +13,10 @@ import { supabase } from '@/integrations/supabase/client';
 interface CompanyFormProps {
   companyInfo: CompanyInfo;
   onChange: (companyInfo: CompanyInfo) => void;
+  onCompanyLock?: () => void;
 }
 
-export const CompanyForm = ({ companyInfo, onChange }: CompanyFormProps) => {
+export const CompanyForm = ({ companyInfo, onChange, onCompanyLock }: CompanyFormProps) => {
   const { companies: localSavedCompanies, saveCompany, deleteCompany } = useSavedCompanies();
   const { sellers, saveSeller, deleteSeller } = useSavedSellers();
   const [dbCompanies, setDbCompanies] = useState<any[]>([]);
@@ -55,6 +56,7 @@ export const CompanyForm = ({ companyInfo, onChange }: CompanyFormProps) => {
   const companies = Array.from(new Map(allCompanies.map(c => [c.cnpj, c])).values());
 
   const handleChange = (field: keyof CompanyInfo, value: string) => {
+    if (['name', 'cnpj', 'address', 'phone', 'email', 'website'].includes(field)) onCompanyLock?.();
     onChange({ ...companyInfo, [field]: value });
   };
 
@@ -79,6 +81,7 @@ export const CompanyForm = ({ companyInfo, onChange }: CompanyFormProps) => {
   const handleSelectCompany = (cnpj: string) => {
     const selected = companies.find(c => c.cnpj === cnpj);
     if (selected) {
+      onCompanyLock?.();
       onChange(selected);
       toast({ title: 'Empresa carregada', description: `Dados de ${selected.name} carregados` });
     }

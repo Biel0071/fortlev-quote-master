@@ -246,18 +246,43 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
 
   y += 10;
 
+  // Parse endereço: "Rua X, Bairro, Cidade - UF, CEP (complemento)"
+  const rawAddr = quotation.customer.address || '';
+  const cepMatch = rawAddr.match(/\b(\d{5}-?\d{3})\b/);
+  const cep = cepMatch ? cepMatch[1].replace(/(\d{5})-?(\d{3})/, '$1-$2') : '';
+  const complementMatch = rawAddr.match(/\(([^)]+)\)/);
+  const complement = complementMatch ? complementMatch[1] : '';
+  // Remove CEP e complemento para isolar partes
+  let core = rawAddr
+    .replace(/\(([^)]+)\)/g, '')
+    .replace(/\b\d{5}-?\d{3}\b/g, '')
+    .replace(/\s*-\s*[A-Z]{2}\b/g, '')
+    .replace(/,\s*,/g, ',')
+    .trim()
+    .replace(/[,\s]+$/g, '');
+  const parts = core.split(',').map(s => s.trim()).filter(Boolean);
+  // Heurística: [logradouro(+num), bairro, cidade]
+  let logradouro = parts[0] || '';
+  let bairro = '';
+  let cidade = '';
+  if (parts.length >= 3) {
+    bairro = parts[1];
+    cidade = parts.slice(2).join(', ');
+  } else if (parts.length === 2) {
+    bairro = parts[1];
+  }
+  const enderecoLinha = [logradouro, cidade].filter(Boolean).join(' - ') + (complement ? ` (${complement})` : '');
+
   doc.rect(margin, y, contentWidth * 0.5, 10);
   doc.setFontSize(5);
   doc.setFont('helvetica', 'normal');
   doc.text('ENDEREÇO', margin + 2, y + 3);
-  // Auto-shrink: tenta 7pt, depois 6pt, depois 5pt — sempre limitado a 2 linhas
   const addrMaxWidth = (contentWidth * 0.5) - 4;
-  const fullAddr = quotation.customer.address || '';
   let addrFontSize = 7;
   let addrLines: string[] = [];
   for (const size of [7, 6, 5]) {
     doc.setFontSize(size);
-    const lines = doc.splitTextToSize(fullAddr, addrMaxWidth);
+    const lines = doc.splitTextToSize(enderecoLinha, addrMaxWidth);
     if (lines.length <= 2) { addrFontSize = size; addrLines = lines; break; }
     addrFontSize = size; addrLines = lines.slice(0, 2);
   }
@@ -269,17 +294,27 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
   doc.setFontSize(5);
   doc.setFont('helvetica', 'normal');
   doc.text('BAIRRO / DISTRITO', margin + contentWidth * 0.51, y + 3);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  const bairroLines = doc.splitTextToSize(bairro, contentWidth * 0.2 - 4);
+  doc.text(bairroLines.slice(0, 1), margin + contentWidth * 0.51, y + 8);
 
   doc.rect(margin + contentWidth * 0.7, y, contentWidth * 0.15, 10);
   doc.setFontSize(5);
+  doc.setFont('helvetica', 'normal');
   doc.text('CEP', margin + contentWidth * 0.71, y + 3);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.text(cep, margin + contentWidth * 0.71, y + 8);
 
   doc.rect(margin + contentWidth * 0.85, y, contentWidth * 0.15, 10);
   doc.setFontSize(5);
+  doc.setFont('helvetica', 'normal');
   doc.text('DATA SAÍDA / ENTRADA', margin + contentWidth * 0.86, y + 3);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
   doc.text(fiscal.emissionAt ? formatDate(fiscal.emissionAt) : formatDate(new Date()), margin + contentWidth * 0.86, y + 8);
+
 
   y += 12;
 

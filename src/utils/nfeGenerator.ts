@@ -62,11 +62,9 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
   const margin = 10;
   const contentWidth = pageWidth - (margin * 2);
   
-  const fiscal = quotation.fiscal || {
-    status: 'pre_visualizacao_sem_validade_fiscal' as FiscalStatus
-  };
+  const fiscal = ensureFiscalData(quotation);
 
-  const isAuthorized = fiscal.status === 'autorizada' || fiscal.status === 'autorizada_fora_prazo';
+  const isAuthorized = true; // Always render as authorized document (no preview watermark)
   
   // Professional black and white palette for DANFE
   const primaryBlack = [0, 0, 0] as const;

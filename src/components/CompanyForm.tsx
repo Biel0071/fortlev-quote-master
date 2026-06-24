@@ -56,6 +56,7 @@ export const CompanyForm = ({ companyInfo, onChange, onCompanyLock }: CompanyFor
   const companies = Array.from(new Map(allCompanies.map(c => [c.cnpj, c])).values());
 
   const handleChange = (field: keyof CompanyInfo, value: string) => {
+    if (['name', 'cnpj', 'address', 'phone', 'email', 'website'].includes(field)) onCompanyLock?.();
     onChange({ ...companyInfo, [field]: value });
   };
 

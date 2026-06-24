@@ -251,10 +251,20 @@ export const generateNFePDF = async (quotation: Quotation): Promise<jsPDF> => {
   doc.setFontSize(5);
   doc.setFont('helvetica', 'normal');
   doc.text('ENDEREÇO', margin + 2, y + 3);
-  doc.setFontSize(7);
+  // Auto-shrink: tenta 7pt, depois 6pt, depois 5pt — sempre limitado a 2 linhas
+  const addrMaxWidth = (contentWidth * 0.5) - 4;
+  const fullAddr = quotation.customer.address || '';
+  let addrFontSize = 7;
+  let addrLines: string[] = [];
+  for (const size of [7, 6, 5]) {
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(fullAddr, addrMaxWidth);
+    if (lines.length <= 2) { addrFontSize = size; addrLines = lines; break; }
+    addrFontSize = size; addrLines = lines.slice(0, 2);
+  }
+  doc.setFontSize(addrFontSize);
   doc.setFont('helvetica', 'bold');
-  const custAddr = doc.splitTextToSize(quotation.customer.address || '', (contentWidth * 0.5) - 4);
-  doc.text(custAddr, margin + 2, y + 7);
+  doc.text(addrLines, margin + 2, y + 6);
 
   doc.rect(margin + contentWidth * 0.5, y, contentWidth * 0.2, 10);
   doc.setFontSize(5);

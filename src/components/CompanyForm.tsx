@@ -81,6 +81,7 @@ export const CompanyForm = ({ companyInfo, onChange, onCompanyLock }: CompanyFor
   const handleSelectCompany = (cnpj: string) => {
     const selected = companies.find(c => c.cnpj === cnpj);
     if (selected) {
+      onCompanyLock?.();
       onChange(selected);
       toast({ title: 'Empresa carregada', description: `Dados de ${selected.name} carregados` });
     }

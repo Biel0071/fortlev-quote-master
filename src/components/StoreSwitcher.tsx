@@ -10,13 +10,11 @@ import {
 
 export function StoreSwitcher({ className }: { className?: string }) {
   const navigate = useNavigate();
-  const { store, setStore, activeStoreId } = useStore();
+  const { store, setStore } = useStore();
 
   const handleChange = (value: AppStore) => {
-    setStore(value);
-    window.setTimeout(() => {
-      if (activeStoreId) navigate(`/admin/store/${activeStoreId}/dashboard`);
-    }, 0);
+    const nextStoreId = setStore(value);
+    if (nextStoreId) navigate(`/admin/store/${nextStoreId}/dashboard`);
   };
 
   return (

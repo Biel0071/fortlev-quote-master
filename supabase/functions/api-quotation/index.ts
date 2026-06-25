@@ -31,6 +31,8 @@ type KeyRecord = {
   quota_limit: number;
   quota_used: number;
   rate_limit: number;
+  starts_at?: string | null;
+  expires_at?: string | null;
 };
 
 async function authenticate(req: Request): Promise<KeyRecord | { error: string; status: number } | null> {
@@ -38,13 +40,19 @@ async function authenticate(req: Request): Promise<KeyRecord | { error: string; 
   if (!apiKey || apiKey.length < 16) return null;
   const { data } = await supabase
     .from("api_keys")
-    .select("id, store_id, permissions, active, quota_limit, quota_used, rate_limit")
+    .select("id, store_id, permissions, active, quota_limit, quota_used, rate_limit, starts_at, expires_at")
     .eq("key", apiKey)
     .eq("active", true)
     .maybeSingle();
   if (!data) return null;
 
-  // Quota check
+  const now = new Date();
+  if (data.starts_at && new Date(data.starts_at) > now) {
+    return { error: "Chave ainda não está ativa", status: 403 };
+  }
+  if (data.expires_at && new Date(data.expires_at) < now) {
+    return { error: "Chave expirada", status: 401 };
+  }
   if ((data.quota_limit ?? 0) > 0 && (data.quota_used ?? 0) >= data.quota_limit) {
     return { error: "Quota excedida", status: 429 };
   }
@@ -59,12 +67,37 @@ async function authenticate(req: Request): Promise<KeyRecord | { error: string; 
   return data as KeyRecord;
 }
 
+async function logUsage(
+  keyId: string,
+  storeId: string,
+  req: Request,
+  endpoint: string,
+  status: number,
+  startTs: number,
+  error?: string,
+) {
+  try {
+    await supabase.from("api_usage_logs").insert({
+      api_key_id: keyId,
+      store_id: storeId,
+      endpoint,
+      method: req.method,
+      status_code: status,
+      ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+      user_agent: req.headers.get("user-agent") ?? null,
+      duration_ms: Date.now() - startTs,
+      error: error ?? null,
+    });
+  } catch (_) { /* best-effort */ }
+}
+
 function hasPermission(auth: KeyRecord, perm: string): boolean {
   return Array.isArray(auth.permissions) && auth.permissions.includes(perm);
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const startTs = Date.now();
 
   try {
     const url = new URL(req.url);

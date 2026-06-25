@@ -20,6 +20,7 @@ interface InterpretedItem {
   quantity: number;
   unit: string;
   price?: number;
+  basePrice?: number;
   confidence: number;
   suggestedProductId?: string;
   matched: boolean;

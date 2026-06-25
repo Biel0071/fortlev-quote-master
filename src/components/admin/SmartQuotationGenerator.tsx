@@ -33,6 +33,8 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
   const [factories, setFactories] = useState<any[]>([]);
   const [nearestFactory, setNearestFactory] = useState<any>(null);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [allCompanies, setAllCompanies] = useState<any[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -41,9 +43,11 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
       const { data } = await supabase
         .from('issuing_companies')
         .select('*')
-        .eq('company_type', 'fortlev')
         .eq('is_active', true);
-      if (data) setFactories(data);
+      if (data) {
+        setAllCompanies(data);
+        setFactories(data.filter((c: any) => c.company_type === 'fortlev'));
+      }
     };
     fetchFactories();
   }, []);
@@ -193,6 +197,27 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 space-y-4">
+        {/* Empresa Emissora */}
+        {allCompanies.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+              Empresa Emissora
+            </Label>
+            <select
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
+              className="w-full h-9 px-3 rounded-md border border-primary/10 bg-background/50 text-xs"
+            >
+              <option value="">Selecionar automaticamente</option>
+              {allCompanies.map((c: any) => (
+                <option key={c.id} value={c.id}>
+                  {c.trading_name || c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Address & Routing */}
         <div className="space-y-2">
           <Label className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider flex items-center gap-1">

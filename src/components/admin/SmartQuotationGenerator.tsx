@@ -119,6 +119,30 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
     setIsInterpreting(true);
     
     try {
+      // 1) Parser local: se o texto for uma ficha estruturada do WhatsApp,
+      //    já pré-preenche cliente/itens instantaneamente (sem custo de IA).
+      const ficha = inputText.trim() ? parseWhatsappFicha(inputText) : null;
+      if (ficha) {
+        if (ficha.customer && Object.keys(ficha.customer).length > 0) {
+          setCustomerData({ ...ficha.customer, observations: ficha.observations });
+          if (ficha.customer.address) setAddress(ficha.customer.address);
+        }
+        if (ficha.items.length > 0) {
+          setInterpretedItems(
+            ficha.items.map((it, idx) => ({
+              id: `ficha-${idx}-${Date.now()}`,
+              originalText: it.originalText,
+              productName: it.productName,
+              quantity: it.quantity,
+              unit: it.unit,
+              confidence: 0.7,
+              matched: false,
+            }))
+          );
+          toast({ title: "Ficha detectada", description: `${ficha.items.length} itens pré-carregados. Refinando com IA…` });
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('analyze-quotation-image', {
         body: { text: inputText, images: selectedImages }
       });

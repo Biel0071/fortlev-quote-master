@@ -1,4 +1,6 @@
+import { memo } from "react";
 import { Outlet, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { FullScreenLoader } from "@/components/shared/FullScreenLoader";
 import {
   ArrowLeft,
   BarChart3,
@@ -107,7 +109,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
   },
 ];
 
-function AdminSidebar() {
+const AdminSidebar = memo(function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { canViewPage } = useAdminPermissions();
@@ -182,7 +184,7 @@ function AdminSidebar() {
       </SidebarContent>
     </Sidebar>
   );
-}
+});
 
 export default function AdminLayout() {
   const { user, loading: sessionLoading } = useSession();
@@ -199,7 +201,7 @@ export default function AdminLayout() {
     !location.pathname.startsWith("/admin/master");
 
   const canRender = !sessionLoading && !adminLoading;
-  if (!canRender) return <div className="p-6 text-muted-foreground">Carregando...</div>;
+  if (!canRender) return <FullScreenLoader label="Carregando admin..." />;
   if (!user) return <Navigate to="/auth/login" replace />;
   if (!isAdmin) {
     return (
@@ -221,11 +223,11 @@ export default function AdminLayout() {
   }
 
   if (isLegacyAdminPage && storesLoading) {
-    return <div className="p-6 text-muted-foreground">Carregando loja...</div>;
+    return <FullScreenLoader label="Carregando loja..." />;
   }
 
   if (isStoreScopedPage && (storesLoading || !activeStoreId)) {
-    if (storesLoading) return <div className="p-6 text-muted-foreground">Carregando loja...</div>;
+    if (storesLoading) return <FullScreenLoader label="Carregando loja..." />;
     return (
       <div className="min-h-screen bg-background p-6 space-y-4">
         <p className="text-destructive font-medium">Loja não encontrada.</p>

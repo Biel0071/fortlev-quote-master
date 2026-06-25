@@ -56,10 +56,28 @@ export default function StoreHome() {
 
   const [phase, setPhase] = useState({
     categories: true,
-    featured: true,
-    additional: true,
-    secondary: true,
+    featured: false,
+    additional: false,
+    secondary: false,
   });
+
+  useEffect(() => {
+    const featuredTimer = window.setTimeout(() => {
+      setPhase((current) => ({ ...current, featured: true }));
+    }, 250);
+    const additionalTimer = window.setTimeout(() => {
+      setPhase((current) => ({ ...current, additional: true }));
+    }, 900);
+    const secondaryTimer = window.setTimeout(() => {
+      setPhase((current) => ({ ...current, secondary: true }));
+    }, 1400);
+
+    return () => {
+      window.clearTimeout(featuredTimer);
+      window.clearTimeout(additionalTimer);
+      window.clearTimeout(secondaryTimer);
+    };
+  }, []);
 
 
   const home = useHomeContent({ enabled: true });

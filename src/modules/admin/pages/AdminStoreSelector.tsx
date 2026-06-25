@@ -164,11 +164,6 @@ export default function AdminStoreSelector() {
 
     setStores(available);
 
-    if (!isMaster && available.length === 1) {
-      enterStore(available[0]);
-      return;
-    }
-
     const storeIds = available.map((s) => s.id);
     const { data: domains } = await cloud
       .from("store_domains")

@@ -42,9 +42,13 @@ export function AdminSettingsIntegracoes() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [hooks, setHooks] = useState<WebHook[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyExpiry, setNewKeyExpiry] = useState("");
+  const [newKeyQuota, setNewKeyQuota] = useState("");
   const [newHookUrl, setNewHookUrl] = useState("");
   const [newHookEvent, setNewHookEvent] = useState("quotation.created");
   const [loading, setLoading] = useState(false);
+  const [logsKey, setLogsKey] = useState<ApiKey | null>(null);
+  const [logs, setLogs] = useState<UsageLog[]>([]);
 
   async function load() {
     if (!activeStoreId) return;

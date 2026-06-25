@@ -139,6 +139,7 @@ export default function AdminApp() {
         <Route path="frete" element={<Navigate to={routes.adminPath("/configuracoes/frete")} replace />} />
         <Route path="payments/*" element={<Navigate to={routes.adminPath("/configuracoes/pagamentos/gateways")} replace />} />
         <Route path="ofertas" element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>} />
+        <Route path="*" element={<Navigate to={routes.adminPath("/dashboard")} replace />} />
       </Route>
     </Routes>
   );

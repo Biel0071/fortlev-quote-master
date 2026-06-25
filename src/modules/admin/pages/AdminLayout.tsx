@@ -61,48 +61,48 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     label: "Visão Geral",
     items: [
-      { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard, page: "dashboard" },
-      { title: "Home", url: "/admin/home", icon: Home, page: "home" },
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, page: "dashboard" },
+      { title: "Home", url: "/home", icon: Home, page: "home" },
     ],
   },
   {
     label: "Vendas",
     items: [
-      { title: "Pedidos", url: "/admin/pedidos", icon: ShoppingBag, page: "pedidos" },
-      { title: "Orçamentos", url: "/admin/orcamentos", icon: FileText, page: "orcamentos" },
+      { title: "Pedidos", url: "/pedidos", icon: ShoppingBag, page: "pedidos" },
+      { title: "Orçamentos", url: "/orcamentos", icon: FileText, page: "orcamentos" },
     ],
   },
   {
     label: "Catálogo",
     items: [
-      { title: "Produtos", url: "/admin/produtos", icon: Box, page: "produtos" },
-      { title: "Categorias", url: "/admin/categorias", icon: Tags, page: "categorias" },
-      { title: "Avaliações", url: "/admin/avaliacoes", icon: Star, page: "avaliacoes" },
-      { title: "Cupons", url: "/admin/configuracoes/cupons", icon: TicketPercent, page: "cupons" },
+      { title: "Produtos", url: "/produtos", icon: Box, page: "produtos" },
+      { title: "Categorias", url: "/categorias", icon: Tags, page: "categorias" },
+      { title: "Avaliações", url: "/avaliacoes", icon: Star, page: "avaliacoes" },
+      { title: "Cupons", url: "/configuracoes/cupons", icon: TicketPercent, page: "cupons" },
     ],
   },
   {
     label: "Marketing",
     items: [
-      { title: "Banners", url: "/admin/banners", icon: ImageIcon, page: "banners" },
+      { title: "Banners", url: "/banners", icon: ImageIcon, page: "banners" },
     ],
   },
   {
     label: "Inteligência",
     items: [
-      { title: "Análise de Clientes", url: "/admin/clientes", icon: Users, page: "clientes" },
-      { title: "Funil de Conversão", url: "/admin/funil", icon: Target, page: "funil" },
-      { title: "Mapa de Cliques", url: "/admin/mapa-cliques", icon: MapPin, page: "mapa-cliques" },
-      { title: "Métricas do App", url: "/admin/app-metricas", icon: Smartphone, page: "app-metricas" },
-      { title: "Insights IA", url: "/admin/insights-ia", icon: Brain, page: "insights-ia" },
-      { title: "Análise e Relatórios IA", url: "/admin/inteligencia-ia", icon: Sparkles, page: "inteligencia-ia" },
+      { title: "Análise de Clientes", url: "/clientes", icon: Users, page: "clientes" },
+      { title: "Funil de Conversão", url: "/funil", icon: Target, page: "funil" },
+      { title: "Mapa de Cliques", url: "/mapa-cliques", icon: MapPin, page: "mapa-cliques" },
+      { title: "Métricas do App", url: "/app-metricas", icon: Smartphone, page: "app-metricas" },
+      { title: "Insights IA", url: "/insights-ia", icon: Brain, page: "insights-ia" },
+      { title: "Análise e Relatórios IA", url: "/inteligencia-ia", icon: Sparkles, page: "inteligencia-ia" },
     ],
   },
   {
     label: "Sistema",
     items: [
-      { title: "Tema", url: "/admin/tema", icon: Palette, page: "tema" },
-      { title: "Configurações", url: "/admin/configuracoes", icon: Settings, page: "configuracoes" },
+      { title: "Tema", url: "/tema", icon: Palette, page: "tema" },
+      { title: "Configurações", url: "/configuracoes", icon: Settings, page: "configuracoes" },
     ],
   },
 ];
@@ -112,7 +112,7 @@ function AdminSidebar() {
   const collapsed = state === "collapsed";
   const { canViewPage } = useAdminPermissions();
   const { isPageAllowed } = useStorePermissions();
-  const { label } = useStore();
+  const { label, routes } = useStore();
   const nav = useNavigate();
   const location = useLocation();
   return (
@@ -149,13 +149,14 @@ function AdminSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {visibleItems.map((item) => {
-                    const isActive = location.pathname === item.url || location.pathname.startsWith(item.url + "/");
+                    const itemUrl = routes.adminPath(item.url);
+                    const isActive = location.pathname === itemUrl || location.pathname.startsWith(itemUrl + "/");
                     return (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton asChild>
                           <NavLink
-                            to={item.url}
-                            end={item.url === "/admin/dashboard"}
+                            to={itemUrl}
+                            end={item.url === "/dashboard"}
                             className={`relative transition-all duration-150 rounded-lg mx-1 ${
                               isActive
                                 ? "bg-sidebar-accent text-sidebar-primary font-semibold shadow-sm"
@@ -239,7 +240,7 @@ export default function AdminLayout() {
           <header className="h-12 flex items-center justify-between gap-3 border-b border-border bg-background/95 backdrop-blur-sm px-3 sm:px-4 sticky top-0 z-30">
             <div className="flex items-center gap-2 min-w-0">
               <SidebarTrigger />
-              {location.pathname !== "/admin/dashboard" && (
+              {location.pathname !== routes.dashboard && (
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => nav(-1)} title="Voltar">
                   <ArrowLeft className="h-4 w-4" />
                 </Button>

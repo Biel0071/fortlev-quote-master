@@ -68,6 +68,23 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
     }
   }, [address, factories]);
 
+  // Recalculate item prices when issuing company changes (applies pricing_rules)
+  useEffect(() => {
+    if (!selectedCompanyId || interpretedItems.length === 0) return;
+    const company: any = allCompanies.find((c: any) => c.id === selectedCompanyId);
+    const rules = company?.pricing_rules || {};
+    const multiplier = Number(rules.multiplier) || 1;
+    const discountPct = Number(rules.discount_percent) || 0;
+    const factor = multiplier * (1 - discountPct / 100);
+    setInterpretedItems(prev => prev.map(it => {
+      const base = it.basePrice ?? it.price ?? 0;
+      return { ...it, basePrice: base, price: +(base * factor).toFixed(2) };
+    }));
+    if (multiplier !== 1 || discountPct !== 0) {
+      toast({ title: "Preços recalculados", description: `Regras da empresa aplicadas (×${factor.toFixed(2)}).` });
+    }
+  }, [selectedCompanyId]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {

@@ -33,7 +33,7 @@ type Cat = {
 };
 export default function AdminCategoriesList() {
   const nav = useNavigate();
-  const { activeStoreId } = useStore();
+  const { activeStoreId, routes } = useStore();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Cat[]>([]);
   const [q, setQ] = useState("");
@@ -141,7 +141,7 @@ export default function AdminCategoriesList() {
             Organize departamentos e destaques da loja.
           </p>
         </div>
-        <Button onClick={() => nav("/admin/categorias/nova")} className="gap-2">
+        <Button onClick={() => nav(routes.adminPath("/categorias/nova"))} className="gap-2">
           <Plus className="h-4 w-4" /> Nova categoria
         </Button>
       </div>
@@ -228,7 +228,7 @@ export default function AdminCategoriesList() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem onClick={() => nav(`/admin/categorias/editar/${c.id}`)}>
+                      <DropdownMenuItem onClick={() => nav(routes.adminPath(`/categorias/editar/${c.id}`))}>
                         <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => duplicateCategory(c)}>
@@ -268,7 +268,7 @@ export default function AdminCategoriesList() {
                   variant="ghost"
                   size="sm"
                   className="h-7 text-xs flex-1 gap-1"
-                  onClick={() => nav(`/admin/categorias/editar/${c.id}`)}
+                  onClick={() => nav(routes.adminPath(`/categorias/editar/${c.id}`))}
                 >
                   <Pencil className="h-3 w-3" /> Editar
                 </Button>

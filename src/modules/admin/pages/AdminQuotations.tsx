@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { FileText, Droplets, HardHat, Shield, Users } from "lucide-react";
+import { useStore } from "@/contexts/StoreContext";
 
 const tabs = [
   { to: "/admin/orcamentos", label: "Visão Geral", icon: FileText, end: true },
@@ -13,6 +14,8 @@ const tabs = [
 ];
 
 export default function AdminQuotations() {
+  const { routes } = useStore();
+
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 space-y-5">
       <h1 className="text-xl font-bold">Orçamentos</h1>
@@ -22,7 +25,7 @@ export default function AdminQuotations() {
           {tabs.map((tab) => (
             <NavLink
               key={tab.to}
-              to={tab.to}
+              to={routes.adminPath(tab.to.replace(/^\/admin/, ""))}
               end={tab.end}
               className={({ isActive }) =>
                 cn(

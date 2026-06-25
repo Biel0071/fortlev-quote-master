@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export default function AdminCategoryForm() {
   const { id } = useParams();
   const editingId = id ?? null;
   const nav = useNavigate();
+  const { activeStoreId, routes } = useStore();
 
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -110,6 +112,7 @@ export default function AdminCategoryForm() {
       featured,
       sort_order: Number(sortOrder) || 0,
       active,
+      store_id: activeStoreId,
     };
 
     if (!payload.name) return toast({ title: "Atenção", description: "Informe o nome." });
@@ -125,7 +128,7 @@ export default function AdminCategoryForm() {
     const { data, error } = await cloud.from("store_categories").insert(payload as any).select("id").single();
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     toast({ title: "Criado", description: "Categoria criada" });
-    nav(`/admin/categorias/editar/${data.id}`, { replace: true });
+    nav(routes.adminPath(`/categorias/editar/${data.id}`), { replace: true });
   };
 
   const handleUpload = async (file: File | null) => {
@@ -207,7 +210,7 @@ export default function AdminCategoryForm() {
           <p className="text-sm text-muted-foreground">Campos usados automaticamente na Home e Catálogo.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => nav("/admin/categorias")}>Voltar</Button>
+          <Button variant="outline" onClick={() => nav(routes.adminPath("/categorias"))}>Voltar</Button>
           <Button onClick={save}>Salvar</Button>
         </div>
       </div>

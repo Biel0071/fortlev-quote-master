@@ -54,11 +54,14 @@ import FortlevOverview from "@/pages/dashboard/FortlevOverview";
 import ConstructionOverview from "@/pages/dashboard/ConstructionOverview";
 import AdminIssuingCompanies from "@/pages/dashboard/AdminIssuingCompanies";
 import AdminCrmLeads from "@/pages/dashboard/AdminCrmLeads";
+import { useStore } from "@/contexts/StoreContext";
 
 export default function AdminApp() {
+  const { routes } = useStore();
+
   return (
     <Routes>
-      <Route path="*" element={<AdminLayout />}>
+      <Route element={<AdminLayout />}>
         <Route index element={<AdminStoreSelector />} />
         <Route path="master" element={<AdminMasterDashboard />} />
         <Route path="dashboard" element={<AdminDashboardShell />}>
@@ -88,8 +91,8 @@ export default function AdminApp() {
         <Route path="produtos/inteligencia-preco" element={<AdminPriceIntelligence />} />
         <Route path="imagens/revisao" element={<AdminImageReview />} />
         <Route path="inteligencia-ia" element={<AdminIntelligenceUnified />} />
-        <Route path="relatorios-ia" element={<Navigate to="/admin/inteligencia-ia" replace />} />
-        <Route path="analise-ia" element={<Navigate to="/admin/inteligencia-ia" replace />} />
+        <Route path="relatorios-ia" element={<Navigate to={routes.adminPath("/inteligencia-ia")} replace />} />
+        <Route path="analise-ia" element={<Navigate to={routes.adminPath("/inteligencia-ia")} replace />} />
         <Route path="produtos/recomendacoes" element={<AdminRecommendations />} />
         <Route path="funil" element={<AdminConversionFunnel />} />
         <Route path="mapa-cliques" element={<AdminClickMap />} />
@@ -132,9 +135,9 @@ export default function AdminApp() {
           <Route path="pagamentos/api/sandbox" element={<AdminPaymentsApi />} />
         </Route>
 
-        <Route path="cupons" element={<Navigate to="/admin/configuracoes/cupons" replace />} />
-        <Route path="frete" element={<Navigate to="/admin/configuracoes/frete" replace />} />
-        <Route path="payments/*" element={<Navigate to="/admin/configuracoes/pagamentos/gateways" replace />} />
+        <Route path="cupons" element={<Navigate to={routes.adminPath("/configuracoes/cupons")} replace />} />
+        <Route path="frete" element={<Navigate to={routes.adminPath("/configuracoes/frete")} replace />} />
+        <Route path="payments/*" element={<Navigate to={routes.adminPath("/configuracoes/pagamentos/gateways")} replace />} />
         <Route path="ofertas" element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>} />
       </Route>
     </Routes>

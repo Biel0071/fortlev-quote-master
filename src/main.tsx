@@ -12,6 +12,16 @@ window.onunhandledrejection = (event) => {
   console.error("Unhandled promise rejection:", event.reason);
 };
 
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => registration.unregister());
+    }).catch(() => {
+      // Ignore cleanup failures; stale workers should never block rendering.
+    });
+  });
+}
+
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorInfo: string }> {
   constructor(props: { children: ReactNode }) {
     super(props);

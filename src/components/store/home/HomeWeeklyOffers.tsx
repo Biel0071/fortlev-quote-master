@@ -66,7 +66,7 @@ function OfferCard({
     <Card className="h-full overflow-hidden rounded-2xl bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md">
       <div className="relative aspect-[4/3] bg-muted/20 border-b border-border overflow-hidden">
         {imgUrl ? (
-          <img src={imgUrl} alt={product?.name ?? "Produto"} className="h-full w-full object-contain p-2" loading="eager" />
+          <img src={imgUrl} alt={product?.name ?? "Produto"} className="h-full w-full object-contain p-2" loading="eager" decoding="async" fetchPriority="high" />
         ) : (
           <div className="h-full w-full bg-muted" />
         )}

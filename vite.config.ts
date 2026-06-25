@@ -18,10 +18,27 @@ export default defineConfig(({ mode }) => ({
 
   ].filter(Boolean),
   build: {
+    target: "es2020",
+    cssCodeSplit: true,
+    sourcemap: false,
+    minify: "esbuild",
     rollupOptions: {
-      // Manual chunks disabled to avoid loading issues in some environments
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("react-dom") || id.includes("/react/") || id.includes("scheduler") || id.includes("react-router")) return "react-vendor";
+          if (id.includes("@supabase")) return "supabase-vendor";
+          if (id.includes("@radix-ui")) return "radix-vendor";
+          if (id.includes("@tanstack")) return "query-vendor";
+          if (id.includes("recharts") || id.includes("d3-")) return "charts-vendor";
+          if (id.includes("lucide-react")) return "icons-vendor";
+          if (id.includes("framer-motion")) return "motion-vendor";
+          if (id.includes("jspdf") || id.includes("html2canvas")) return "pdf-vendor";
+          return "vendor";
+        },
+      },
     },
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 1200,
   },
   resolve: {
     alias: {

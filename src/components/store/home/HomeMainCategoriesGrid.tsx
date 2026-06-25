@@ -24,7 +24,7 @@ export function HomeMainCategoriesGrid({ categories }: { categories: StoreCatego
             <div className="p-5 flex flex-col items-center text-center gap-4">
               <div className="h-20 w-20 rounded-full overflow-hidden border border-border bg-muted/20">
                 {img ? (
-                  <img src={img} alt={`Categoria ${c.name}`} className="h-full w-full object-cover" loading="lazy" />
+                  <img src={img} alt={`Categoria ${c.name}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                 ) : (
                   <div className="h-full w-full fortlev-gradient opacity-80" />
                 )}

@@ -322,6 +322,7 @@ export type Database = {
           active: boolean
           created_at: string
           created_by: string | null
+          expires_at: string | null
           id: string
           key: string
           last_used_at: string | null
@@ -333,6 +334,7 @@ export type Database = {
           quota_used: number
           rate_limit: number
           source: string
+          starts_at: string
           store_id: string
           updated_at: string
         }
@@ -340,6 +342,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           created_by?: string | null
+          expires_at?: string | null
           id?: string
           key?: string
           last_used_at?: string | null
@@ -351,6 +354,7 @@ export type Database = {
           quota_used?: number
           rate_limit?: number
           source?: string
+          starts_at?: string
           store_id: string
           updated_at?: string
         }
@@ -358,6 +362,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           created_by?: string | null
+          expires_at?: string | null
           id?: string
           key?: string
           last_used_at?: string | null
@@ -369,12 +374,73 @@ export type Database = {
           quota_used?: number
           rate_limit?: number
           source?: string
+          starts_at?: string
           store_id?: string
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "api_keys_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_usage_logs: {
+        Row: {
+          api_key_id: string
+          created_at: string
+          duration_ms: number | null
+          endpoint: string
+          error: string | null
+          id: string
+          ip: string | null
+          metadata: Json
+          method: string
+          status_code: number
+          store_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          api_key_id: string
+          created_at?: string
+          duration_ms?: number | null
+          endpoint: string
+          error?: string | null
+          id?: string
+          ip?: string | null
+          metadata?: Json
+          method: string
+          status_code: number
+          store_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          api_key_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          endpoint?: string
+          error?: string | null
+          id?: string
+          ip?: string | null
+          metadata?: Json
+          method?: string
+          status_code?: number
+          store_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_usage_logs_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_usage_logs_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"

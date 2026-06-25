@@ -220,6 +220,10 @@ export default function AdminLayout() {
     return <Navigate to={`${routes.adminPath(suffix)}${location.search}`} replace />;
   }
 
+  if (isLegacyAdminPage && storesLoading) {
+    return <div className="p-6 text-muted-foreground">Carregando loja...</div>;
+  }
+
   if (isStoreScopedPage && (storesLoading || !activeStoreId)) {
     if (storesLoading) return <div className="p-6 text-muted-foreground">Carregando loja...</div>;
     return (

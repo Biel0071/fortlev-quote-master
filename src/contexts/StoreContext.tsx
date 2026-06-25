@@ -14,7 +14,7 @@ type StoreDbRow = {
 
 type StoreContextValue = {
   store: AppStore;
-  setStore: (store: AppStore) => void;
+  setStore: (store: AppStore) => string | null;
   label: string;
   /** The database UUID of the active store (null if not resolved yet) */
   activeStoreId: string | null;
@@ -120,7 +120,9 @@ export function StoreProvider({ children }: StoreProviderProps) {
     if (found) {
       setStoreRaw(found.slug);
       setActiveStoreId(found.id);
+      return found.id;
     }
+    return null;
   };
 
 

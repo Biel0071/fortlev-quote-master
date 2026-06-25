@@ -1,4 +1,5 @@
 import { STORE_OPTIONS, useStore, type AppStore } from "@/contexts/StoreContext";
+import { useNavigate } from "react-router-dom";
 import {
   Select,
   SelectContent,
@@ -8,10 +9,18 @@ import {
 } from "@/components/ui/select";
 
 export function StoreSwitcher({ className }: { className?: string }) {
-  const { store, setStore } = useStore();
+  const navigate = useNavigate();
+  const { store, setStore, activeStoreId } = useStore();
+
+  const handleChange = (value: AppStore) => {
+    setStore(value);
+    window.setTimeout(() => {
+      if (activeStoreId) navigate(`/admin/store/${activeStoreId}/dashboard`);
+    }, 0);
+  };
 
   return (
-    <Select value={store} onValueChange={(v) => setStore(v as AppStore)}>
+    <Select value={store} onValueChange={(v) => handleChange(v as AppStore)}>
       <SelectTrigger className={className} aria-label="Trocar loja">
         <SelectValue placeholder="Selecione a loja" />
       </SelectTrigger>

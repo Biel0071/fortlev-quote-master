@@ -218,15 +218,15 @@ export function hasSmartCache(key: string) {
 }
 
 export function runApiMicrotask(task: () => void | Promise<void>) {
-  if (typeof queueMicrotask === "function") {
-    queueMicrotask(() => {
+  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+    (window as Window & { requestIdleCallback: (cb: () => void, options?: { timeout?: number }) => number }).requestIdleCallback(() => {
       void task();
-    });
+    }, { timeout: 1500 });
     return;
   }
 
-  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-    (window as Window & { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(() => {
+  if (typeof queueMicrotask === "function") {
+    queueMicrotask(() => {
       void task();
     });
     return;

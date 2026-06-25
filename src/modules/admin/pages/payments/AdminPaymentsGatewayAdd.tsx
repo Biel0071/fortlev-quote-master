@@ -10,11 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
+import { useStore } from "@/contexts/StoreContext";
 
 const METHODS = ["pix", "card", "boleto"];
 
 export default function AdminPaymentsGatewayAdd() {
   const nav = useNavigate();
+  const { routes } = useStore();
   const [params] = useSearchParams();
   const editId = params.get("edit");
 
@@ -98,7 +100,7 @@ export default function AdminPaymentsGatewayAdd() {
       toast.success("Gateway criado");
     }
     setSaving(false);
-    nav("/admin/configuracoes/pagamentos/gateways");
+    nav(routes.adminPath("/configuracoes/pagamentos/gateways"));
   };
 
   return (

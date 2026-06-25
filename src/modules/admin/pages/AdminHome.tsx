@@ -135,7 +135,7 @@ type SimpleProduct = {
 };
 
 export default function AdminHome() {
-  const { activeStoreId } = useStore();
+  const { activeStoreId, routes } = useStore();
   const nav = useNavigate();
   const [loading, setLoading] = useState(true);
 
@@ -819,7 +819,7 @@ export default function AdminHome() {
                         aria-label={`Destaque ${p.name}`}
                       />
                       <div className="flex items-center gap-1 shrink-0">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => nav(routes.adminPath(`/produtos/editar/${p.id}`))}>
                           <Pencil className="w-3.5 h-3.5" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7" title="Ver loja" onClick={() => window.open(`/produto/${p.id}`, "_blank")}>
@@ -884,7 +884,7 @@ export default function AdminHome() {
                         aria-label={`Mais vendido ${p.name}`}
                       />
                       <div className="flex items-center gap-1 shrink-0">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => nav(routes.adminPath(`/produtos/editar/${p.id}`))}>
                           <Pencil className="w-3.5 h-3.5" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7" title="Ver loja" onClick={() => window.open(`/produto/${p.id}`, "_blank")}>

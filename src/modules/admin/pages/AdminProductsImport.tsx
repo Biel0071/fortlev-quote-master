@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
+import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +88,7 @@ function rowsToProducts(rows: any[][]): { products: ParsedProduct[]; categories:
 
 export default function AdminProductsImport() {
   const nav = useNavigate();
+  const { routes } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<ParsedProduct[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -166,7 +168,7 @@ export default function AdminProductsImport() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => nav("/admin/produtos")}>
+        <Button variant="ghost" size="icon" onClick={() => nav(routes.adminPath("/produtos"))}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>

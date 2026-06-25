@@ -24,6 +24,7 @@ import {
   CheckCircle2, XCircle, AlertTriangle, Clock, Server, Zap, Eye,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useStore } from "@/contexts/StoreContext";
 
 type GatewayFilter = "all" | "active" | "inactive" | "production" | "sandbox";
 
@@ -37,6 +38,7 @@ function healthIndicator(txCount: number, errCount: number) {
 
 export default function AdminPaymentsGateways() {
   const nav = useNavigate();
+  const { routes } = useStore();
   const [filter, setFilter] = useState<GatewayFilter>("all");
   const [toggleTarget, setToggleTarget] = useState<{ id: string; name: string; current: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -229,7 +231,7 @@ export default function AdminPaymentsGateways() {
 
       {/* Actions bar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => nav("/admin/configuracoes/pagamentos/gateways/add")} size="sm">
+        <Button onClick={() => nav(routes.adminPath("/configuracoes/pagamentos/gateways/add"))} size="sm">
           <PlugZap className="h-4 w-4 mr-2" /> Conectar Gateway
         </Button>
         <Button variant="outline" size="sm" onClick={() => setTestPayDialog(true)}>
@@ -293,7 +295,7 @@ export default function AdminPaymentsGateways() {
                         <Button variant="outline" size="sm" className="text-xs" onClick={() => setToggleTarget({ id: gw.id, name: gw.name, current: gw.status })}>
                           {gw.status === "active" ? "Desativar" : "Ativar"}
                         </Button>
-                        <Button variant="outline" size="sm" className="text-xs" onClick={() => nav(`/admin/configuracoes/pagamentos/gateways/add?edit=${gw.id}`)}>Editar</Button>
+                        <Button variant="outline" size="sm" className="text-xs" onClick={() => nav(`${routes.adminPath("/configuracoes/pagamentos/gateways/add")}?edit=${gw.id}`)}>Editar</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -344,7 +346,7 @@ export default function AdminPaymentsGateways() {
                                 <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => nav(`/admin/configuracoes/pagamentos/gateways/add?edit=${gw.id}`)}>
+                                <DropdownMenuItem onClick={() => nav(`${routes.adminPath("/configuracoes/pagamentos/gateways/add")}?edit=${gw.id}`)}>
                                   <Settings className="h-4 w-4 mr-2" /> Editar gateway
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => testConnection(gw.name)}>

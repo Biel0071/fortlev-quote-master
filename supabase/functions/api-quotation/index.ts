@@ -1,8 +1,9 @@
-// Edge function: API REST para bots (WhatsApp, ERP, etc)
+// Edge function: API REST para bots (WhatsApp, ERP, extensões)
 // Endpoints:
-//   POST /analyze   -> analisa texto/imagem e retorna itens + cliente
-//   POST /generate  -> cria orçamento a partir da análise
-//   GET  /:id       -> retorna orçamento (com URLs de PDF/PNG quando prontos)
+//   POST /analyze         -> analisa texto/imagem (proxy p/ analyze-quotation-image)
+//   POST /generate        -> cria orçamento a partir da análise
+//   GET  /:id             -> retorna orçamento
+//   POST /validate-token  -> valida token de acesso por loja
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -22,105 +23,179 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-async function authenticate(req: Request) {
+type KeyRecord = {
+  id: string;
+  store_id: string;
+  permissions: string[];
+  active: boolean;
+  quota_limit: number;
+  quota_used: number;
+  rate_limit: number;
+};
+
+async function authenticate(req: Request): Promise<KeyRecord | { error: string; status: number } | null> {
   const apiKey = req.headers.get("x-api-key");
   if (!apiKey || apiKey.length < 16) return null;
   const { data } = await supabase
     .from("api_keys")
-    .select("id, store_id, permissions, active")
+    .select("id, store_id, permissions, active, quota_limit, quota_used, rate_limit")
     .eq("key", apiKey)
     .eq("active", true)
     .maybeSingle();
   if (!data) return null;
-  // Best-effort last_used_at update
-  supabase.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", data.id).then(() => {});
-  return data as { id: string; store_id: string; permissions: string[]; active: boolean };
+
+  // Quota check
+  if ((data.quota_limit ?? 0) > 0 && (data.quota_used ?? 0) >= data.quota_limit) {
+    return { error: "Quota excedida", status: 429 };
+  }
+
+  // Increment usage (best-effort, non-blocking)
+  supabase
+    .from("api_keys")
+    .update({ last_used_at: new Date().toISOString(), quota_used: (data.quota_used ?? 0) + 1 })
+    .eq("id", data.id)
+    .then(() => {});
+
+  return data as KeyRecord;
+}
+
+function hasPermission(auth: KeyRecord, perm: string): boolean {
+  return Array.isArray(auth.permissions) && auth.permissions.includes(perm);
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const auth = await authenticate(req);
-    if (!auth) return json({ error: "API key inválida ou ausente. Envie no header x-api-key." }, 401);
-
     const url = new URL(req.url);
-    // path = /api-quotation/<sub>
     const sub = url.pathname.replace(/^.*\/api-quotation/, "").replace(/^\//, "");
 
-    // POST /analyze -> proxy para analyze-quotation-image
-    if (req.method === "POST" && sub.startsWith("analyze")) {
+    // POST /validate-token — pública (não exige x-api-key)
+    if (req.method === "POST" && sub.startsWith("validate-token")) {
       const body = await req.json().catch(() => ({}));
+      const token = String(body.token ?? "").trim();
+      if (!token) return json({ valid: false, error: "token obrigatório" }, 400);
+
+      const { data: t } = await supabase
+        .from("quotation_access_tokens")
+        .select("id, store_id, access_scope, status, expires_at, max_uses, uses_count, name, stores(name, slug)")
+        .eq("token", token)
+        .maybeSingle();
+
+      if (!t) return json({ valid: false, error: "Token inválido" }, 401);
+      if (t.status !== "active") return json({ valid: false, error: "Token inativo" }, 401);
+      if (t.expires_at && new Date(t.expires_at) < new Date())
+        return json({ valid: false, error: "Token expirado" }, 401);
+      if ((t.max_uses ?? 0) > 0 && (t.uses_count ?? 0) >= t.max_uses)
+        return json({ valid: false, error: "Limite de usos atingido" }, 429);
+
+      return json({
+        valid: true,
+        store_id: t.store_id,
+        store: t.stores,
+        scope: t.access_scope,
+        name: t.name,
+      });
+    }
+
+    const auth = await authenticate(req);
+    if (!auth) return json({ error: "API key inválida ou ausente. Envie em x-api-key." }, 401);
+    if ("error" in auth) return json({ error: auth.error }, auth.status);
+
+    // POST /analyze
+    if (req.method === "POST" && sub.startsWith("analyze")) {
+      if (!hasPermission(auth, "quotation:create")) return json({ error: "Sem permissão quotation:create" }, 403);
+      const body = await req.json().catch(() => ({}));
+      if (!body.text && !body.image_base64 && !body.images)
+        return json({ error: "Envie text ou image_base64/images" }, 400);
+
       const { data, error } = await supabase.functions.invoke("analyze-quotation-image", {
-        body: { text: body.text ?? "", images: body.images ?? [] },
+        body: {
+          text: body.text ?? "",
+          images: body.images ?? (body.image_base64 ? [body.image_base64] : []),
+        },
       });
       if (error) return json({ error: error.message ?? "Falha na análise" }, 500);
       return json({ ok: true, store_id: auth.store_id, analysis: data });
     }
 
-    // POST /generate -> cria registro de orçamento (rascunho)
+    // POST /generate
     if (req.method === "POST" && sub.startsWith("generate")) {
+      if (!hasPermission(auth, "quotation:create")) return json({ error: "Sem permissão quotation:create" }, 403);
       const body = await req.json().catch(() => ({}));
       const a = body.analysis ?? body;
       if (!a || !Array.isArray(a.items)) return json({ error: "Payload inválido: analysis.items obrigatório" }, 400);
 
-      const subtotal = a.items.reduce((s: number, i: any) => s + Number(i.total ?? (i.unit_price ?? 0) * (i.quantity ?? 0)), 0);
-      const total = Number(a.total ?? subtotal + Number(a.shipping ?? 0) - Number(a.discount ?? 0));
+      const subtotal = a.items.reduce(
+        (s: number, i: any) => s + Number(i.total ?? (i.unit_price ?? 0) * (i.quantity ?? 0)),
+        0,
+      );
+      const total = Number(a.total ?? subtotal + Number(a.shipping ?? a.freight ?? 0) - Number(a.discount ?? 0));
 
       const { data: q, error } = await supabase
         .from("construction_quotations")
         .insert({
-          store_id: auth.store_id,
-          customer_name: a.customer?.name ?? body.customer_name ?? "Cliente API",
-          customer_phone: a.customer?.phone ?? null,
-          customer_email: a.customer?.email ?? null,
-          customer_document: a.customer?.cpf_cnpj ?? null,
-          delivery_address: a.customer?.address ?? null,
-          items: a.items,
+          customer_json: a.customer ?? { name: body.customer_name ?? "Cliente API" },
+          items_json: a.items,
+          company_info_json: a.company ?? null,
+          company_id: a.company_id ?? body.company_id ?? null,
           subtotal,
+          discount: Number(a.discount ?? 0),
+          freight: Number(a.shipping ?? a.freight ?? 0),
           total,
           status: "draft",
-          source: "api_bot",
+          observations: `[api_bot key:${auth.id}] ${a.observations ?? ""}`.trim(),
         } as any)
-        .select("id")
+        .select("id, number, total")
         .single();
 
       if (error) return json({ error: error.message }, 500);
 
-      // Fire webhooks (best-effort, non-blocking)
-      supabase.from("api_webhooks").select("url, secret")
-        .eq("store_id", auth.store_id).eq("event", "quotation.created").eq("active", true)
+      // Fire webhooks (best-effort)
+      supabase
+        .from("api_webhooks")
+        .select("url, secret")
+        .eq("store_id", auth.store_id)
+        .eq("event", "quotation.created")
+        .eq("active", true)
         .then(({ data: hooks }) => {
           for (const h of hooks ?? []) {
             fetch(h.url, {
               method: "POST",
-              headers: { "Content-Type": "application/json", "X-Webhook-Secret": h.secret, "X-Event": "quotation.created" },
-              body: JSON.stringify({ quotation_id: q.id, store_id: auth.store_id, total }),
+              headers: {
+                "Content-Type": "application/json",
+                "X-Webhook-Secret": h.secret,
+                "X-Event": "quotation.created",
+              },
+              body: JSON.stringify({ quotation_id: q.id, store_id: auth.store_id, total: q.total }),
             }).catch(() => {});
           }
         });
 
-      return json({ ok: true, quotation_id: q.id, total });
+      return json({ ok: true, quotation_id: q.id, number: q.number, total: q.total });
     }
 
     // GET /:id
     if (req.method === "GET" && sub.length > 0) {
+      if (!hasPermission(auth, "quotation:read")) return json({ error: "Sem permissão quotation:read" }, 403);
       const id = sub.split("/")[0];
       const { data, error } = await supabase
         .from("construction_quotations")
-        .select("id, customer_name, total, status, created_at")
+        .select("id, number, customer_json, items_json, subtotal, discount, freight, total, status, created_at")
         .eq("id", id)
-        .eq("store_id", auth.store_id)
         .maybeSingle();
       if (error) return json({ error: error.message }, 500);
       if (!data) return json({ error: "Orçamento não encontrado" }, 404);
       return json({ ok: true, quotation: data });
     }
 
-    return json({
-      error: "Rota não encontrada",
-      endpoints: ["POST /analyze", "POST /generate", "GET /:id"],
-    }, 404);
+    return json(
+      {
+        error: "Rota não encontrada",
+        endpoints: ["POST /analyze", "POST /generate", "GET /:id", "POST /validate-token"],
+      },
+      404,
+    );
   } catch (e: any) {
     return json({ error: e?.message ?? "Erro interno" }, 500);
   }

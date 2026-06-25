@@ -325,8 +325,14 @@ export type Database = {
           id: string
           key: string
           last_used_at: string | null
+          metadata: Json
           name: string
           permissions: string[]
+          quota_limit: number
+          quota_reset_at: string | null
+          quota_used: number
+          rate_limit: number
+          source: string
           store_id: string
           updated_at: string
         }
@@ -337,8 +343,14 @@ export type Database = {
           id?: string
           key?: string
           last_used_at?: string | null
+          metadata?: Json
           name: string
           permissions?: string[]
+          quota_limit?: number
+          quota_reset_at?: string | null
+          quota_used?: number
+          rate_limit?: number
+          source?: string
           store_id: string
           updated_at?: string
         }
@@ -349,8 +361,14 @@ export type Database = {
           id?: string
           key?: string
           last_used_at?: string | null
+          metadata?: Json
           name?: string
           permissions?: string[]
+          quota_limit?: number
+          quota_reset_at?: string | null
+          quota_used?: number
+          rate_limit?: number
+          source?: string
           store_id?: string
           updated_at?: string
         }
@@ -5748,6 +5766,7 @@ export type Database = {
         Args: { _product_id: string }
         Returns: undefined
       }
+      reset_api_quotas: { Args: never; Returns: undefined }
       reset_quotation_access_token: {
         Args: { _token_id: string }
         Returns: undefined

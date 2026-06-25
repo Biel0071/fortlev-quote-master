@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { FullScreenLoader } from '@/components/shared/FullScreenLoader';
 
 interface PlanLimits {
   max_stores: number;

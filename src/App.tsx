@@ -39,9 +39,10 @@ const MasterRouteGuard = lazy(() => import("@/components/admin/MasterRouteGuard"
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60_000, // Increase stale time for better performance
-      gcTime: 1000 * 60 * 60, // 1 hour cache
+      staleTime: 2 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
       refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
       retry: 1,
     },
   },

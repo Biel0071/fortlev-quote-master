@@ -100,6 +100,36 @@ export default function StoreHome() {
 
   const { isLoading: tenantLoading, store: tenantStoreData } = useTenant();
   const loading = tenantLoading || (productsLoading && activeProducts.length === 0) || (categoriesLoading && activeCategories.length === 0);
+
+  const featuredIds = useMemo(() => {
+    const list = (activeProducts ?? []) as any[];
+    const featured = list.filter((p) => p?.featured && p?.active).map((p) => p.id) as string[];
+    if (featured.length === 0) {
+      return list.filter(p => p.active).slice(0, 12).map((p) => p.id);
+    }
+    return featured;
+  }, [activeProducts]);
+
+  const topClickedIds = useMemo(() => {
+    const list = ((activeProducts ?? []) as any[]).filter(p => p.active);
+    const taggedBestSellers = list.filter(p => p.best_seller);
+    if (taggedBestSellers.length > 0) {
+      return taggedBestSellers.slice(0, 10).map(p => p.id);
+    }
+    const bestSellers = [...list]
+      .sort((a, b) => {
+        const salesDiff = Number(b.sales ?? 0) - Number(a.sales ?? 0);
+        if (salesDiff !== 0) return salesDiff;
+        return Number(b.clicks ?? 0) - Number(a.clicks ?? 0);
+      })
+      .slice(0, 20)
+      .map((p) => p.id) as string[];
+    if (bestSellers.length >= 8) return bestSellers.slice(0, 10);
+    return list.slice(0, 12).map((p) => p.id);
+  }, [activeProducts]);
+
+  const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
+
   
   if (tenantLoading) {
     return (

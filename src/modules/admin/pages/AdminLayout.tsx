@@ -210,7 +210,7 @@ export default function AdminLayout() {
     );
   }
 
-  if (isStoreSelectorPage && !activeStoreId) {
+  if (isStoreSelectorPage) {
     return (
       <div className="min-h-screen bg-background">
         <header className="h-14 flex items-center justify-between gap-3 border-b border-border bg-background/80 backdrop-blur px-3 sm:px-4">

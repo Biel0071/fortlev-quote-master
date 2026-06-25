@@ -21,11 +21,12 @@ import {
   Webhook,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/contexts/StoreContext";
 
 type NavItem = { label: string; to: string; icon: any };
 type NavGroup = { label: string; icon: any; items: NavItem[] };
 
-const BASE = "/admin/configuracoes/pagamentos";
+const BASE = "/configuracoes/pagamentos";
 
 const NAV_GROUPS: NavGroup[] = [
   {
@@ -88,10 +89,11 @@ const NAV_GROUPS: NavGroup[] = [
 export default function AdminPaymentsLayout() {
   const nav = useNavigate();
   const location = useLocation();
+  const { routes } = useStore();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     NAV_GROUPS.forEach((g) => {
-      if (g.items.some((i) => location.pathname.startsWith(i.to))) {
+      if (g.items.some((i) => location.pathname.startsWith(routes.adminPath(i.to)))) {
         initial[g.label] = true;
       }
     });
@@ -101,7 +103,7 @@ export default function AdminPaymentsLayout() {
   const toggleGroup = (label: string) =>
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === routes.adminPath(path);
 
   return (
     <div className="flex min-h-[calc(100vh-3rem)]">
@@ -118,7 +120,7 @@ export default function AdminPaymentsLayout() {
         <nav className="px-2 py-2 space-y-1">
           {NAV_GROUPS.map((group) => {
             const isOpen = openGroups[group.label] ?? false;
-            const hasActive = group.items.some((i) => location.pathname.startsWith(i.to));
+            const hasActive = group.items.some((i) => location.pathname.startsWith(routes.adminPath(i.to)));
 
             return (
               <div key={group.label}>
@@ -143,7 +145,7 @@ export default function AdminPaymentsLayout() {
                     {group.items.map((item) => (
                       <button
                         key={item.to}
-                        onClick={() => nav(item.to)}
+                        onClick={() => nav(routes.adminPath(item.to))}
                         className={cn(
                           "w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors",
                           isActive(item.to)

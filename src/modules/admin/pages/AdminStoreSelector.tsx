@@ -164,11 +164,6 @@ export default function AdminStoreSelector() {
 
     setStores(available);
 
-    if (!isMaster && available.length === 1) {
-      enterStore(available[0]);
-      return;
-    }
-
     const storeIds = available.map((s) => s.id);
     const { data: domains } = await cloud
       .from("store_domains")
@@ -200,7 +195,7 @@ export default function AdminStoreSelector() {
   const enterStore = (storeRow: StoreRow) => {
     setStore(storeRow.slug);
     setActiveStoreId(storeRow.id);
-    navigate("/admin/dashboard");
+    navigate(`/admin/store/${storeRow.id}/dashboard`);
   };
 
   const storeIcon = (slug: string) => {

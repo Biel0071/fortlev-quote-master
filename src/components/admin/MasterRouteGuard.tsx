@@ -10,42 +10,54 @@ export const MasterRouteGuard = ({ children }: { children: React.ReactNode }) =>
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
+    let alive = true;
+
     const checkAuth = async () => {
-      const hostname = window.location.hostname;
-      const isLovable = hostname.includes('lovable.app') || hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('lovable.project');
-      
-      // Bloqueio preventivo: Master Admin só deve ser acessível via domínio da plataforma
-      if (!isLovable) {
-        console.warn("Bloqueio de segurança: Master Admin acessado via domínio customizado.");
-        navigate("/");
-        return;
-      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!alive) return;
+        if (!session) {
+          setLoading(false);
+          navigate("/auth/login", { replace: true });
+          return;
+        }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        navigate("/auth/login");
-        return;
-      }
+        const { data: isMaster, error } = await supabase.rpc('is_master_admin');
 
-      // Check if user is in admin_users or has admin role in app_metadata
-      const { data: isMaster } = await supabase.rpc('is_master_admin');
+        if (!alive) return;
+        if (error || !isMaster) {
+          if (error) console.error("Erro ao validar Master Admin:", error);
+          toast({
+            title: "Acesso Negado",
+            description: "Você não tem permissão para acessar o Master Admin.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          navigate("/admin", { replace: true });
+          return;
+        }
 
-      if (!isMaster) {
+        setAuthorized(true);
+        setLoading(false);
+      } catch (error) {
+        if (!alive) return;
+        console.error("Falha ao abrir Master Admin:", error);
         toast({
-          title: "Acesso Negado",
-          description: "Você não tem permissão para acessar o Master Admin.",
+          title: "Erro no acesso master",
+          description: "Não foi possível validar sua sessão. Tente entrar novamente.",
           variant: "destructive",
         });
-        navigate("/admin");
-        return;
+        setLoading(false);
+        navigate("/auth/login", { replace: true });
       }
-
-      setAuthorized(true);
-      setLoading(false);
     };
 
     checkAuth();
+
+    return () => {
+      alive = false;
+    };
   }, [navigate, toast]);
 
   if (loading) {

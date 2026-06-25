@@ -14,16 +14,19 @@ type StoreDbRow = {
 
 type StoreContextValue = {
   store: AppStore;
-  setStore: (store: AppStore) => void;
+  setStore: (store: AppStore) => string | null;
   label: string;
   /** The database UUID of the active store (null if not resolved yet) */
   activeStoreId: string | null;
+  availableStores: Array<{ value: AppStore; label: string; id: string }>;
   /** Set active store directly by database ID */
   setActiveStoreId: (id: string | null) => void;
   routes: {
     publicHome: string;
     quotations: string;
     dashboard: string;
+    adminBase: string;
+    adminPath: (path?: string) => string;
   };
 };
 
@@ -61,6 +64,18 @@ export function StoreProvider({ children }: StoreProviderProps) {
     if (dbStores.length === 0) return;
     const host = window.location.hostname;
     const pathname = location.pathname;
+
+    // The global admin entry is always the store selector. Do not inherit a
+    // previously selected store here, otherwise /admin can look stuck in a store.
+    if (pathname === "/admin") {
+      if (activeStoreId !== null) setActiveStoreId(null);
+      return;
+    }
+
+    // Master/auth/global admin pages should not auto-switch storefront context.
+    if (pathname.startsWith("/admin/master") || pathname.startsWith("/auth")) {
+      return;
+    }
 
     // 1. Check for /admin/store/:storeId
     const adminStoreMatch = pathname.match(/\/admin\/store\/([^\/]+)/);
@@ -118,12 +133,19 @@ export function StoreProvider({ children }: StoreProviderProps) {
     if (found) {
       setStoreRaw(found.slug);
       setActiveStoreId(found.id);
+      return found.id;
     }
+    return null;
   };
 
 
   const value = useMemo<StoreContextValue>(() => {
     const dbStore = dbStores.find((s) => s.slug === store || s.id === activeStoreId);
+    const adminBase = dbStore ? `/admin/store/${dbStore.id}` : "/admin";
+    const adminPath = (path = "") => {
+      const cleanPath = path.startsWith("/") ? path : `/${path}`;
+      return `${adminBase}${cleanPath === "/" ? "" : cleanPath}`;
+    };
     const label = dbStore?.name ?? STORE_LABEL[store] ?? store;
 
     return {
@@ -131,11 +153,14 @@ export function StoreProvider({ children }: StoreProviderProps) {
       setStore,
       label,
       activeStoreId,
+      availableStores: dbStores.map((s) => ({ value: s.slug, label: s.name, id: s.id })),
       setActiveStoreId,
       routes: {
         publicHome: dbStore ? `/p/${dbStore.slug}` : "/",
         quotations: "/orcamentos",
-        dashboard: "/admin/dashboard",
+        dashboard: adminPath("/dashboard"),
+        adminBase,
+        adminPath,
       },
     };
   }, [store, activeStoreId, dbStores]);

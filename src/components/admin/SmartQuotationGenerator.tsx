@@ -33,6 +33,8 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
   const [factories, setFactories] = useState<any[]>([]);
   const [nearestFactory, setNearestFactory] = useState<any>(null);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [allCompanies, setAllCompanies] = useState<any[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -41,9 +43,11 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
       const { data } = await supabase
         .from('issuing_companies')
         .select('*')
-        .eq('company_type', 'fortlev')
         .eq('is_active', true);
-      if (data) setFactories(data);
+      if (data) {
+        setAllCompanies(data);
+        setFactories(data.filter((c: any) => c.company_type === 'fortlev'));
+      }
     };
     fetchFactories();
   }, []);

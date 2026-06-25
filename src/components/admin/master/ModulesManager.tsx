@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Cpu, Settings2, Trash2, ShoppingBag, CheckCircle2, Zap, Bot, Lock, Save, Globe } from "lucide-react";
+import { Plus, Cpu, Settings2, Trash2, ShoppingBag, CheckCircle2, Zap, Bot, Lock, Save, Globe, Grid3x3 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import StoreModulesMatrix from "./StoreModulesMatrix";
 
 const ModulesManager = () => {
   const queryClient = useQueryClient();
@@ -168,7 +169,15 @@ const ModulesManager = () => {
           <TabsTrigger value="premium" className="gap-2">
             <Zap size={16} /> Apenas Premium
           </TabsTrigger>
+          <TabsTrigger value="matrix" className="gap-2">
+            <Grid3x3 size={16} /> Matriz Loja × Módulo
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="matrix">
+          <StoreModulesMatrix />
+        </TabsContent>
+
 
         <TabsContent value="all" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navigate } from "react-router-dom";
+import { useStore } from "@/contexts/StoreContext";
 
 export function AdminSettingsFrete() {
   return (
@@ -11,7 +12,8 @@ export function AdminSettingsFrete() {
 }
 
 export function AdminSettingsPagamentos() {
-  return <Navigate to="/admin/configuracoes/pagamentos/gateways" replace />;
+  const { routes } = useStore();
+  return <Navigate to={routes.adminPath("/configuracoes/pagamentos/gateways")} replace />;
 }
 
 export function AdminSettingsIdentidade() {

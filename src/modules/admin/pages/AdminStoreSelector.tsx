@@ -200,7 +200,7 @@ export default function AdminStoreSelector() {
   const enterStore = (storeRow: StoreRow) => {
     setStore(storeRow.slug);
     setActiveStoreId(storeRow.id);
-    navigate("/admin/dashboard");
+    navigate(`/admin/store/${storeRow.id}/dashboard`);
   };
 
   const storeIcon = (slug: string) => {

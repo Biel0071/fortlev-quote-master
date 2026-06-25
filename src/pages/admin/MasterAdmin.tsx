@@ -1,16 +1,18 @@
-import { Outlet, NavLink, Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { NavLink, Routes, Route, Navigate } from "react-router-dom";
 import { LayoutDashboard, Store, Layers, FileCode2, Cpu, Globe, BarChart3, Settings, ShieldCheck, Activity, Sparkles, CreditCard, DollarSign, Palette } from "lucide-react";
-import MasterDashboard from "@/components/admin/master/MasterDashboard";
-import StoresList from "@/components/admin/master/StoresList";
-import BlueprintsManager from "@/components/admin/master/BlueprintsManager";
-import ModulesManager from "@/components/admin/master/ModulesManager";
-import MasterAICentral from "@/components/admin/master/MasterAICentral";
-import MasterLogs from "@/components/admin/master/MasterLogs";
-import SaaSPlansManager from "@/components/admin/master/SaaSPlansManager";
-import FinanceManager from "@/components/admin/master/FinanceManager";
-import WhiteLabelSettings from "@/components/admin/master/WhiteLabelSettings";
-import DomainsManager from "@/components/admin/master/DomainsManager";
-import StoreDetails from "@/components/admin/master/StoreDetails";
+
+const MasterDashboard = lazy(() => import("@/components/admin/master/MasterDashboard"));
+const StoresList = lazy(() => import("@/components/admin/master/StoresList"));
+const BlueprintsManager = lazy(() => import("@/components/admin/master/BlueprintsManager"));
+const ModulesManager = lazy(() => import("@/components/admin/master/ModulesManager"));
+const MasterAICentral = lazy(() => import("@/components/admin/master/MasterAICentral"));
+const MasterLogs = lazy(() => import("@/components/admin/master/MasterLogs"));
+const SaaSPlansManager = lazy(() => import("@/components/admin/master/SaaSPlansManager"));
+const FinanceManager = lazy(() => import("@/components/admin/master/FinanceManager"));
+const WhiteLabelSettings = lazy(() => import("@/components/admin/master/WhiteLabelSettings"));
+const DomainsManager = lazy(() => import("@/components/admin/master/DomainsManager"));
+const StoreDetails = lazy(() => import("@/components/admin/master/StoreDetails"));
 
 function MasterPlaceholder({ title }: { title: string }) {
   return (
@@ -19,6 +21,10 @@ function MasterPlaceholder({ title }: { title: string }) {
       <p className="text-sm text-muted-foreground">Área master carregada e pronta para configuração.</p>
     </div>
   );
+}
+
+function MasterRouteFallback() {
+  return <div className="p-6 text-sm text-muted-foreground">Carregando área master...</div>;
 }
 
 const MasterAdmin = () => {
@@ -73,23 +79,25 @@ const MasterAdmin = () => {
       </aside>
       <main className="flex-1 overflow-auto bg-muted/20">
         <div className="container mx-auto py-8 px-8">
-          <Routes>
-            <Route index element={<MasterDashboard />} />
-            <Route path="stores" element={<StoresList />} />
-            <Route path="stores/:storeId" element={<StoreDetails />} />
-            <Route path="plans" element={<SaaSPlansManager />} />
-            <Route path="finance" element={<FinanceManager />} />
-            <Route path="blueprints" element={<BlueprintsManager />} />
-            <Route path="templates" element={<MasterPlaceholder title="Templates" />} />
-            <Route path="modules" element={<ModulesManager />} />
-            <Route path="ia" element={<MasterAICentral />} />
-            <Route path="whitelabel" element={<WhiteLabelSettings />} />
-            <Route path="domains" element={<DomainsManager />} />
-            <Route path="analytics" element={<MasterPlaceholder title="Analytics Master" />} />
-            <Route path="logs" element={<MasterLogs />} />
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/admin/master" replace />} />
-          </Routes>
+          <Suspense fallback={<MasterRouteFallback />}>
+            <Routes>
+              <Route index element={<MasterDashboard />} />
+              <Route path="stores" element={<StoresList />} />
+              <Route path="stores/:storeId" element={<StoreDetails />} />
+              <Route path="plans" element={<SaaSPlansManager />} />
+              <Route path="finance" element={<FinanceManager />} />
+              <Route path="blueprints" element={<BlueprintsManager />} />
+              <Route path="templates" element={<MasterPlaceholder title="Templates" />} />
+              <Route path="modules" element={<ModulesManager />} />
+              <Route path="ia" element={<MasterAICentral />} />
+              <Route path="whitelabel" element={<WhiteLabelSettings />} />
+              <Route path="domains" element={<DomainsManager />} />
+              <Route path="analytics" element={<MasterPlaceholder title="Analytics Master" />} />
+              <Route path="logs" element={<MasterLogs />} />
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/admin/master" replace />} />
+            </Routes>
+          </Suspense>
         </div>
       </main>
     </div>

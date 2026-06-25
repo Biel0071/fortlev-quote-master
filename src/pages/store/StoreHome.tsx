@@ -56,10 +56,28 @@ export default function StoreHome() {
 
   const [phase, setPhase] = useState({
     categories: true,
-    featured: true,
-    additional: true,
-    secondary: true,
+    featured: false,
+    additional: false,
+    secondary: false,
   });
+
+  useEffect(() => {
+    const featuredTimer = window.setTimeout(() => {
+      setPhase((current) => ({ ...current, featured: true }));
+    }, 250);
+    const additionalTimer = window.setTimeout(() => {
+      setPhase((current) => ({ ...current, additional: true }));
+    }, 900);
+    const secondaryTimer = window.setTimeout(() => {
+      setPhase((current) => ({ ...current, secondary: true }));
+    }, 1400);
+
+    return () => {
+      window.clearTimeout(featuredTimer);
+      window.clearTimeout(additionalTimer);
+      window.clearTimeout(secondaryTimer);
+    };
+  }, []);
 
 
   const home = useHomeContent({ enabled: true });
@@ -99,7 +117,7 @@ export default function StoreHome() {
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
   const { isLoading: tenantLoading, store: tenantStoreData } = useTenant();
-  const loading = tenantLoading || (productsLoading && activeProducts.length === 0) || (categoriesLoading && activeCategories.length === 0);
+  const loading = tenantLoading || !phase.featured || (productsLoading && activeProducts.length === 0) || (categoriesLoading && activeCategories.length === 0);
 
   const featuredIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
@@ -196,7 +214,7 @@ export default function StoreHome() {
 
 
   // Improved empty store detection
-  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && !home.loading;
+  const isEmptyStore = phase.featured && !loading && !tenantLoading && activeProducts.length === 0 && !home.loading;
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen pt-[var(--store-header-offset,80px)]">

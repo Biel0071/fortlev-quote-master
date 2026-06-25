@@ -7,6 +7,7 @@ import {
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/contexts/StoreContext";
 
 type SettingsItem = {
   label: string;
@@ -16,14 +17,14 @@ type SettingsItem = {
   children?: { label: string; to: string; icon: any }[];
 };
 
-const BASE = "/admin/configuracoes/pagamentos";
+const BASE = "/configuracoes/pagamentos";
 
 const settingsItems: SettingsItem[] = [
-  { label: "Usuários e Acessos", to: "/admin/configuracoes/usuarios", icon: Users, masterOnly: true },
-  { label: "Identidade da Loja", to: "/admin/configuracoes/identidade", icon: Palette },
-  { label: "Integrações", to: "/admin/configuracoes/integracoes", icon: Plug },
-  { label: "Frete", to: "/admin/configuracoes/frete", icon: Truck },
-  { label: "Cupons", to: "/admin/configuracoes/cupons", icon: TicketPercent },
+  { label: "Usuários e Acessos", to: "/configuracoes/usuarios", icon: Users, masterOnly: true },
+  { label: "Identidade da Loja", to: "/configuracoes/identidade", icon: Palette },
+  { label: "Integrações", to: "/configuracoes/integracoes", icon: Plug },
+  { label: "Frete", to: "/configuracoes/frete", icon: Truck },
+  { label: "Cupons", to: "/configuracoes/cupons", icon: TicketPercent },
   {
     label: "Pagamentos",
     to: `${BASE}/gateways`,
@@ -42,11 +43,12 @@ const settingsItems: SettingsItem[] = [
 
 export default function AdminSettingsLayout() {
   const { isMaster } = useAdminPermissions();
+  const { routes } = useStore();
   const location = useLocation();
 
   const visibleItems = settingsItems.filter((item) => !item.masterOnly || isMaster);
 
-  const paymentsActive = location.pathname.startsWith(BASE);
+  const paymentsActive = location.pathname.startsWith(routes.adminPath(BASE));
   const [paymentsOpen, setPaymentsOpen] = useState(paymentsActive);
 
   return (
@@ -81,7 +83,7 @@ export default function AdminSettingsLayout() {
                       {item.children.map((child) => (
                         <NavLink
                           key={child.to}
-                          to={child.to}
+                          to={routes.adminPath(child.to)}
                           className={({ isActive }) =>
                             cn(
                               "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-colors",
@@ -104,7 +106,7 @@ export default function AdminSettingsLayout() {
             return (
               <NavLink
                 key={item.to}
-                to={item.to}
+                to={routes.adminPath(item.to)}
                 end
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${

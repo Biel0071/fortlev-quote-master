@@ -679,10 +679,14 @@ export default function AdminProductsList() {
           <div className="flex items-center gap-2">
             {filtered.length > 0 && (
               <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={selectAll}>
-                <Checkbox
-                  checked={selected.size === filtered.length && filtered.length > 0}
-                  className="h-3.5 w-3.5 pointer-events-none"
-                />
+                <span
+                  aria-hidden="true"
+                  className={`h-3.5 w-3.5 rounded-sm border flex items-center justify-center ${
+                    selected.size === filtered.length ? "bg-primary border-primary" : "border-input"
+                  }`}
+                >
+                  {selected.size === filtered.length && <CheckCircle className="h-2.5 w-2.5 text-primary-foreground" />}
+                </span>
                 {selected.size === filtered.length ? "Desmarcar" : "Selecionar"} todos
               </Button>
             )}

@@ -7,7 +7,8 @@ import { Navigate } from "react-router-dom";
 import { useStore } from "@/contexts/StoreContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Copy, KeyRound, Plus, Trash2, Webhook } from "lucide-react";
+import { Copy, KeyRound, Plus, Trash2, Webhook, History, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function AdminSettingsFrete() {
   return (
@@ -32,7 +33,8 @@ export function AdminSettingsIdentidade() {
   );
 }
 
-type ApiKey = { id: string; name: string; key: string; active: boolean; last_used_at: string | null; created_at: string };
+type ApiKey = { id: string; name: string; key: string; active: boolean; last_used_at: string | null; created_at: string; expires_at: string | null; starts_at: string | null; quota_limit: number; quota_used: number };
+type UsageLog = { id: string; endpoint: string; method: string; status_code: number; ip: string | null; duration_ms: number | null; error: string | null; created_at: string };
 type WebHook = { id: string; event: string; url: string; secret: string; active: boolean };
 
 export function AdminSettingsIntegracoes() {
@@ -40,14 +42,18 @@ export function AdminSettingsIntegracoes() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [hooks, setHooks] = useState<WebHook[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyExpiry, setNewKeyExpiry] = useState("");
+  const [newKeyQuota, setNewKeyQuota] = useState("");
   const [newHookUrl, setNewHookUrl] = useState("");
   const [newHookEvent, setNewHookEvent] = useState("quotation.created");
   const [loading, setLoading] = useState(false);
+  const [logsKey, setLogsKey] = useState<ApiKey | null>(null);
+  const [logs, setLogs] = useState<UsageLog[]>([]);
 
   async function load() {
     if (!activeStoreId) return;
     const [{ data: k }, { data: h }] = await Promise.all([
-      supabase.from("api_keys").select("id,name,key,active,last_used_at,created_at").eq("store_id", activeStoreId).order("created_at", { ascending: false }),
+      supabase.from("api_keys").select("id,name,key,active,last_used_at,created_at,expires_at,starts_at,quota_limit,quota_used").eq("store_id", activeStoreId).order("created_at", { ascending: false }),
       supabase.from("api_webhooks").select("id,event,url,secret,active").eq("store_id", activeStoreId).order("created_at", { ascending: false }),
     ]);
     setKeys((k ?? []) as ApiKey[]);
@@ -59,10 +65,14 @@ export function AdminSettingsIntegracoes() {
   async function createKey() {
     if (!activeStoreId || !newKeyName.trim()) return;
     setLoading(true);
-    const { error } = await supabase.from("api_keys").insert({ store_id: activeStoreId, name: newKeyName.trim() } as any);
+    const payload: any = { store_id: activeStoreId, name: newKeyName.trim() };
+    if (newKeyExpiry) payload.expires_at = new Date(newKeyExpiry).toISOString();
+    const quota = parseInt(newKeyQuota, 10);
+    if (!isNaN(quota) && quota > 0) payload.quota_limit = quota;
+    const { error } = await supabase.from("api_keys").insert(payload);
     setLoading(false);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    setNewKeyName("");
+    setNewKeyName(""); setNewKeyExpiry(""); setNewKeyQuota("");
     toast({ title: "Chave criada" });
     load();
   }
@@ -71,6 +81,23 @@ export function AdminSettingsIntegracoes() {
     if (!confirm("Revogar esta chave? Bots usando ela perderão acesso.")) return;
     await supabase.from("api_keys").delete().eq("id", id);
     load();
+  }
+
+  async function toggleKey(k: ApiKey) {
+    await supabase.from("api_keys").update({ active: !k.active }).eq("id", k.id);
+    load();
+  }
+
+  async function openLogs(k: ApiKey) {
+    setLogsKey(k);
+    setLogs([]);
+    const { data } = await supabase
+      .from("api_usage_logs")
+      .select("id,endpoint,method,status_code,ip,duration_ms,error,created_at")
+      .eq("api_key_id", k.id)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    setLogs((data ?? []) as UsageLog[]);
   }
 
   async function createHook() {
@@ -109,27 +136,49 @@ export function AdminSettingsIntegracoes() {
           <p className="text-xs text-muted-foreground">
             Use estas chaves no header <code className="bg-muted px-1 rounded">x-api-key</code> ao chamar a API de bots em <code className="bg-muted px-1 rounded">/functions/v1/api-quotation</code>.
           </p>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr,180px,140px,auto] gap-2">
             <Input placeholder="Nome (ex: Bot WhatsApp)" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} />
+            <Input type="datetime-local" placeholder="Expira em" value={newKeyExpiry} onChange={(e) => setNewKeyExpiry(e.target.value)} />
+            <Input type="number" min={0} placeholder="Quota (0=∞)" value={newKeyQuota} onChange={(e) => setNewKeyQuota(e.target.value)} />
             <Button onClick={createKey} disabled={loading || !newKeyName.trim()}>
               <Plus className="h-4 w-4 mr-1" /> Criar
             </Button>
           </div>
           <div className="space-y-2">
             {keys.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma chave criada.</p>}
-            {keys.map((k) => (
-              <div key={k.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{k.name}</span>
-                    {k.active ? <Badge variant="secondary" className="text-[10px]">ativa</Badge> : <Badge variant="outline" className="text-[10px]">inativa</Badge>}
+            {keys.map((k) => {
+              const expired = k.expires_at && new Date(k.expires_at) < new Date();
+              return (
+                <div key={k.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm">{k.name}</span>
+                      {expired ? <Badge variant="destructive" className="text-[10px]">expirada</Badge>
+                        : k.active ? <Badge variant="secondary" className="text-[10px]">ativa</Badge>
+                        : <Badge variant="outline" className="text-[10px]">inativa</Badge>}
+                      {k.expires_at && (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> até {new Date(k.expires_at).toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
+                      {k.quota_limit > 0 && (
+                        <span className="text-[10px] text-muted-foreground">{k.quota_used}/{k.quota_limit} usos</span>
+                      )}
+                      {k.last_used_at && (
+                        <span className="text-[10px] text-muted-foreground">último: {new Date(k.last_used_at).toLocaleString('pt-BR')}</span>
+                      )}
+                    </div>
+                    <code className="text-[11px] text-muted-foreground block truncate">{k.key}</code>
                   </div>
-                  <code className="text-[11px] text-muted-foreground block truncate">{k.key}</code>
+                  <Button variant="ghost" size="icon" onClick={() => openLogs(k)} title="Ver logs"><History className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => toggleKey(k)} title={k.active ? "Desativar" : "Ativar"}>
+                    <KeyRound className={`h-4 w-4 ${k.active ? 'text-emerald-600' : 'text-muted-foreground'}`} />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => copy(k.key)}><Copy className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => deleteKey(k.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => copy(k.key)}><Copy className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => deleteKey(k.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -210,6 +259,50 @@ export function AdminSettingsIntegracoes() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!logsKey} onOpenChange={(o) => !o && setLogsKey(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4" /> Logs de uso — {logsKey?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {logs.length === 0 ? (
+              <p className="text-xs text-muted-foreground p-4 text-center">Nenhum uso registrado ainda.</p>
+            ) : (
+              <table className="w-full text-[11px]">
+                <thead className="sticky top-0 bg-background border-b">
+                  <tr className="text-left">
+                    <th className="py-2 px-2">Quando</th>
+                    <th className="px-2">Método</th>
+                    <th className="px-2">Endpoint</th>
+                    <th className="px-2">Status</th>
+                    <th className="px-2">IP</th>
+                    <th className="px-2">ms</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((l) => (
+                    <tr key={l.id} className="border-b hover:bg-muted/40">
+                      <td className="py-1.5 px-2 whitespace-nowrap">{new Date(l.created_at).toLocaleString('pt-BR')}</td>
+                      <td className="px-2">{l.method}</td>
+                      <td className="px-2 font-mono truncate max-w-[180px]">{l.endpoint}</td>
+                      <td className="px-2">
+                        <Badge variant={l.status_code < 400 ? "secondary" : "destructive"} className="text-[10px]">
+                          {l.status_code}
+                        </Badge>
+                      </td>
+                      <td className="px-2 text-muted-foreground">{l.ip ?? '—'}</td>
+                      <td className="px-2 text-muted-foreground">{l.duration_ms ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

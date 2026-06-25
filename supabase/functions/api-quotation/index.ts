@@ -31,6 +31,8 @@ type KeyRecord = {
   quota_limit: number;
   quota_used: number;
   rate_limit: number;
+  starts_at?: string | null;
+  expires_at?: string | null;
 };
 
 async function authenticate(req: Request): Promise<KeyRecord | { error: string; status: number } | null> {
@@ -38,13 +40,19 @@ async function authenticate(req: Request): Promise<KeyRecord | { error: string; 
   if (!apiKey || apiKey.length < 16) return null;
   const { data } = await supabase
     .from("api_keys")
-    .select("id, store_id, permissions, active, quota_limit, quota_used, rate_limit")
+    .select("id, store_id, permissions, active, quota_limit, quota_used, rate_limit, starts_at, expires_at")
     .eq("key", apiKey)
     .eq("active", true)
     .maybeSingle();
   if (!data) return null;
 
-  // Quota check
+  const now = new Date();
+  if (data.starts_at && new Date(data.starts_at) > now) {
+    return { error: "Chave ainda não está ativa", status: 403 };
+  }
+  if (data.expires_at && new Date(data.expires_at) < now) {
+    return { error: "Chave expirada", status: 401 };
+  }
   if ((data.quota_limit ?? 0) > 0 && (data.quota_used ?? 0) >= data.quota_limit) {
     return { error: "Quota excedida", status: 429 };
   }
@@ -59,12 +67,37 @@ async function authenticate(req: Request): Promise<KeyRecord | { error: string; 
   return data as KeyRecord;
 }
 
+async function logUsage(
+  keyId: string,
+  storeId: string,
+  req: Request,
+  endpoint: string,
+  status: number,
+  startTs: number,
+  error?: string,
+) {
+  try {
+    await supabase.from("api_usage_logs").insert({
+      api_key_id: keyId,
+      store_id: storeId,
+      endpoint,
+      method: req.method,
+      status_code: status,
+      ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+      user_agent: req.headers.get("user-agent") ?? null,
+      duration_ms: Date.now() - startTs,
+      error: error ?? null,
+    });
+  } catch (_) { /* best-effort */ }
+}
+
 function hasPermission(auth: KeyRecord, perm: string): boolean {
   return Array.isArray(auth.permissions) && auth.permissions.includes(perm);
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const startTs = Date.now();
 
   try {
     const url = new URL(req.url);
@@ -102,12 +135,17 @@ Deno.serve(async (req) => {
     if (!auth) return json({ error: "API key inválida ou ausente. Envie em x-api-key." }, 401);
     if ("error" in auth) return json({ error: auth.error }, auth.status);
 
+    const respond = (body: any, status = 200, err?: string) => {
+      void logUsage(auth.id, auth.store_id, req, sub || "/", status, startTs, err);
+      return json(body, status);
+    };
+
     // POST /analyze
     if (req.method === "POST" && sub.startsWith("analyze")) {
-      if (!hasPermission(auth, "quotation:create")) return json({ error: "Sem permissão quotation:create" }, 403);
+      if (!hasPermission(auth, "quotation:create")) return respond({ error: "Sem permissão quotation:create" }, 403, "forbidden");
       const body = await req.json().catch(() => ({}));
       if (!body.text && !body.image_base64 && !body.images)
-        return json({ error: "Envie text ou image_base64/images" }, 400);
+        return respond({ error: "Envie text ou image_base64/images" }, 400, "invalid_payload");
 
       const { data, error } = await supabase.functions.invoke("analyze-quotation-image", {
         body: {
@@ -115,16 +153,16 @@ Deno.serve(async (req) => {
           images: body.images ?? (body.image_base64 ? [body.image_base64] : []),
         },
       });
-      if (error) return json({ error: error.message ?? "Falha na análise" }, 500);
-      return json({ ok: true, store_id: auth.store_id, analysis: data });
+      if (error) return respond({ error: error.message ?? "Falha na análise" }, 500, error.message);
+      return respond({ ok: true, store_id: auth.store_id, analysis: data });
     }
 
     // POST /generate
     if (req.method === "POST" && sub.startsWith("generate")) {
-      if (!hasPermission(auth, "quotation:create")) return json({ error: "Sem permissão quotation:create" }, 403);
+      if (!hasPermission(auth, "quotation:create")) return respond({ error: "Sem permissão quotation:create" }, 403, "forbidden");
       const body = await req.json().catch(() => ({}));
       const a = body.analysis ?? body;
-      if (!a || !Array.isArray(a.items)) return json({ error: "Payload inválido: analysis.items obrigatório" }, 400);
+      if (!a || !Array.isArray(a.items)) return respond({ error: "Payload inválido: analysis.items obrigatório" }, 400, "invalid_payload");
 
       const subtotal = a.items.reduce(
         (s: number, i: any) => s + Number(i.total ?? (i.unit_price ?? 0) * (i.quantity ?? 0)),
@@ -149,9 +187,8 @@ Deno.serve(async (req) => {
         .select("id, number, total")
         .single();
 
-      if (error) return json({ error: error.message }, 500);
+      if (error) return respond({ error: error.message }, 500, error.message);
 
-      // Fire webhooks (best-effort)
       supabase
         .from("api_webhooks")
         .select("url, secret")
@@ -172,21 +209,21 @@ Deno.serve(async (req) => {
           }
         });
 
-      return json({ ok: true, quotation_id: q.id, number: q.number, total: q.total });
+      return respond({ ok: true, quotation_id: q.id, number: q.number, total: q.total });
     }
 
     // GET /:id
     if (req.method === "GET" && sub.length > 0) {
-      if (!hasPermission(auth, "quotation:read")) return json({ error: "Sem permissão quotation:read" }, 403);
+      if (!hasPermission(auth, "quotation:read")) return respond({ error: "Sem permissão quotation:read" }, 403, "forbidden");
       const id = sub.split("/")[0];
       const { data, error } = await supabase
         .from("construction_quotations")
         .select("id, number, customer_json, items_json, subtotal, discount, freight, total, status, created_at")
         .eq("id", id)
         .maybeSingle();
-      if (error) return json({ error: error.message }, 500);
-      if (!data) return json({ error: "Orçamento não encontrado" }, 404);
-      return json({ ok: true, quotation: data });
+      if (error) return respond({ error: error.message }, 500, error.message);
+      if (!data) return respond({ error: "Orçamento não encontrado" }, 404, "not_found");
+      return respond({ ok: true, quotation: data });
     }
 
     return json(

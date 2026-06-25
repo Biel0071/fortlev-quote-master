@@ -2173,6 +2173,7 @@ export type Database = {
           longitude: number | null
           name: string
           phone: string | null
+          pricing_rules: Json
           seller_name: string | null
           seller_role: string | null
           signature_url: string | null
@@ -2197,6 +2198,7 @@ export type Database = {
           longitude?: number | null
           name: string
           phone?: string | null
+          pricing_rules?: Json
           seller_name?: string | null
           seller_role?: string | null
           signature_url?: string | null
@@ -2221,6 +2223,7 @@ export type Database = {
           longitude?: number | null
           name?: string
           phone?: string | null
+          pricing_rules?: Json
           seller_name?: string | null
           seller_role?: string | null
           signature_url?: string | null

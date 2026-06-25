@@ -1,0 +1,1 @@
+ALTER TABLE public.issuing_companies ADD COLUMN IF NOT EXISTS pricing_rules jsonb NOT NULL DEFAULT '{}'::jsonb;

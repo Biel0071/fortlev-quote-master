@@ -71,7 +71,7 @@ function useDebounce(value: string, delay: number) {
 
 export default function AdminProductsList() {
   const nav = useNavigate();
-  const { activeStoreId } = useStore();
+  const { activeStoreId, routes } = useStore();
   const [loading, setLoading] = useState(true);
 
   const [rows, setRows] = useState<Row[]>([]);
@@ -447,7 +447,7 @@ export default function AdminProductsList() {
             Gerencie catálogo, preços, estoque e status.
           </p>
         </div>
-        <Button onClick={() => nav("/admin/produtos/novo")} className="gap-2">
+        <Button onClick={() => nav(routes.adminPath("/produtos/novo"))} className="gap-2">
           <Plus className="h-4 w-4" /> Novo produto
         </Button>
       </div>
@@ -528,7 +528,7 @@ export default function AdminProductsList() {
         <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportExcel} disabled={rows.length === 0}>
           <Download className="h-3.5 w-3.5" /> Exportar
         </Button>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => nav("/admin/produtos/importar")}>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => nav(routes.adminPath("/produtos/importar"))}>
           <Upload className="h-3.5 w-3.5" /> Importar
         </Button>
         <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
@@ -545,21 +545,21 @@ export default function AdminProductsList() {
       <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
         <CollapsibleContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 rounded-xl border bg-card/80 backdrop-blur-sm">
-            <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav("/admin/produtos/scraper")}>
+        <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav(routes.adminPath("/produtos/scraper"))}>
               <CardContent className="p-4 text-center space-y-2">
                 <Globe className="h-8 w-8 mx-auto text-primary" />
                 <h4 className="font-semibold text-sm">Scraper</h4>
                 <p className="text-[10px] text-muted-foreground leading-tight">Captura produtos de sites concorrentes</p>
               </CardContent>
             </Card>
-            <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav("/admin/produtos/imagens")}>
+        <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav(routes.adminPath("/produtos/imagens"))}>
               <CardContent className="p-4 text-center space-y-2">
                 <ImagePlus className="h-8 w-8 mx-auto text-primary" />
                 <h4 className="font-semibold text-sm">Imagens</h4>
                 <p className="text-[10px] text-muted-foreground leading-tight">Busca e baixa imagens automaticamente</p>
               </CardContent>
             </Card>
-            <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav("/admin/produtos/inteligencia-preco")}>
+        <Card className="border-primary/10 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => nav(routes.adminPath("/produtos/inteligencia-preco"))}>
               <CardContent className="p-4 text-center space-y-2">
                 <DollarSign className="h-8 w-8 mx-auto text-primary" />
                 <h4 className="font-semibold text-sm">Preços</h4>
@@ -778,7 +778,7 @@ export default function AdminProductsList() {
                     )}
                     <Checkbox checked={isSelected} className="absolute top-1.5 left-1.5 h-4 w-4 bg-background/80" onClick={e => e.stopPropagation()} onCheckedChange={() => toggleSelect(p.id)} />
                   </div>
-                  <div className="flex-1 min-w-0 p-3 cursor-pointer" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}>
+                      <div className="flex-1 min-w-0 p-3 cursor-pointer" onClick={() => nav(routes.adminPath(`/produtos/editar/${p.id}`))}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <h3 className="font-semibold text-sm leading-tight line-clamp-2">{p.name}</h3>
@@ -791,7 +791,7 @@ export default function AdminProductsList() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem onClick={() => nav(`/admin/produtos/editar/${p.id}`)}><Pencil className="h-3.5 w-3.5 mr-2" /> Editar</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => nav(routes.adminPath(`/produtos/editar/${p.id}`))}><Pencil className="h-3.5 w-3.5 mr-2" /> Editar</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => duplicateProduct(p)}><Copy className="h-3.5 w-3.5 mr-2" /> Duplicar</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toggleActive(p)}><Power className="h-3.5 w-3.5 mr-2" /> {p.active ? "Desativar" : "Ativar"}</DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -819,7 +819,7 @@ export default function AdminProductsList() {
                       {p.status === "no_image_found" ? "🔴 Sem imagem" : p.active ? "🟢 Ativo" : "🔴 Inativo"}
                     </span>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => nav(`/admin/produtos/editar/${p.id}`)}><Pencil className="h-3 w-3" /> Editar</Button>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => nav(routes.adminPath(`/produtos/editar/${p.id}`))}><Pencil className="h-3 w-3" /> Editar</Button>
                   <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => duplicateProduct(p)}><Copy className="h-3 w-3" /> Duplicar</Button>
                   <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(p)}><Trash2 className="h-3 w-3" /></Button>
                 </div>

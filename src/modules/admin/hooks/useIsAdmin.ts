@@ -29,6 +29,15 @@ export function useIsAdmin() {
         return;
       }
 
+      const { data: isMaster, error: masterError } = await cloud.rpc("is_master_admin");
+      if (!masterError && isMaster) {
+        if (!cancelled) {
+          setIsAdmin(true);
+          setLoading(false);
+        }
+        return;
+      }
+
       const { data: ok, error } = await cloud.rpc("has_role", {
         _user_id: user.id,
         _role: "admin",

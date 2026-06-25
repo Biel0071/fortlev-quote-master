@@ -189,9 +189,14 @@ export default function AdminLayout() {
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const nav = useNavigate();
   const location = useLocation();
-  const { routes, label, activeStoreId } = useStore();
+  const { routes, label, activeStoreId, storesLoading } = useStore();
 
   const isStoreSelectorPage = location.pathname === "/admin";
+  const isStoreScopedPage = location.pathname.startsWith("/admin/store/");
+  const isLegacyAdminPage =
+    location.pathname.startsWith("/admin/") &&
+    !location.pathname.startsWith("/admin/store/") &&
+    !location.pathname.startsWith("/admin/master");
 
   const canRender = !sessionLoading && !adminLoading;
   if (!canRender) return <div className="p-6 text-muted-foreground">Carregando...</div>;
@@ -206,6 +211,25 @@ export default function AdminLayout() {
             Entrar com outra conta
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (isLegacyAdminPage && activeStoreId && routes.adminBase !== "/admin") {
+    const suffix = location.pathname.replace(/^\/admin/, "") || "/dashboard";
+    return <Navigate to={`${routes.adminPath(suffix)}${location.search}`} replace />;
+  }
+
+  if (isLegacyAdminPage && storesLoading) {
+    return <div className="p-6 text-muted-foreground">Carregando loja...</div>;
+  }
+
+  if (isStoreScopedPage && (storesLoading || !activeStoreId)) {
+    if (storesLoading) return <div className="p-6 text-muted-foreground">Carregando loja...</div>;
+    return (
+      <div className="min-h-screen bg-background p-6 space-y-4">
+        <p className="text-destructive font-medium">Loja não encontrada.</p>
+        <Button size="sm" onClick={() => nav("/admin", { replace: true })}>Selecionar loja</Button>
       </div>
     );
   }

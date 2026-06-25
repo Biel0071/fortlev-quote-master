@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { supabase } from "@/integrations/supabase/client";
+import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -470,6 +472,8 @@ function PreviewImportPanel({
 }
 
 export default function AdminProductScraper() {
+  const nav = useNavigate();
+  const { routes } = useStore();
   const [urlsInput, setUrlsInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<ScrapedProduct[]>([]);
@@ -728,7 +732,7 @@ export default function AdminProductScraper() {
         </Button>
         <Globe className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold">Scraper de Produtos</h1>
-        <Button variant="outline" size="sm" className="ml-auto gap-1.5 text-xs" onClick={() => window.location.href = "/admin/produtos/inteligencia-preco"}>
+        <Button variant="outline" size="sm" className="ml-auto gap-1.5 text-xs" onClick={() => nav(routes.adminPath("/produtos/inteligencia-preco"))}>
           <Brain className="h-3.5 w-3.5" /> Inteligência de Preço
         </Button>
       </div>

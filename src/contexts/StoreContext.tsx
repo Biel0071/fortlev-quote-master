@@ -16,6 +16,7 @@ type StoreContextValue = {
   store: AppStore;
   setStore: (store: AppStore) => string | null;
   label: string;
+  storesLoading: boolean;
   /** The database UUID of the active store (null if not resolved yet) */
   activeStoreId: string | null;
   availableStores: Array<{ value: AppStore; label: string; id: string }>;
@@ -47,6 +48,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
   const [store, setStoreRaw] = useState<AppStore>("materiais");
   const [activeStoreId, setActiveStoreId] = useState<string | null>(null);
   const [dbStores, setDbStores] = useState<StoreDbRow[]>([]);
+  const [storesLoading, setStoresLoading] = useState(true);
 
   // Load stores from DB once
   useEffect(() => {
@@ -56,7 +58,8 @@ export function StoreProvider({ children }: StoreProviderProps) {
       .order("name")
       .then(({ data }) => {
         if (data) setDbStores(data as StoreDbRow[]);
-      });
+      })
+      .finally(() => setStoresLoading(false));
   }, []);
 
   // Auto-detect store by hostname or route
@@ -88,6 +91,9 @@ export function StoreProvider({ children }: StoreProviderProps) {
         }
         return;
       }
+
+      if (activeStoreId !== null) setActiveStoreId(null);
+      return;
     }
 
     // 2. Check for /p/:slug
@@ -140,7 +146,12 @@ export function StoreProvider({ children }: StoreProviderProps) {
 
 
   const value = useMemo<StoreContextValue>(() => {
-    const dbStore = dbStores.find((s) => s.slug === store || s.id === activeStoreId);
+    const isStoreScopedAdminPath = location.pathname.startsWith("/admin/store/");
+    const dbStore = activeStoreId
+      ? dbStores.find((s) => s.id === activeStoreId)
+      : isStoreScopedAdminPath
+        ? undefined
+        : dbStores.find((s) => s.slug === store);
     const adminBase = dbStore ? `/admin/store/${dbStore.id}` : "/admin";
     const adminPath = (path = "") => {
       const cleanPath = path.startsWith("/") ? path : `/${path}`;
@@ -152,6 +163,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
       store,
       setStore,
       label,
+      storesLoading,
       activeStoreId,
       availableStores: dbStores.map((s) => ({ value: s.slug, label: s.name, id: s.id })),
       setActiveStoreId,
@@ -163,7 +175,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
         adminPath,
       },
     };
-  }, [store, activeStoreId, dbStores]);
+  }, [store, activeStoreId, dbStores, storesLoading, location.pathname]);
 
 
   return (

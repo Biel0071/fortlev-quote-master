@@ -49,7 +49,7 @@ export default function AdminProductForm() {
   const editingId = id ?? null;
   const nav = useNavigate();
   const location = useLocation();
-  const { activeStoreId } = useStore();
+  const { activeStoreId, routes } = useStore();
 
 
   const [loading, setLoading] = useState(true);
@@ -296,7 +296,7 @@ export default function AdminProductForm() {
     const { data, error } = await cloud.from("store_products").insert(payload).select("id").single();
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     toast({ title: "Criado", description: "Produto criado (rascunho)" });
-    nav(`/admin/produtos/editar/${data.id}`, { replace: true, state: { autoGenerate: true } });
+    nav(routes.adminPath(`/produtos/editar/${data.id}`), { replace: true, state: { autoGenerate: true } });
   };
 
   const handleUploadImages = async (files: FileList | null) => {
@@ -424,7 +424,7 @@ export default function AdminProductForm() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => nav("/admin/produtos")}>Voltar</Button>
+          <Button variant="outline" onClick={() => nav(routes.adminPath("/produtos"))}>Voltar</Button>
           <Button type="button" variant="outline" onClick={regenerateAllProductsStandardDescription} disabled={bulkRegenerating}>
             {bulkRegenerating ? "Regenerando..." : "Regerar descrições (todos)"}
           </Button>

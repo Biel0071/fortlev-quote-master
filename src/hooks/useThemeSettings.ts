@@ -126,7 +126,12 @@ export function useThemeSettings() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      if (!store) return;
+      if (!store) {
+        applyThemeToRoot({});
+        setSettings(null);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       const { data, error } = await cloud
         .from("system_theme_settings")

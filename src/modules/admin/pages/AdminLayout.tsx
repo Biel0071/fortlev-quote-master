@@ -184,7 +184,7 @@ const AdminSidebar = memo(function AdminSidebar() {
       </SidebarContent>
     </Sidebar>
   );
-}
+});
 
 export default function AdminLayout() {
   const { user, loading: sessionLoading } = useSession();
@@ -201,7 +201,7 @@ export default function AdminLayout() {
     !location.pathname.startsWith("/admin/master");
 
   const canRender = !sessionLoading && !adminLoading;
-  if (!canRender) return <div className="p-6 text-muted-foreground">Carregando...</div>;
+  if (!canRender) return <FullScreenLoader label="Carregando admin..." />;
   if (!user) return <Navigate to="/auth/login" replace />;
   if (!isAdmin) {
     return (

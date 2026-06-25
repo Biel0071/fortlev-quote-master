@@ -37,6 +37,16 @@ export function useAdminPermissions() {
 
     setLoading(true);
     try {
+      const { data: isMasterAdmin } = await cloud.rpc("is_master_admin");
+
+      if (isMasterAdmin) {
+        setRole("master");
+        setPermissions([]);
+        setStoreAccess([]);
+        setLoading(false);
+        return;
+      }
+
       // Get admin user record
       const { data: adminUser } = await cloud
         .from("admin_users")

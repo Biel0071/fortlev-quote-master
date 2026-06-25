@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PlanLimits {
@@ -55,6 +56,7 @@ const TenantContext = createContext<TenantContextType>({
 });
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [store, setStore] = useState<Store | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,12 +70,15 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   useEffect(() => {
+    let alive = true;
+
     async function resolveStore() {
       setIsLoading(true);
       try {
         const hostname = window.location.hostname;
-        const pathname = window.location.pathname;
+        const pathname = location.pathname;
         const pathParts = pathname.split('/');
+        const section = pathParts[1] ?? '';
         
         let storeId: string | undefined;
         let tenantId: string | undefined;
@@ -83,6 +88,18 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const adminStoreMatch = pathname.match(/\/admin\/store\/([^\/]+)/);
         if (adminStoreMatch && adminStoreMatch[1]) {
           storeId = adminStoreMatch[1];
+        }
+
+        // Admin/master/auth routes without an explicit store must not wait for
+        // storefront tenant resolution. This keeps admin navigation instant and
+        // prevents stale storefront state from freezing the app after returning home.
+        if (!storeId && ['admin', 'master', 'auth'].includes(section)) {
+          if (!alive) return;
+          setStore(null);
+          setTenant(null);
+          setError(null);
+          setIsLoading(false);
+          return;
         }
 
         // 2. Resolve by Domain
@@ -119,7 +136,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         // 4. Default Fallback (Only for root or non-admin/non-master routes)
-        if (!storeId && (pathname === '/' || !['admin', 'master', 'auth'].includes(pathParts[1]))) {
+        if (!storeId && (pathname === '/' || !['admin', 'master', 'auth'].includes(section))) {
           // Priority: 1. Materiais de Construção (current active store), 2. Any other active store
           const { data: fallbackStores } = await supabase
             .from('stores')
@@ -142,6 +159,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         // 5. Finalize Store Data
+        if (!alive) return;
         if (storeId) {
           const { data: storeData, error: storeErr } = await supabase
             .from('stores')
@@ -150,6 +168,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             .single();
           
           if (!storeErr && storeData) {
+            if (!alive) return;
             setStore(storeData);
             tenantId = storeData.tenant_id;
           }
@@ -179,6 +198,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             .single();
 
           if (tenantData) {
+            if (!alive) return;
             const sub = tenantData.saas_subscriptions?.[0];
             setTenant({
               id: tenantData.id,
@@ -199,15 +219,20 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           setTenant(null);
         }
       } catch (err: any) {
+        if (!alive) return;
         console.error('Error resolving tenant:', err);
         setError(err.message);
       } finally {
-        setIsLoading(false);
+        if (alive) setIsLoading(false);
       }
     }
 
     resolveStore();
-  }, [window.location.pathname, window.location.hostname]);
+
+    return () => {
+      alive = false;
+    };
+  }, [location.pathname]);
 
   return (
     <TenantContext.Provider value={{ tenant, store, isLoading, error, hasFeature }}>

@@ -2,7 +2,6 @@ import React, { Component, ErrorInfo, ReactNode } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
-import { StoreProvider } from "@/contexts/StoreContext";
 
 // Global error handlers for absolute resilience
 window.onerror = (message, source, lineno, colno, error) => {
@@ -75,9 +74,7 @@ if (rootElement) {
   // High-performance, highly-resilient render
   root.render(
     <ErrorBoundary>
-      <StoreProvider>
-        <App />
-      </StoreProvider>
+      <App />
     </ErrorBoundary>
   );
 }

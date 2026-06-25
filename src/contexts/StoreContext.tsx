@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 
 export type AppStore = "materiais" | "fortlev" | "construcao" | string;
@@ -39,6 +40,7 @@ type StoreProviderProps = {
 };
 
 export function StoreProvider({ children }: StoreProviderProps) {
+  const location = useLocation();
   const [store, setStoreRaw] = useState<AppStore>("materiais");
   const [activeStoreId, setActiveStoreId] = useState<string | null>(null);
   const [dbStores, setDbStores] = useState<StoreDbRow[]>([]);
@@ -58,7 +60,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
   useEffect(() => {
     if (dbStores.length === 0) return;
     const host = window.location.hostname;
-    const pathname = window.location.pathname;
+    const pathname = location.pathname;
 
     // 1. Check for /admin/store/:storeId
     const adminStoreMatch = pathname.match(/\/admin\/store\/([^\/]+)/);
@@ -108,7 +110,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
     if (current && activeStoreId !== current.id) {
       setActiveStoreId(current.id);
     }
-  }, [dbStores, store, activeStoreId, window.location.pathname, window.location.hostname]);
+  }, [dbStores, store, activeStoreId, location.pathname]);
 
   const setStore = (newStore: AppStore) => {
     setStoreRaw(newStore);

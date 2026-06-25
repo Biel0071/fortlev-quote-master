@@ -98,7 +98,7 @@ export default function AdminPaymentsGatewayAdd() {
       toast.success("Gateway criado");
     }
     setSaving(false);
-    nav("/admin/payments/gateways");
+    nav("/admin/configuracoes/pagamentos/gateways");
   };
 
   return (

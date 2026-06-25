@@ -12,6 +12,15 @@ import WhiteLabelSettings from "@/components/admin/master/WhiteLabelSettings";
 import DomainsManager from "@/components/admin/master/DomainsManager";
 import StoreDetails from "@/components/admin/master/StoreDetails";
 
+function MasterPlaceholder({ title }: { title: string }) {
+  return (
+    <div className="space-y-2">
+      <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+      <p className="text-sm text-muted-foreground">Área master carregada e pronta para configuração.</p>
+    </div>
+  );
+}
+
 const MasterAdmin = () => {
   const menuItems = [
     { name: "Dashboard", path: "/admin/master", icon: LayoutDashboard },
@@ -71,10 +80,12 @@ const MasterAdmin = () => {
             <Route path="plans" element={<SaaSPlansManager />} />
             <Route path="finance" element={<FinanceManager />} />
             <Route path="blueprints" element={<BlueprintsManager />} />
+            <Route path="templates" element={<MasterPlaceholder title="Templates" />} />
             <Route path="modules" element={<ModulesManager />} />
             <Route path="ia" element={<MasterAICentral />} />
             <Route path="whitelabel" element={<WhiteLabelSettings />} />
             <Route path="domains" element={<DomainsManager />} />
+            <Route path="analytics" element={<MasterPlaceholder title="Analytics Master" />} />
             <Route path="logs" element={<MasterLogs />} />
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/admin/master" replace />} />

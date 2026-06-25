@@ -6,6 +6,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { TenantProvider } from "@/providers/TenantProvider";
+import { StoreProvider } from "@/contexts/StoreContext";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import ScrollToTop from "@/components/ScrollToTop";
 import "@/styles/budget-template.css";
@@ -73,11 +74,12 @@ function PageSkeleton() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <TenantProvider>
-        <ThemeBoot>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+      <BrowserRouter>
+        <StoreProvider>
+          <TenantProvider>
+            <ThemeBoot>
+              <Toaster />
+              <Sonner />
             <ScrollToTop />
             <CookieConsentBanner />
             <Suspense fallback={<PageSkeleton />}>
@@ -122,9 +124,10 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </BrowserRouter>
-        </ThemeBoot>
-      </TenantProvider>
+            </ThemeBoot>
+          </TenantProvider>
+        </StoreProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

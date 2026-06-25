@@ -11,7 +11,7 @@ export function AdminSettingsFrete() {
 }
 
 export function AdminSettingsPagamentos() {
-  return <Navigate to="/admin/payments" replace />;
+  return <Navigate to="/admin/configuracoes/pagamentos/gateways" replace />;
 }
 
 export function AdminSettingsIdentidade() {

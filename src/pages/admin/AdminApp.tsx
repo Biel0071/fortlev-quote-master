@@ -134,7 +134,7 @@ export default function AdminApp() {
 
         <Route path="cupons" element={<Navigate to="/admin/configuracoes/cupons" replace />} />
         <Route path="frete" element={<Navigate to="/admin/configuracoes/frete" replace />} />
-        <Route path="payments/*" element={<Navigate to="/admin/configuracoes/pagamentos" replace />} />
+        <Route path="payments/*" element={<Navigate to="/admin/configuracoes/pagamentos/gateways" replace />} />
         <Route path="ofertas" element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>} />
       </Route>
     </Routes>

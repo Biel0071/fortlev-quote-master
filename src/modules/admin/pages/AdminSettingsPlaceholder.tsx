@@ -33,7 +33,8 @@ export function AdminSettingsIdentidade() {
   );
 }
 
-type ApiKey = { id: string; name: string; key: string; active: boolean; last_used_at: string | null; created_at: string };
+type ApiKey = { id: string; name: string; key: string; active: boolean; last_used_at: string | null; created_at: string; expires_at: string | null; starts_at: string | null; quota_limit: number; quota_used: number };
+type UsageLog = { id: string; endpoint: string; method: string; status_code: number; ip: string | null; duration_ms: number | null; error: string | null; created_at: string };
 type WebHook = { id: string; event: string; url: string; secret: string; active: boolean };
 
 export function AdminSettingsIntegracoes() {

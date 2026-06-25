@@ -259,6 +259,50 @@ export function AdminSettingsIntegracoes() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!logsKey} onOpenChange={(o) => !o && setLogsKey(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4" /> Logs de uso — {logsKey?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {logs.length === 0 ? (
+              <p className="text-xs text-muted-foreground p-4 text-center">Nenhum uso registrado ainda.</p>
+            ) : (
+              <table className="w-full text-[11px]">
+                <thead className="sticky top-0 bg-background border-b">
+                  <tr className="text-left">
+                    <th className="py-2 px-2">Quando</th>
+                    <th className="px-2">Método</th>
+                    <th className="px-2">Endpoint</th>
+                    <th className="px-2">Status</th>
+                    <th className="px-2">IP</th>
+                    <th className="px-2">ms</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((l) => (
+                    <tr key={l.id} className="border-b hover:bg-muted/40">
+                      <td className="py-1.5 px-2 whitespace-nowrap">{new Date(l.created_at).toLocaleString('pt-BR')}</td>
+                      <td className="px-2">{l.method}</td>
+                      <td className="px-2 font-mono truncate max-w-[180px]">{l.endpoint}</td>
+                      <td className="px-2">
+                        <Badge variant={l.status_code < 400 ? "secondary" : "destructive"} className="text-[10px]">
+                          {l.status_code}
+                        </Badge>
+                      </td>
+                      <td className="px-2 text-muted-foreground">{l.ip ?? '—'}</td>
+                      <td className="px-2 text-muted-foreground">{l.duration_ms ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

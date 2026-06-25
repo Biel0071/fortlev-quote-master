@@ -1,15 +1,18 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/contexts/StoreContext";
 
 const tabs = [
-  { to: "/admin/dashboard", label: "Visão geral", end: true },
-  { to: "/admin/dashboard/orcamentos", label: "Orçamentos" },
-  { to: "/admin/clientes", label: "Clientes" },
-  { to: "/admin/dashboard/tracking", label: "Tracking" },
-  { to: "/admin/dashboard/inteligencia", label: "Inteligência" },
+  { to: "/dashboard", label: "Visão geral", end: true },
+  { to: "/dashboard/orcamentos", label: "Orçamentos" },
+  { to: "/clientes", label: "Clientes" },
+  { to: "/dashboard/tracking", label: "Tracking" },
+  { to: "/dashboard/inteligencia", label: "Inteligência" },
 ];
 
 export default function AdminDashboardShell() {
+  const { routes } = useStore();
+
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 space-y-5">
       <div className="overflow-x-auto">
@@ -17,7 +20,7 @@ export default function AdminDashboardShell() {
           {tabs.map((tab) => (
             <NavLink
               key={tab.to}
-              to={tab.to}
+              to={routes.adminPath(tab.to)}
               end={tab.end}
               className={({ isActive }) =>
                 cn(

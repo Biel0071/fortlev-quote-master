@@ -1,4 +1,6 @@
+import { memo } from "react";
 import { Outlet, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { FullScreenLoader } from "@/components/shared/FullScreenLoader";
 import {
   ArrowLeft,
   BarChart3,
@@ -107,7 +109,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
   },
 ];
 
-function AdminSidebar() {
+const AdminSidebar = memo(function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { canViewPage } = useAdminPermissions();

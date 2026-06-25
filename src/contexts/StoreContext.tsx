@@ -18,6 +18,7 @@ type StoreContextValue = {
   label: string;
   /** The database UUID of the active store (null if not resolved yet) */
   activeStoreId: string | null;
+  availableStores: Array<{ value: AppStore; label: string; id: string }>;
   /** Set active store directly by database ID */
   setActiveStoreId: (id: string | null) => void;
   routes: {
@@ -152,6 +153,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
       setStore,
       label,
       activeStoreId,
+      availableStores: dbStores.map((s) => ({ value: s.slug, label: s.name, id: s.id })),
       setActiveStoreId,
       routes: {
         publicHome: dbStore ? `/p/${dbStore.slug}` : "/",

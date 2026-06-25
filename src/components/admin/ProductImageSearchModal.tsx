@@ -267,7 +267,7 @@ export function ProductImageSearchModal({
           <button className="absolute top-3 right-3 sm:top-4 sm:right-4 text-foreground/90 hover:text-foreground z-10" onClick={() => setPreviewUrl(null)}>
             <X className="w-6 h-6 sm:w-8 sm:h-8" />
           </button>
-          <img src={previewUrl} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-lg border border-border" onClick={(e) => e.stopPropagation()} />
+          <img loading="lazy" decoding="async" src={previewUrl} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-lg border border-border" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </>

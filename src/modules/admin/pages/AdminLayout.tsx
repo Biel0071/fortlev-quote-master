@@ -223,11 +223,11 @@ export default function AdminLayout() {
   }
 
   if (isLegacyAdminPage && storesLoading) {
-    return <div className="p-6 text-muted-foreground">Carregando loja...</div>;
+    return <FullScreenLoader label="Carregando loja..." />;
   }
 
   if (isStoreScopedPage && (storesLoading || !activeStoreId)) {
-    if (storesLoading) return <div className="p-6 text-muted-foreground">Carregando loja...</div>;
+    if (storesLoading) return <FullScreenLoader label="Carregando loja..." />;
     return (
       <div className="min-h-screen bg-background p-6 space-y-4">
         <p className="text-destructive font-medium">Loja não encontrada.</p>

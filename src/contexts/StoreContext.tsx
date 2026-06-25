@@ -24,6 +24,8 @@ type StoreContextValue = {
     publicHome: string;
     quotations: string;
     dashboard: string;
+    adminBase: string;
+    adminPath: (path?: string) => string;
   };
 };
 
@@ -124,6 +126,11 @@ export function StoreProvider({ children }: StoreProviderProps) {
 
   const value = useMemo<StoreContextValue>(() => {
     const dbStore = dbStores.find((s) => s.slug === store || s.id === activeStoreId);
+    const adminBase = dbStore ? `/admin/store/${dbStore.id}` : "/admin";
+    const adminPath = (path = "") => {
+      const cleanPath = path.startsWith("/") ? path : `/${path}`;
+      return `${adminBase}${cleanPath === "/" ? "" : cleanPath}`;
+    };
     const label = dbStore?.name ?? STORE_LABEL[store] ?? store;
 
     return {
@@ -135,7 +142,9 @@ export function StoreProvider({ children }: StoreProviderProps) {
       routes: {
         publicHome: dbStore ? `/p/${dbStore.slug}` : "/",
         quotations: "/orcamentos",
-        dashboard: "/admin/dashboard",
+        dashboard: adminPath("/dashboard"),
+        adminBase,
+        adminPath,
       },
     };
   }, [store, activeStoreId, dbStores]);

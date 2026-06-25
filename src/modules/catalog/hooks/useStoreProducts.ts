@@ -11,7 +11,7 @@ type ProductWithImages = ProductRow & { images: StoreProductImage[] };
 
 const PRODUCTS_CACHE_BASE_KEY = "store_products:list";
 const PRODUCTS_CACHE_TTL_MS = 1000 * 60 * 3;
-let sharedProductsInflight: Promise<ProductWithImages[]> | null = null;
+const sharedProductsInflight = new Map<string, Promise<ProductWithImages[]>>();
 let lastSilentRefreshAt = 0;
 
 type UseStoreProductsOptions = {
@@ -91,13 +91,15 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
     };
 
     try {
-      if (!sharedProductsInflight) {
-        sharedProductsInflight = fetchAllProducts().finally(() => {
-          sharedProductsInflight = null;
+      let inflight = sharedProductsInflight.get(PRODUCTS_CACHE_KEY);
+      if (!inflight) {
+        inflight = fetchAllProducts().finally(() => {
+          sharedProductsInflight.delete(PRODUCTS_CACHE_KEY);
         });
+        sharedProductsInflight.set(PRODUCTS_CACHE_KEY, inflight);
       }
 
-      const mapped = await sharedProductsInflight;
+      const mapped = await inflight;
       setProducts(mapped);
       setSmartCache(PRODUCTS_CACHE_KEY, mapped, PRODUCTS_CACHE_TTL_MS);
       setLoading(false);

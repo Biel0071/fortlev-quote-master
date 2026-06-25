@@ -382,25 +382,49 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
               <div className="space-y-2">
                 {interpretedItems.map((item) => (
                   <div key={item.id} className="p-2.5 rounded-lg border border-primary/10 bg-background/40 flex items-start justify-between gap-3 group transition-all hover:border-primary/30">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-bold text-sm text-foreground">{item.quantity} {item.unit}</span>
-                        <span className="text-sm truncate font-medium text-foreground/80">{item.productName}</span>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const q = Math.max(1, parseInt(e.target.value || "1", 10));
+                            setInterpretedItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: q } : i));
+                          }}
+                          className="h-7 w-16 text-xs px-1.5"
+                        />
+                        <span className="text-[10px] text-muted-foreground">{item.unit}</span>
+                        <Input
+                          value={item.productName}
+                          onChange={(e) => setInterpretedItems(prev => prev.map(i => i.id === item.id ? { ...i, productName: e.target.value } : i))}
+                          className="h-7 flex-1 text-xs"
+                        />
                       </div>
                       <div className="flex items-center gap-2">
-                        <p className="text-[10px] text-muted-foreground italic truncate">"{item.originalText}"</p>
+                        <p className="text-[10px] text-muted-foreground italic truncate flex-1">"{item.originalText}"</p>
                         {item.price && item.price > 0 && <span className="text-[10px] font-bold text-emerald-600">R$ {item.price.toFixed(2)}</span>}
                       </div>
                     </div>
-                    {item.matched ? (
-                      <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 pointer-events-none">
-                        <Check className="h-3 w-3 mr-1" /> OK
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-amber-500 border-amber-500/20 bg-amber-500/5 pointer-events-none">
-                        <AlertCircle className="h-3 w-3 mr-1" /> Sugerir
-                      </Badge>
-                    )}
+                    <div className="flex flex-col items-end gap-1">
+                      {item.matched ? (
+                        <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 pointer-events-none text-[9px]">
+                          <Check className="h-3 w-3 mr-1" /> OK
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-amber-500 border-amber-500/20 bg-amber-500/5 pointer-events-none text-[9px]">
+                          <AlertCircle className="h-3 w-3 mr-1" /> Sugerir
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => setInterpretedItems(prev => prev.filter(i => i.id !== item.id))}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

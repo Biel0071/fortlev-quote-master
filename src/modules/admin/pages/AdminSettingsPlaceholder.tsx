@@ -7,7 +7,8 @@ import { Navigate } from "react-router-dom";
 import { useStore } from "@/contexts/StoreContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Copy, KeyRound, Plus, Trash2, Webhook } from "lucide-react";
+import { Copy, KeyRound, Plus, Trash2, Webhook, History, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function AdminSettingsFrete() {
   return (

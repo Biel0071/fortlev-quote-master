@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { storeUrlService } from "@/services/url/storeUrlService";
+import StoreThemeEditor from "./StoreThemeEditor";
+import StoreOverridesPanel from "./StoreOverridesPanel";
+
+
 
 
 const StoreDetails = () => {
@@ -86,12 +90,22 @@ const StoreDetails = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="bg-card border w-full justify-start overflow-x-auto">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="theme">Tema</TabsTrigger>
+          <TabsTrigger value="overrides">Overrides Master</TabsTrigger>
           <TabsTrigger value="domains">Domínios</TabsTrigger>
           <TabsTrigger value="modules">Módulos</TabsTrigger>
           <TabsTrigger value="ia">IA & Configs</TabsTrigger>
           <TabsTrigger value="plan">Plano & White Label</TabsTrigger>
           <TabsTrigger value="logs">Logs</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="theme">
+          <StoreThemeEditor storeId={store.id} />
+        </TabsContent>
+
+        <TabsContent value="overrides">
+          <StoreOverridesPanel store={store} />
+        </TabsContent>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -295,31 +309,56 @@ const StoreDetails = () => {
         </TabsContent>
 
         <TabsContent value="logs">
-           <Card>
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Logs de Auditoria</CardTitle>
-                <CardDescription>Histórico de operações realizadas nesta loja.</CardDescription>
+                <CardDescription>Eventos desta loja (últimos 100).</CardDescription>
               </div>
-              <Button variant="ghost" size="sm" className="gap-2">
-                <RefreshCcw size={14} /> Atualizar
+              <Button variant="ghost" size="sm" className="gap-2" onClick={() => navigate(`/admin/master/logs?storeId=${store.id}`)}>
+                <ExternalLink size={14} /> Ver Todos
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-3 border-b text-sm">
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100">INFO</Badge>
-                  <span className="flex-1">Loja criada via Store Factory Master</span>
-                  <span className="text-xs text-muted-foreground">{new Date(store.created_at).toLocaleString()}</span>
-                </div>
-                <div className="text-center py-4">
-                   <p className="text-xs text-muted-foreground italic">Integração com system_event_logs carregando...</p>
-                </div>
-              </div>
+              <StoreLogsList storeId={store.id} />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+};
+
+const StoreLogsList = ({ storeId }: { storeId: string }) => {
+  const { data: logs, isLoading } = useQuery({
+    queryKey: ["store-detail-logs", storeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("system_event_logs")
+        .select("*")
+        .filter("metadata->>store_id", "eq", storeId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Carregando logs…</p>;
+  if (!logs?.length) return <p className="text-sm text-muted-foreground italic">Nenhum log para esta loja ainda.</p>;
+
+  return (
+    <div className="space-y-2">
+      {logs.map((l: any) => (
+        <div key={l.id} className="flex items-center gap-3 p-2 border-b text-sm">
+          <Badge variant={l.level === "error" || l.level === "critical" ? "destructive" : "outline"} className="text-[10px]">
+            {(l.level || "info").toUpperCase()}
+          </Badge>
+          <span className="font-mono text-[10px] text-muted-foreground">{l.event_type}</span>
+          <span className="flex-1 truncate">{l.message}</span>
+          <span className="text-xs text-muted-foreground">{new Date(l.created_at).toLocaleString()}</span>
+        </div>
+      ))}
     </div>
   );
 };

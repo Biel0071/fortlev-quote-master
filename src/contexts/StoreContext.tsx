@@ -64,6 +64,18 @@ export function StoreProvider({ children }: StoreProviderProps) {
     const host = window.location.hostname;
     const pathname = location.pathname;
 
+    // The global admin entry is always the store selector. Do not inherit a
+    // previously selected store here, otherwise /admin can look stuck in a store.
+    if (pathname === "/admin") {
+      if (activeStoreId !== null) setActiveStoreId(null);
+      return;
+    }
+
+    // Master/auth/global admin pages should not auto-switch storefront context.
+    if (pathname.startsWith("/admin/master") || pathname.startsWith("/auth")) {
+      return;
+    }
+
     // 1. Check for /admin/store/:storeId
     const adminStoreMatch = pathname.match(/\/admin\/store\/([^\/]+)/);
     if (adminStoreMatch && adminStoreMatch[1]) {

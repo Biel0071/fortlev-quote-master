@@ -136,27 +136,49 @@ export function AdminSettingsIntegracoes() {
           <p className="text-xs text-muted-foreground">
             Use estas chaves no header <code className="bg-muted px-1 rounded">x-api-key</code> ao chamar a API de bots em <code className="bg-muted px-1 rounded">/functions/v1/api-quotation</code>.
           </p>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr,180px,140px,auto] gap-2">
             <Input placeholder="Nome (ex: Bot WhatsApp)" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} />
+            <Input type="datetime-local" placeholder="Expira em" value={newKeyExpiry} onChange={(e) => setNewKeyExpiry(e.target.value)} />
+            <Input type="number" min={0} placeholder="Quota (0=∞)" value={newKeyQuota} onChange={(e) => setNewKeyQuota(e.target.value)} />
             <Button onClick={createKey} disabled={loading || !newKeyName.trim()}>
               <Plus className="h-4 w-4 mr-1" /> Criar
             </Button>
           </div>
           <div className="space-y-2">
             {keys.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma chave criada.</p>}
-            {keys.map((k) => (
-              <div key={k.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{k.name}</span>
-                    {k.active ? <Badge variant="secondary" className="text-[10px]">ativa</Badge> : <Badge variant="outline" className="text-[10px]">inativa</Badge>}
+            {keys.map((k) => {
+              const expired = k.expires_at && new Date(k.expires_at) < new Date();
+              return (
+                <div key={k.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm">{k.name}</span>
+                      {expired ? <Badge variant="destructive" className="text-[10px]">expirada</Badge>
+                        : k.active ? <Badge variant="secondary" className="text-[10px]">ativa</Badge>
+                        : <Badge variant="outline" className="text-[10px]">inativa</Badge>}
+                      {k.expires_at && (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> até {new Date(k.expires_at).toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
+                      {k.quota_limit > 0 && (
+                        <span className="text-[10px] text-muted-foreground">{k.quota_used}/{k.quota_limit} usos</span>
+                      )}
+                      {k.last_used_at && (
+                        <span className="text-[10px] text-muted-foreground">último: {new Date(k.last_used_at).toLocaleString('pt-BR')}</span>
+                      )}
+                    </div>
+                    <code className="text-[11px] text-muted-foreground block truncate">{k.key}</code>
                   </div>
-                  <code className="text-[11px] text-muted-foreground block truncate">{k.key}</code>
+                  <Button variant="ghost" size="icon" onClick={() => openLogs(k)} title="Ver logs"><History className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => toggleKey(k)} title={k.active ? "Desativar" : "Ativar"}>
+                    <KeyRound className={`h-4 w-4 ${k.active ? 'text-emerald-600' : 'text-muted-foreground'}`} />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => copy(k.key)}><Copy className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => deleteKey(k.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => copy(k.key)}><Copy className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => deleteKey(k.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

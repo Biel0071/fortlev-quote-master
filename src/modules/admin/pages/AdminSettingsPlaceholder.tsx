@@ -170,6 +170,46 @@ export function AdminSettingsIntegracoes() {
           </div>
         </CardContent>
       </Card>
+
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><KeyRound className="h-4 w-4" /> Documentação da API</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-xs">
+          <div>
+            <p className="font-semibold mb-1">Endpoints</p>
+            <ul className="space-y-1 font-mono text-[11px] text-muted-foreground">
+              <li><span className="text-emerald-600 font-bold">POST</span> /functions/v1/api-quotation/analyze</li>
+              <li><span className="text-emerald-600 font-bold">POST</span> /functions/v1/api-quotation/generate</li>
+              <li><span className="text-blue-600 font-bold">GET</span>&nbsp;&nbsp;/functions/v1/api-quotation/&#123;id&#125;</li>
+              <li><span className="text-blue-600 font-bold">GET</span>&nbsp;&nbsp;/functions/v1/api-quotation/&#123;id&#125;/pdf</li>
+              <li><span className="text-emerald-600 font-bold">POST</span> /functions/v1/api-quotation/validate-token</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold mb-1">Autenticação</p>
+            <p className="text-muted-foreground">Envie sua chave no header <code className="bg-muted px-1 rounded">x-api-key</code>. Cada chave é vinculada à loja e só acessa dados dela.</p>
+          </div>
+          <div>
+            <p className="font-semibold mb-1">Exemplo (curl)</p>
+            <pre className="bg-muted/50 p-3 rounded text-[10px] overflow-x-auto">
+{`curl -X POST \\
+  https://flkionbmkuqgkudjjuqk.supabase.co/functions/v1/api-quotation/analyze \\
+  -H "x-api-key: SUA_CHAVE_AQUI" \\
+  -H "Content-Type: application/json" \\
+  -d '{"text": "João Silva, 2 caixas 1000L"}'`}
+            </pre>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 h-7 text-[11px]"
+              onClick={() => copy(`curl -X POST https://flkionbmkuqgkudjjuqk.supabase.co/functions/v1/api-quotation/analyze -H "x-api-key: SUA_CHAVE" -H "Content-Type: application/json" -d '{"text":"João Silva, 2 caixas 1000L"}'`)}
+            >
+              <Copy className="h-3 w-3 mr-1" /> Copiar exemplo
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -58,7 +58,7 @@ import AdminCrmLeads from "@/pages/dashboard/AdminCrmLeads";
 export default function AdminApp() {
   return (
     <Routes>
-      <Route path="/" element={<AdminLayout />}>
+      <Route path="*" element={<AdminLayout />}>
         <Route index element={<AdminStoreSelector />} />
         <Route path="master" element={<AdminMasterDashboard />} />
         <Route path="dashboard" element={<AdminDashboardShell />}>

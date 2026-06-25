@@ -53,7 +53,7 @@ export function AdminSettingsIntegracoes() {
   async function load() {
     if (!activeStoreId) return;
     const [{ data: k }, { data: h }] = await Promise.all([
-      supabase.from("api_keys").select("id,name,key,active,last_used_at,created_at").eq("store_id", activeStoreId).order("created_at", { ascending: false }),
+      supabase.from("api_keys").select("id,name,key,active,last_used_at,created_at,expires_at,starts_at,quota_limit,quota_used").eq("store_id", activeStoreId).order("created_at", { ascending: false }),
       supabase.from("api_webhooks").select("id,event,url,secret,active").eq("store_id", activeStoreId).order("created_at", { ascending: false }),
     ]);
     setKeys((k ?? []) as ApiKey[]);
@@ -65,10 +65,14 @@ export function AdminSettingsIntegracoes() {
   async function createKey() {
     if (!activeStoreId || !newKeyName.trim()) return;
     setLoading(true);
-    const { error } = await supabase.from("api_keys").insert({ store_id: activeStoreId, name: newKeyName.trim() } as any);
+    const payload: any = { store_id: activeStoreId, name: newKeyName.trim() };
+    if (newKeyExpiry) payload.expires_at = new Date(newKeyExpiry).toISOString();
+    const quota = parseInt(newKeyQuota, 10);
+    if (!isNaN(quota) && quota > 0) payload.quota_limit = quota;
+    const { error } = await supabase.from("api_keys").insert(payload);
     setLoading(false);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    setNewKeyName("");
+    setNewKeyName(""); setNewKeyExpiry(""); setNewKeyQuota("");
     toast({ title: "Chave criada" });
     load();
   }
@@ -77,6 +81,23 @@ export function AdminSettingsIntegracoes() {
     if (!confirm("Revogar esta chave? Bots usando ela perderão acesso.")) return;
     await supabase.from("api_keys").delete().eq("id", id);
     load();
+  }
+
+  async function toggleKey(k: ApiKey) {
+    await supabase.from("api_keys").update({ active: !k.active }).eq("id", k.id);
+    load();
+  }
+
+  async function openLogs(k: ApiKey) {
+    setLogsKey(k);
+    setLogs([]);
+    const { data } = await supabase
+      .from("api_usage_logs")
+      .select("id,endpoint,method,status_code,ip,duration_ms,error,created_at")
+      .eq("api_key_id", k.id)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    setLogs((data ?? []) as UsageLog[]);
   }
 
   async function createHook() {

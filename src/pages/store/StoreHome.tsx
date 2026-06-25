@@ -117,7 +117,7 @@ export default function StoreHome() {
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
   const { isLoading: tenantLoading, store: tenantStoreData } = useTenant();
-  const loading = tenantLoading || (productsLoading && activeProducts.length === 0) || (categoriesLoading && activeCategories.length === 0);
+  const loading = tenantLoading || !phase.featured || (productsLoading && activeProducts.length === 0) || (categoriesLoading && activeCategories.length === 0);
 
   const featuredIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
@@ -214,7 +214,7 @@ export default function StoreHome() {
 
 
   // Improved empty store detection
-  const isEmptyStore = !loading && !tenantLoading && activeProducts.length === 0 && !home.loading;
+  const isEmptyStore = phase.featured && !loading && !tenantLoading && activeProducts.length === 0 && !home.loading;
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen pt-[var(--store-header-offset,80px)]">

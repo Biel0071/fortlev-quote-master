@@ -10,7 +10,8 @@ import {
 
 export function StoreSwitcher({ className }: { className?: string }) {
   const navigate = useNavigate();
-  const { store, setStore } = useStore();
+  const { store, setStore, availableStores } = useStore();
+  const options = availableStores.length > 0 ? availableStores : STORE_OPTIONS.map((opt) => ({ ...opt, id: String(opt.value) }));
 
   const handleChange = (value: AppStore) => {
     const nextStoreId = setStore(value);
@@ -23,7 +24,7 @@ export function StoreSwitcher({ className }: { className?: string }) {
         <SelectValue placeholder="Selecione a loja" />
       </SelectTrigger>
       <SelectContent className="z-50 bg-popover">
-        {STORE_OPTIONS.map((opt) => (
+        {options.map((opt) => (
           <SelectItem key={opt.value} value={opt.value}>
             {opt.label}
           </SelectItem>

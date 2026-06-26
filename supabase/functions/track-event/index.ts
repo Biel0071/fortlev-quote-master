@@ -146,7 +146,7 @@ serve(async (req) => {
       if (!session_token) throw new Error("Invalid session_token");
 
       const user_id = await resolveUserIdFromJwt(req, SUPABASE_URL, SUPABASE_ANON_KEY);
-      const session = await ensureSession({ supa, session_token, user_id, req });
+      const session = await ensureSession({ supa, session_token, user_id, req, consent_given: Boolean(body?.consent_given) });
 
       return new Response(JSON.stringify({ ok: true, session_id: session.id }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -177,7 +177,7 @@ serve(async (req) => {
       }
 
       const user_id = await resolveUserIdFromJwt(req, SUPABASE_URL, SUPABASE_ANON_KEY);
-      const session = await ensureSession({ supa, session_token, user_id, req });
+      const session = await ensureSession({ supa, session_token, user_id, req, consent_given: Boolean(body?.consent_given) });
 
       const metadata = (ev?.metadata ?? {}) as Record<string, unknown>;
       const duration = ev?.duration == null ? 0 : Math.max(0, Math.floor(Number(ev.duration)));
@@ -228,7 +228,7 @@ serve(async (req) => {
       if (!session_token) throw new Error("Invalid session_token");
 
       const user_id = await resolveUserIdFromJwt(req, SUPABASE_URL, SUPABASE_ANON_KEY);
-      const session = await ensureSession({ supa, session_token, user_id, req });
+      const session = await ensureSession({ supa, session_token, user_id, req, consent_given: Boolean(body?.consent_given) });
 
       const { data, error } = await supa
         .from("chat_sessions")

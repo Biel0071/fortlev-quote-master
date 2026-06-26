@@ -41,6 +41,7 @@ import ferramentasIcon from "@/assets/category-icons/ferramentas.png";
 import madeiraIcon from "@/assets/category-icons/madeira.png";
 import pinturaIcon from "@/assets/category-icons/pintura.png";
 import vergalhaoIcon from "@/assets/category-icons/vergalhao.png";
+import storeLogoFallback from "@/assets/store-logo-materiais-cropped.png";
 
 function resolveCategoryPng(name: string, slug?: string) {
   const key = `${slug ?? ""} ${name ?? ""}`.trim().toLowerCase();
@@ -102,7 +103,7 @@ export function StoreTopbar({
   };
 
   const brandLabel = footerStoreName || footer?.store_name || tenantStore?.name || "";
-  const brandLogo = publicImageUrl("banner-images", footer?.logo_path);
+  const brandLogo = publicImageUrl("banner-images", footer?.logo_path) || storeLogoFallback;
   const menuCategories = useMemo(
     () => ((categories?.length ? categories : activeCategories) ?? []).slice(0, 12),
     [categories, activeCategories],

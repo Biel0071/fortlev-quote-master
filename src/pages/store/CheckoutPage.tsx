@@ -366,10 +366,14 @@ export default function CheckoutPage() {
 
   const handleFinishGateway = async () => {
     try {
-      const parsedIdentify = identifySchema.safeParse({ customerName, customerPhone });
+      const parsedIdentify = identifySchema.safeParse({ customerName, customerPhone, customerCpf });
       if (!parsedIdentify.success) {
         const msg = parsedIdentify.error.issues?.[0]?.message ?? "Dados inválidos";
         toast({ title: "Confira seus dados", description: msg, variant: "destructive" });
+        return;
+      }
+      if (!parsedIdentify.data.customerCpf || parsedIdentify.data.customerCpf.length !== 11) {
+        toast({ title: "CPF obrigatório", description: "Informe um CPF válido para pagamento por PIX.", variant: "destructive" });
         return;
       }
 

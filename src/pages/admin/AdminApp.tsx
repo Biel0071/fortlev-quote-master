@@ -27,6 +27,7 @@ const AdminDashboardQuotations = lazy(() => import("@/modules/admin/pages/AdminD
 const AdminQuotations = lazy(() => import("@/modules/admin/pages/AdminQuotations"));
 const AdminQuotationsOverview = lazy(() => import("@/modules/admin/pages/AdminQuotationsOverview"));
 const AdminQuotationTokens = lazy(() => import("@/modules/admin/pages/AdminQuotationTokens"));
+const AdminApiKeys = lazy(() => import("@/modules/admin/pages/AdminApiKeys"));
 const AdminBulkImageSearch = lazy(() => import("@/modules/admin/pages/AdminBulkImageSearch"));
 const AdminStoreSelector = lazy(() => import("@/modules/admin/pages/AdminStoreSelector"));
 const AdminQuotationModels = lazy(() => import("@/modules/admin/pages/AdminQuotationModels"));
@@ -86,7 +87,9 @@ export default function AdminApp() {
             <Route path="leads" element={<AdminCrmLeads />} />
             <Route path="tokens" element={<AdminQuotationTokens />} />
             <Route path="modelos" element={<AdminQuotationModels />} />
+            <Route path="api-keys" element={<AdminApiKeys />} />
           </Route>
+          <Route path="api-keys" element={<AdminApiKeys />} />
 
           <Route path="produtos" element={<AdminProductsList />} />
           <Route path="produtos/novo" element={<AdminProductForm />} />

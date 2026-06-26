@@ -320,11 +320,15 @@ export type Database = {
       api_keys: {
         Row: {
           active: boolean
+          cost_limit_brl: number
+          cost_per_call_brl: number
+          cost_used_brl: number
           created_at: string
           created_by: string | null
           expires_at: string | null
           id: string
           key: string
+          key_prefix: string | null
           last_used_at: string | null
           metadata: Json
           name: string
@@ -333,6 +337,7 @@ export type Database = {
           quota_reset_at: string | null
           quota_used: number
           rate_limit: number
+          revoked_at: string | null
           source: string
           starts_at: string
           store_id: string
@@ -340,11 +345,15 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          cost_limit_brl?: number
+          cost_per_call_brl?: number
+          cost_used_brl?: number
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
           id?: string
           key?: string
+          key_prefix?: string | null
           last_used_at?: string | null
           metadata?: Json
           name: string
@@ -353,6 +362,7 @@ export type Database = {
           quota_reset_at?: string | null
           quota_used?: number
           rate_limit?: number
+          revoked_at?: string | null
           source?: string
           starts_at?: string
           store_id: string
@@ -360,11 +370,15 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          cost_limit_brl?: number
+          cost_per_call_brl?: number
+          cost_used_brl?: number
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
           id?: string
           key?: string
+          key_prefix?: string | null
           last_used_at?: string | null
           metadata?: Json
           name?: string
@@ -373,6 +387,7 @@ export type Database = {
           quota_reset_at?: string | null
           quota_used?: number
           rate_limit?: number
+          revoked_at?: string | null
           source?: string
           starts_at?: string
           store_id?: string
@@ -391,6 +406,7 @@ export type Database = {
       api_usage_logs: {
         Row: {
           api_key_id: string
+          cost_brl: number
           created_at: string
           duration_ms: number | null
           endpoint: string
@@ -405,6 +421,7 @@ export type Database = {
         }
         Insert: {
           api_key_id: string
+          cost_brl?: number
           created_at?: string
           duration_ms?: number | null
           endpoint: string
@@ -419,6 +436,7 @@ export type Database = {
         }
         Update: {
           api_key_id?: string
+          cost_brl?: number
           created_at?: string
           duration_ms?: number | null
           endpoint?: string
@@ -5813,6 +5831,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      api_consume_key: {
+        Args: {
+          _endpoint: string
+          _ip?: string
+          _method: string
+          _raw_key: string
+          _scope: string
+          _user_agent?: string
+        }
+        Returns: {
+          api_key_id: string
+          message: string
+          ok: boolean
+          permissions: string[]
+          status_code: number
+          store_id: string
+        }[]
+      }
       apply_plan_permissions: {
         Args: { _plan_id: string; _store_id: string }
         Returns: undefined

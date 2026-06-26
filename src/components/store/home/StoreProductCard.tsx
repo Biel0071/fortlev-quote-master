@@ -161,15 +161,13 @@ export function StoreProductCard({
             -{Math.floor(((basePrice - promo) / basePrice) * 100)}%
           </span>
         )}
-        <img
+        <SmartImage
           src={imageSrc}
           alt={product?.name ?? "Produto"}
           className="max-h-full max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.03]"
-          loading="eager"
+          wrapperClassName="flex items-center justify-center"
+          loading="lazy"
           decoding="async"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";
-          }}
         />
       </div>
 

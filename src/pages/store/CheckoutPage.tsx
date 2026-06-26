@@ -462,10 +462,13 @@ export default function CheckoutPage() {
           <CheckoutIdentifyStep
             name={customerName}
             phone={formatWhatsappMask(customerPhone)}
+            cpf={formatCpfMask(customerCpf)}
             phoneError={phoneError}
+            cpfError={cpfError}
             loading={placing}
             onNameChange={(value) => setCustomerName(sanitizeNameInput(value))}
             onPhoneChange={(value) => setCustomerPhone(sanitizePhoneInput(value))}
+            onCpfChange={(value) => setCustomerCpf(onlyDigits(value).slice(0, 11))}
             onContinue={handleContinue}
           />
         ) : (

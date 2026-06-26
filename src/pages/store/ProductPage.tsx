@@ -356,11 +356,6 @@ export default function ProductPage() {
     window.dispatchEvent(new CustomEvent("store:product-visit", { detail: { productId: product.id, count: next } }));
   }, [product?.id]);
 
-  useEffect(() => {
-    const first = getProductImageUrl(images, fallbackProductImage);
-    setActiveImg(first);
-  }, [images]);
-
   return (
     <StoreLayout
       cartCount={cart.totalItems}
@@ -389,23 +384,35 @@ export default function ProductPage() {
             <div className="min-w-0 max-w-full overflow-hidden lg:col-span-7">
               <Card className="rounded-2xl sm:rounded-3xl overflow-hidden border-border bg-card shadow-sm">
                 <div className="aspect-square sm:aspect-[4/3] bg-white flex items-center justify-center p-4">
-                  <img
-                    src={activeImg || fallbackProductImage}
-                    alt={product.name}
-                    className="max-h-full max-w-full object-contain"
-                    loading="eager"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = fallbackProductImage;
-                    }}
-                  />
+                  {activeMedia?.type === "video" ? (
+                    <video
+                      key={activeMedia.url}
+                      src={activeMedia.url}
+                      className="max-h-full max-w-full object-contain"
+                      controls
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      src={activeMedia?.url || fallbackProductImage}
+                      alt={product.name}
+                      className="max-h-full max-w-full object-contain"
+                      loading="eager"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = fallbackProductImage;
+                      }}
+                    />
+                  )}
                 </div>
-                {images.length > 1 ? (
+                {media.length > 1 ? (
                   <CardContent className="min-w-0 p-3 sm:p-4">
-                    <ThumbStrip images={images} activeImg={activeImg} onSelect={setActiveImg} />
+                    <ThumbStrip media={media} activeUrl={activeMedia?.url ?? null} onSelect={setActiveMedia} />
                   </CardContent>
                 ) : null}
               </Card>
             </div>
+
 
             {/* Product info */}
             <div className="lg:col-span-5 space-y-3 sm:space-y-4 min-w-0 max-w-full overflow-hidden">

@@ -141,12 +141,18 @@ export default function PaymentPendingPage() {
                   </div>
                 )}
 
-                {pixData.qr_code_base64 && (
+                {(pixData.qr_code_base64 || pixData.payment_url || pixData.qr_code) && (
                   <div className="flex justify-center">
                     <img
-                      src={`data:image/png;base64,${pixData.qr_code_base64}`}
+                      src={
+                        pixData.qr_code_base64
+                          ? `data:image/png;base64,${pixData.qr_code_base64}`
+                          : pixData.payment_url
+                          ? pixData.payment_url
+                          : `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pixData.qr_code || "")}`
+                      }
                       alt="QR Code PIX"
-                      className="w-52 h-52 rounded-lg border border-border"
+                      className="w-52 h-52 rounded-lg border border-border bg-white p-2"
                     />
                   </div>
                 )}
@@ -155,7 +161,7 @@ export default function PaymentPendingPage() {
                   <div className="space-y-2">
                     <p className="text-xs text-muted-foreground text-center">Código PIX (copie e cole no seu banco)</p>
                     <div className="relative">
-                      <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs break-all font-mono max-h-24 overflow-y-auto">
+                      <div className="rounded-lg border border-border bg-muted/30 p-3 pr-12 text-xs break-all font-mono max-h-24 overflow-y-auto">
                         {pixData.qr_code}
                       </div>
                       <Button
@@ -167,15 +173,10 @@ export default function PaymentPendingPage() {
                         {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
                       </Button>
                     </div>
+                    <Button className="w-full" onClick={() => handleCopy(pixData.qr_code!)}>
+                      {copied ? "Copiado!" : "Copiar código PIX"}
+                    </Button>
                   </div>
-                )}
-
-                {pixData.payment_url && (
-                  <Button asChild variant="outline" className="w-full">
-                    <a href={pixData.payment_url} target="_blank" rel="noopener noreferrer">
-                      Abrir página de pagamento
-                    </a>
-                  </Button>
                 )}
 
                 <p className="text-xs text-muted-foreground text-center">

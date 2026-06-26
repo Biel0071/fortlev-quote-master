@@ -25,6 +25,7 @@ export default function PaymentPendingPage() {
     customerName?: string;
     customerEmail?: string;
     customerPhone?: string;
+    customerCpf?: string;
   };
 
   const [pixData, setPixData] = useState<PixData | null>(null);

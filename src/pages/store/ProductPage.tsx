@@ -111,14 +111,16 @@ function ProductDescription({ markdown }: { markdown: string }) {
   );
 }
 
+type MediaItem = { url: string; type: "image" | "video"; path: string };
+
 function ThumbStrip({
-  images,
-  activeImg,
+  media,
+  activeUrl,
   onSelect,
 }: {
-  images: any[];
-  activeImg: string | null;
-  onSelect: (url: string) => void;
+  media: MediaItem[];
+  activeUrl: string | null;
+  onSelect: (item: MediaItem) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState(false);
@@ -138,7 +140,7 @@ function ThumbStrip({
     if (!el) return;
     el.addEventListener("scroll", checkScroll, { passive: true });
     return () => el.removeEventListener("scroll", checkScroll);
-  }, [images]);
+  }, [media]);
 
   const scroll = (dir: "left" | "right") => {
     const el = scrollRef.current;
@@ -152,32 +154,27 @@ function ThumbStrip({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Left arrow */}
       {canLeft && (
         <button
           type="button"
           onClick={() => scroll("left")}
           className={cn(
             "absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/70 backdrop-blur-sm border border-border/50 flex items-center justify-center shadow-sm transition-opacity duration-200",
-            hovered ? "opacity-100" : "opacity-0 pointer-events-none sm:opacity-0 sm:pointer-events-none",
+            hovered ? "opacity-100" : "opacity-0 pointer-events-none",
           )}
-          style={{ opacity: hovered ? 1 : undefined }}
           aria-label="Anterior"
         >
           <ChevronLeft className="h-4 w-4 text-foreground/60" />
         </button>
       )}
-
-      {/* Right arrow */}
       {canRight && (
         <button
           type="button"
           onClick={() => scroll("right")}
           className={cn(
             "absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/70 backdrop-blur-sm border border-border/50 flex items-center justify-center shadow-sm transition-opacity duration-200",
-            hovered ? "opacity-100" : "opacity-0 pointer-events-none sm:opacity-0 sm:pointer-events-none",
+            hovered ? "opacity-100" : "opacity-0 pointer-events-none",
           )}
-          style={{ opacity: hovered ? 1 : undefined }}
           aria-label="Próximo"
         >
           <ChevronRight className="h-4 w-4 text-foreground/60" />
@@ -191,20 +188,24 @@ function ThumbStrip({
         onTouchStart={() => setHovered(true)}
         onTouchEnd={() => setTimeout(() => setHovered(false), 1500)}
       >
-        {images.slice(0, 8).map((im: any, idx: number) => {
-          const url = publicImageUrl("product-images", im.path);
-          const active = url && url === activeImg;
+        {media.slice(0, 8).map((item, idx) => {
+          const active = item.url === activeUrl;
           return (
             <button
               key={idx}
               type="button"
-              onClick={() => onSelect(url)}
-              className={`shrink-0 h-14 w-14 sm:h-16 sm:w-16 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-colors ${
+              onClick={() => onSelect(item)}
+              className={`relative shrink-0 h-14 w-14 sm:h-16 sm:w-16 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-colors ${
                 active ? "border-primary" : "border-border"
               }`}
-              aria-label={`Ver imagem ${idx + 1}`}
+              aria-label={item.type === "video" ? `Ver vídeo ${idx + 1}` : `Ver imagem ${idx + 1}`}
             >
-              <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              <img src={item.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              {item.type === "video" ? (
+                <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <span className="h-0 w-0 border-y-[6px] border-y-transparent border-l-[10px] border-l-white" />
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -212,6 +213,7 @@ function ThumbStrip({
     </div>
   );
 }
+
 
 function splitDescription(markdown: string) {
   const md = (markdown ?? "").trim();

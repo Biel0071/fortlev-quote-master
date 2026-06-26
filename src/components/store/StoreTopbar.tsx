@@ -122,9 +122,9 @@ export function StoreTopbar({
   return (
     <>
       <header className="header-main w-full overflow-x-hidden border-b border-border">
-        <div className="mx-auto max-w-6xl px-3 py-2 sm:px-6 sm:py-3">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-center py-1">
+        <div className="mx-auto max-w-6xl px-3 pt-1 pb-2 sm:px-6 sm:pt-2 sm:pb-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-center">
               <Link to="/" className="flex items-center justify-center" aria-label={brandLabel}>
                 {brandLogo ? (
                   <img

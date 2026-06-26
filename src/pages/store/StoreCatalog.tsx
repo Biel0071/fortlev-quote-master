@@ -13,7 +13,9 @@ import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { StoreProductCard } from "@/components/store/home/StoreProductCard";
 import { useSearchParams } from "react-router-dom";
 import { expandSearchTerms, smartMatch, smartScore } from "@/utils/smartSearch";
-import { Virtualizer } from "virtua";
+
+const INITIAL_PRODUCT_COUNT = 40;
+const PRODUCT_COUNT_STEP = 40;
 
 export default function StoreCatalog() {
   const cart = useCart();
@@ -23,6 +25,7 @@ export default function StoreCatalog() {
   const [cartOpen, setCartOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const [mounted, setMounted] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_PRODUCT_COUNT);
 
   useEffect(() => {
     setMounted(true);
@@ -30,6 +33,10 @@ export default function StoreCatalog() {
 
   const q = (searchParams.get("q") ?? "").toString();
   const selectedSlug = searchParams.get("categoria") ?? "all";
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_PRODUCT_COUNT);
+  }, [q, selectedSlug, searchParams]);
 
   const filtered = useMemo(() => {
     const search = q.trim().toLowerCase();
@@ -89,6 +96,9 @@ export default function StoreCatalog() {
     }
     return results;
   }, [activeProducts, q, selectedSlug, activeCategories, searchParams]);
+
+  const visibleProducts = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMoreProducts = visibleProducts.length < filtered.length;
 
   const onAdd = (product: any, qty: number) => {
     const price = Number(product?.price ?? 0);
@@ -158,14 +168,27 @@ export default function StoreCatalog() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
-            {filtered.map((p: any) => (
-              <StoreProductCard
-                key={p.id}
-                product={p}
-                onAdd={(productId, qty) => onAdd(p, qty)}
-              />
-            ))}
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
+              {visibleProducts.map((p: any) => (
+                <StoreProductCard
+                  key={p.id}
+                  product={p}
+                  onAdd={(productId, qty) => onAdd(p, qty)}
+                />
+              ))}
+            </div>
+
+            {hasMoreProducts && (
+              <div className="flex justify-center pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleCount((count) => count + PRODUCT_COUNT_STEP)}
+                >
+                  Carregar mais produtos
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </main>

@@ -33,14 +33,14 @@ export function CookieConsentBanner() {
     await logConsent(tracker.sessionToken, "declined");
   };
 
-  // Auto-ativar cookies básicos após 5s (se o usuário não interagir/recusar)
+  // Auto-ativar cookies básicos após 3s (se o usuário não interagir/recusar)
   useEffect(() => {
     if (tracker.consent !== "unknown") return;
     if (configOpen) return;
 
     const t = window.setTimeout(() => {
       accept("auto");
-    }, 5000);
+    }, 3000);
 
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

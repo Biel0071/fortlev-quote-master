@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_store_products_store_active_name ON public.store_products(store_id, active, name);
+CREATE INDEX IF NOT EXISTS idx_store_product_images_product_sort ON public.store_product_images(product_id, sort_order);

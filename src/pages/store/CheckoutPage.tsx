@@ -157,6 +157,11 @@ export default function CheckoutPage() {
     return isValidBrazilPhone(customerPhone) ? undefined : "Informe um WhatsApp válido com DDD (10 ou 11 dígitos).";
   }, [customerPhone]);
 
+  const cpfError = useMemo(() => {
+    if (!customerCpf) return undefined;
+    return isValidCpf(customerCpf) ? undefined : "Informe um CPF válido.";
+  }, [customerCpf]);
+
   const resolveCouponDiscount = async () => {
     const code = cart.couponCode.trim();
     if (!code || computed.lines.length === 0) return 0;

@@ -126,14 +126,21 @@ export function StoreTopbar({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-center py-1">
               <Link to="/" className="flex items-center justify-center" aria-label={brandLabel}>
-                <img
-                  src={brandLogo}
-                  alt={`${brandLabel} - logo`}
-                  className="logo"
-                  loading="eager"
-                />
+                {brandLogo ? (
+                  <img
+                    src={brandLogo}
+                    alt={`${brandLabel} - logo`}
+                    className="logo"
+                    loading="eager"
+                  />
+                ) : (
+                  <span className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+                    {brandLabel || "Loja"}
+                  </span>
+                )}
               </Link>
             </div>
+
 
             <div className="flex min-w-0 items-center gap-2">
               <div className="min-w-0 flex-1">

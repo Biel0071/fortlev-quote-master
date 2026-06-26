@@ -50,6 +50,9 @@ export default function PaymentPendingPage() {
               name: state.customerName || "Cliente",
               email: state.customerEmail || "cliente@email.com",
               phone: state.customerPhone || "",
+              ...(state.customerCpf
+                ? { document: { type: "CPF", number: state.customerCpf } }
+                : {}),
             },
             metadata: { order_id: state.orderId },
           },

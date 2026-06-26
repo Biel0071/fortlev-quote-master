@@ -18,6 +18,26 @@ import { CheckoutIdentifyStep } from "@/components/store/checkout/CheckoutIdenti
 import { CheckoutDeliveryStep } from "@/components/store/checkout/CheckoutDeliveryStep";
 import { useRoutingThreshold } from "@/hooks/useRoutingThreshold";
 
+const onlyDigits = (v: string) => v.replace(/\D/g, "");
+const isValidCpf = (raw: string) => {
+  const d = onlyDigits(raw);
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  const calc = (base: string, len: number) => {
+    let s = 0;
+    for (let i = 0; i < len; i++) s += Number(base[i]) * (len + 1 - i);
+    const r = (s * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return calc(d, 9) === Number(d[9]) && calc(d, 10) === Number(d[10]);
+};
+const formatCpfMask = (v: string) => {
+  const d = onlyDigits(v).slice(0, 11);
+  return d
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+};
+
 const identifySchema = z.object({
   customerName: z.string().trim().min(2, "Nome obrigatório").max(120, "Nome muito longo"),
   customerPhone: z
@@ -26,6 +46,11 @@ const identifySchema = z.object({
     .min(1, "WhatsApp obrigatório")
     .transform((v) => cleanPhone(v))
     .refine((v) => v.length === 10 || v.length === 11, "WhatsApp inválido"),
+  customerCpf: z
+    .string()
+    .trim()
+    .transform((v) => onlyDigits(v))
+    .refine((v) => v === "" || isValidCpf(v), "CPF inválido"),
 });
 
 const deliverySchema = z.object({

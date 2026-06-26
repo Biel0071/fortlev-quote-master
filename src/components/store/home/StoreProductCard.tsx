@@ -9,6 +9,7 @@ import { formatCurrency } from "@/utils/formatters";
 import { getProductImageUrl } from "@/utils/productImage";
 import { cloud } from "@/lib/cloud";
 import { getProductSlug } from "@/utils/productSlug";
+import { SmartImage } from "@/components/store/SmartImage";
 
 // Shared cache so we don't re-fetch per card
 const ratingsCache = new Map<string, { avg: number; total: number } | null>();

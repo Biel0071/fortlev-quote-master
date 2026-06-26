@@ -10,7 +10,7 @@ type ProductRow = StoreProduct;
 type ProductWithImages = ProductRow & { images: StoreProductImage[] };
 
 const PRODUCTS_CACHE_BASE_KEY = "store_products:list";
-const PRODUCTS_CACHE_TTL_MS = 1000 * 60 * 3;
+const PRODUCTS_CACHE_TTL_MS = 1000 * 60 * 10;
 const sharedProductsInflight = new Map<string, Promise<ProductWithImages[]>>();
 let lastSilentRefreshAt = 0;
 
@@ -40,19 +40,21 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
     const fetchAllProducts = async () => {
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-          const PAGE_SIZE = 500;
+          const PAGE_SIZE = 1500;
           let allData: any[] = [];
           let from = 0;
           let hasMore = true;
           let safetyCounter = 0;
 
+          // Lighter column set — `description` is fetched on the PDP only.
+          const SELECT_COLS =
+            "id, source_id, name, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order, media_type)";
+
           while (hasMore && safetyCounter < 100) {
             safetyCounter++;
             const { data, error: fetchError } = await cloud
               .from("store_products")
-              .select(
-                "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order, media_type)",
-              )
+              .select(SELECT_COLS)
               .eq("store_id", store.id)
               .order("name", { ascending: true })
               .range(from, from + PAGE_SIZE - 1);
@@ -63,8 +65,6 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
             allData = [...allData, ...batch];
             hasMore = batch.length === PAGE_SIZE;
             from += PAGE_SIZE;
-
-            if (hasMore) await new Promise((r) => setTimeout(r, 10));
           }
 
           return allData

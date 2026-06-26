@@ -294,7 +294,7 @@ export default function CheckoutPage() {
         return;
       }
 
-      const parsedIdentify = identifySchema.safeParse({ customerName, customerPhone });
+      const parsedIdentify = identifySchema.safeParse({ customerName, customerPhone, customerCpf });
       if (!parsedIdentify.success) {
         const msg = parsedIdentify.error.issues?.[0]?.message ?? "Dados inválidos";
         toast({ title: "Confira seus dados", description: msg, variant: "destructive" });

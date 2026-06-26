@@ -5430,6 +5430,8 @@ export type Database = {
           device: string
           first_seen_at: string
           id: string
+          ip: string | null
+          ip_hash: string | null
           last_seen_at: string
           score: number
           scroll_depth: number
@@ -5440,12 +5442,15 @@ export type Database = {
           total_clicks: number
           total_pages: number
           total_time_seconds: number
+          user_agent: string | null
           user_id: string | null
         }
         Insert: {
           device?: string
           first_seen_at?: string
           id?: string
+          ip?: string | null
+          ip_hash?: string | null
           last_seen_at?: string
           score?: number
           scroll_depth?: number
@@ -5456,12 +5461,15 @@ export type Database = {
           total_clicks?: number
           total_pages?: number
           total_time_seconds?: number
+          user_agent?: string | null
           user_id?: string | null
         }
         Update: {
           device?: string
           first_seen_at?: string
           id?: string
+          ip?: string | null
+          ip_hash?: string | null
           last_seen_at?: string
           score?: number
           scroll_depth?: number
@@ -5472,6 +5480,7 @@ export type Database = {
           total_clicks?: number
           total_pages?: number
           total_time_seconds?: number
+          user_agent?: string | null
           user_id?: string | null
         }
         Relationships: [

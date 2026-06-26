@@ -33,16 +33,19 @@ export default function StoreCatalog() {
 
   const q = (searchParams.get("q") ?? "").toString();
   const selectedSlug = searchParams.get("categoria") ?? "all";
+  const promoParam = searchParams.get("promo") ?? "";
+  const sortParam = (searchParams.get("sort") ?? "").toLowerCase();
+  const filterKey = `${q}|${selectedSlug}|${promoParam}|${sortParam}`;
 
   useEffect(() => {
     setVisibleCount(INITIAL_PRODUCT_COUNT);
-  }, [q, selectedSlug, searchParams]);
+  }, [filterKey]);
 
   const filtered = useMemo(() => {
     const search = q.trim().toLowerCase();
     const selectedCategoryId =
       selectedSlug === "all" ? null : activeCategories.find((c) => c.slug === selectedSlug)?.id ?? null;
-    const promoOnly = searchParams.get("promo") === "1";
+      const promoOnly = promoParam === "1";
     const searchTerms = search ? expandSearchTerms(search) : [];
 
     const results = activeProducts
@@ -60,8 +63,7 @@ export default function StoreCatalog() {
       })
       .slice()
       .sort((a: any, b: any) => {
-        const sort = (searchParams.get("sort") ?? "").toLowerCase();
-        if (sort === "popular") {
+        if (sortParam === "popular") {
           const av = Number(a.views ?? 0);
           const bv = Number(b.views ?? 0);
           if (bv !== av) return bv - av;
@@ -95,7 +97,7 @@ export default function StoreCatalog() {
       return activeProducts.filter((p: any) => p.featured || p.best_seller).slice(0, 12);
     }
     return results;
-  }, [activeProducts, q, selectedSlug, activeCategories, searchParams]);
+  }, [activeProducts, q, selectedSlug, activeCategories, promoParam, sortParam]);
 
   const visibleProducts = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const hasMoreProducts = visibleProducts.length < filtered.length;

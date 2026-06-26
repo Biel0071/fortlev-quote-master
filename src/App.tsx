@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { TenantProvider } from "@/providers/TenantProvider";
@@ -39,14 +39,30 @@ const MasterRouteGuard = lazy(() => import("@/components/admin/MasterRouteGuard"
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 2 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
       retry: 1,
     },
   },
 });
+
+// Prefetch most-visited route chunks during idle time so navigation feels instant
+function RoutePrefetcher() {
+  useEffect(() => {
+    const idle = (cb: () => void) =>
+      (window as any).requestIdleCallback ? (window as any).requestIdleCallback(cb, { timeout: 2500 }) : setTimeout(cb, 1500);
+    idle(() => {
+      import("@/pages/store/StoreCatalog");
+      import("@/pages/store/ProductPage");
+      import("@/pages/store/CartPage");
+      import("@/pages/store/OffersPage");
+      import("@/pages/store/CheckoutPage");
+    });
+  }, []);
+  return null;
+}
 
 function InstitutionalRedirect() {
   const { slug = "" } = useParams();
@@ -82,6 +98,7 @@ const App = () => (
               <Toaster />
               <Sonner />
             <ScrollToTop />
+            <RoutePrefetcher />
             <CookieConsentBanner />
             <Suspense fallback={<PageSkeleton />}>
               <Routes>

@@ -96,6 +96,7 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [customerCpf, setCustomerCpf] = useState("");
 
   const [cep, setCep] = useState("");
   const [address, setAddress] = useState("");

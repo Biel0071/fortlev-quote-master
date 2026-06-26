@@ -256,7 +256,7 @@ export default function StoreHome() {
         </div>
       ) : (
         <>
-          <div className="main-content w-full overflow-hidden">
+          <div className="w-full overflow-hidden">
             <HomeHeroCarousel banners={home.banners} loading={home.loading} />
           </div>
 

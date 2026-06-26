@@ -12,15 +12,31 @@ window.onunhandledrejection = (event) => {
   console.error("Unhandled promise rejection:", event.reason);
 };
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      registrations.forEach((registration) => registration.unregister());
-    }).catch(() => {
-      // Ignore cleanup failures; stale workers should never block rendering.
-    });
-  });
-}
+const clearStalePwaCache = async () => {
+  try {
+    if ("caches" in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+    }
+
+    if ("serviceWorker" in navigator) {
+      const hadController = Boolean(navigator.serviceWorker.controller);
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+
+      const alreadyReset = new URLSearchParams(window.location.search).has("pwa_reset");
+      if (hadController && !alreadyReset) {
+        const resetUrl = new URL(window.location.href);
+        resetUrl.searchParams.set("pwa_reset", String(Date.now()));
+        window.location.replace(resetUrl.toString());
+      }
+    }
+  } catch {
+    // Cache cleanup must never block React from rendering.
+  }
+};
+
+void clearStalePwaCache();
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorInfo: string }> {
   constructor(props: { children: ReactNode }) {

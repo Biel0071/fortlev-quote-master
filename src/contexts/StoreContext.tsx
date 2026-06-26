@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState, useEffect } from "react";
+import React, { createContext, useContext, useMemo, useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 
@@ -17,10 +17,8 @@ type StoreContextValue = {
   setStore: (store: AppStore) => string | null;
   label: string;
   storesLoading: boolean;
-  /** The database UUID of the active store (null if not resolved yet) */
   activeStoreId: string | null;
   availableStores: Array<{ value: AppStore; label: string; id: string }>;
-  /** Set active store directly by database ID */
   setActiveStoreId: (id: string | null) => void;
   routes: {
     publicHome: string;
@@ -39,111 +37,132 @@ const STORE_LABEL: Record<string, string> = {
   construcao: "Construção (Orçamentos)",
 };
 
-type StoreProviderProps = {
-  children: React.ReactNode;
-};
+const STORES_CACHE_KEY = "lovable:stores:v1";
+const STORES_CACHE_TTL = 5 * 60 * 1000;
+
+function loadCachedStores(): StoreDbRow[] | null {
+  try {
+    const raw = sessionStorage.getItem(STORES_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { at: number; data: StoreDbRow[] };
+    if (!parsed?.data || Date.now() - parsed.at > STORES_CACHE_TTL) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedStores(data: StoreDbRow[]) {
+  try {
+    sessionStorage.setItem(STORES_CACHE_KEY, JSON.stringify({ at: Date.now(), data }));
+  } catch {
+    /* ignore */
+  }
+}
+
+type StoreProviderProps = { children: React.ReactNode };
 
 export function StoreProvider({ children }: StoreProviderProps) {
   const location = useLocation();
+  const cached = useMemo(loadCachedStores, []);
   const [store, setStoreRaw] = useState<AppStore>("materiais");
   const [activeStoreId, setActiveStoreId] = useState<string | null>(null);
-  const [dbStores, setDbStores] = useState<StoreDbRow[]>([]);
-  const [storesLoading, setStoresLoading] = useState(true);
+  const [dbStores, setDbStores] = useState<StoreDbRow[]>(cached ?? []);
+  const [storesLoading, setStoresLoading] = useState(!cached);
 
-  // Load stores from DB once
+  // Refs to avoid re-running effect on state changes it itself produces
+  const storeRef = useRef(store);
+  const activeIdRef = useRef(activeStoreId);
+  storeRef.current = store;
+  activeIdRef.current = activeStoreId;
+
+  // Load stores from DB once (and refresh cache silently)
   useEffect(() => {
+    let cancelled = false;
     cloud
       .from("stores")
       .select("id, name, slug, domain, active")
       .order("name")
       .then(({ data }) => {
-        if (data) setDbStores(data as StoreDbRow[]);
+        if (cancelled || !data) return;
+        setDbStores(data as StoreDbRow[]);
+        saveCachedStores(data as StoreDbRow[]);
       })
-      .finally(() => setStoresLoading(false));
+      .finally(() => {
+        if (!cancelled) setStoresLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Auto-detect store by hostname or route
+  // Resolve active store from URL/hostname. Depends ONLY on dbStores + pathname
+  // — never on `store`/`activeStoreId` (would loop).
   useEffect(() => {
     if (dbStores.length === 0) return;
     const host = window.location.hostname;
     const pathname = location.pathname;
+    const currentStore = storeRef.current;
+    const currentId = activeIdRef.current;
 
-    // The global admin entry is always the store selector. Do not inherit a
-    // previously selected store here, otherwise /admin can look stuck in a store.
+    const apply = (slug: string, id: string | null) => {
+      if (currentStore !== slug) setStoreRaw(slug);
+      if (currentId !== id) setActiveStoreId(id);
+    };
+
     if (pathname === "/admin") {
-      if (activeStoreId !== null) setActiveStoreId(null);
+      if (currentId !== null) setActiveStoreId(null);
       return;
     }
-
-    // Master/auth/global admin pages should not auto-switch storefront context.
     if (pathname.startsWith("/admin/master") || pathname.startsWith("/auth")) {
       return;
     }
 
-    // 1. Check for /admin/store/:storeId
-    const adminStoreMatch = pathname.match(/\/admin\/store\/([^\/]+)/);
-    if (adminStoreMatch && adminStoreMatch[1]) {
-      const matchedById = dbStores.find(s => s.id === adminStoreMatch[1]);
-      if (matchedById) {
-        if (store !== matchedById.slug || activeStoreId !== matchedById.id) {
-          setStoreRaw(matchedById.slug);
-          setActiveStoreId(matchedById.id);
-        }
+    const adminStoreMatch = pathname.match(/\/admin\/store\/([^/]+)/);
+    if (adminStoreMatch?.[1]) {
+      const m = dbStores.find((s) => s.id === adminStoreMatch[1]);
+      if (m) {
+        apply(m.slug, m.id);
         return;
       }
-
-      if (activeStoreId !== null) setActiveStoreId(null);
+      if (currentId !== null) setActiveStoreId(null);
       return;
     }
 
-    // 2. Check for /p/:slug
-    const pMatch = pathname.match(/\/p\/([^\/]+)/);
-    if (pMatch && pMatch[1]) {
-      const matchedBySlug = dbStores.find(s => s.slug === pMatch[1]);
-      if (matchedBySlug) {
-        if (store !== matchedBySlug.slug || activeStoreId !== matchedBySlug.id) {
-          setStoreRaw(matchedBySlug.slug);
-          setActiveStoreId(matchedBySlug.id);
-        }
+    const pMatch = pathname.match(/\/p\/([^/]+)/);
+    if (pMatch?.[1]) {
+      const m = dbStores.find((s) => s.slug === pMatch[1]);
+      if (m) {
+        apply(m.slug, m.id);
         return;
       }
     }
 
-    // 3. Try matching by domain
-    const matchedByDomain = dbStores.find(
-      (s) => s.domain && (
-        s.domain.toLowerCase() === host.toLowerCase() ||
-        // Check if the current host is a subdomain or the main domain
-        (host.toLowerCase() === 'materialdecontrucao.online' && s.domain.toLowerCase() === 'materialdecontrucao.online')
-      )
+    const byDomain = dbStores.find(
+      (s) => s.domain && s.domain.toLowerCase() === host.toLowerCase()
     );
-
-    if (matchedByDomain) {
-      if (store !== matchedByDomain.slug || activeStoreId !== matchedByDomain.id) {
-        setStoreRaw(matchedByDomain.slug);
-        setActiveStoreId(matchedByDomain.id);
-      }
+    if (byDomain) {
+      apply(byDomain.slug, byDomain.id);
       return;
     }
 
-    // 4. Fallback to current state resolution
-    const current = dbStores.find((s) => s.slug === store);
-    if (current && activeStoreId !== current.id) {
-      setActiveStoreId(current.id);
+    // Fallback: keep current slug; resolve missing id
+    const current = dbStores.find((s) => s.slug === currentStore) ?? dbStores.find((s) => s.active) ?? dbStores[0];
+    if (current && currentId !== current.id) {
+      apply(current.slug, current.id);
     }
-  }, [dbStores, store, activeStoreId, location.pathname]);
+  }, [dbStores, location.pathname]);
 
   const setStore = (newStore: AppStore) => {
-    setStoreRaw(newStore);
     const found = dbStores.find((s) => s.slug === newStore || s.id === newStore);
     if (found) {
       setStoreRaw(found.slug);
       setActiveStoreId(found.id);
       return found.id;
     }
+    setStoreRaw(newStore);
     return null;
   };
-
 
   const value = useMemo<StoreContextValue>(() => {
     const isStoreScopedAdminPath = location.pathname.startsWith("/admin/store/");
@@ -177,10 +196,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
     };
   }, [store, activeStoreId, dbStores, storesLoading, location.pathname]);
 
-
-  return (
-    <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
-  );
+  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
 export function useStore() {

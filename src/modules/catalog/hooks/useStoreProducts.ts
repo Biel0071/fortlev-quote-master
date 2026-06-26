@@ -46,9 +46,8 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
           let hasMore = true;
           let safetyCounter = 0;
 
-          // Lighter column set — `description` is fetched on the PDP only.
           const SELECT_COLS =
-            "id, source_id, name, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order, media_type)";
+            "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order, media_type)";
 
           while (hasMore && safetyCounter < 100) {
             safetyCounter++;

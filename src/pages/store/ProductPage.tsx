@@ -276,7 +276,6 @@ export default function ProductPage() {
   const images = useMemo(() => {
     const list = (product as any)?.images ?? [];
     if (!Array.isArray(list)) return [];
-    // Deduplicate by path to avoid repeated images
     const seen = new Set<string>();
     return list.filter((img: any) => {
       const p = img?.path;
@@ -286,9 +285,34 @@ export default function ProductPage() {
     });
   }, [product]);
 
-  const [activeImg, setActiveImg] = useState<string | null>(null);
+  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [activeMedia, setActiveMedia] = useState<MediaItem | null>(null);
   const [qty, setQty] = useState(1);
   const fallbackProductImage = "/placeholder.svg";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const items: MediaItem[] = [];
+      for (const im of images) {
+        const type: "image" | "video" = (im as any)?.media_type === "video" ? "video" : "image";
+        const path = String((im as any)?.path ?? "");
+        if (!path) continue;
+        if (type === "video") {
+          const { cloud: c } = await import("@/integrations/supabase/client");
+          const { data } = await c.storage.from("product-media").createSignedUrl(path, 3600);
+          if (data?.signedUrl) items.push({ url: data.signedUrl, type: "video", path });
+        } else {
+          items.push({ url: publicImageUrl("product-images", path), type: "image", path });
+        }
+      }
+      if (cancelled) return;
+      setMedia(items);
+      setActiveMedia(items[0] ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [images]);
+
 
   const basePrice = useMemo(() => Number((product as any)?.price ?? 0), [product]);
   const promoPrice = useMemo(() => Number((product as any)?.promo_price ?? 0), [product]);

@@ -24,6 +24,7 @@ import { ShippingCalculator } from "@/components/store/pdp/ShippingCalculator";
 import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
 import { SmartUpsellCrossSell } from "@/components/store/pdp/SmartUpsellCrossSell";
 import { getProductSlug } from "@/utils/productSlug";
+import { SmartImage } from "@/components/store/SmartImage";
 
 function parseInlineBold(text: string) {
   const parts = text.split(/\*\*(.*?)\*\*/g);
@@ -383,7 +384,7 @@ export default function ProductPage() {
             {/* Gallery */}
             <div className="min-w-0 max-w-full overflow-hidden lg:col-span-7">
               <Card className="rounded-2xl sm:rounded-3xl overflow-hidden border-border bg-card shadow-sm">
-                <div className="aspect-square sm:aspect-[4/3] bg-white flex items-center justify-center p-4">
+                <div className="relative aspect-square sm:aspect-[4/3] bg-white flex items-center justify-center p-4">
                   {activeMedia?.type === "video" ? (
                     <video
                       key={activeMedia.url}
@@ -394,14 +395,14 @@ export default function ProductPage() {
                       preload="metadata"
                     />
                   ) : (
-                    <img
+                    <SmartImage
                       src={activeMedia?.url || fallbackProductImage}
                       alt={product.name}
                       className="max-h-full max-w-full object-contain"
                       loading="eager"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = fallbackProductImage;
-                      }}
+                      fetchPriority="high"
+                      fallback={fallbackProductImage}
+                      wrapperClassName="flex items-center justify-center"
                     />
                   )}
                 </div>

@@ -9,6 +9,7 @@ import { formatCurrency } from "@/utils/formatters";
 import { getProductImageUrl } from "@/utils/productImage";
 import { cloud } from "@/lib/cloud";
 import { getProductSlug } from "@/utils/productSlug";
+import { SmartImage } from "@/components/store/SmartImage";
 
 // Shared cache so we don't re-fetch per card
 const ratingsCache = new Map<string, { avg: number; total: number } | null>();
@@ -161,15 +162,13 @@ export function StoreProductCard({
             -{Math.floor(((basePrice - promo) / basePrice) * 100)}%
           </span>
         )}
-        <img
+        <SmartImage
           src={imageSrc}
           alt={product?.name ?? "Produto"}
           className="max-h-full max-w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.03]"
-          loading="eager"
+          wrapperClassName="flex items-center justify-center"
+          loading="lazy"
           decoding="async"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";
-          }}
         />
       </div>
 

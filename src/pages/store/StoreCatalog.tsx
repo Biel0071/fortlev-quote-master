@@ -13,7 +13,9 @@ import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { StoreProductCard } from "@/components/store/home/StoreProductCard";
 import { useSearchParams } from "react-router-dom";
 import { expandSearchTerms, smartMatch, smartScore } from "@/utils/smartSearch";
-import { Virtualizer } from "virtua";
+
+const INITIAL_PRODUCT_COUNT = 40;
+const PRODUCT_COUNT_STEP = 40;
 
 export default function StoreCatalog() {
   const cart = useCart();
@@ -23,6 +25,7 @@ export default function StoreCatalog() {
   const [cartOpen, setCartOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const [mounted, setMounted] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_PRODUCT_COUNT);
 
   useEffect(() => {
     setMounted(true);
@@ -30,12 +33,19 @@ export default function StoreCatalog() {
 
   const q = (searchParams.get("q") ?? "").toString();
   const selectedSlug = searchParams.get("categoria") ?? "all";
+  const promoParam = searchParams.get("promo") ?? "";
+  const sortParam = (searchParams.get("sort") ?? "").toLowerCase();
+  const filterKey = `${q}|${selectedSlug}|${promoParam}|${sortParam}`;
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_PRODUCT_COUNT);
+  }, [filterKey]);
 
   const filtered = useMemo(() => {
     const search = q.trim().toLowerCase();
     const selectedCategoryId =
       selectedSlug === "all" ? null : activeCategories.find((c) => c.slug === selectedSlug)?.id ?? null;
-    const promoOnly = searchParams.get("promo") === "1";
+      const promoOnly = promoParam === "1";
     const searchTerms = search ? expandSearchTerms(search) : [];
 
     const results = activeProducts
@@ -53,8 +63,7 @@ export default function StoreCatalog() {
       })
       .slice()
       .sort((a: any, b: any) => {
-        const sort = (searchParams.get("sort") ?? "").toLowerCase();
-        if (sort === "popular") {
+        if (sortParam === "popular") {
           const av = Number(a.views ?? 0);
           const bv = Number(b.views ?? 0);
           if (bv !== av) return bv - av;
@@ -88,7 +97,10 @@ export default function StoreCatalog() {
       return activeProducts.filter((p: any) => p.featured || p.best_seller).slice(0, 12);
     }
     return results;
-  }, [activeProducts, q, selectedSlug, activeCategories, searchParams]);
+  }, [activeProducts, q, selectedSlug, activeCategories, promoParam, sortParam]);
+
+  const visibleProducts = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMoreProducts = visibleProducts.length < filtered.length;
 
   const onAdd = (product: any, qty: number) => {
     const price = Number(product?.price ?? 0);
@@ -158,14 +170,27 @@ export default function StoreCatalog() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
-            {filtered.map((p: any) => (
-              <StoreProductCard
-                key={p.id}
-                product={p}
-                onAdd={(productId, qty) => onAdd(p, qty)}
-              />
-            ))}
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
+              {visibleProducts.map((p: any) => (
+                <StoreProductCard
+                  key={p.id}
+                  product={p}
+                  onAdd={(productId, qty) => onAdd(p, qty)}
+                />
+              ))}
+            </div>
+
+            {hasMoreProducts && (
+              <div className="flex justify-center pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleCount((count) => count + PRODUCT_COUNT_STEP)}
+                >
+                  Carregar mais produtos
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </main>

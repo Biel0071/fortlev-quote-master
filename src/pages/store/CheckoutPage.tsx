@@ -440,6 +440,7 @@ export default function CheckoutPage() {
           customerName: identify.customerName,
           customerEmail: customerEmail.trim(),
           customerPhone: identify.customerPhone,
+          customerCpf: parsedIdentify.data.customerCpf,
         },
       });
     } catch (e: any) {

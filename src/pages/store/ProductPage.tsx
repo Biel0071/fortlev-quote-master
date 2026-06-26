@@ -299,8 +299,8 @@ export default function ProductPage() {
         const path = String((im as any)?.path ?? "");
         if (!path) continue;
         if (type === "video") {
-          const { cloud: c } = await import("@/integrations/supabase/client");
-          const { data } = await c.storage.from("product-media").createSignedUrl(path, 3600);
+          const { supabase } = await import("@/integrations/supabase/client");
+          const { data } = await supabase.storage.from("product-media").createSignedUrl(path, 3600);
           if (data?.signedUrl) items.push({ url: data.signedUrl, type: "video", path });
         } else {
           items.push({ url: publicImageUrl("product-images", path), type: "image", path });

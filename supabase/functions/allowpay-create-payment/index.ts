@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
         name: customer.name,
         email: customer.email,
         cellphone,
-        ...(taxId ? { taxId } : {}),
+        taxId,
       },
       webhook_url: webhookUrl,
       ...(webhookSecret ? { webhook_secret: webhookSecret } : {}),

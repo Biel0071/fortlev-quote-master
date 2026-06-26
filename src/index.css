@@ -228,15 +228,15 @@
   }
 
   .logo {
-    @apply block h-12 w-auto object-contain;
-    max-width: 220px;
+    @apply block h-[72px] w-auto object-contain;
+    max-width: 320px;
   }
 }
 
 @media (min-width: 640px) {
   .logo {
-    height: 56px;
-    max-width: 280px;
+    height: 84px;
+    max-width: 420px;
   }
 }
 

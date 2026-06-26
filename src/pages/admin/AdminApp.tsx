@@ -31,6 +31,7 @@ const AdminBulkImageSearch = lazy(() => import("@/modules/admin/pages/AdminBulkI
 const AdminStoreSelector = lazy(() => import("@/modules/admin/pages/AdminStoreSelector"));
 const AdminQuotationModels = lazy(() => import("@/modules/admin/pages/AdminQuotationModels"));
 const AdminProductsImport = lazy(() => import("@/modules/admin/pages/AdminProductsImport"));
+const AdminProductsMediaImport = lazy(() => import("@/modules/admin/pages/AdminProductsMediaImport"));
 const AdminProductScraper = lazy(() => import("@/modules/admin/pages/AdminProductScraper"));
 const AdminReviews = lazy(() => import("@/modules/admin/pages/AdminReviews"));
 const AdminPriceIntelligence = lazy(() => import("@/modules/admin/pages/AdminPriceIntelligence"));

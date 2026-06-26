@@ -102,7 +102,8 @@ export function StoreTopbar({
     nav(term ? `/loja?q=${encodeURIComponent(term)}` : "/loja");
   };
 
-  const brandLabel = footerStoreName || footer?.store_name || "Materiais de Construção";
+  const brandLabel = footerStoreName || footer?.store_name || tenantStore?.name || "";
+  const brandLogo = publicImageUrl("banner-images", footer?.logo_path) || storeLogoFallback;
   const menuCategories = useMemo(
     () => ((categories?.length ? categories : activeCategories) ?? []).slice(0, 12),
     [categories, activeCategories],

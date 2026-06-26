@@ -111,14 +111,16 @@ function ProductDescription({ markdown }: { markdown: string }) {
   );
 }
 
+type MediaItem = { url: string; type: "image" | "video"; path: string };
+
 function ThumbStrip({
-  images,
-  activeImg,
+  media,
+  activeUrl,
   onSelect,
 }: {
-  images: any[];
-  activeImg: string | null;
-  onSelect: (url: string) => void;
+  media: MediaItem[];
+  activeUrl: string | null;
+  onSelect: (item: MediaItem) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState(false);
@@ -138,7 +140,7 @@ function ThumbStrip({
     if (!el) return;
     el.addEventListener("scroll", checkScroll, { passive: true });
     return () => el.removeEventListener("scroll", checkScroll);
-  }, [images]);
+  }, [media]);
 
   const scroll = (dir: "left" | "right") => {
     const el = scrollRef.current;
@@ -152,32 +154,27 @@ function ThumbStrip({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Left arrow */}
       {canLeft && (
         <button
           type="button"
           onClick={() => scroll("left")}
           className={cn(
             "absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/70 backdrop-blur-sm border border-border/50 flex items-center justify-center shadow-sm transition-opacity duration-200",
-            hovered ? "opacity-100" : "opacity-0 pointer-events-none sm:opacity-0 sm:pointer-events-none",
+            hovered ? "opacity-100" : "opacity-0 pointer-events-none",
           )}
-          style={{ opacity: hovered ? 1 : undefined }}
           aria-label="Anterior"
         >
           <ChevronLeft className="h-4 w-4 text-foreground/60" />
         </button>
       )}
-
-      {/* Right arrow */}
       {canRight && (
         <button
           type="button"
           onClick={() => scroll("right")}
           className={cn(
             "absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/70 backdrop-blur-sm border border-border/50 flex items-center justify-center shadow-sm transition-opacity duration-200",
-            hovered ? "opacity-100" : "opacity-0 pointer-events-none sm:opacity-0 sm:pointer-events-none",
+            hovered ? "opacity-100" : "opacity-0 pointer-events-none",
           )}
-          style={{ opacity: hovered ? 1 : undefined }}
           aria-label="Próximo"
         >
           <ChevronRight className="h-4 w-4 text-foreground/60" />
@@ -191,20 +188,24 @@ function ThumbStrip({
         onTouchStart={() => setHovered(true)}
         onTouchEnd={() => setTimeout(() => setHovered(false), 1500)}
       >
-        {images.slice(0, 8).map((im: any, idx: number) => {
-          const url = publicImageUrl("product-images", im.path);
-          const active = url && url === activeImg;
+        {media.slice(0, 8).map((item, idx) => {
+          const active = item.url === activeUrl;
           return (
             <button
               key={idx}
               type="button"
-              onClick={() => onSelect(url)}
-              className={`shrink-0 h-14 w-14 sm:h-16 sm:w-16 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-colors ${
+              onClick={() => onSelect(item)}
+              className={`relative shrink-0 h-14 w-14 sm:h-16 sm:w-16 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-colors ${
                 active ? "border-primary" : "border-border"
               }`}
-              aria-label={`Ver imagem ${idx + 1}`}
+              aria-label={item.type === "video" ? `Ver vídeo ${idx + 1}` : `Ver imagem ${idx + 1}`}
             >
-              <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              <img src={item.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              {item.type === "video" ? (
+                <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <span className="h-0 w-0 border-y-[6px] border-y-transparent border-l-[10px] border-l-white" />
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -212,6 +213,7 @@ function ThumbStrip({
     </div>
   );
 }
+
 
 function splitDescription(markdown: string) {
   const md = (markdown ?? "").trim();
@@ -274,7 +276,6 @@ export default function ProductPage() {
   const images = useMemo(() => {
     const list = (product as any)?.images ?? [];
     if (!Array.isArray(list)) return [];
-    // Deduplicate by path to avoid repeated images
     const seen = new Set<string>();
     return list.filter((img: any) => {
       const p = img?.path;
@@ -284,9 +285,34 @@ export default function ProductPage() {
     });
   }, [product]);
 
-  const [activeImg, setActiveImg] = useState<string | null>(null);
+  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [activeMedia, setActiveMedia] = useState<MediaItem | null>(null);
   const [qty, setQty] = useState(1);
   const fallbackProductImage = "/placeholder.svg";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const items: MediaItem[] = [];
+      for (const im of images) {
+        const type: "image" | "video" = (im as any)?.media_type === "video" ? "video" : "image";
+        const path = String((im as any)?.path ?? "");
+        if (!path) continue;
+        if (type === "video") {
+          const { supabase } = await import("@/integrations/supabase/client");
+          const { data } = await supabase.storage.from("product-media").createSignedUrl(path, 3600);
+          if (data?.signedUrl) items.push({ url: data.signedUrl, type: "video", path });
+        } else {
+          items.push({ url: publicImageUrl("product-images", path), type: "image", path });
+        }
+      }
+      if (cancelled) return;
+      setMedia(items);
+      setActiveMedia(items[0] ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [images]);
+
 
   const basePrice = useMemo(() => Number((product as any)?.price ?? 0), [product]);
   const promoPrice = useMemo(() => Number((product as any)?.promo_price ?? 0), [product]);
@@ -330,11 +356,6 @@ export default function ProductPage() {
     window.dispatchEvent(new CustomEvent("store:product-visit", { detail: { productId: product.id, count: next } }));
   }, [product?.id]);
 
-  useEffect(() => {
-    const first = getProductImageUrl(images, fallbackProductImage);
-    setActiveImg(first);
-  }, [images]);
-
   return (
     <StoreLayout
       cartCount={cart.totalItems}
@@ -363,23 +384,35 @@ export default function ProductPage() {
             <div className="min-w-0 max-w-full overflow-hidden lg:col-span-7">
               <Card className="rounded-2xl sm:rounded-3xl overflow-hidden border-border bg-card shadow-sm">
                 <div className="aspect-square sm:aspect-[4/3] bg-white flex items-center justify-center p-4">
-                  <img
-                    src={activeImg || fallbackProductImage}
-                    alt={product.name}
-                    className="max-h-full max-w-full object-contain"
-                    loading="eager"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = fallbackProductImage;
-                    }}
-                  />
+                  {activeMedia?.type === "video" ? (
+                    <video
+                      key={activeMedia.url}
+                      src={activeMedia.url}
+                      className="max-h-full max-w-full object-contain"
+                      controls
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      src={activeMedia?.url || fallbackProductImage}
+                      alt={product.name}
+                      className="max-h-full max-w-full object-contain"
+                      loading="eager"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = fallbackProductImage;
+                      }}
+                    />
+                  )}
                 </div>
-                {images.length > 1 ? (
+                {media.length > 1 ? (
                   <CardContent className="min-w-0 p-3 sm:p-4">
-                    <ThumbStrip images={images} activeImg={activeImg} onSelect={setActiveImg} />
+                    <ThumbStrip media={media} activeUrl={activeMedia?.url ?? null} onSelect={setActiveMedia} />
                   </CardContent>
                 ) : null}
               </Card>
             </div>
+
 
             {/* Product info */}
             <div className="lg:col-span-5 space-y-3 sm:space-y-4 min-w-0 max-w-full overflow-hidden">

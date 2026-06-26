@@ -103,12 +103,13 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return;
         }
 
-        // 2. Resolve by Domain
+        // 2. Resolve by Domain (only verified domains count as real mappings)
         if (!storeId) {
           const { data: domainData } = await supabase
             .from('store_domains')
-            .select('store_id, tenant_id')
+            .select('store_id, tenant_id, verified')
             .eq('domain', hostname)
+            .eq('verified', true)
             .maybeSingle();
 
           if (domainData) {

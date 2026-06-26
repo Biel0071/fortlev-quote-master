@@ -24,6 +24,7 @@ import { ShippingCalculator } from "@/components/store/pdp/ShippingCalculator";
 import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
 import { SmartUpsellCrossSell } from "@/components/store/pdp/SmartUpsellCrossSell";
 import { getProductSlug } from "@/utils/productSlug";
+import { SmartImage } from "@/components/store/SmartImage";
 
 function parseInlineBold(text: string) {
   const parts = text.split(/\*\*(.*?)\*\*/g);

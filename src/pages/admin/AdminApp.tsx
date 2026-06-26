@@ -93,6 +93,7 @@ export default function AdminApp() {
           <Route path="produtos/editar/:id" element={<AdminProductForm />} />
           <Route path="produtos/imagens" element={<AdminBulkImageSearch />} />
           <Route path="produtos/importar" element={<AdminProductsImport />} />
+          <Route path="produtos/importar-midia" element={<AdminProductsMediaImport />} />
           <Route path="produtos/scraper" element={<AdminProductScraper />} />
           <Route path="produtos/inteligencia-preco" element={<AdminPriceIntelligence />} />
           <Route path="imagens/revisao" element={<AdminImageReview />} />

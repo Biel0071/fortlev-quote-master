@@ -28,9 +28,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useHomeContent } from "@/hooks/useHomeContent";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useStoreContact } from "@/hooks/useStoreContact";
+import { useTenant } from "@/providers/TenantProvider";
+import { publicImageUrl } from "@/utils/storage";
 import { FloatingChat } from "@/components/store/mobile/FloatingChat";
 import { cn } from "@/lib/utils";
-import storeLogo from "@/assets/store-logo-materiais.png";
+import storeLogoFallback from "@/assets/store-logo-materiais.png";
 import areiaIcon from "@/assets/category-icons/areia.png";
 import blocosIcon from "@/assets/category-icons/blocos.png";
 import churrasqueiraIcon from "@/assets/category-icons/churrasqueira.png";

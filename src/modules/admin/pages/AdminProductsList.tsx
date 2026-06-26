@@ -528,9 +528,38 @@ export default function AdminProductsList() {
         <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportExcel} disabled={rows.length === 0}>
           <Download className="h-3.5 w-3.5" /> Exportar
         </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => nav(routes.adminPath("/produtos/importar"))}>
-          <Upload className="h-3.5 w-3.5" /> Importar
-        </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <Upload className="h-3.5 w-3.5" /> Importar
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64">
+              <DropdownMenuItem onClick={() => nav(routes.adminPath("/produtos/importar-midia"))}>
+                <Brain className="h-4 w-4 mr-2" />
+                <div className="flex flex-col">
+                  <span>Fotos e Vídeos (IA)</span>
+                  <span className="text-[10px] text-muted-foreground">IA cria produtos a partir das mídias</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => nav(routes.adminPath("/produtos/importar"))}>
+                <Upload className="h-4 w-4 mr-2" />
+                <div className="flex flex-col">
+                  <span>Planilha (CSV/Excel)</span>
+                  <span className="text-[10px] text-muted-foreground">Importar lista de produtos</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => nav(routes.adminPath("/produtos/scraper"))}>
+                <Download className="h-4 w-4 mr-2" />
+                <div className="flex flex-col">
+                  <span>Scraper (URL)</span>
+                  <span className="text-[10px] text-muted-foreground">Buscar produtos de um site</span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
           <CollapsibleTrigger asChild>
             <Button variant={toolsOpen ? "default" : "outline"} size="sm" className="gap-1.5 text-xs">

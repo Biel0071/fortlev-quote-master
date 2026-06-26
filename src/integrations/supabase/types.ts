@@ -2301,6 +2301,87 @@ export type Database = {
         }
         Relationships: []
       }
+      media_import_jobs: {
+        Row: {
+          ai_result: Json | null
+          batch_id: string | null
+          batch_position: number | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          file_name: string
+          file_size: number | null
+          file_url: string
+          frame_urls: Json | null
+          id: string
+          media_type: string
+          processing_started_at: string | null
+          product_id: string | null
+          progress: number
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          ai_result?: Json | null
+          batch_id?: string | null
+          batch_position?: number | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          frame_urls?: Json | null
+          id?: string
+          media_type: string
+          processing_started_at?: string | null
+          product_id?: string | null
+          progress?: number
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          ai_result?: Json | null
+          batch_id?: string | null
+          batch_position?: number | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          frame_urls?: Json | null
+          id?: string
+          media_type?: string
+          processing_started_at?: string | null
+          product_id?: string | null
+          progress?: number
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_import_jobs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_import_jobs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_tracking: {
         Row: {
           created_at: string | null
@@ -4637,6 +4718,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          media_type: string
           path: string
           product_id: string
           sort_order: number
@@ -4646,6 +4728,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          media_type?: string
           path: string
           product_id: string
           sort_order?: number
@@ -4655,6 +4738,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          media_type?: string
           path?: string
           product_id?: string
           sort_order?: number

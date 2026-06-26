@@ -31,6 +31,7 @@ const AdminBulkImageSearch = lazy(() => import("@/modules/admin/pages/AdminBulkI
 const AdminStoreSelector = lazy(() => import("@/modules/admin/pages/AdminStoreSelector"));
 const AdminQuotationModels = lazy(() => import("@/modules/admin/pages/AdminQuotationModels"));
 const AdminProductsImport = lazy(() => import("@/modules/admin/pages/AdminProductsImport"));
+const AdminProductsMediaImport = lazy(() => import("@/modules/admin/pages/AdminProductsMediaImport"));
 const AdminProductScraper = lazy(() => import("@/modules/admin/pages/AdminProductScraper"));
 const AdminReviews = lazy(() => import("@/modules/admin/pages/AdminReviews"));
 const AdminPriceIntelligence = lazy(() => import("@/modules/admin/pages/AdminPriceIntelligence"));
@@ -92,6 +93,7 @@ export default function AdminApp() {
           <Route path="produtos/editar/:id" element={<AdminProductForm />} />
           <Route path="produtos/imagens" element={<AdminBulkImageSearch />} />
           <Route path="produtos/importar" element={<AdminProductsImport />} />
+          <Route path="produtos/importar-midia" element={<AdminProductsMediaImport />} />
           <Route path="produtos/scraper" element={<AdminProductScraper />} />
           <Route path="produtos/inteligencia-preco" element={<AdminPriceIntelligence />} />
           <Route path="imagens/revisao" element={<AdminImageReview />} />

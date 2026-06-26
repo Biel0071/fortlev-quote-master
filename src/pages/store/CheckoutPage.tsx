@@ -397,7 +397,7 @@ export default function CheckoutPage() {
         lastStep: "completed",
       });
 
-      cart.clear();
+      // não limpa o carrinho aqui — só após PIX confirmado em PaymentPendingPage
       nav("/checkout/pagamento", {
         state: {
           orderId: order.orderId,

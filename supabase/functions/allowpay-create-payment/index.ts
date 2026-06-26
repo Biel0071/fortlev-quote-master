@@ -75,9 +75,14 @@ Deno.serve(async (req) => {
     } catch (e) { console.error("log err", e); }
 
     if (!apiRes.ok) {
+      const providerMsg = resBody?.error || resBody?.message || resBody?.details?.error;
+      const friendly = providerMsg
+        ? `Provedor PIX indisponível: ${providerMsg}`
+        : "O provedor PIX está temporariamente indisponível. Tente novamente em instantes ou finalize via WhatsApp.";
+      console.error("allowpay upstream failure", { status: apiRes.status, body: resBody });
       return new Response(
-        JSON.stringify({ error: resBody?.error || "Erro ao criar PIX", details: resBody }),
-        { status: apiRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: friendly, provider_error: providerMsg, status: apiRes.status, details: resBody }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

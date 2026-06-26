@@ -59,10 +59,13 @@ async function resolveUserIdFromJwt(req: Request, supabaseUrl: string, anonKey: 
   }
 }
 
-async function hashIp(req: Request, consentOk: boolean): Promise<string | null> {
-  if (!consentOk) return null;
+function getRawIp(req: Request): string | null {
   const forwarded = req.headers.get("x-forwarded-for");
   const ip = forwarded?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? null;
+  return ip || null;
+}
+
+async function hashIp(ip: string | null): Promise<string | null> {
   if (!ip) return null;
   try {
     const data = new TextEncoder().encode(ip + "_salt_lgpd_v1");
@@ -78,10 +81,13 @@ async function ensureSession(params: {
   session_token: string;
   user_id: string | null;
   req: Request;
+  consent_given?: boolean;
 }) {
-  const { supa, session_token, user_id, req } = params;
+  const { supa, session_token, user_id, req, consent_given } = params;
   const user_agent = safeText(req.headers.get("user-agent"), "unknown");
   const referrer = safeText(req.headers.get("referer"), "direct");
+  const rawIp = getRawIp(req);
+  const ipHash = await hashIp(rawIp);
 
   const { error: upsertError } = await supa
     .from("tracking_sessions")
@@ -92,6 +98,10 @@ async function ensureSession(params: {
         last_seen_at: new Date().toISOString(),
         device: user_agent,
         source: referrer,
+        user_agent,
+        ip_hash: ipHash,
+        // IP bruto só com consentimento (LGPD); hash anônimo sempre.
+        ip: consent_given ? rawIp : null,
       },
       { onConflict: "session_token" },
     );
@@ -136,7 +146,7 @@ serve(async (req) => {
       if (!session_token) throw new Error("Invalid session_token");
 
       const user_id = await resolveUserIdFromJwt(req, SUPABASE_URL, SUPABASE_ANON_KEY);
-      const session = await ensureSession({ supa, session_token, user_id, req });
+      const session = await ensureSession({ supa, session_token, user_id, req, consent_given: Boolean(body?.consent_given) });
 
       return new Response(JSON.stringify({ ok: true, session_id: session.id }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -167,7 +177,7 @@ serve(async (req) => {
       }
 
       const user_id = await resolveUserIdFromJwt(req, SUPABASE_URL, SUPABASE_ANON_KEY);
-      const session = await ensureSession({ supa, session_token, user_id, req });
+      const session = await ensureSession({ supa, session_token, user_id, req, consent_given: Boolean(body?.consent_given) });
 
       const metadata = (ev?.metadata ?? {}) as Record<string, unknown>;
       const duration = ev?.duration == null ? 0 : Math.max(0, Math.floor(Number(ev.duration)));
@@ -218,7 +228,7 @@ serve(async (req) => {
       if (!session_token) throw new Error("Invalid session_token");
 
       const user_id = await resolveUserIdFromJwt(req, SUPABASE_URL, SUPABASE_ANON_KEY);
-      const session = await ensureSession({ supa, session_token, user_id, req });
+      const session = await ensureSession({ supa, session_token, user_id, req, consent_given: Boolean(body?.consent_given) });
 
       const { data, error } = await supa
         .from("chat_sessions")

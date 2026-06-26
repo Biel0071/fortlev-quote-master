@@ -63,9 +63,13 @@ export default function PaymentPendingPage() {
           payment_url: data?.payment_url,
           transaction_id: data?.transaction_id,
         });
+        // só limpa o carrinho após PIX gerado com sucesso
+        cart.clear();
       } catch (e: any) {
         console.error("Erro ao gerar PIX:", e);
-        setError(e?.message || "Erro ao gerar pagamento PIX");
+        const details = e?.context?.body || e?.details;
+        const msg = details?.error || e?.message || "Erro ao gerar pagamento PIX";
+        setError(msg);
       } finally {
         setLoading(false);
       }

@@ -31,7 +31,18 @@ Deno.serve(async (req) => {
 
     const amountCents = Math.round(Number(amount) * 100);
     const cellphone = String(customer.phone).replace(/\D/g, "");
-    const taxId = customer.document?.number ? String(customer.document.number).replace(/\D/g, "") : undefined;
+    const taxId = customer.document?.number
+      ? String(customer.document.number).replace(/\D/g, "")
+      : "";
+
+    if (taxId.length !== 11) {
+      return new Response(
+        JSON.stringify({
+          error: "CPF é obrigatório para gerar PIX. Informe um CPF válido no checkout.",
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const webhookUrl = `${supabaseUrl}/functions/v1/allowpay-webhook`;
 
@@ -43,7 +54,7 @@ Deno.serve(async (req) => {
         name: customer.name,
         email: customer.email,
         cellphone,
-        ...(taxId ? { taxId } : {}),
+        taxId,
       },
       webhook_url: webhookUrl,
       ...(webhookSecret ? { webhook_secret: webhookSecret } : {}),

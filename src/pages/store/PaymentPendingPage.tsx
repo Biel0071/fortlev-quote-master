@@ -25,6 +25,7 @@ export default function PaymentPendingPage() {
     customerName?: string;
     customerEmail?: string;
     customerPhone?: string;
+    customerCpf?: string;
   };
 
   const [pixData, setPixData] = useState<PixData | null>(null);
@@ -50,6 +51,9 @@ export default function PaymentPendingPage() {
               name: state.customerName || "Cliente",
               email: state.customerEmail || "cliente@email.com",
               phone: state.customerPhone || "",
+              ...(state.customerCpf
+                ? { document: { type: "CPF", number: state.customerCpf } }
+                : {}),
             },
             metadata: { order_id: state.orderId },
           },

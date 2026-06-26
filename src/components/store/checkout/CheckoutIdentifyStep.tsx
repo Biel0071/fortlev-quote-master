@@ -7,20 +7,26 @@ import { Label } from "@/components/ui/label";
 type Props = {
   name: string;
   phone: string;
+  cpf: string;
   phoneError?: string;
+  cpfError?: string;
   loading: boolean;
   onNameChange: (value: string) => void;
   onPhoneChange: (value: string) => void;
+  onCpfChange: (value: string) => void;
   onContinue: () => void;
 };
 
 export function CheckoutIdentifyStep({
   name,
   phone,
+  cpf,
   phoneError,
+  cpfError,
   loading,
   onNameChange,
   onPhoneChange,
+  onCpfChange,
   onContinue,
 }: Props) {
   return (
@@ -55,6 +61,20 @@ export function CheckoutIdentifyStep({
             className="h-11 rounded-xl"
           />
           {phoneError ? <p className="text-sm text-destructive">{phoneError}</p> : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="checkout-cpf">CPF (necessário para PIX)</Label>
+          <Input
+            id="checkout-cpf"
+            value={cpf}
+            onChange={(e) => onCpfChange(e.target.value)}
+            placeholder="000.000.000-00"
+            inputMode="numeric"
+            maxLength={14}
+            className="h-11 rounded-xl"
+          />
+          {cpfError ? <p className="text-sm text-destructive">{cpfError}</p> : null}
         </div>
 
         <div className="flex flex-col gap-2 pt-1">

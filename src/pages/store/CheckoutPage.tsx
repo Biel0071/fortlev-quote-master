@@ -18,6 +18,26 @@ import { CheckoutIdentifyStep } from "@/components/store/checkout/CheckoutIdenti
 import { CheckoutDeliveryStep } from "@/components/store/checkout/CheckoutDeliveryStep";
 import { useRoutingThreshold } from "@/hooks/useRoutingThreshold";
 
+const onlyDigits = (v: string) => v.replace(/\D/g, "");
+const isValidCpf = (raw: string) => {
+  const d = onlyDigits(raw);
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  const calc = (base: string, len: number) => {
+    let s = 0;
+    for (let i = 0; i < len; i++) s += Number(base[i]) * (len + 1 - i);
+    const r = (s * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return calc(d, 9) === Number(d[9]) && calc(d, 10) === Number(d[10]);
+};
+const formatCpfMask = (v: string) => {
+  const d = onlyDigits(v).slice(0, 11);
+  return d
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+};
+
 const identifySchema = z.object({
   customerName: z.string().trim().min(2, "Nome obrigatório").max(120, "Nome muito longo"),
   customerPhone: z
@@ -26,6 +46,11 @@ const identifySchema = z.object({
     .min(1, "WhatsApp obrigatório")
     .transform((v) => cleanPhone(v))
     .refine((v) => v.length === 10 || v.length === 11, "WhatsApp inválido"),
+  customerCpf: z
+    .string()
+    .trim()
+    .transform((v) => onlyDigits(v))
+    .refine((v) => v === "" || isValidCpf(v), "CPF inválido"),
 });
 
 const deliverySchema = z.object({
@@ -71,6 +96,7 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [customerCpf, setCustomerCpf] = useState("");
 
   const [cep, setCep] = useState("");
   const [address, setAddress] = useState("");
@@ -130,6 +156,11 @@ export default function CheckoutPage() {
     if (!customerPhone) return undefined;
     return isValidBrazilPhone(customerPhone) ? undefined : "Informe um WhatsApp válido com DDD (10 ou 11 dígitos).";
   }, [customerPhone]);
+
+  const cpfError = useMemo(() => {
+    if (!customerCpf) return undefined;
+    return isValidCpf(customerCpf) ? undefined : "Informe um CPF válido.";
+  }, [customerCpf]);
 
   const resolveCouponDiscount = async () => {
     const code = cart.couponCode.trim();
@@ -263,7 +294,7 @@ export default function CheckoutPage() {
         return;
       }
 
-      const parsedIdentify = identifySchema.safeParse({ customerName, customerPhone });
+      const parsedIdentify = identifySchema.safeParse({ customerName, customerPhone, customerCpf });
       if (!parsedIdentify.success) {
         const msg = parsedIdentify.error.issues?.[0]?.message ?? "Dados inválidos";
         toast({ title: "Confira seus dados", description: msg, variant: "destructive" });
@@ -335,10 +366,14 @@ export default function CheckoutPage() {
 
   const handleFinishGateway = async () => {
     try {
-      const parsedIdentify = identifySchema.safeParse({ customerName, customerPhone });
+      const parsedIdentify = identifySchema.safeParse({ customerName, customerPhone, customerCpf });
       if (!parsedIdentify.success) {
         const msg = parsedIdentify.error.issues?.[0]?.message ?? "Dados inválidos";
         toast({ title: "Confira seus dados", description: msg, variant: "destructive" });
+        return;
+      }
+      if (!parsedIdentify.data.customerCpf || parsedIdentify.data.customerCpf.length !== 11) {
+        toast({ title: "CPF obrigatório", description: "Informe um CPF válido para pagamento por PIX.", variant: "destructive" });
         return;
       }
 
@@ -405,6 +440,7 @@ export default function CheckoutPage() {
           customerName: identify.customerName,
           customerEmail: customerEmail.trim(),
           customerPhone: identify.customerPhone,
+          customerCpf: parsedIdentify.data.customerCpf,
         },
       });
     } catch (e: any) {
@@ -431,10 +467,13 @@ export default function CheckoutPage() {
           <CheckoutIdentifyStep
             name={customerName}
             phone={formatWhatsappMask(customerPhone)}
+            cpf={formatCpfMask(customerCpf)}
             phoneError={phoneError}
+            cpfError={cpfError}
             loading={placing}
             onNameChange={(value) => setCustomerName(sanitizeNameInput(value))}
             onPhoneChange={(value) => setCustomerPhone(sanitizePhoneInput(value))}
+            onCpfChange={(value) => setCustomerCpf(onlyDigits(value).slice(0, 11))}
             onContinue={handleContinue}
           />
         ) : (

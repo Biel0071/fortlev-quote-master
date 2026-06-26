@@ -59,10 +59,13 @@ async function resolveUserIdFromJwt(req: Request, supabaseUrl: string, anonKey: 
   }
 }
 
-async function hashIp(req: Request, consentOk: boolean): Promise<string | null> {
-  if (!consentOk) return null;
+function getRawIp(req: Request): string | null {
   const forwarded = req.headers.get("x-forwarded-for");
   const ip = forwarded?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? null;
+  return ip || null;
+}
+
+async function hashIp(ip: string | null): Promise<string | null> {
   if (!ip) return null;
   try {
     const data = new TextEncoder().encode(ip + "_salt_lgpd_v1");
@@ -78,10 +81,13 @@ async function ensureSession(params: {
   session_token: string;
   user_id: string | null;
   req: Request;
+  consent_given?: boolean;
 }) {
-  const { supa, session_token, user_id, req } = params;
+  const { supa, session_token, user_id, req, consent_given } = params;
   const user_agent = safeText(req.headers.get("user-agent"), "unknown");
   const referrer = safeText(req.headers.get("referer"), "direct");
+  const rawIp = getRawIp(req);
+  const ipHash = await hashIp(rawIp);
 
   const { error: upsertError } = await supa
     .from("tracking_sessions")
@@ -92,6 +98,10 @@ async function ensureSession(params: {
         last_seen_at: new Date().toISOString(),
         device: user_agent,
         source: referrer,
+        user_agent,
+        ip_hash: ipHash,
+        // IP bruto só com consentimento (LGPD); hash anônimo sempre.
+        ip: consent_given ? rawIp : null,
       },
       { onConflict: "session_token" },
     );

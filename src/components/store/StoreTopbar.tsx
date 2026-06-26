@@ -127,7 +127,7 @@ export function StoreTopbar({
             <div className="flex items-center justify-center py-1">
               <Link to="/" className="flex items-center justify-center" aria-label={brandLabel}>
                 <img
-                  src={storeLogo}
+                  src={brandLogo}
                   alt={`${brandLabel} - logo`}
                   className="logo"
                   loading="eager"

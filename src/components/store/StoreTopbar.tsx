@@ -28,9 +28,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useHomeContent } from "@/hooks/useHomeContent";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useStoreContact } from "@/hooks/useStoreContact";
+import { useTenant } from "@/providers/TenantProvider";
+import { publicImageUrl } from "@/utils/storage";
 import { FloatingChat } from "@/components/store/mobile/FloatingChat";
 import { cn } from "@/lib/utils";
-import storeLogo from "@/assets/store-logo-materiais.png";
 import areiaIcon from "@/assets/category-icons/areia.png";
 import blocosIcon from "@/assets/category-icons/blocos.png";
 import churrasqueiraIcon from "@/assets/category-icons/churrasqueira.png";
@@ -73,6 +74,7 @@ export function StoreTopbar({
   const { footer } = useHomeContent({ enabled: !footerStoreName });
   const { activeCategories } = useStoreCategories({ enabled: !categories });
   const contact = useStoreContact();
+  const { store: tenantStore } = useTenant();
 
   const [q, setQ] = useState("");
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -99,7 +101,8 @@ export function StoreTopbar({
     nav(term ? `/loja?q=${encodeURIComponent(term)}` : "/loja");
   };
 
-  const brandLabel = footerStoreName || footer?.store_name || "Materiais de Construção";
+  const brandLabel = footerStoreName || footer?.store_name || tenantStore?.name || "";
+  const brandLogo = publicImageUrl("banner-images", footer?.logo_path);
   const menuCategories = useMemo(
     () => ((categories?.length ? categories : activeCategories) ?? []).slice(0, 12),
     [categories, activeCategories],
@@ -122,14 +125,21 @@ export function StoreTopbar({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-center py-1">
               <Link to="/" className="flex items-center justify-center" aria-label={brandLabel}>
-                <img
-                  src={storeLogo}
-                  alt={`${brandLabel} - logo`}
-                  className="logo"
-                  loading="eager"
-                />
+                {brandLogo ? (
+                  <img
+                    src={brandLogo}
+                    alt={`${brandLabel} - logo`}
+                    className="logo"
+                    loading="eager"
+                  />
+                ) : (
+                  <span className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+                    {brandLabel || "Loja"}
+                  </span>
+                )}
               </Link>
             </div>
+
 
             <div className="flex min-w-0 items-center gap-2">
               <div className="min-w-0 flex-1">

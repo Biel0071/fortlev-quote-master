@@ -3,6 +3,7 @@ import { Facebook, Instagram, MessageCircle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { publicImageUrl } from "@/utils/storage";
 import type { HomeFooter } from "@/hooks/useHomeContent";
+import { useTenant } from "@/providers/TenantProvider";
 
 import { PaymentLogosReal } from "@/components/store/pdp/PaymentLogosReal";
 import seloSafeBrowsing from "@/assets/trust/selo-google-safe-browsing-vert.png";
@@ -15,8 +16,10 @@ export function StoreFooter({
   footer: HomeFooter | null;
   pageLinks: Array<{ title: string; slug: string }>;
 }) {
+  const { store } = useTenant();
   const logoUrl = publicImageUrl("banner-images", footer?.logo_path);
-  const storeName = footer?.store_name || "Materiais de Construção";
+  // Isolamento por loja: nunca cair em string hardcoded de outra loja.
+  const storeName = footer?.store_name || store?.name || "";
   const whatsapp = footer?.whatsapp || "";
   const instagramUrl = (footer as any)?.instagram_url ? String((footer as any).instagram_url) : "";
   const facebookUrl = (footer as any)?.facebook_url ? String((footer as any).facebook_url) : "";
@@ -88,10 +91,9 @@ export function StoreFooter({
                   {whatsapp}
                 </a>
               </div>
-            ) : (
-              <div className="text-sm text-muted-foreground">WhatsApp indisponível</div>
-            )}
+            ) : null}
           </div>
+
 
           <div className="flex gap-2 flex-wrap">
             <Button asChild className="h-11 rounded-2xl">

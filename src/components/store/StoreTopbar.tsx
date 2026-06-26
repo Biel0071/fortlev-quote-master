@@ -75,6 +75,7 @@ export function StoreTopbar({
   const { footer } = useHomeContent({ enabled: !footerStoreName });
   const { activeCategories } = useStoreCategories({ enabled: !categories });
   const contact = useStoreContact();
+  const { store: tenantStore } = useTenant();
 
   const [q, setQ] = useState("");
   const [categoriesOpen, setCategoriesOpen] = useState(false);

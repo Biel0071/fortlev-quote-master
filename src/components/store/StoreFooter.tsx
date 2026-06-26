@@ -91,10 +91,9 @@ export function StoreFooter({
                   {whatsapp}
                 </a>
               </div>
-            ) : (
-              <div className="text-sm text-muted-foreground">WhatsApp indisponível</div>
-            )}
+            ) : null}
           </div>
+
 
           <div className="flex gap-2 flex-wrap">
             <Button asChild className="h-11 rounded-2xl">

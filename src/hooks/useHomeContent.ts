@@ -221,6 +221,26 @@ export function useHomeContent(options?: UseHomeContentOptions) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, store?.id, HOME_CONTENT_CACHE_KEY]);
 
+  // Polling automático: revalida banners/conteúdo da home silenciosamente
+  // a cada 60s e quando a aba volta a ficar visível.
+  useEffect(() => {
+    if (!enabled || !store) return;
+
+    const tick = () => {
+      if (document.visibilityState === "visible") {
+        void load({ silent: true });
+      }
+    };
+    const interval = window.setInterval(tick, 60_000);
+    document.addEventListener("visibilitychange", tick);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, store?.id]);
+
   const hasHero = useMemo(() => banners.length > 0, [banners]);
 
   return {

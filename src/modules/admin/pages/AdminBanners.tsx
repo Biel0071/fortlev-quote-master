@@ -522,7 +522,7 @@ export default function AdminBanners() {
         <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
           <p><strong>Desktop:</strong> {BANNER_DESKTOP_DIMS.width}×{BANNER_DESKTOP_DIMS.height}px (proporção ~2.86:1)</p>
           <p><strong>Mobile:</strong> {BANNER_MOBILE_DIMS.width}×{BANNER_MOBILE_DIMS.height}px (proporção 9:10)</p>
-          <p>As imagens enviadas são automaticamente redimensionadas e cortadas para se adequar à proporção do sistema.</p>
+          <p>As imagens enviadas são automaticamente redimensionadas e centralizadas sem corte para se adequar à proporção do sistema.</p>
         </div>
       </div>
 

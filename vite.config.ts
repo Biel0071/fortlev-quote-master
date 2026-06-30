@@ -22,23 +22,11 @@ export default defineConfig(({ mode }) => ({
     cssCodeSplit: true,
     sourcemap: false,
     minify: "esbuild",
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-          if (id.includes("react-dom") || id.includes("/react/") || id.includes("scheduler") || id.includes("react-router")) return "react-vendor";
-          if (id.includes("@supabase")) return "supabase-vendor";
-          if (id.includes("@radix-ui")) return "radix-vendor";
-          if (id.includes("@tanstack")) return "query-vendor";
-          if (id.includes("recharts") || id.includes("d3-")) return "charts-vendor";
-          if (id.includes("lucide-react")) return "icons-vendor";
-          if (id.includes("framer-motion")) return "motion-vendor";
-          if (id.includes("jspdf") || id.includes("html2canvas")) return "pdf-vendor";
-          return "vendor";
-        },
-      },
-    },
-    chunkSizeWarningLimit: 1200,
+    // NOTE: do NOT add manualChunks that split React from libs that depend on it
+    // (radix, react-router, @tanstack, etc.). It causes
+    // "Cannot read properties of undefined (reading 'forwardRef')" in production
+    // due to module init order. Let Rollup handle chunking automatically.
+    chunkSizeWarningLimit: 1500,
   },
   resolve: {
     alias: {

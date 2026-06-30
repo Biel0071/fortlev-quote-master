@@ -14,6 +14,23 @@ export const BANNER_DESKTOP_DIMS: BannerDimensions = { width: 1200, height: 420 
 /** Mobile banner: 390×433 (aspect 9:10) */
 export const BANNER_MOBILE_DIMS: BannerDimensions = { width: 390, height: 433 };
 
+/**
+ * Lê a imagem e escolhe automaticamente o tamanho-alvo (Desktop vs Mobile)
+ * com base na proporção da própria imagem. Útil para o upload "inteligente":
+ * landscape/horizontal → desktop, retrato/quadrada → mobile.
+ */
+export async function detectBannerTargetDims(file: File): Promise<BannerDimensions> {
+  try {
+    const img = await loadImage(file);
+    const ratio = img.naturalWidth / img.naturalHeight;
+    URL.revokeObjectURL(img.src);
+    // Desktop ~2.86:1 (=2.86), Mobile 9:10 (=0.9). Threshold no meio (~1.4).
+    return ratio >= 1.4 ? BANNER_DESKTOP_DIMS : BANNER_MOBILE_DIMS;
+  } catch {
+    return BANNER_DESKTOP_DIMS;
+  }
+}
+
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();

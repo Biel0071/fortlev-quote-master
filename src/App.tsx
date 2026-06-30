@@ -54,11 +54,13 @@ function RoutePrefetcher() {
     const idle = (cb: () => void) =>
       (window as any).requestIdleCallback ? (window as any).requestIdleCallback(cb, { timeout: 2500 }) : setTimeout(cb, 1500);
     idle(() => {
-      import("@/pages/store/StoreCatalog");
-      import("@/pages/store/ProductPage");
-      import("@/pages/store/CartPage");
-      import("@/pages/store/OffersPage");
-      import("@/pages/store/CheckoutPage");
+      void Promise.allSettled([
+        import("@/pages/store/StoreCatalog"),
+        import("@/pages/store/ProductPage"),
+        import("@/pages/store/CartPage"),
+        import("@/pages/store/OffersPage"),
+        import("@/pages/store/CheckoutPage"),
+      ]);
     });
   }, []);
   return null;

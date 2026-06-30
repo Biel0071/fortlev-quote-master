@@ -11,8 +11,8 @@ export const BANNER_PRESET_SIZES: BannerPreviewSize[] = [
   { key: "hero-desktop", label: "Hero Desktop", width: 1920, height: 560 },
   { key: "desktop-large", label: "Desktop Grande", width: 1440, height: 520 },
   { key: "desktop-standard", label: "Desktop Padrão", width: 1200, height: 420 },
-  { key: "mobile-banner", label: "Mobile Banner", width: 390, height: 220 },
-  { key: "mobile-tall", label: "Mobile Alto", width: 390, height: 280 },
+  { key: "mobile-banner", label: "Mobile Banner", width: 390, height: 433 },
+  { key: "mobile-tall", label: "Mobile Alto", width: 390, height: 433 },
 ];
 
 type Props = {
@@ -70,7 +70,7 @@ export function BannerLivePreview({
             <img
               src={desktop || mobile}
               alt={safeTitle || "Preview do banner"}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain"
               loading="lazy"
               data-fallback-src={desktopFallback || mobileFallback}
               onError={(event) => {

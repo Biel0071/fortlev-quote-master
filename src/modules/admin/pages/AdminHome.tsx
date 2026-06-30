@@ -14,6 +14,7 @@ import { publicImageUrl, normalizeStorageObjectPath } from "@/utils/storage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { invalidateSmartCache } from "@/utils/smartCache";
 import { ExternalLink, Pencil } from "lucide-react";
+import { BANNER_DESKTOP_DIMS, BANNER_MOBILE_DIMS, processBannerImage } from "@/utils/bannerImageProcessor";
 
 async function uploadToBucket(bucket: string, file: File) {
   const ext = file.name.split(".").pop() || "bin";
@@ -330,10 +331,12 @@ export default function AdminHome() {
   const uploadBannerImage = async (file: File | null, kind: "desktop" | "mobile") => {
     if (!file) return;
     try {
-      const path = await uploadToBucket("banner-images", file);
+      const target = kind === "desktop" ? BANNER_DESKTOP_DIMS : BANNER_MOBILE_DIMS;
+      const processedFile = await processBannerImage(file, target);
+      const path = await uploadToBucket("banner-images", processedFile);
       if (kind === "desktop") setBDesktopPath(path);
       else setBMobilePath(path);
-      toast({ title: "Upload concluído", description: `Imagem ${kind} pronta` });
+      toast({ title: "Upload concluído", description: `Imagem ${kind} ajustada para ${target.width}×${target.height}px.` });
     } catch (e: any) {
       toast({ title: "Erro", description: e?.message ?? "Falha no upload", variant: "destructive" });
     }
@@ -687,14 +690,14 @@ export default function AdminHome() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Imagem desktop</Label>
+                  <Label>Imagem desktop ({BANNER_DESKTOP_DIMS.width}×{BANNER_DESKTOP_DIMS.height}px)</Label>
                   <Input type="file" accept="image/*" onChange={(e) => uploadBannerImage(e.target.files?.[0] ?? null, "desktop")} />
-                  {bDesktopPath ? <img src={bannerUrl(bDesktopPath)} alt="Prévia desktop" className="w-full h-40 object-cover rounded-xl" loading="lazy" /> : null}
+                  {bDesktopPath ? <img src={bannerUrl(bDesktopPath)} alt="Prévia desktop" className="w-full aspect-[1200/420] object-contain rounded-xl bg-muted" loading="lazy" /> : null}
                 </div>
                 <div className="space-y-2">
-                  <Label>Imagem mobile</Label>
+                  <Label>Imagem mobile ({BANNER_MOBILE_DIMS.width}×{BANNER_MOBILE_DIMS.height}px)</Label>
                   <Input type="file" accept="image/*" onChange={(e) => uploadBannerImage(e.target.files?.[0] ?? null, "mobile")} />
-                  {bMobilePath ? <img src={bannerUrl(bMobilePath)} alt="Prévia mobile" className="w-full h-40 object-cover rounded-xl" loading="lazy" /> : null}
+                  {bMobilePath ? <img src={bannerUrl(bMobilePath)} alt="Prévia mobile" className="mx-auto w-full max-w-[390px] aspect-[390/433] object-contain rounded-xl bg-muted" loading="lazy" /> : null}
                 </div>
               </div>
 
@@ -735,7 +738,7 @@ export default function AdminHome() {
                       <div className="space-y-2">
                         <Label>Imagem desktop</Label>
                         {b.image_desktop_path ? (
-                          <img src={bannerUrl(b.image_desktop_path)} alt="Banner desktop" className="w-full h-32 object-cover rounded-xl" loading="lazy" />
+                          <img src={bannerUrl(b.image_desktop_path)} alt="Banner desktop" className="w-full aspect-[1200/420] object-contain rounded-xl bg-muted" loading="lazy" />
                         ) : (
                           <div className="text-xs text-muted-foreground">(sem imagem)</div>
                         )}
@@ -743,7 +746,7 @@ export default function AdminHome() {
                       <div className="space-y-2">
                         <Label>Imagem mobile</Label>
                         {b.image_mobile_path ? (
-                          <img src={bannerUrl(b.image_mobile_path)} alt="Banner mobile" className="w-full h-32 object-cover rounded-xl" loading="lazy" />
+                          <img src={bannerUrl(b.image_mobile_path)} alt="Banner mobile" className="mx-auto w-full max-w-[390px] aspect-[390/433] object-contain rounded-xl bg-muted" loading="lazy" />
                         ) : (
                           <div className="text-xs text-muted-foreground">(sem imagem)</div>
                         )}

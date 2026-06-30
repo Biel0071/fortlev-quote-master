@@ -276,15 +276,16 @@ export default function AdminBanners() {
     try {
       setUploadingCount((n) => n + 1);
 
-      // Process image to fit target dimensions
+      // Processa imagem para o tamanho-alvo (auto-detecta se não foi passado).
       let processedFile = file;
-      if (targetDims) {
-        try {
-          processedFile = await processBannerImage(file, targetDims);
-        } catch {
-          // If processing fails, upload original
-          console.warn("[AdminBanners] Image processing failed, uploading original");
+      let effectiveDims = targetDims;
+      try {
+        if (!effectiveDims) {
+          effectiveDims = await detectBannerTargetDims(file);
         }
+        processedFile = await processBannerImage(file, effectiveDims);
+      } catch {
+        console.warn("[AdminBanners] Image processing failed, uploading original");
       }
 
       if (setLocalPreview) {
@@ -296,8 +297,8 @@ export default function AdminBanners() {
       setPath(path);
       toast({
         title: "Upload concluído",
-        description: targetDims
-          ? `Imagem redimensionada para ${targetDims.width}×${targetDims.height}px e pronta para salvar.`
+        description: effectiveDims
+          ? `Imagem ajustada automaticamente para ${effectiveDims.width}×${effectiveDims.height}px.`
           : "Imagem pronta para salvar.",
       });
     } catch (error: unknown) {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const DEFAULT_THRESHOLD = 980;
+const DEFAULT_THRESHOLD = 1000;
 
 export function useRoutingThreshold() {
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);

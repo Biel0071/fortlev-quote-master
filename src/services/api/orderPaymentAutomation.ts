@@ -15,7 +15,7 @@ async function getRoutingConfig(): Promise<{ threshold: number; gatewayEnabled: 
     .select("method, config_json")
     .in("method", ["routing_threshold", "gateway_enabled"]);
 
-  let threshold = 980;
+  let threshold = 1000;
   let gatewayEnabled = false;
 
   for (const row of data ?? []) {

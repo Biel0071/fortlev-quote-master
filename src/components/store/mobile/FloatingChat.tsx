@@ -54,7 +54,7 @@ export function FloatingChat({
     const t = window.setTimeout(() => {
       const dismissedNow = localStorage.getItem(DISMISS_KEY) === "1";
       if (!dismissedNow) setOpen(true);
-    }, 8000);
+    }, 150 * 60 * 1000);
 
     return () => window.clearTimeout(t);
   }, [location.pathname, open, shouldHideFloating]);

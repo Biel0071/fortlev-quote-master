@@ -64,7 +64,7 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
                 <img
                   src={desktopUrl || mobileUrl || "/placeholder.svg"}
                   alt={`Banner promocional ${banner.position || index + 1}`}
-                  className="w-full aspect-[9/10] sm:aspect-auto sm:h-[300px] md:h-[380px] lg:h-[400px] xl:h-[420px] object-cover object-center"
+                  className="w-full aspect-[9/10] sm:aspect-[1200/420] object-cover object-center bg-muted"
                   loading="lazy"
                   decoding="async"
                   data-fallback-src={desktopUrls.legacy || mobileUrls.legacy || ""}
@@ -76,7 +76,7 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
                 />
               </picture>
             ) : (
-              <div className="w-full aspect-[9/10] sm:aspect-auto sm:h-[300px] md:h-[380px] lg:h-[400px] xl:h-[420px] bg-muted" />
+              <div className="w-full aspect-[9/10] sm:aspect-[1200/420] bg-muted" />
             );
 
             return (

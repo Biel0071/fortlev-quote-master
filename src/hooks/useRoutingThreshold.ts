@@ -5,7 +5,7 @@ const DEFAULT_THRESHOLD = 1000;
 
 export function useRoutingThreshold() {
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
-  const [gatewayEnabled, setGatewayEnabled] = useState(false);
+  const [gatewayEnabled, setGatewayEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

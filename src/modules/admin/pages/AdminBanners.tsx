@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { BANNER_PRESET_SIZES, BannerLivePreview } from "@/components/admin/BannerLivePreview";
 import { getBannerImageUrls, MAX_BANNER_IMAGE_SIZE_BYTES, SITE_BANNERS_BUCKET, normalizeBannerObjectPath } from "@/utils/bannerStorage";
-import { processBannerImage, BANNER_DESKTOP_DIMS, BANNER_MOBILE_DIMS } from "@/utils/bannerImageProcessor";
+import { processBannerImage, detectBannerTargetDims, BANNER_DESKTOP_DIMS, BANNER_MOBILE_DIMS } from "@/utils/bannerImageProcessor";
 import { invalidateSmartCache } from "@/utils/smartCache";
 
 type Banner = {

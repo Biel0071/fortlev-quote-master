@@ -70,7 +70,7 @@ export function BannerLivePreview({
             <img
               src={desktop || mobile}
               alt={safeTitle || "Preview do banner"}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain"
               loading="lazy"
               data-fallback-src={desktopFallback || mobileFallback}
               onError={(event) => {

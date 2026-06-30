@@ -60,12 +60,12 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
             const destination = banner.link_url?.trim() || null;
 
             const imageContent = desktopUrl || mobileUrl ? (
-              <picture>
+              <picture className="block h-full w-full">
                 {mobileUrl ? <source media="(max-width: 640px)" srcSet={mobileUrl} /> : null}
                 <img
                   src={desktopUrl || mobileUrl || "/placeholder.svg"}
                   alt={`Banner promocional ${banner.position || index + 1}`}
-                  className="w-full h-auto object-contain bg-muted"
+                  className="h-full w-full object-contain bg-muted"
                   loading="lazy"
                   decoding="async"
                   data-fallback-src={desktopUrls.legacy || mobileUrls.legacy || ""}
@@ -77,18 +77,18 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
                 />
               </picture>
             ) : (
-              <div className="w-full aspect-[1200/420] bg-muted" />
+              <div className="h-full w-full bg-muted" />
             );
 
 
             return (
-              <div key={`${banner.position}-${index}`} className="min-w-0 shrink-0 grow-0 basis-full">
+              <div key={`${banner.position}-${index}`} className="min-w-0 shrink-0 grow-0 basis-full aspect-[390/433] sm:aspect-[1200/420]">
                 {destination ? (
-                  <Link to={destination} className="block w-full cursor-pointer" aria-label={`Abrir banner ${banner.position || index + 1}`}>
+                  <Link to={destination} className="block h-full w-full cursor-pointer" aria-label={`Abrir banner ${banner.position || index + 1}`}>
                     {imageContent}
                   </Link>
                 ) : (
-                  <div className="w-full">{imageContent}</div>
+                  <div className="h-full w-full">{imageContent}</div>
                 )}
               </div>
             );

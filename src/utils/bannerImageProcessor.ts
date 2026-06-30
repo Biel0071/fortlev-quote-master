@@ -41,10 +41,10 @@ function loadImage(file: File): Promise<HTMLImageElement> {
 }
 
 /**
- * Resize inteligente:
- *  - Se a proporção da imagem ≈ proporção do alvo (≤15% diff) → "cover" com center-crop.
- *  - Senão → "contain" centralizado sobre um fundo da própria imagem ampliada e
- *    desfocada, preservando todo o conteúdo do banner sem deformar.
+ * Resize inteligente sem corte:
+ *  - Sempre gera exatamente o tamanho-alvo do sistema.
+ *  - Mantém a imagem inteira visível com "contain", sem deformar e sem cortar.
+ *  - Quando sobra espaço, preenche com fundo borrado da própria imagem.
  */
 export async function processBannerImage(
   file: File,
@@ -60,50 +60,33 @@ export async function processBannerImage(
 
   const srcRatio = img.naturalWidth / img.naturalHeight;
   const tgtRatio = target.width / target.height;
-  const ratioDiff = Math.abs(srcRatio - tgtRatio) / tgtRatio;
-
-  if (ratioDiff <= 0.15) {
-    let sx = 0;
-    let sy = 0;
-    let sw = img.naturalWidth;
-    let sh = img.naturalHeight;
-    if (srcRatio > tgtRatio) {
-      sw = Math.round(img.naturalHeight * tgtRatio);
-      sx = Math.round((img.naturalWidth - sw) / 2);
-    } else {
-      sh = Math.round(img.naturalWidth / tgtRatio);
-      sy = Math.round((img.naturalHeight - sh) / 2);
-    }
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, target.width, target.height);
+  // Fundo borrado (cover) para preencher o canvas sem deixar faixas vazias.
+  ctx.filter = "blur(24px) brightness(0.9)";
+  let bgSx = 0;
+  let bgSy = 0;
+  let bgSw = img.naturalWidth;
+  let bgSh = img.naturalHeight;
+  if (srcRatio > tgtRatio) {
+    bgSw = Math.round(img.naturalHeight * tgtRatio);
+    bgSx = Math.round((img.naturalWidth - bgSw) / 2);
   } else {
-    // Fundo borrado (cover) para preencher
-    ctx.filter = "blur(24px) brightness(0.9)";
-    let bgSx = 0;
-    let bgSy = 0;
-    let bgSw = img.naturalWidth;
-    let bgSh = img.naturalHeight;
-    if (srcRatio > tgtRatio) {
-      bgSw = Math.round(img.naturalHeight * tgtRatio);
-      bgSx = Math.round((img.naturalWidth - bgSw) / 2);
-    } else {
-      bgSh = Math.round(img.naturalWidth / tgtRatio);
-      bgSy = Math.round((img.naturalHeight - bgSh) / 2);
-    }
-    ctx.drawImage(img, bgSx, bgSy, bgSw, bgSh, -20, -20, target.width + 40, target.height + 40);
-    ctx.filter = "none";
-
-    // Imagem inteira centralizada (contain), sem cortes
-    let dw = target.width;
-    let dh = target.height;
-    if (srcRatio > tgtRatio) {
-      dh = Math.round(target.width / srcRatio);
-    } else {
-      dw = Math.round(target.height * srcRatio);
-    }
-    const dx = Math.round((target.width - dw) / 2);
-    const dy = Math.round((target.height - dh) / 2);
-    ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, dx, dy, dw, dh);
+    bgSh = Math.round(img.naturalWidth / tgtRatio);
+    bgSy = Math.round((img.naturalHeight - bgSh) / 2);
   }
+  ctx.drawImage(img, bgSx, bgSy, bgSw, bgSh, -20, -20, target.width + 40, target.height + 40);
+  ctx.filter = "none";
+
+  // Imagem inteira centralizada (contain), sem cortes.
+  let dw = target.width;
+  let dh = target.height;
+  if (srcRatio > tgtRatio) {
+    dh = Math.round(target.width / srcRatio);
+  } else {
+    dw = Math.round(target.height * srcRatio);
+  }
+  const dx = Math.round((target.width - dw) / 2);
+  const dy = Math.round((target.height - dh) / 2);
+  ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, dx, dy, dw, dh);
 
   URL.revokeObjectURL(img.src);
 

@@ -148,7 +148,7 @@ export default function AdminPaymentsMethods() {
                 type="number"
                 min="1"
                 step="10"
-                placeholder="980"
+                placeholder="1000"
                 disabled={loadingConfig}
               />
             </div>

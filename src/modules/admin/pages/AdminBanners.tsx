@@ -729,7 +729,7 @@ export default function AdminBanners() {
                         event.currentTarget.src = fallback;
                       }}
                       alt={`Banner ${b.title}`}
-                      className="w-full h-40 object-cover rounded-xl"
+                      className="w-full aspect-[1200/420] object-contain rounded-xl bg-muted"
                       loading="lazy"
                     />
                   );

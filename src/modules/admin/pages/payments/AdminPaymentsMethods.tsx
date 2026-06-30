@@ -20,7 +20,7 @@ export default function AdminPaymentsMethods() {
     enabled: true, daysToExpire: "3", lateFee: "2", lateInterest: "1", instructions: "",
   });
 
-  const [routingThreshold, setRoutingThreshold] = useState("980");
+  const [routingThreshold, setRoutingThreshold] = useState("1000");
   const [gatewayEnabled, setGatewayEnabled] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(true);
 
@@ -148,7 +148,7 @@ export default function AdminPaymentsMethods() {
                 type="number"
                 min="1"
                 step="10"
-                placeholder="980"
+                placeholder="1000"
                 disabled={loadingConfig}
               />
             </div>

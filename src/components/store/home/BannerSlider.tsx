@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getBannerImageUrls } from "@/utils/bannerStorage";
+
 
 type BannerSliderItem = {
   image_desktop_path: string | null;
@@ -64,7 +65,7 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
                 <img
                   src={desktopUrl || mobileUrl || "/placeholder.svg"}
                   alt={`Banner promocional ${banner.position || index + 1}`}
-                  className="w-full aspect-[9/10] sm:aspect-[1200/420] object-cover object-center bg-muted"
+                  className="w-full h-auto object-contain bg-muted"
                   loading="lazy"
                   decoding="async"
                   data-fallback-src={desktopUrls.legacy || mobileUrls.legacy || ""}
@@ -76,8 +77,9 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
                 />
               </picture>
             ) : (
-              <div className="w-full aspect-[9/10] sm:aspect-[1200/420] bg-muted" />
+              <div className="w-full aspect-[1200/420] bg-muted" />
             );
+
 
             return (
               <div key={`${banner.position}-${index}`} className="min-w-0 shrink-0 grow-0 basis-full">

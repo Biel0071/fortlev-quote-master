@@ -33,19 +33,18 @@ function buildReceiptHTML(q: Quotation): string {
   <div class="paper" style="
     position:relative;
     width:520px;
+    min-height:735px;
     box-sizing:border-box;
-    padding:44px 42px 40px;
+    padding:56px 48px 48px;
     background:#ffffff;
     font-family: 'Helvetica Neue', Arial, sans-serif;
-    color:#0a0a0a;
+    color:#000000;
     font-size:12.5px;
     line-height:1.5;
-    box-shadow:
-      0 1px 1px rgba(0,0,0,0.10),
-      8px 13px 20px -12px rgba(0,0,0,0.34),
-      18px 26px 36px -24px rgba(0,0,0,0.28);
+    box-shadow: 0 14px 22px -14px rgba(0,0,0,0.35);
     border-radius:0;
   ">
+
     <div style="text-align:center;">
       <div style="font-size:20px;font-weight:900;letter-spacing:1.5px;">${(c.name || 'LOJA').toUpperCase()}</div>
       <div style="font-size:11px;margin-top:6px;line-height:1.55;color:#222;">
@@ -124,19 +123,18 @@ async function renderCanvas(q: Quotation): Promise<HTMLCanvasElement> {
   const wrapper = document.createElement('div');
   wrapper.style.cssText = `
     position:fixed;left:-9999px;top:0;
-    width:960px;height:1280px;
+    width:900px;height:1200px;
     padding:0;
     box-sizing:border-box;
     display:flex;align-items:center;justify-content:center;
     background-image:url(${tableBg});
     background-size:cover;
     background-position:center;
-    filter: brightness(1.015) contrast(1.015) saturate(0.98);
   `;
 
   const stage = document.createElement('div');
   stage.style.cssText = `
-    transform:none;
+    transform: rotate(-1.6deg);
     transform-origin:center;
   `;
   stage.innerHTML = buildReceiptHTML(q);
@@ -155,6 +153,7 @@ async function renderCanvas(q: Quotation): Promise<HTMLCanvasElement> {
   document.body.removeChild(wrapper);
   return canvas;
 }
+
 
 export async function downloadReceiptPhotoPNG(q: Quotation): Promise<void> {
   const canvas = await renderCanvas(q);

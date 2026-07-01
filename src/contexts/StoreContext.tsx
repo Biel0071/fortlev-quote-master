@@ -9,6 +9,7 @@ type StoreDbRow = {
   name: string;
   slug: string;
   domain: string | null;
+  store_domains?: Array<{ domain: string | null; verified: boolean | null }>;
   active: boolean;
 };
 
@@ -60,6 +61,24 @@ function saveCachedStores(data: StoreDbRow[]) {
   }
 }
 
+function getHostnameCandidates(hostname: string) {
+  const clean = hostname.toLowerCase().replace(/^www\./, '');
+  return Array.from(new Set([hostname.toLowerCase(), clean, `www.${clean}`]));
+}
+
+function storeMatchesHost(store: StoreDbRow, hostnameCandidates: string[]) {
+  const domains = [
+    store.domain,
+    ...((store.store_domains ?? [])
+      .filter((d) => d.verified !== false)
+      .map((d) => d.domain)),
+  ]
+    .filter(Boolean)
+    .map((domain) => String(domain).toLowerCase());
+
+  return domains.some((domain) => hostnameCandidates.includes(domain) || hostnameCandidates.includes(domain.replace(/^www\./, '')));
+}
+
 type StoreProviderProps = { children: React.ReactNode };
 
 export function StoreProvider({ children }: StoreProviderProps) {
@@ -81,7 +100,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
     let cancelled = false;
     cloud
       .from("stores")
-      .select("id, name, slug, domain, active")
+      .select("id, name, slug, domain, active, store_domains(domain, verified)")
       .order("name")
       .then(({ data }) => {
         if (cancelled || !data) return;
@@ -100,7 +119,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
   // — never on `store`/`activeStoreId` (would loop).
   useEffect(() => {
     if (dbStores.length === 0) return;
-    const host = window.location.hostname;
+    const hostCandidates = getHostnameCandidates(window.location.hostname);
     const pathname = location.pathname;
     const currentStore = storeRef.current;
     const currentId = activeIdRef.current;
@@ -138,9 +157,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
       }
     }
 
-    const byDomain = dbStores.find(
-      (s) => s.domain && s.domain.toLowerCase() === host.toLowerCase()
-    );
+    const byDomain = dbStores.find((s) => storeMatchesHost(s, hostCandidates));
     if (byDomain) {
       apply(byDomain.slug, byDomain.id);
       return;

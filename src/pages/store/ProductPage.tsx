@@ -551,6 +551,9 @@ export default function ProductPage() {
 
               {/* Customer review form */}
               <CustomerReviewForm productId={(product as any).id} productName={product.name} />
+
+              {/* Comments */}
+              <ProductComments productId={(product as any).id} />
             </div>
           </div>
         )}

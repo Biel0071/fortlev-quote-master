@@ -363,16 +363,16 @@ export function SmartUpsellCrossSell({
           <h3 className="text-sm font-semibold text-foreground">
             {MESSAGES.cross_sell}
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
-
+          <div className="flex gap-2 sm:gap-3 overflow-x-auto snap-x snap-mandatory -mx-1 px-1 pb-2 scrollbar-hide">
             {recommendations.crossSell.map((p) => (
-              <SuggestionCard
-                key={p.id}
-                product={p}
-                currentProduct={product}
-                type="cross_sell"
-                onAdd={() => handleAdd(p)}
-              />
+              <div key={p.id} className="snap-start shrink-0 basis-[45%] sm:basis-[30%] lg:basis-[22%] xl:basis-[18%]">
+                <SuggestionCard
+                  product={p}
+                  currentProduct={product}
+                  type="cross_sell"
+                  onAdd={() => handleAdd(p)}
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -384,16 +384,16 @@ export function SmartUpsellCrossSell({
           <h3 className="text-sm font-semibold text-foreground">
             {MESSAGES.related}
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
-
+          <div className="flex gap-2 sm:gap-3 overflow-x-auto snap-x snap-mandatory -mx-1 px-1 pb-2 scrollbar-hide">
             {recommendations.related.map((p) => (
-              <SuggestionCard
-                key={p.id}
-                product={p}
-                currentProduct={product}
-                type="related"
-                onAdd={() => handleAdd(p)}
-              />
+              <div key={p.id} className="snap-start shrink-0 basis-[45%] sm:basis-[30%] lg:basis-[22%] xl:basis-[18%]">
+                <SuggestionCard
+                  product={p}
+                  currentProduct={product}
+                  type="related"
+                  onAdd={() => handleAdd(p)}
+                />
+              </div>
             ))}
           </div>
         </div>

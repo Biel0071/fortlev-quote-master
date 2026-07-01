@@ -19,6 +19,7 @@ type PixData = {
 
 export default function PaymentPendingPage() {
   const cart = useCart();
+  const { isAdmin } = useIsAdmin();
   const location = useLocation();
   const state = (location.state ?? {}) as {
     orderId?: string;

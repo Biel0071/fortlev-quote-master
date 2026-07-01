@@ -169,16 +169,42 @@ export default function SmartQuotationGenerator({ onItemsGenerated }: { onItemsG
 
       if (data) {
         if (data.items) {
-          const mappedItems: InterpretedItem[] = data.items.map((item: any, index: number) => ({
-            id: `item-${index}-${Date.now()}`,
-            originalText: item.originalText || item.productName,
-            productName: item.productName,
-            quantity: item.quantity || 1,
-            unit: item.unit || "un",
-            price: item.price,
-            confidence: 0.9,
-            matched: true
-          }));
+          // Enrich with construction catalog: real name/unit/price when missing
+          const { data: catalog } = await supabase
+            .from('construction_catalog_products')
+            .select('id, name, unit, base_price');
+          const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+          const findMatch = (name: string) => {
+            if (!catalog?.length) return null;
+            const target = norm(name);
+            const tokens = target.split(' ').filter(Boolean);
+            let best: any = null; let bestScore = 0;
+            for (const p of catalog) {
+              const cand = norm(p.name);
+              let score = 0;
+              for (const t of tokens) if (cand.includes(t)) score++;
+              if (cand === target) score += 5;
+              if (score > bestScore) { bestScore = score; best = p; }
+            }
+            return bestScore >= Math.max(1, Math.ceil(tokens.length * 0.6)) ? best : null;
+          };
+
+          const mappedItems: InterpretedItem[] = data.items.map((item: any, index: number) => {
+            const m = findMatch(item.productName || '');
+            const price = Number(item.price) || Number(m?.base_price) || 0;
+            return {
+              id: `item-${index}-${Date.now()}`,
+              originalText: item.originalText || item.productName,
+              productName: m?.name || item.productName,
+              quantity: item.quantity || 1,
+              unit: m?.unit || item.unit || "un",
+              price,
+              basePrice: price,
+              confidence: m ? 0.95 : 0.75,
+              matched: !!m,
+              suggestedProductId: m?.id,
+            };
+          });
           setInterpretedItems(mappedItems);
         }
 

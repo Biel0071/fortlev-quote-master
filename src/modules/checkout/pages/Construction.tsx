@@ -263,7 +263,7 @@ const ConstructionPage = () => {
       saveQuotation(qSaved);
     }
 
-    downloadPDF(qDoc, { template: 'receipt' });
+    downloadReceiptPhotoPDF(qDoc);
 
     if (tokenCtx) {
       cloud.rpc('log_token_action', {

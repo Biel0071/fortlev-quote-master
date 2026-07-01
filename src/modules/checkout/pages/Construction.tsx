@@ -304,7 +304,7 @@ const ConstructionPage = () => {
       saveQuotation(qSaved);
     }
 
-    await downloadPNG(qDoc);
+    await downloadReceiptPhotoPNG(qDoc);
 
     if (tokenCtx) {
       cloud.rpc('log_token_action', {

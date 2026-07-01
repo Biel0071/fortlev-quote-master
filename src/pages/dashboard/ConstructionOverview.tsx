@@ -146,13 +146,13 @@ export default function ConstructionOverview() {
 
   const handleEdit = (id: string) => { navigate(`/construcao?edit=${id}`); };
 
-  const handleDownloadPDF = (q: typeof quotations[0]) => {
-    try { downloadPDF(toQuotationType(q), { template: 'receipt' }); toast({ title: "PDF gerado com sucesso" }); }
+  const handleDownloadPDF = async (q: typeof quotations[0]) => {
+    try { const { downloadReceiptPhotoPDF } = await import('@/utils/receiptPhoto'); await downloadReceiptPhotoPDF(toQuotationType(q)); toast({ title: "PDF gerado com sucesso" }); }
     catch { toast({ title: "Erro ao gerar PDF", variant: "destructive" }); }
   };
 
   const handleDownloadPNG = async (q: typeof quotations[0]) => {
-    try { await downloadPNG(toQuotationType(q)); toast({ title: "PNG gerado com sucesso" }); }
+    try { const { downloadReceiptPhotoPNG } = await import('@/utils/receiptPhoto'); await downloadReceiptPhotoPNG(toQuotationType(q)); toast({ title: "PNG gerado com sucesso" }); }
     catch { toast({ title: "Erro ao gerar PNG", variant: "destructive" }); }
   };
 

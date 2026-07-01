@@ -275,37 +275,113 @@ export default function AdminQuotationModels() {
           </div>
         </TabsContent>
 
-        <TabsContent value="invoice" className="space-y-4 pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuração da Nota de Entrega (Térmica)</CardTitle>
-              <CardDescription>Personalize a nota impressa em impressoras térmicas de 80mm.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Largura do Papel</Label>
-                  <Input value={invoiceConfig.paperWidth} onChange={e => setInvoiceConfig({ ...invoiceConfig, paperWidth: e.target.value })} />
+        <TabsContent value="invoice" className="pt-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Editor da Nota (Térmica)</CardTitle>
+                <CardDescription>Personalize o cupom impresso. A pré-visualização atualiza em tempo real.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Largura do Papel</Label>
+                    <Input value={invoiceConfig.paperWidth} onChange={e => setInvoiceConfig({ ...invoiceConfig, paperWidth: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vendedor Padrão</Label>
+                    <Input value={invoiceConfig.defaultSeller} onChange={e => setInvoiceConfig({ ...invoiceConfig, defaultSeller: e.target.value })} />
+                  </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label>Vendedor Padrão</Label>
-                  <Input value={invoiceConfig.defaultSeller} onChange={e => setInvoiceConfig({ ...invoiceConfig, defaultSeller: e.target.value })} />
+                  <Label>Título</Label>
+                  <Input value={invoiceConfig.headerText} onChange={e => setInvoiceConfig({ ...invoiceConfig, headerText: e.target.value })} />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Texto de Garantia / Recebimento</Label>
-                <Textarea rows={3} value={invoiceConfig.warrantyText} onChange={e => setInvoiceConfig({ ...invoiceConfig, warrantyText: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Rodapé da Nota</Label>
-                <Input value={invoiceConfig.footerText} onChange={e => setInvoiceConfig({ ...invoiceConfig, footerText: e.target.value })} />
-              </div>
-              <Button onClick={() => handleSave("invoice")} disabled={saving} className="w-full md:w-auto">
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Salvar Configurações
-              </Button>
-            </CardContent>
-          </Card>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Nome da Loja</Label>
+                    <Input value={invoiceConfig.storeName} onChange={e => setInvoiceConfig({ ...invoiceConfig, storeName: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Info da Loja</Label>
+                    <Input value={invoiceConfig.storeInfo} onChange={e => setInvoiceConfig({ ...invoiceConfig, storeInfo: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Logo</Label>
+                  <div className="flex gap-2 items-center">
+                    <Input type="file" accept="image/*" onChange={e => {
+                      const f = e.target.files?.[0]; if (!f) return;
+                      const r = new FileReader();
+                      r.onload = () => setInvoiceConfig(prev => ({ ...prev, logo: r.result as string }));
+                      r.readAsDataURL(f);
+                    }} />
+                    {invoiceConfig.logo && (
+                      <Button variant="outline" size="sm" onClick={() => setInvoiceConfig({ ...invoiceConfig, logo: "" })}>Remover</Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-2">
+                    <Label>Título ({invoiceConfig.titleSize}px)</Label>
+                    <Slider min={10} max={22} step={1} value={[invoiceConfig.titleSize]} onValueChange={([v]) => setInvoiceConfig({ ...invoiceConfig, titleSize: v })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Corpo ({invoiceConfig.bodySize}px)</Label>
+                    <Slider min={8} max={16} step={1} value={[invoiceConfig.bodySize]} onValueChange={([v]) => setInvoiceConfig({ ...invoiceConfig, bodySize: v })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Espaço ({invoiceConfig.spacing}px)</Label>
+                    <Slider min={2} max={20} step={1} value={[invoiceConfig.spacing]} onValueChange={([v]) => setInvoiceConfig({ ...invoiceConfig, spacing: v })} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Texto de Garantia / Recebimento</Label>
+                  <Textarea rows={3} value={invoiceConfig.warrantyText} onChange={e => setInvoiceConfig({ ...invoiceConfig, warrantyText: e.target.value })} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Rodapé da Nota</Label>
+                  <Input value={invoiceConfig.footerText} onChange={e => setInvoiceConfig({ ...invoiceConfig, footerText: e.target.value })} />
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="flex items-center justify-between rounded border p-2">
+                    <Label className="text-xs">Logo</Label>
+                    <Switch checked={invoiceConfig.showLogo} onCheckedChange={v => setInvoiceConfig({ ...invoiceConfig, showLogo: v })} />
+                  </div>
+                  <div className="flex items-center justify-between rounded border p-2">
+                    <Label className="text-xs">Garantia</Label>
+                    <Switch checked={invoiceConfig.showWarranty} onCheckedChange={v => setInvoiceConfig({ ...invoiceConfig, showWarranty: v })} />
+                  </div>
+                  <div className="flex items-center justify-between rounded border p-2">
+                    <Label className="text-xs">Assinatura</Label>
+                    <Switch checked={invoiceConfig.showSignature} onCheckedChange={v => setInvoiceConfig({ ...invoiceConfig, showSignature: v })} />
+                  </div>
+                </div>
+
+                <Button onClick={() => handleSave("invoice")} disabled={saving} className="w-full md:w-auto">
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Salvar Configurações
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="xl:sticky xl:top-4 h-fit">
+              <CardHeader>
+                <CardTitle>Pré-visualização</CardTitle>
+                <CardDescription>Simulação do cupom impresso.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-center bg-muted/30 p-4">
+                <InvoicePreview config={invoiceConfig} />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

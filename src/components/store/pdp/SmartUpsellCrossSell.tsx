@@ -226,20 +226,30 @@ export function SmartUpsellCrossSell({
       if (p && p.id !== upsell?.id) crossSell.push(p as any);
     }
 
-    // Auto cross-sell if < 4
-    if (crossSell.length < 4) {
+    // Auto cross-sell if < 12
+    if (crossSell.length < 12) {
       const terms = findCrossSellTerms(product.name);
       const usedIds = new Set([product.id, upsell?.id, ...crossSell.map((c) => c.id)]);
       
       for (const term of terms) {
-        if (crossSell.length >= 4) break;
+        if (crossSell.length >= 12) break;
         const matches = others.filter(
           (p) => !usedIds.has(p.id) && p.name.toLowerCase().includes(term)
         );
-        // Sort by sales/views
         matches.sort((a, b) => ((b as any).sales ?? 0) - ((a as any).sales ?? 0));
         for (const m of matches) {
-          if (crossSell.length >= 4) break;
+          if (crossSell.length >= 12) break;
+          crossSell.push(m as any);
+          usedIds.add(m.id);
+        }
+      }
+      // If still short, fill with same-category products
+      if (crossSell.length < 12 && (product as any).category_id) {
+        const catMatches = others
+          .filter((p) => !usedIds.has(p.id) && (p as any).category_id === (product as any).category_id)
+          .sort((a, b) => ((b as any).sales ?? 0) - ((a as any).sales ?? 0));
+        for (const m of catMatches) {
+          if (crossSell.length >= 12) break;
           crossSell.push(m as any);
           usedIds.add(m.id);
         }
@@ -281,26 +291,26 @@ export function SmartUpsellCrossSell({
         });
 
       for (const { product: relatedProduct } of rankedRelated) {
-        if (related.length >= 4) break;
+        if (related.length >= 12) break;
         related.push(relatedProduct as any);
         usedIds.add(relatedProduct.id);
       }
     }
 
     // Fallback: best sellers
-    if (related.length < 4) {
+    if (related.length < 12) {
       const bestSellers = others
         .filter((p) => !usedIds.has(p.id))
         .sort((a, b) => ((b as any).sales ?? 0) - ((a as any).sales ?? 0));
       
       for (const p of bestSellers) {
-        if (related.length >= 4) break;
+        if (related.length >= 12) break;
         related.push(p as any);
         usedIds.add(p.id);
       }
     }
 
-    return { upsell, crossSell: crossSell.slice(0, 4), related: related.slice(0, 4) };
+    return { upsell, crossSell: crossSell.slice(0, 12), related: related.slice(0, 12) };
   }, [product, activeProducts, dbRecs]);
 
   const handleAdd = (p: EnrichedProduct) => {
@@ -353,16 +363,16 @@ export function SmartUpsellCrossSell({
           <h3 className="text-sm font-semibold text-foreground">
             {MESSAGES.cross_sell}
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
-
+          <div className="flex gap-2 sm:gap-3 overflow-x-auto snap-x snap-mandatory -mx-1 px-1 pb-2 scrollbar-hide">
             {recommendations.crossSell.map((p) => (
-              <SuggestionCard
-                key={p.id}
-                product={p}
-                currentProduct={product}
-                type="cross_sell"
-                onAdd={() => handleAdd(p)}
-              />
+              <div key={p.id} className="snap-start shrink-0 basis-[45%] sm:basis-[30%] lg:basis-[22%] xl:basis-[18%]">
+                <SuggestionCard
+                  product={p}
+                  currentProduct={product}
+                  type="cross_sell"
+                  onAdd={() => handleAdd(p)}
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -374,16 +384,16 @@ export function SmartUpsellCrossSell({
           <h3 className="text-sm font-semibold text-foreground">
             {MESSAGES.related}
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
-
+          <div className="flex gap-2 sm:gap-3 overflow-x-auto snap-x snap-mandatory -mx-1 px-1 pb-2 scrollbar-hide">
             {recommendations.related.map((p) => (
-              <SuggestionCard
-                key={p.id}
-                product={p}
-                currentProduct={product}
-                type="related"
-                onAdd={() => handleAdd(p)}
-              />
+              <div key={p.id} className="snap-start shrink-0 basis-[45%] sm:basis-[30%] lg:basis-[22%] xl:basis-[18%]">
+                <SuggestionCard
+                  product={p}
+                  currentProduct={product}
+                  type="related"
+                  onAdd={() => handleAdd(p)}
+                />
+              </div>
             ))}
           </div>
         </div>

@@ -123,19 +123,18 @@ async function renderCanvas(q: Quotation): Promise<HTMLCanvasElement> {
   const wrapper = document.createElement('div');
   wrapper.style.cssText = `
     position:fixed;left:-9999px;top:0;
-    width:960px;height:1280px;
+    width:900px;height:1200px;
     padding:0;
     box-sizing:border-box;
     display:flex;align-items:center;justify-content:center;
     background-image:url(${tableBg});
     background-size:cover;
     background-position:center;
-    filter: brightness(1.015) contrast(1.015) saturate(0.98);
   `;
 
   const stage = document.createElement('div');
   stage.style.cssText = `
-    transform:none;
+    transform: rotate(-1.6deg);
     transform-origin:center;
   `;
   stage.innerHTML = buildReceiptHTML(q);
@@ -154,6 +153,7 @@ async function renderCanvas(q: Quotation): Promise<HTMLCanvasElement> {
   document.body.removeChild(wrapper);
   return canvas;
 }
+
 
 export async function downloadReceiptPhotoPNG(q: Quotation): Promise<void> {
   const canvas = await renderCanvas(q);

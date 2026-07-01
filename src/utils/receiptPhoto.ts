@@ -134,7 +134,7 @@ async function renderCanvas(q: Quotation): Promise<HTMLCanvasElement> {
 
   const stage = document.createElement('div');
   stage.style.cssText = `
-    transform: none;
+    transform: rotate(-1.2deg);
     transform-origin:center;
   `;
   stage.innerHTML = buildReceiptHTML(q);

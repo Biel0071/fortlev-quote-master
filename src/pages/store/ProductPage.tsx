@@ -368,7 +368,7 @@ export default function ProductPage() {
       pageLinks={pageLinks}
       footerStoreName={home.footer?.store_name ?? undefined}
     >
-      <main className="mx-auto w-full max-w-6xl min-w-0 overflow-x-clip px-4 py-4 pb-32 md:pb-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-6">
+      <main className="mx-auto w-full max-w-7xl min-w-0 overflow-x-clip px-4 py-4 pb-32 md:pb-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-6">
         <Button asChild variant="outline" className="h-9 sm:h-10 rounded-xl w-fit text-xs sm:text-sm gap-1.5 border-border/60 text-muted-foreground hover:text-foreground">
           <Link to="/loja">
             <ChevronLeft className="h-4 w-4" />

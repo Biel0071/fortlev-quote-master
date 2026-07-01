@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Trash2, Truck, Tag, ArrowRight, Shield, Check } from "lucide-react";
 import { AppHeader } from "@/components/store/AppHeader";

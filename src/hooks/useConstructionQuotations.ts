@@ -76,7 +76,7 @@ export function useConstructionQuotations() {
   const fetchQuotations = useCallback(async () => {
     const { data, error } = await supabase
       .from('construction_quotations')
-      .select('*, store_id')
+      .select('*')
       .order('created_at', { ascending: false });
     if (error) {
       console.error('Error fetching construction quotations:', error);

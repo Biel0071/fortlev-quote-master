@@ -416,49 +416,91 @@ const ConstructionPage = () => {
     toast({ title: 'Orçamento excluído', variant: 'destructive' });
   };
 
-  // Load smart quotation data
+  // Load smart quotation data + auto-match construction catalog
   useEffect(() => {
     const rawItems = sessionStorage.getItem("smart_quotation_items");
     const rawCustomer = sessionStorage.getItem("smart_quotation_customer");
 
-    if (rawItems) {
-      try {
-        const parsedItems = JSON.parse(rawItems);
-        const quotationItems: ConstructionQuotationItem[] = parsedItems.map((item: any) => ({
-          id: crypto.randomUUID(),
-          product: {
-            id: 'manual-' + Math.random().toString(36).substr(2, 9),
-            name: item.productName || item.name,
-            unit: item.unit || 'un',
-            basePrice: item.price || item.unitPrice || 0,
-            category: 'outros'
-          },
-          quantity: item.quantity,
-          unitPrice: item.price || item.unitPrice || 0,
-          subtotal: (item.price || item.unitPrice || 0) * item.quantity
-        }));
-        setItems(quotationItems);
-        sessionStorage.removeItem("smart_quotation_items");
-      } catch (e) {
-        console.error("Error parsing smart items", e);
-      }
-    }
+    const run = async () => {
+      if (rawItems) {
+        try {
+          const parsedItems = JSON.parse(rawItems);
 
-    if (rawCustomer) {
-      try {
-        const customerData = JSON.parse(rawCustomer);
-        setCustomer(prev => ({
-          ...prev,
-          name: customerData.name || prev.name,
-          cnpj: customerData.document || prev.cnpj,
-          phone: customerData.phone || prev.phone,
-          address: customerData.address || prev.address,
-        }));
-        sessionStorage.removeItem("smart_quotation_customer");
-      } catch (e) {
-        console.error("Error parsing smart customer", e);
+          // Try to enrich each item from construction_catalog_products
+          const { data: catalog } = await supabase
+            .from('construction_catalog_products')
+            .select('id, name, unit, base_price, category');
+
+          const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+          const findMatch = (name: string) => {
+            if (!catalog?.length) return null;
+            const target = norm(name);
+            if (!target) return null;
+            const tokens = target.split(' ').filter(Boolean);
+            let best: any = null;
+            let bestScore = 0;
+            for (const p of catalog) {
+              const cand = norm(p.name);
+              let score = 0;
+              for (const t of tokens) if (cand.includes(t)) score++;
+              if (cand === target) score += 5;
+              if (score > bestScore) { bestScore = score; best = p; }
+            }
+            return bestScore >= Math.max(1, Math.ceil(tokens.length * 0.6)) ? best : null;
+          };
+
+          const quotationItems: ConstructionQuotationItem[] = parsedItems.map((item: any) => {
+            const rawName = item.productName || item.name;
+            const matched = findMatch(rawName);
+            const unit = (matched?.unit || item.unit || 'un') as ConstructionQuotationItem['product']['unit'];
+            const price = item.price || item.unitPrice || Number(matched?.base_price) || 0;
+            return {
+              id: crypto.randomUUID(),
+              product: {
+                id: matched?.id || 'manual-' + Math.random().toString(36).slice(2, 11),
+                name: matched?.name || rawName,
+                unit,
+                basePrice: Number(matched?.base_price) || price,
+                category: (matched?.category || 'outros') as any,
+              },
+              quantity: item.quantity,
+              unitPrice: price,
+              subtotal: price * item.quantity,
+            };
+          });
+          setItems(quotationItems);
+          sessionStorage.removeItem("smart_quotation_items");
+        } catch (e) {
+          console.error("Error parsing smart items", e);
+        }
       }
-    }
+
+      if (rawCustomer) {
+        try {
+          const customerData = JSON.parse(rawCustomer);
+          setCustomer(prev => ({
+            ...prev,
+            name: customerData.name || prev.name,
+            cnpj: customerData.document || customerData.cpfCnpj || prev.cnpj,
+            phone: customerData.phone || prev.phone,
+            address: customerData.address || prev.address,
+            email: customerData.email || prev.email,
+          }));
+          if (customerData.observations) setObservations(customerData.observations);
+          if (customerData.validity) setValidity(customerData.validity);
+          if (customerData.deliveryTime) setDeliveryTime(customerData.deliveryTime);
+          if (typeof customerData.freight === 'number') setFreight(customerData.freight);
+          if (customerData.sellerName) {
+            setCompanyInfo(prev => ({ ...prev, sellerName: customerData.sellerName }));
+          }
+          sessionStorage.removeItem("smart_quotation_customer");
+        } catch (e) {
+          console.error("Error parsing smart customer", e);
+        }
+      }
+    };
+
+    run();
   }, []);
 
   const resetForm = () => {

@@ -1,10 +1,10 @@
 import type { Quotation } from '@/types/quotation';
 import { formatCurrency } from './formatters';
-import tableBg from '@/assets/receipt-table-real-bg.jpg';
+import tableBg from '@/assets/receipt-table-bg.jpg';
 
 /**
  * Renders a printed quotation as a clean top-down photo on a real countertop.
- * The background comes from a real uploaded table photo; the paper stays straight,
+ * The background is only the clean countertop texture; the paper stays straight,
  * flat, white and crisp so the result looks like a real store quotation photo.
  */
 
@@ -41,7 +41,7 @@ function buildReceiptHTML(q: Quotation): string {
     color:#000000;
     font-size:12.5px;
     line-height:1.5;
-    box-shadow: 0 14px 22px -14px rgba(0,0,0,0.35);
+    box-shadow: none;
     border-radius:0;
   ">
 
@@ -134,7 +134,7 @@ async function renderCanvas(q: Quotation): Promise<HTMLCanvasElement> {
 
   const stage = document.createElement('div');
   stage.style.cssText = `
-    transform: rotate(-1.6deg);
+    transform: none;
     transform-origin:center;
   `;
   stage.innerHTML = buildReceiptHTML(q);

@@ -38,7 +38,7 @@ const STORE_LABEL: Record<string, string> = {
   construcao: "Construção (Orçamentos)",
 };
 
-const STORES_CACHE_KEY = "lovable:stores:v1";
+const STORES_CACHE_KEY = "lovable:stores:v2";
 const STORES_CACHE_TTL = 5 * 60 * 1000;
 
 function loadCachedStores(): StoreDbRow[] | null {

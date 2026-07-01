@@ -353,7 +353,8 @@ export function SmartUpsellCrossSell({
           <h3 className="text-sm font-semibold text-foreground">
             {MESSAGES.cross_sell}
           </h3>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
+
             {recommendations.crossSell.map((p) => (
               <SuggestionCard
                 key={p.id}
@@ -373,7 +374,8 @@ export function SmartUpsellCrossSell({
           <h3 className="text-sm font-semibold text-foreground">
             {MESSAGES.related}
           </h3>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
+
             {recommendations.related.map((p) => (
               <SuggestionCard
                 key={p.id}

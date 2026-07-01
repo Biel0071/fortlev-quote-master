@@ -20,6 +20,9 @@ import { HomeCategoriesCarousel } from "@/components/store/home/HomeCategoriesCa
 import { HomeProductsByIds } from "@/components/store/home/HomeProductsByIds";
 import { HomeGuaranteesMiniBar } from "@/components/store/home/HomeGuaranteesMiniBar";
 import { Button } from "@/components/ui/button";
+import { StoreUnderDevelopment } from "@/components/store/StoreUnderDevelopment";
+
+
 
 
 function CategorySkeleton() {
@@ -162,6 +165,13 @@ export default function StoreHome() {
       </div>
     );
   }
+
+  // Multi-sites: lojas cadastradas mas ainda sem conteúdo mostram o placeholder
+  // "em desenvolvimento" com a identidade visual da própria loja.
+  if (tenantStoreData?.slug === "mf-atacadista") {
+    return <StoreUnderDevelopment storeName={tenantStoreData?.name} />;
+  }
+
 
   // Se o tenant carregou mas não há loja ativa, mostrar fallback amigável em vez de travar
   if (!tenantStoreData && !tenantLoading) {

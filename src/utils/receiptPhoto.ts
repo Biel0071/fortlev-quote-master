@@ -33,19 +33,18 @@ function buildReceiptHTML(q: Quotation): string {
   <div class="paper" style="
     position:relative;
     width:520px;
+    min-height:735px;
     box-sizing:border-box;
-    padding:44px 42px 40px;
+    padding:56px 48px 48px;
     background:#ffffff;
     font-family: 'Helvetica Neue', Arial, sans-serif;
-    color:#0a0a0a;
+    color:#000000;
     font-size:12.5px;
     line-height:1.5;
-    box-shadow:
-      0 1px 1px rgba(0,0,0,0.10),
-      8px 13px 20px -12px rgba(0,0,0,0.34),
-      18px 26px 36px -24px rgba(0,0,0,0.28);
+    box-shadow: 0 14px 22px -14px rgba(0,0,0,0.35);
     border-radius:0;
   ">
+
     <div style="text-align:center;">
       <div style="font-size:20px;font-weight:900;letter-spacing:1.5px;">${(c.name || 'LOJA').toUpperCase()}</div>
       <div style="font-size:11px;margin-top:6px;line-height:1.55;color:#222;">

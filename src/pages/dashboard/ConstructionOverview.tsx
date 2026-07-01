@@ -147,7 +147,7 @@ export default function ConstructionOverview() {
   const handleEdit = (id: string) => { navigate(`/construcao?edit=${id}`); };
 
   const handleDownloadPDF = (q: typeof quotations[0]) => {
-    try { downloadPDF(toQuotationType(q)); toast({ title: "PDF gerado com sucesso" }); }
+    try { downloadPDF(toQuotationType(q), { template: 'receipt' }); toast({ title: "PDF gerado com sucesso" }); }
     catch { toast({ title: "Erro ao gerar PDF", variant: "destructive" }); }
   };
 

@@ -1,34 +1,12 @@
 import type { Quotation } from '@/types/quotation';
 import { formatCurrency } from './formatters';
-import tableBg from '@/assets/receipt-table-bg.jpg';
+import tableBg from '@/assets/receipt-table-real-bg.jpg';
 
 /**
- * Renders a printed quotation as if photographed on a real countertop.
- * Goal: indistinguishable from a real photo — crisp printed text on white
- * sulfite paper (75/90g), soft top-left ambient light, natural cast shadow,
- * neutral white balance, mild 35mm perspective.
+ * Renders a printed quotation as a clean top-down photo on a real countertop.
+ * The background comes from a real uploaded table photo; the paper stays straight,
+ * flat, white and crisp so the result looks like a real store quotation photo.
  */
-
-// Extremely subtle sulfite paper texture — under 2% opacity, no repeating patterns.
-const PAPER_TEXTURE = `
-  background-color:#ffffff;
-  background-image:
-    radial-gradient(ellipse at 22% 18%, rgba(255,255,255,1), rgba(250,250,249,0) 55%),
-    radial-gradient(ellipse at 80% 85%, rgba(0,0,0,0.018), rgba(0,0,0,0) 60%),
-    radial-gradient(circle at 40% 60%, rgba(0,0,0,0.012), rgba(0,0,0,0) 40%),
-    radial-gradient(circle at 65% 30%, rgba(0,0,0,0.010), rgba(0,0,0,0) 35%);
-`;
-
-// A few tiny, scattered print imperfections (<2%): faint ink specks.
-const PRINT_IMPERFECTIONS = `
-  <div aria-hidden="true" style="pointer-events:none;position:absolute;inset:0;overflow:hidden;">
-    <div style="position:absolute;top:14%;left:22%;width:2px;height:1px;background:rgba(0,0,0,0.35);border-radius:50%;"></div>
-    <div style="position:absolute;top:38%;left:71%;width:1px;height:1px;background:rgba(0,0,0,0.28);border-radius:50%;"></div>
-    <div style="position:absolute;top:57%;left:12%;width:1.5px;height:1px;background:rgba(0,0,0,0.22);border-radius:50%;"></div>
-    <div style="position:absolute;top:74%;left:58%;width:1px;height:1px;background:rgba(0,0,0,0.30);border-radius:50%;"></div>
-    <div style="position:absolute;top:82%;left:28%;width:1px;height:1.5px;background:rgba(0,0,0,0.20);border-radius:50%;"></div>
-  </div>
-`;
 
 function buildReceiptHTML(q: Quotation): string {
   const c = q.companyInfo || ({} as any);
@@ -55,23 +33,19 @@ function buildReceiptHTML(q: Quotation): string {
   <div class="paper" style="
     position:relative;
     width:520px;
+    box-sizing:border-box;
     padding:44px 42px 40px;
-    ${PAPER_TEXTURE}
+    background:#ffffff;
     font-family: 'Helvetica Neue', Arial, sans-serif;
     color:#0a0a0a;
     font-size:12.5px;
     line-height:1.5;
     box-shadow:
-      /* soft contact shadow */
-      0 2px 3px rgba(0,0,0,0.18),
-      /* mid cast shadow, offset to bottom-right (light from top-left) */
-      14px 22px 30px -10px rgba(0,0,0,0.30),
-      /* long ambient shadow */
-      28px 44px 70px -20px rgba(0,0,0,0.28);
-    border-radius:1px;
+      0 1px 1px rgba(0,0,0,0.10),
+      8px 13px 20px -12px rgba(0,0,0,0.34),
+      18px 26px 36px -24px rgba(0,0,0,0.28);
+    border-radius:0;
   ">
-    ${PRINT_IMPERFECTIONS}
-
     <div style="text-align:center;">
       <div style="font-size:20px;font-weight:900;letter-spacing:1.5px;">${(c.name || 'LOJA').toUpperCase()}</div>
       <div style="font-size:11px;margin-top:6px;line-height:1.55;color:#222;">
@@ -151,26 +125,19 @@ async function renderCanvas(q: Quotation): Promise<HTMLCanvasElement> {
   wrapper.style.cssText = `
     position:fixed;left:-9999px;top:0;
     width:960px;height:1280px;
-    padding:90px 80px;
+    padding:0;
     box-sizing:border-box;
     display:flex;align-items:center;justify-content:center;
-    background-image:
-      /* soft top-left ambient light */
-      radial-gradient(ellipse at 22% 12%, rgba(255,255,255,0.22), rgba(255,255,255,0) 55%),
-      /* natural vignette */
-      radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.28) 100%),
-      url(${tableBg});
-    background-size:cover, cover, cover;
-    background-position:center, center, center;
-    /* +8% brightness, +6% contrast, neutral white balance */
-    filter: brightness(1.08) contrast(1.06) saturate(0.96);
+    background-image:url(${tableBg});
+    background-size:cover;
+    background-position:center;
+    filter: brightness(1.015) contrast(1.015) saturate(0.98);
   `;
 
-  // Slight 35mm-style perspective: barely-there tilt.
   const stage = document.createElement('div');
   stage.style.cssText = `
-    transform: perspective(1600px) rotateX(1.2deg) rotateZ(-0.6deg);
-    transform-origin: 50% 40%;
+    transform:none;
+    transform-origin:center;
   `;
   stage.innerHTML = buildReceiptHTML(q);
   wrapper.appendChild(stage);

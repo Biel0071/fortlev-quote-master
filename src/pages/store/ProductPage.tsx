@@ -487,9 +487,6 @@ export default function ProductPage() {
 
               <ShippingCalculator subtotal={totalDynamic} />
 
-              {/* Smart Upsell & Cross-Sell */}
-              <SmartUpsellCrossSell product={product as any} onCartOpen={() => setCartOpen(true)} />
-
               {/* Info cards */}
               <Card className="rounded-2xl border-border bg-card shadow-sm min-w-0 max-w-full overflow-hidden">
                 <CardContent className="p-3 sm:p-5 min-w-0">
@@ -528,11 +525,17 @@ export default function ProductPage() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Full-width sections below the buy box */}
+            <div className="lg:col-span-12 space-y-4 sm:space-y-6 min-w-0 max-w-full">
+              {/* Smart Upsell & Cross-Sell */}
+              <SmartUpsellCrossSell product={product as any} onCartOpen={() => setCartOpen(true)} />
 
               {/* Description */}
               {descriptionParts.general ? (
                 <Card className="rounded-2xl border-border bg-card shadow-sm w-full min-w-0 overflow-hidden">
-                  <CardContent className="p-3 sm:p-5 min-w-0">
+                  <CardContent className="p-4 sm:p-6 min-w-0">
                     <ProductDescription markdown={descriptionParts.general} />
                   </CardContent>
                 </Card>
@@ -540,7 +543,7 @@ export default function ProductPage() {
 
               {descriptionParts.tech ? (
                 <Card className="rounded-2xl border-border bg-card shadow-sm w-full min-w-0 overflow-hidden">
-                  <CardContent className="p-3 sm:p-5 min-w-0">
+                  <CardContent className="p-4 sm:p-6 min-w-0">
                     <ProductDescription markdown={descriptionParts.tech} />
                   </CardContent>
                 </Card>

@@ -166,11 +166,21 @@ export default function StoreHome() {
     );
   }
 
-  // Multi-sites: lojas cadastradas mas ainda sem conteúdo mostram o placeholder
-  // "em desenvolvimento" com a identidade visual da própria loja.
-  if (tenantStoreData?.slug === "mf-atacadista") {
+  // Multi-sites: qualquer loja cadastrada mas ainda sem conteúdo publicado
+  // (sem produtos ativos e sem categorias ativas) exibe o placeholder
+  // "em desenvolvimento". O admin (/admin/*) continua acessível normalmente.
+  const storeHasNoContent =
+    !!tenantStoreData &&
+    !productsLoading &&
+    !categoriesLoading &&
+    (activeProducts?.length ?? 0) === 0 &&
+    (activeCategories?.length ?? 0) === 0;
+
+  if (storeHasNoContent) {
     return <StoreUnderDevelopment storeName={tenantStoreData?.name} />;
   }
+
+
 
 
   // Se o tenant carregou mas não há loja ativa, mostrar fallback amigável em vez de travar

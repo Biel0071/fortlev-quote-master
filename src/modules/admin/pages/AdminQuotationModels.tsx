@@ -491,3 +491,92 @@ function BudgetPreview({ config }: { config: BudgetConfig }) {
     </div>
   );
 }
+
+interface InvoiceConfig {
+  paperWidth: string;
+  headerText: string;
+  footerText: string;
+  defaultSeller: string;
+  warrantyText: string;
+  logo: string;
+  showLogo: boolean;
+  showWarranty: boolean;
+  showSignature: boolean;
+  bodySize: number;
+  titleSize: number;
+  spacing: number;
+  storeName: string;
+  storeInfo: string;
+}
+
+function InvoicePreview({ config }: { config: InvoiceConfig }) {
+  const items = [
+    { name: "Cimento CP II 50kg", qty: 10, price: 42.9 },
+    { name: "Areia Média m³", qty: 2, price: 120 },
+    { name: "Bloco Cerâmico", qty: 500, price: 1.85 },
+  ];
+  const total = items.reduce((s, i) => s + i.qty * i.price, 0);
+  const width = /^\d+mm$/.test(config.paperWidth) ? config.paperWidth : "80mm";
+  const gap = { marginBottom: config.spacing };
+  const dashed = { borderTop: "1px dashed #000", margin: `${config.spacing}px 0` };
+
+  return (
+    <div
+      className="bg-white text-black shadow-md"
+      style={{
+        width,
+        maxWidth: "100%",
+        fontFamily: "'Courier New', monospace",
+        fontSize: config.bodySize,
+        padding: 10,
+        lineHeight: 1.35,
+      }}
+    >
+      {config.showLogo && config.logo && (
+        <div className="flex justify-center" style={gap}>
+          <img src={config.logo} alt="logo" style={{ maxHeight: 50, objectFit: "contain" }} />
+        </div>
+      )}
+      <div style={{ textAlign: "center", fontWeight: 700, fontSize: config.titleSize, ...gap }}>
+        {config.storeName}
+      </div>
+      <div style={{ textAlign: "center", ...gap }}>{config.storeInfo}</div>
+      <div style={dashed} />
+      <div style={{ textAlign: "center", fontWeight: 700, ...gap }}>{config.headerText}</div>
+      <div>Nº 000001</div>
+      <div>Data: {new Date().toLocaleString("pt-BR")}</div>
+      {config.defaultSeller && <div>Vendedor: {config.defaultSeller}</div>}
+      <div style={dashed} />
+      <div>Cliente: João da Silva</div>
+      <div>CPF: 000.000.000-00</div>
+      <div style={dashed} />
+      {items.map((it, i) => (
+        <div key={i} style={{ marginBottom: 3 }}>
+          <div>{it.name}</div>
+          <div className="flex justify-between">
+            <span>{it.qty} x {formatCurrency(it.price)}</span>
+            <span>{formatCurrency(it.qty * it.price)}</span>
+          </div>
+        </div>
+      ))}
+      <div style={dashed} />
+      <div className="flex justify-between" style={{ fontWeight: 700, fontSize: config.bodySize + 2 }}>
+        <span>TOTAL</span>
+        <span>{formatCurrency(total)}</span>
+      </div>
+      <div style={dashed} />
+      {config.showWarranty && (
+        <div style={{ ...gap, textAlign: "justify" }}>{config.warrantyText}</div>
+      )}
+      {config.showSignature && (
+        <div style={{ marginTop: config.spacing * 3 }}>
+          <div style={{ borderTop: "1px solid #000", textAlign: "center", paddingTop: 2 }}>
+            Assinatura do Cliente
+          </div>
+        </div>
+      )}
+      <div style={dashed} />
+      <div style={{ textAlign: "center", fontWeight: 700 }}>{config.footerText}</div>
+    </div>
+  );
+}

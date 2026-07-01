@@ -66,10 +66,19 @@ export default function AdminQuotationModels() {
 
   const [invoiceConfig, setInvoiceConfig] = useState({
     paperWidth: "80mm",
-    headerText: "",
+    headerText: "NOTA DE ENTREGA",
     footerText: "OBRIGADO E VOLTE SEMPRE!",
     defaultSeller: "",
-    warrantyText: "Recebi a(s) mercadoria(s) acima descrita(s), concordando plenamente com os prazos e condições de garantia."
+    warrantyText: "Recebi a(s) mercadoria(s) acima descrita(s), concordando plenamente com os prazos e condições de garantia.",
+    logo: "",
+    showLogo: true,
+    showWarranty: true,
+    showSignature: true,
+    bodySize: 11,
+    titleSize: 14,
+    spacing: 6,
+    storeName: "SUA LOJA",
+    storeInfo: "CNPJ 00.000.000/0000-00 · Rua Exemplo, 123",
   });
 
   useEffect(() => {

@@ -226,20 +226,30 @@ export function SmartUpsellCrossSell({
       if (p && p.id !== upsell?.id) crossSell.push(p as any);
     }
 
-    // Auto cross-sell if < 4
-    if (crossSell.length < 4) {
+    // Auto cross-sell if < 12
+    if (crossSell.length < 12) {
       const terms = findCrossSellTerms(product.name);
       const usedIds = new Set([product.id, upsell?.id, ...crossSell.map((c) => c.id)]);
       
       for (const term of terms) {
-        if (crossSell.length >= 4) break;
+        if (crossSell.length >= 12) break;
         const matches = others.filter(
           (p) => !usedIds.has(p.id) && p.name.toLowerCase().includes(term)
         );
-        // Sort by sales/views
         matches.sort((a, b) => ((b as any).sales ?? 0) - ((a as any).sales ?? 0));
         for (const m of matches) {
-          if (crossSell.length >= 4) break;
+          if (crossSell.length >= 12) break;
+          crossSell.push(m as any);
+          usedIds.add(m.id);
+        }
+      }
+      // If still short, fill with same-category products
+      if (crossSell.length < 12 && (product as any).category_id) {
+        const catMatches = others
+          .filter((p) => !usedIds.has(p.id) && (p as any).category_id === (product as any).category_id)
+          .sort((a, b) => ((b as any).sales ?? 0) - ((a as any).sales ?? 0));
+        for (const m of catMatches) {
+          if (crossSell.length >= 12) break;
           crossSell.push(m as any);
           usedIds.add(m.id);
         }

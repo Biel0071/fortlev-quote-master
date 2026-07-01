@@ -195,11 +195,16 @@ export default function PaymentPendingPage() {
 
             <div className="flex gap-2 flex-wrap">
               <Button asChild>
-                <Link to="/">Voltar para a loja</Link>
+                <Link to="/pedidos">Ver meus pedidos</Link>
               </Button>
               <Button asChild variant="outline">
-                <Link to="/admin/pedidos">Ver pedidos no admin</Link>
+                <Link to="/loja">Voltar para a loja</Link>
               </Button>
+              {isAdmin && (
+                <Button asChild variant="ghost">
+                  <Link to="/admin/pedidos">Ver pedidos no admin</Link>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

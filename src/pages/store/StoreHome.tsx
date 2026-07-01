@@ -169,16 +169,17 @@ export default function StoreHome() {
   // Multi-sites: qualquer loja cadastrada mas ainda sem conteúdo publicado
   // (sem produtos ativos e sem categorias ativas) exibe o placeholder
   // "em desenvolvimento". O admin (/admin/*) continua acessível normalmente.
-  const isEmptyStore =
+  const storeHasNoContent =
     !!tenantStoreData &&
     !productsLoading &&
     !categoriesLoading &&
     (activeProducts?.length ?? 0) === 0 &&
     (activeCategories?.length ?? 0) === 0;
 
-  if (isEmptyStore) {
+  if (storeHasNoContent) {
     return <StoreUnderDevelopment storeName={tenantStoreData?.name} />;
   }
+
 
 
 

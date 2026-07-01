@@ -291,26 +291,26 @@ export function SmartUpsellCrossSell({
         });
 
       for (const { product: relatedProduct } of rankedRelated) {
-        if (related.length >= 4) break;
+        if (related.length >= 12) break;
         related.push(relatedProduct as any);
         usedIds.add(relatedProduct.id);
       }
     }
 
     // Fallback: best sellers
-    if (related.length < 4) {
+    if (related.length < 12) {
       const bestSellers = others
         .filter((p) => !usedIds.has(p.id))
         .sort((a, b) => ((b as any).sales ?? 0) - ((a as any).sales ?? 0));
       
       for (const p of bestSellers) {
-        if (related.length >= 4) break;
+        if (related.length >= 12) break;
         related.push(p as any);
         usedIds.add(p.id);
       }
     }
 
-    return { upsell, crossSell: crossSell.slice(0, 4), related: related.slice(0, 4) };
+    return { upsell, crossSell: crossSell.slice(0, 12), related: related.slice(0, 12) };
   }, [product, activeProducts, dbRecs]);
 
   const handleAdd = (p: EnrichedProduct) => {

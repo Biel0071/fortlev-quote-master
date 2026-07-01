@@ -318,9 +318,136 @@ export const generatePDF = (quotation: Quotation, config?: any): jsPDF => {
   return doc;
 };
 
-export const downloadPDF = (quotation: Quotation) => {
-  const doc = generatePDF(quotation);
+export const downloadPDF = (quotation: Quotation, opts?: { template?: 'commercial' | 'receipt' }) => {
+  const template = opts?.template || (quotation as any)?.templateType || 'commercial';
+  const doc = template === 'receipt' ? generateReceiptPDF(quotation) : generatePDF(quotation);
   doc.save(`orcamento-${quotation.number}.pdf`);
+};
+
+/**
+ * Thermal-receipt style PDF (80mm) for construction/material stores.
+ * Mimics printed "Comprovante de Venda" tickets.
+ */
+export const generateReceiptPDF = (quotation: Quotation): jsPDF => {
+  const doc = new jsPDF({ unit: 'mm', format: [80, 297] });
+  const W = 80;
+  const M = 4;
+  const CW = W - M * 2;
+  let y = 6;
+
+  const company = quotation.companyInfo || ({} as any);
+  const customer = quotation.customer || ({} as any);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text((company.name || 'LOJA').toUpperCase(), W / 2, y, { align: 'center' });
+  y += 4;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  const headerLines: string[] = [];
+  if (company.cnpj) headerLines.push(`CNPJ: ${company.cnpj}`);
+  if (company.address) headerLines.push(company.address);
+  if (company.phone) headerLines.push(`Tel: ${company.phone}`);
+  if (company.email) headerLines.push(company.email);
+  headerLines.forEach((l) => {
+    const split = doc.splitTextToSize(l, CW);
+    doc.text(split, W / 2, y, { align: 'center' });
+    y += split.length * 3;
+  });
+
+  y += 1;
+  doc.setFontSize(7);
+  doc.text('COMPROVANTE DE VENDA', W / 2, y, { align: 'center' });
+  y += 4;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text(`Nº: ${quotation.number}`, W / 2, y, { align: 'center' });
+  y += 5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  if (customer.name) { doc.text(`CLIENTE: ${customer.name}`, M, y); y += 3; }
+  if (customer.cnpj) { doc.text(`CPF/CNPJ: ${customer.cnpj}`, M, y); y += 3; }
+  if (customer.phone) { doc.text(`TELEFONE: ${customer.phone}`, M, y); y += 3; }
+  if (customer.address) {
+    const split = doc.splitTextToSize(`ENDEREÇO: ${customer.address}`, CW);
+    doc.text(split, M, y); y += split.length * 3;
+  }
+  y += 1;
+  doc.text(new Date(quotation.createdAt || Date.now()).toLocaleString('pt-BR'), M, y);
+  y += 3;
+
+  const dashed = (yy: number) => {
+    doc.setLineDashPattern([0.6, 0.6], 0);
+    doc.line(M, yy, W - M, yy);
+    doc.setLineDashPattern([], 0);
+  };
+  dashed(y); y += 3;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.text('DESCRIÇÃO', M, y);
+  doc.text('QNT', M + 36, y);
+  doc.text('UNIT', M + 46, y);
+  doc.text('VALOR', W - M, y, { align: 'right' });
+  y += 2;
+  dashed(y); y += 3;
+
+  doc.setFont('helvetica', 'normal');
+  (quotation.items || []).forEach((it) => {
+    const name = it.product?.name || 'Produto';
+    const split = doc.splitTextToSize(name.toUpperCase(), 34);
+    doc.text(split, M, y);
+    doc.text(String(it.quantity), M + 36, y);
+    doc.text(formatCurrency(it.unitPrice).replace('R$', '').trim(), M + 46, y);
+    doc.text(formatCurrency(it.subtotal).replace('R$', '').trim(), W - M, y, { align: 'right' });
+    y += Math.max(split.length * 3, 3) + 1;
+  });
+
+  y += 1; dashed(y); y += 4;
+
+  const row = (label: string, value: string, bold = false) => {
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(bold ? 9 : 8);
+    doc.text(label, M, y);
+    doc.text(value, W - M, y, { align: 'right' });
+    y += bold ? 5 : 4;
+  };
+  row('Itens R$', formatCurrency(quotation.subtotal).replace('R$', '').trim());
+  row('Frete R$', quotation.freight === 0 ? 'Grátis' : formatCurrency(quotation.freight).replace('R$', '').trim());
+  if (quotation.discount) row('Desconto R$', formatCurrency(quotation.discount).replace('R$', '').trim());
+  row('Valor Total R$', formatCurrency(quotation.total).replace('R$', '').trim(), true);
+
+  y += 1;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text(`FORMA DE PGTO.: ${quotation.paymentConditions?.cashDiscount ? 'À VISTA' : 'A COMBINAR'}`, M, y);
+  y += 5;
+
+  if (company.sellerName) {
+    doc.setFont('helvetica', 'normal');
+    doc.text(`VENDEDOR(A): ${company.sellerName.toUpperCase()}`, M, y);
+    y += 4;
+  }
+
+  if (quotation.observations) {
+    y += 1; dashed(y); y += 3;
+    doc.setFontSize(7);
+    const split = doc.splitTextToSize(quotation.observations, CW);
+    doc.text(split, M, y);
+    y += split.length * 3 + 2;
+  }
+
+  y += 4; dashed(y); y += 6;
+  doc.setFontSize(7);
+  doc.text('ASSINATURA DO CLIENTE', W / 2, y, { align: 'center' });
+  y += 5;
+  dashed(y); y += 4;
+  doc.setFont('helvetica', 'bold');
+  doc.text('OBRIGADO E VOLTE SEMPRE!', W / 2, y, { align: 'center' });
+
+  return doc;
 };
 
 export const downloadPNG = async (quotation: Quotation) => {

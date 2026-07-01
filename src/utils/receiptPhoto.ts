@@ -41,7 +41,7 @@ function buildReceiptHTML(q: Quotation): string {
     color:#000000;
     font-size:12.5px;
     line-height:1.5;
-    box-shadow: none;
+    box-shadow: 0 18px 30px -18px rgba(0,0,0,0.35), 0 4px 8px -4px rgba(0,0,0,0.18);
     border-radius:0;
   ">
 

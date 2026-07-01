@@ -8,6 +8,7 @@ import { QuotationPreview } from '@/components/QuotationPreview';
 import type { ConstructionQuotationItem, ConstructionQuotation } from '@/types/construction';
 import type { Customer, CompanyInfo, PaymentConditions, Quotation, QuotationItem } from '@/types/quotation';
 import { downloadPDF, downloadPNG } from '@/utils/pdfGenerator';
+import { downloadReceiptPhotoPDF, downloadReceiptPhotoPNG } from '@/utils/receiptPhoto';
 import { downloadNFePDF } from '@/utils/nfeGenerator';
 import { openWhatsApp } from '@/utils/whatsapp';
 import { toast } from '@/hooks/use-toast';
@@ -262,7 +263,7 @@ const ConstructionPage = () => {
       saveQuotation(qSaved);
     }
 
-    downloadPDF(qDoc, { template: 'receipt' });
+    downloadReceiptPhotoPDF(qDoc);
 
     if (tokenCtx) {
       cloud.rpc('log_token_action', {
@@ -303,7 +304,7 @@ const ConstructionPage = () => {
       saveQuotation(qSaved);
     }
 
-    await downloadPNG(qDoc);
+    await downloadReceiptPhotoPNG(qDoc);
 
     if (tokenCtx) {
       cloud.rpc('log_token_action', {
@@ -691,8 +692,8 @@ const ConstructionPage = () => {
         quotation={previewQuotation}
         open={previewOpen}
         onOpenChange={setPreviewOpen}
-        onDownloadPDF={() => previewQuotation && downloadPDF(previewQuotation, { template: 'receipt' })}
-        onDownloadPNG={() => previewQuotation && downloadPNG(previewQuotation)}
+        onDownloadPDF={() => previewQuotation && downloadReceiptPhotoPDF(previewQuotation)}
+        onDownloadPNG={() => previewQuotation && downloadReceiptPhotoPNG(previewQuotation)}
         onDownloadDANFE={() => {
           if (previewQuotation) {
             downloadNFePDF(previewQuotation);

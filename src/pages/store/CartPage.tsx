@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Trash2, Truck, Tag, ArrowRight, Shield, Check } from "lucide-react";
 import { AppHeader } from "@/components/store/AppHeader";
@@ -23,8 +23,14 @@ export default function CartPage() {
   const tracker = useVisitorTracker();
   const nav = useNavigate();
 
-  const [cep, setCep] = useState("");
+  const [cep, setCep] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return (window.localStorage.getItem("store:cep") ?? "").replace(/\D/g, "").slice(0, 8);
+  });
   const cepValid = cep.replace(/\D/g, "").length === 8;
+  useEffect(() => {
+    if (cepValid) window.localStorage.setItem("store:cep", cep);
+  }, [cep, cepValid]);
   const shipping = useMemo(() => (cepValid ? calcShipping(subtotal) : 0), [cepValid, subtotal]);
   const total = Math.max(0, subtotal + shipping);
 

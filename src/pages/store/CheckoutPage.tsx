@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { AppHeader } from "@/components/store/AppHeader";
@@ -98,11 +98,32 @@ export default function CheckoutPage() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerCpf, setCustomerCpf] = useState("");
 
-  const [cep, setCep] = useState("");
-  const [address, setAddress] = useState("");
-  const [number, setNumber] = useState("");
-  const [complement, setComplement] = useState("");
+  const [cep, setCep] = useState(() =>
+    typeof window !== "undefined" ? (window.localStorage.getItem("store:cep") ?? "").replace(/\D/g, "").slice(0, 8) : "",
+  );
+  const [address, setAddress] = useState(() =>
+    typeof window !== "undefined" ? window.localStorage.getItem("store:address") ?? "" : "",
+  );
+  const [number, setNumber] = useState(() =>
+    typeof window !== "undefined" ? window.localStorage.getItem("store:number") ?? "" : "",
+  );
+  const [complement, setComplement] = useState(() =>
+    typeof window !== "undefined" ? window.localStorage.getItem("store:complement") ?? "" : "",
+  );
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (cep.replace(/\D/g, "").length === 8) window.localStorage.setItem("store:cep", cep);
+  }, [cep]);
+  useEffect(() => {
+    if (address) window.localStorage.setItem("store:address", address);
+  }, [address]);
+  useEffect(() => {
+    if (number) window.localStorage.setItem("store:number", number);
+  }, [number]);
+  useEffect(() => {
+    window.localStorage.setItem("store:complement", complement);
+  }, [complement]);
 
   const [pendingWhatsAppUrl, setPendingWhatsAppUrl] = useState<string | null>(null);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);

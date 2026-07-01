@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppHeader } from "@/components/store/AppHeader";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Copy, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ type PixData = {
 
 export default function PaymentPendingPage() {
   const cart = useCart();
+  const { isAdmin } = useIsAdmin();
   const location = useLocation();
   const state = (location.state ?? {}) as {
     orderId?: string;
@@ -193,11 +195,16 @@ export default function PaymentPendingPage() {
 
             <div className="flex gap-2 flex-wrap">
               <Button asChild>
-                <Link to="/">Voltar para a loja</Link>
+                <Link to="/pedidos">Ver meus pedidos</Link>
               </Button>
               <Button asChild variant="outline">
-                <Link to="/admin/pedidos">Ver pedidos no admin</Link>
+                <Link to="/loja">Voltar para a loja</Link>
               </Button>
+              {isAdmin && (
+                <Button asChild variant="ghost">
+                  <Link to="/admin/pedidos">Ver pedidos no admin</Link>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

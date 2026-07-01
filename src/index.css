@@ -11,7 +11,7 @@
 @layer base {
   :root {
     /* Global theme (Grey / Blue / Orange) */
-    --store-header-offset: 120px;
+    --store-header-offset: 180px;
     --background: 210 20% 97%;
     --foreground: 222 47% 11%;
 

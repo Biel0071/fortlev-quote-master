@@ -66,10 +66,19 @@ export default function AdminQuotationModels() {
 
   const [invoiceConfig, setInvoiceConfig] = useState({
     paperWidth: "80mm",
-    headerText: "",
+    headerText: "NOTA DE ENTREGA",
     footerText: "OBRIGADO E VOLTE SEMPRE!",
     defaultSeller: "",
-    warrantyText: "Recebi a(s) mercadoria(s) acima descrita(s), concordando plenamente com os prazos e condições de garantia."
+    warrantyText: "Recebi a(s) mercadoria(s) acima descrita(s), concordando plenamente com os prazos e condições de garantia.",
+    logo: "",
+    showLogo: true,
+    showWarranty: true,
+    showSignature: true,
+    bodySize: 11,
+    titleSize: 14,
+    spacing: 6,
+    storeName: "SUA LOJA",
+    storeInfo: "CNPJ 00.000.000/0000-00 · Rua Exemplo, 123",
   });
 
   useEffect(() => {
@@ -266,37 +275,113 @@ export default function AdminQuotationModels() {
           </div>
         </TabsContent>
 
-        <TabsContent value="invoice" className="space-y-4 pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuração da Nota de Entrega (Térmica)</CardTitle>
-              <CardDescription>Personalize a nota impressa em impressoras térmicas de 80mm.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Largura do Papel</Label>
-                  <Input value={invoiceConfig.paperWidth} onChange={e => setInvoiceConfig({ ...invoiceConfig, paperWidth: e.target.value })} />
+        <TabsContent value="invoice" className="pt-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Editor da Nota (Térmica)</CardTitle>
+                <CardDescription>Personalize o cupom impresso. A pré-visualização atualiza em tempo real.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Largura do Papel</Label>
+                    <Input value={invoiceConfig.paperWidth} onChange={e => setInvoiceConfig({ ...invoiceConfig, paperWidth: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vendedor Padrão</Label>
+                    <Input value={invoiceConfig.defaultSeller} onChange={e => setInvoiceConfig({ ...invoiceConfig, defaultSeller: e.target.value })} />
+                  </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label>Vendedor Padrão</Label>
-                  <Input value={invoiceConfig.defaultSeller} onChange={e => setInvoiceConfig({ ...invoiceConfig, defaultSeller: e.target.value })} />
+                  <Label>Título</Label>
+                  <Input value={invoiceConfig.headerText} onChange={e => setInvoiceConfig({ ...invoiceConfig, headerText: e.target.value })} />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Texto de Garantia / Recebimento</Label>
-                <Textarea rows={3} value={invoiceConfig.warrantyText} onChange={e => setInvoiceConfig({ ...invoiceConfig, warrantyText: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Rodapé da Nota</Label>
-                <Input value={invoiceConfig.footerText} onChange={e => setInvoiceConfig({ ...invoiceConfig, footerText: e.target.value })} />
-              </div>
-              <Button onClick={() => handleSave("invoice")} disabled={saving} className="w-full md:w-auto">
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Salvar Configurações
-              </Button>
-            </CardContent>
-          </Card>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Nome da Loja</Label>
+                    <Input value={invoiceConfig.storeName} onChange={e => setInvoiceConfig({ ...invoiceConfig, storeName: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Info da Loja</Label>
+                    <Input value={invoiceConfig.storeInfo} onChange={e => setInvoiceConfig({ ...invoiceConfig, storeInfo: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Logo</Label>
+                  <div className="flex gap-2 items-center">
+                    <Input type="file" accept="image/*" onChange={e => {
+                      const f = e.target.files?.[0]; if (!f) return;
+                      const r = new FileReader();
+                      r.onload = () => setInvoiceConfig(prev => ({ ...prev, logo: r.result as string }));
+                      r.readAsDataURL(f);
+                    }} />
+                    {invoiceConfig.logo && (
+                      <Button variant="outline" size="sm" onClick={() => setInvoiceConfig({ ...invoiceConfig, logo: "" })}>Remover</Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-2">
+                    <Label>Título ({invoiceConfig.titleSize}px)</Label>
+                    <Slider min={10} max={22} step={1} value={[invoiceConfig.titleSize]} onValueChange={([v]) => setInvoiceConfig({ ...invoiceConfig, titleSize: v })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Corpo ({invoiceConfig.bodySize}px)</Label>
+                    <Slider min={8} max={16} step={1} value={[invoiceConfig.bodySize]} onValueChange={([v]) => setInvoiceConfig({ ...invoiceConfig, bodySize: v })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Espaço ({invoiceConfig.spacing}px)</Label>
+                    <Slider min={2} max={20} step={1} value={[invoiceConfig.spacing]} onValueChange={([v]) => setInvoiceConfig({ ...invoiceConfig, spacing: v })} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Texto de Garantia / Recebimento</Label>
+                  <Textarea rows={3} value={invoiceConfig.warrantyText} onChange={e => setInvoiceConfig({ ...invoiceConfig, warrantyText: e.target.value })} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Rodapé da Nota</Label>
+                  <Input value={invoiceConfig.footerText} onChange={e => setInvoiceConfig({ ...invoiceConfig, footerText: e.target.value })} />
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="flex items-center justify-between rounded border p-2">
+                    <Label className="text-xs">Logo</Label>
+                    <Switch checked={invoiceConfig.showLogo} onCheckedChange={v => setInvoiceConfig({ ...invoiceConfig, showLogo: v })} />
+                  </div>
+                  <div className="flex items-center justify-between rounded border p-2">
+                    <Label className="text-xs">Garantia</Label>
+                    <Switch checked={invoiceConfig.showWarranty} onCheckedChange={v => setInvoiceConfig({ ...invoiceConfig, showWarranty: v })} />
+                  </div>
+                  <div className="flex items-center justify-between rounded border p-2">
+                    <Label className="text-xs">Assinatura</Label>
+                    <Switch checked={invoiceConfig.showSignature} onCheckedChange={v => setInvoiceConfig({ ...invoiceConfig, showSignature: v })} />
+                  </div>
+                </div>
+
+                <Button onClick={() => handleSave("invoice")} disabled={saving} className="w-full md:w-auto">
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Salvar Configurações
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="xl:sticky xl:top-4 h-fit">
+              <CardHeader>
+                <CardTitle>Pré-visualização</CardTitle>
+                <CardDescription>Simulação do cupom impresso.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-center bg-muted/30 p-4">
+                <InvoicePreview config={invoiceConfig} />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
@@ -403,6 +488,95 @@ function BudgetPreview({ config }: { config: BudgetConfig }) {
   return (
     <div className="bg-white text-black p-4 rounded shadow-inner border overflow-auto" style={{ minHeight: 400 }}>
       {config.sections.map(renderSection)}
+    </div>
+  );
+}
+
+interface InvoiceConfig {
+  paperWidth: string;
+  headerText: string;
+  footerText: string;
+  defaultSeller: string;
+  warrantyText: string;
+  logo: string;
+  showLogo: boolean;
+  showWarranty: boolean;
+  showSignature: boolean;
+  bodySize: number;
+  titleSize: number;
+  spacing: number;
+  storeName: string;
+  storeInfo: string;
+}
+
+function InvoicePreview({ config }: { config: InvoiceConfig }) {
+  const items = [
+    { name: "Cimento CP II 50kg", qty: 10, price: 42.9 },
+    { name: "Areia Média m³", qty: 2, price: 120 },
+    { name: "Bloco Cerâmico", qty: 500, price: 1.85 },
+  ];
+  const total = items.reduce((s, i) => s + i.qty * i.price, 0);
+  const width = /^\d+mm$/.test(config.paperWidth) ? config.paperWidth : "80mm";
+  const gap = { marginBottom: config.spacing };
+  const dashed = { borderTop: "1px dashed #000", margin: `${config.spacing}px 0` };
+
+  return (
+    <div
+      className="bg-white text-black shadow-md"
+      style={{
+        width,
+        maxWidth: "100%",
+        fontFamily: "'Courier New', monospace",
+        fontSize: config.bodySize,
+        padding: 10,
+        lineHeight: 1.35,
+      }}
+    >
+      {config.showLogo && config.logo && (
+        <div className="flex justify-center" style={gap}>
+          <img src={config.logo} alt="logo" style={{ maxHeight: 50, objectFit: "contain" }} />
+        </div>
+      )}
+      <div style={{ textAlign: "center", fontWeight: 700, fontSize: config.titleSize, ...gap }}>
+        {config.storeName}
+      </div>
+      <div style={{ textAlign: "center", ...gap }}>{config.storeInfo}</div>
+      <div style={dashed} />
+      <div style={{ textAlign: "center", fontWeight: 700, ...gap }}>{config.headerText}</div>
+      <div>Nº 000001</div>
+      <div>Data: {new Date().toLocaleString("pt-BR")}</div>
+      {config.defaultSeller && <div>Vendedor: {config.defaultSeller}</div>}
+      <div style={dashed} />
+      <div>Cliente: João da Silva</div>
+      <div>CPF: 000.000.000-00</div>
+      <div style={dashed} />
+      {items.map((it, i) => (
+        <div key={i} style={{ marginBottom: 3 }}>
+          <div>{it.name}</div>
+          <div className="flex justify-between">
+            <span>{it.qty} x {formatCurrency(it.price)}</span>
+            <span>{formatCurrency(it.qty * it.price)}</span>
+          </div>
+        </div>
+      ))}
+      <div style={dashed} />
+      <div className="flex justify-between" style={{ fontWeight: 700, fontSize: config.bodySize + 2 }}>
+        <span>TOTAL</span>
+        <span>{formatCurrency(total)}</span>
+      </div>
+      <div style={dashed} />
+      {config.showWarranty && (
+        <div style={{ ...gap, textAlign: "justify" }}>{config.warrantyText}</div>
+      )}
+      {config.showSignature && (
+        <div style={{ marginTop: config.spacing * 3 }}>
+          <div style={{ borderTop: "1px solid #000", textAlign: "center", paddingTop: 2 }}>
+            Assinatura do Cliente
+          </div>
+        </div>
+      )}
+      <div style={dashed} />
+      <div style={{ textAlign: "center", fontWeight: 700 }}>{config.footerText}</div>
     </div>
   );
 }

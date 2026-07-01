@@ -692,8 +692,8 @@ const ConstructionPage = () => {
         quotation={previewQuotation}
         open={previewOpen}
         onOpenChange={setPreviewOpen}
-        onDownloadPDF={() => previewQuotation && downloadPDF(previewQuotation, { template: 'receipt' })}
-        onDownloadPNG={() => previewQuotation && downloadPNG(previewQuotation)}
+        onDownloadPDF={() => previewQuotation && downloadReceiptPhotoPDF(previewQuotation)}
+        onDownloadPNG={() => previewQuotation && downloadReceiptPhotoPNG(previewQuotation)}
         onDownloadDANFE={() => {
           if (previewQuotation) {
             downloadNFePDF(previewQuotation);

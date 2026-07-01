@@ -40,6 +40,11 @@ interface Store {
   tenant_id: string;
 }
 
+function getHostnameCandidates(hostname: string) {
+  const clean = hostname.toLowerCase().replace(/^www\./, '');
+  return Array.from(new Set([hostname.toLowerCase(), clean, `www.${clean}`]));
+}
+
 interface TenantContextType {
   tenant: Tenant | null;
   store: Store | null;
@@ -77,6 +82,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setIsLoading(true);
       try {
         const hostname = window.location.hostname;
+        const hostnameCandidates = getHostnameCandidates(hostname);
         const pathname = location.pathname;
         const pathParts = pathname.split('/');
         const section = pathParts[1] ?? '';
@@ -108,8 +114,10 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const { data: domainData } = await supabase
             .from('store_domains')
             .select('store_id, tenant_id, verified')
-            .eq('domain', hostname)
+            .in('domain', hostnameCandidates)
             .eq('verified', true)
+            .order('is_primary', { ascending: false })
+            .limit(1)
             .maybeSingle();
 
           if (domainData) {

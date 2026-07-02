@@ -34,6 +34,8 @@ const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
 const MasterAdmin = lazy(() => import("@/pages/admin/MasterAdmin"));
 const CustomerInvoicePortal = lazy(() => import("@/pages/CustomerInvoicePortal"));
 const MasterRouteGuard = lazy(() => import("@/components/admin/MasterRouteGuard").then(m => ({ default: m.MasterRouteGuard })));
+const FashionHome = lazy(() => import("@/pages/fashion/FashionHome"));
+const FashionProduct = lazy(() => import("@/pages/fashion/FashionProduct"));
 
 
 const queryClient = new QueryClient({

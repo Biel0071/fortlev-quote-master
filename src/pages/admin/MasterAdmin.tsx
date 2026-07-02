@@ -133,10 +133,8 @@ const MasterAdmin = () => {
     </div>
   );
 };
-        </div>
-      </main>
-    </div>
-  );
-};
+
+export default MasterAdmin;
+
 
 export default MasterAdmin;

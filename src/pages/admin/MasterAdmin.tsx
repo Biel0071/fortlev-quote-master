@@ -115,12 +115,24 @@ const MasterAdmin = () => {
               <Route path="ia" element={<MasterAICentral />} />
               <Route path="whitelabel" element={<WhiteLabelSettings />} />
               <Route path="domains" element={<DomainsManager />} />
+              <Route path="deploy" element={<DeployCenter />} />
+              <Route path="versions" element={<VersionCenter />} />
+              <Route path="servers" element={<ServersManager />} />
+              <Route path="containers" element={<ContainersView />} />
+              <Route path="monitoring" element={<MonitoringDashboard />} />
+              <Route path="alerts" element={<AlertsCenter />} />
+              <Route path="backups" element={<BackupsCenter />} />
               <Route path="analytics" element={<MasterPlaceholder title="Analytics Master" />} />
               <Route path="logs" element={<MasterLogs />} />
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/admin/master" replace />} />
             </Routes>
           </Suspense>
+        </div>
+      </main>
+    </div>
+  );
+};
         </div>
       </main>
     </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { Heart, Search, ShoppingBag, X, Plus, Minus, Trash2, Sparkles } from "lucide-react";
+import { loadFashionCart, saveFashionCart, type FashionCartLine } from "@/lib/fashionCart";
 
 type Product = {
   id: string;
@@ -24,16 +25,7 @@ type Variant = {
   stock: number;
 };
 
-type CartLine = {
-  productId: string;
-  name: string;
-  price: number;
-  size: string;
-  color: string;
-  colorHex: string;
-  gradient: string;
-  qty: number;
-};
+type CartLine = FashionCartLine;
 
 const CATEGORIES = [
   { key: "todos", label: "Todos" },
@@ -69,9 +61,14 @@ export default function FashionHome() {
   const [loading, setLoading] = useState(true);
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const [selectedSize, setSelectedSize] = useState<Record<string, string>>({});
-  const [cart, setCart] = useState<CartLine[]>([]);
+  const [cart, setCart] = useState<CartLine[]>(() => loadFashionCart());
   const [cartOpen, setCartOpen] = useState(false);
   const timer = useCountdown(24);
+
+  // Persist cart across pages
+  useEffect(() => {
+    saveFashionCart(cart);
+  }, [cart]);
 
   useEffect(() => {
     (async () => {
@@ -558,9 +555,13 @@ export default function FashionHome() {
                   <span>Subtotal</span>
                   <span className="font-semibold">{brl(cartSubtotal)}</span>
                 </div>
-                <button className="w-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white font-semibold py-3 rounded-full">
+                <Link
+                  to="/loja/moda-fashion/checkout"
+                  onClick={() => setCartOpen(false)}
+                  className="block text-center w-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white font-semibold py-3 rounded-full"
+                >
                   Finalizar compra
-                </button>
+                </Link>
               </div>
             )}
           </aside>

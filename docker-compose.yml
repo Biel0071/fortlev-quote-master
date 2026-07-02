@@ -1,0 +1,34 @@
+# Blue/Green multi-tenant deploy. The edge Nginx on the VPS host
+# routes traffic to whichever container is "active".
+services:
+  app_blue:
+    image: ${IMAGE:-ghcr.io/OWNER/REPO:latest}
+    container_name: app_blue
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:80"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "lovable.tenant=multi"
+      - "lovable.slot=blue"
+
+  app_green:
+    image: ${IMAGE:-ghcr.io/OWNER/REPO:latest}
+    container_name: app_green
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8082:80"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "lovable.tenant=multi"
+      - "lovable.slot=green"

@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.github
+.env
+.env.local
+.lovable
+supabase/.branches
+supabase/.temp
+*.log
+.DS_Store

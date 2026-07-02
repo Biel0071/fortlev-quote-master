@@ -61,9 +61,14 @@ export default function FashionHome() {
   const [loading, setLoading] = useState(true);
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const [selectedSize, setSelectedSize] = useState<Record<string, string>>({});
-  const [cart, setCart] = useState<CartLine[]>([]);
+  const [cart, setCart] = useState<CartLine[]>(() => loadFashionCart());
   const [cartOpen, setCartOpen] = useState(false);
   const timer = useCountdown(24);
+
+  // Persist cart across pages
+  useEffect(() => {
+    saveFashionCart(cart);
+  }, [cart]);
 
   useEffect(() => {
     (async () => {

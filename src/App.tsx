@@ -131,6 +131,8 @@ const App = () => (
 
                 <Route path="/loja/moda-fashion" element={<FashionHome />} />
                 <Route path="/loja/moda-fashion/produto/:slug" element={<FashionProduct />} />
+                <Route path="/loja/moda-fashion/checkout" element={<FashionCheckout />} />
+                <Route path="/admin/loja/moda-fashion/*" element={<FashionAdmin />} />
 
                 <Route path="/admin/master/*" element={<MasterRouteGuard><MasterAdmin /></MasterRouteGuard>} />
                 <Route path="/admin/store/:storeId/*" element={<AdminApp />} />

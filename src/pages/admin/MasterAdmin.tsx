@@ -36,19 +36,28 @@ function MasterRouteFallback() {
 
 const MasterAdmin = () => {
   const menuItems = [
-    { name: "Dashboard", path: "/admin/master", icon: LayoutDashboard },
-    { name: "Lojas", path: "/admin/master/stores", icon: Store },
-    { name: "Planos SaaS", path: "/admin/master/plans", icon: CreditCard },
-    { name: "Financeiro", path: "/admin/master/finance", icon: DollarSign },
-    { name: "Blueprints", path: "/admin/master/blueprints", icon: Layers },
-    { name: "Templates", path: "/admin/master/templates", icon: FileCode2 },
-    { name: "Módulos", path: "/admin/master/modules", icon: Cpu },
-    { name: "IA Central", path: "/admin/master/ia", icon: Sparkles },
-    { name: "White Label", path: "/admin/master/whitelabel", icon: Palette },
-    { name: "Domínios", path: "/admin/master/domains", icon: Globe },
-    { name: "Analytics", path: "/admin/master/analytics", icon: BarChart3 },
-    { name: "Logs", path: "/admin/master/logs", icon: Activity },
+    { name: "Dashboard", path: "/admin/master", icon: LayoutDashboard, section: "Geral" },
+    { name: "Lojas", path: "/admin/master/stores", icon: Store, section: "Geral" },
+    { name: "Planos SaaS", path: "/admin/master/plans", icon: CreditCard, section: "Geral" },
+    { name: "Financeiro", path: "/admin/master/finance", icon: DollarSign, section: "Geral" },
+    { name: "Deploy Center", path: "/admin/master/deploy", icon: Rocket, section: "Plataforma" },
+    { name: "Versões", path: "/admin/master/versions", icon: GitBranch, section: "Plataforma" },
+    { name: "Servidores", path: "/admin/master/servers", icon: Server, section: "Plataforma" },
+    { name: "Containers", path: "/admin/master/containers", icon: Box, section: "Plataforma" },
+    { name: "Monitoramento", path: "/admin/master/monitoring", icon: Gauge, section: "Plataforma" },
+    { name: "Alertas", path: "/admin/master/alerts", icon: AlertTriangle, section: "Plataforma" },
+    { name: "Backups", path: "/admin/master/backups", icon: Database, section: "Plataforma" },
+    { name: "Domínios", path: "/admin/master/domains", icon: Globe, section: "Plataforma" },
+    { name: "Blueprints", path: "/admin/master/blueprints", icon: Layers, section: "Config" },
+    { name: "Templates", path: "/admin/master/templates", icon: FileCode2, section: "Config" },
+    { name: "Módulos", path: "/admin/master/modules", icon: Cpu, section: "Config" },
+    { name: "IA Central", path: "/admin/master/ia", icon: Sparkles, section: "Config" },
+    { name: "White Label", path: "/admin/master/whitelabel", icon: Palette, section: "Config" },
+    { name: "Analytics", path: "/admin/master/analytics", icon: BarChart3, section: "Config" },
+    { name: "Logs", path: "/admin/master/logs", icon: Activity, section: "Config" },
   ];
+
+  const sections = ["Geral", "Plataforma", "Config"] as const;
 
   return (
     <div className="flex h-screen bg-background">

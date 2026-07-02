@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { NavLink, Routes, Route, Navigate } from "react-router-dom";
-import { LayoutDashboard, Store, Layers, FileCode2, Cpu, Globe, BarChart3, Settings, ShieldCheck, Activity, Sparkles, CreditCard, DollarSign, Palette } from "lucide-react";
+import { LayoutDashboard, Store, Layers, FileCode2, Cpu, Globe, BarChart3, Settings, ShieldCheck, Activity, Sparkles, CreditCard, DollarSign, Palette, Rocket, GitBranch, Server, Box, AlertTriangle, Database, Gauge } from "lucide-react";
 
 const MasterDashboard = lazy(() => import("@/components/admin/master/MasterDashboard"));
 const StoresList = lazy(() => import("@/components/admin/master/StoresList"));
@@ -13,6 +13,13 @@ const FinanceManager = lazy(() => import("@/components/admin/master/FinanceManag
 const WhiteLabelSettings = lazy(() => import("@/components/admin/master/WhiteLabelSettings"));
 const DomainsManager = lazy(() => import("@/components/admin/master/DomainsManager"));
 const StoreDetails = lazy(() => import("@/components/admin/master/StoreDetails"));
+const DeployCenter = lazy(() => import("@/components/admin/master/platform/DeployCenter"));
+const VersionCenter = lazy(() => import("@/components/admin/master/platform/VersionCenter"));
+const ServersManager = lazy(() => import("@/components/admin/master/platform/ServersManager"));
+const ContainersView = lazy(() => import("@/components/admin/master/platform/ContainersView"));
+const AlertsCenter = lazy(() => import("@/components/admin/master/platform/AlertsCenter"));
+const BackupsCenter = lazy(() => import("@/components/admin/master/platform/BackupsCenter"));
+const MonitoringDashboard = lazy(() => import("@/components/admin/master/platform/MonitoringDashboard"));
 
 function MasterPlaceholder({ title }: { title: string }) {
   return (
@@ -29,19 +36,28 @@ function MasterRouteFallback() {
 
 const MasterAdmin = () => {
   const menuItems = [
-    { name: "Dashboard", path: "/admin/master", icon: LayoutDashboard },
-    { name: "Lojas", path: "/admin/master/stores", icon: Store },
-    { name: "Planos SaaS", path: "/admin/master/plans", icon: CreditCard },
-    { name: "Financeiro", path: "/admin/master/finance", icon: DollarSign },
-    { name: "Blueprints", path: "/admin/master/blueprints", icon: Layers },
-    { name: "Templates", path: "/admin/master/templates", icon: FileCode2 },
-    { name: "Módulos", path: "/admin/master/modules", icon: Cpu },
-    { name: "IA Central", path: "/admin/master/ia", icon: Sparkles },
-    { name: "White Label", path: "/admin/master/whitelabel", icon: Palette },
-    { name: "Domínios", path: "/admin/master/domains", icon: Globe },
-    { name: "Analytics", path: "/admin/master/analytics", icon: BarChart3 },
-    { name: "Logs", path: "/admin/master/logs", icon: Activity },
+    { name: "Dashboard", path: "/admin/master", icon: LayoutDashboard, section: "Geral" },
+    { name: "Lojas", path: "/admin/master/stores", icon: Store, section: "Geral" },
+    { name: "Planos SaaS", path: "/admin/master/plans", icon: CreditCard, section: "Geral" },
+    { name: "Financeiro", path: "/admin/master/finance", icon: DollarSign, section: "Geral" },
+    { name: "Deploy Center", path: "/admin/master/deploy", icon: Rocket, section: "Plataforma" },
+    { name: "Versões", path: "/admin/master/versions", icon: GitBranch, section: "Plataforma" },
+    { name: "Servidores", path: "/admin/master/servers", icon: Server, section: "Plataforma" },
+    { name: "Containers", path: "/admin/master/containers", icon: Box, section: "Plataforma" },
+    { name: "Monitoramento", path: "/admin/master/monitoring", icon: Gauge, section: "Plataforma" },
+    { name: "Alertas", path: "/admin/master/alerts", icon: AlertTriangle, section: "Plataforma" },
+    { name: "Backups", path: "/admin/master/backups", icon: Database, section: "Plataforma" },
+    { name: "Domínios", path: "/admin/master/domains", icon: Globe, section: "Plataforma" },
+    { name: "Blueprints", path: "/admin/master/blueprints", icon: Layers, section: "Config" },
+    { name: "Templates", path: "/admin/master/templates", icon: FileCode2, section: "Config" },
+    { name: "Módulos", path: "/admin/master/modules", icon: Cpu, section: "Config" },
+    { name: "IA Central", path: "/admin/master/ia", icon: Sparkles, section: "Config" },
+    { name: "White Label", path: "/admin/master/whitelabel", icon: Palette, section: "Config" },
+    { name: "Analytics", path: "/admin/master/analytics", icon: BarChart3, section: "Config" },
+    { name: "Logs", path: "/admin/master/logs", icon: Activity, section: "Config" },
   ];
+
+  const sections = ["Geral", "Plataforma", "Config"] as const;
 
   return (
     <div className="flex h-screen bg-background">
@@ -50,21 +66,28 @@ const MasterAdmin = () => {
           <ShieldCheck size={24} />
           <h1 className="text-xl font-bold">Master Admin</h1>
         </div>
-        <nav className="space-y-1 flex-1">
-          {menuItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === "/admin/master"}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`
-              }
-            >
-              <item.icon size={18} />
-              {item.name}
-            </NavLink>
+        <nav className="space-y-4 flex-1 overflow-y-auto">
+          {sections.map((section) => (
+            <div key={section}>
+              <div className="px-2 mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{section}</div>
+              <div className="space-y-1">
+                {menuItems.filter((i) => i.section === section).map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end={item.path === "/admin/master"}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        isActive ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      }`
+                    }
+                  >
+                    <item.icon size={18} />
+                    {item.name}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
         <div className="mt-auto border-t pt-4">
@@ -92,6 +115,13 @@ const MasterAdmin = () => {
               <Route path="ia" element={<MasterAICentral />} />
               <Route path="whitelabel" element={<WhiteLabelSettings />} />
               <Route path="domains" element={<DomainsManager />} />
+              <Route path="deploy" element={<DeployCenter />} />
+              <Route path="versions" element={<VersionCenter />} />
+              <Route path="servers" element={<ServersManager />} />
+              <Route path="containers" element={<ContainersView />} />
+              <Route path="monitoring" element={<MonitoringDashboard />} />
+              <Route path="alerts" element={<AlertsCenter />} />
+              <Route path="backups" element={<BackupsCenter />} />
               <Route path="analytics" element={<MasterPlaceholder title="Analytics Master" />} />
               <Route path="logs" element={<MasterLogs />} />
               {/* Fallback */}

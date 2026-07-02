@@ -2938,6 +2938,222 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          metadata: Json
+          resolved: boolean
+          resolved_at: string | null
+          severity: string
+          source: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          resolved?: boolean
+          resolved_at?: string | null
+          severity?: string
+          source: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          resolved?: boolean
+          resolved_at?: string | null
+          severity?: string
+          source?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      platform_backups: {
+        Row: {
+          created_at: string
+          finished_at: string | null
+          id: string
+          kind: string
+          location: string | null
+          metadata: Json
+          size_bytes: number | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          kind: string
+          location?: string | null
+          metadata?: Json
+          size_bytes?: number | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          location?: string | null
+          metadata?: Json
+          size_bytes?: number | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      platform_containers: {
+        Row: {
+          cpu_pct: number | null
+          created_at: string
+          health: string | null
+          id: string
+          image: string | null
+          last_restart_at: string | null
+          name: string
+          ports: string[] | null
+          ram_mb: number | null
+          restart_count: number
+          server_id: string | null
+          slot: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          version_id: string | null
+          volumes: string[] | null
+        }
+        Insert: {
+          cpu_pct?: number | null
+          created_at?: string
+          health?: string | null
+          id?: string
+          image?: string | null
+          last_restart_at?: string | null
+          name: string
+          ports?: string[] | null
+          ram_mb?: number | null
+          restart_count?: number
+          server_id?: string | null
+          slot?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          version_id?: string | null
+          volumes?: string[] | null
+        }
+        Update: {
+          cpu_pct?: number | null
+          created_at?: string
+          health?: string | null
+          id?: string
+          image?: string | null
+          last_restart_at?: string | null
+          name?: string
+          ports?: string[] | null
+          ram_mb?: number | null
+          restart_count?: number
+          server_id?: string | null
+          slot?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          version_id?: string | null
+          volumes?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_containers_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "platform_servers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_containers_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "system_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_servers: {
+        Row: {
+          cpu_cores: number | null
+          created_at: string
+          disk_gb: number | null
+          docker_version: string | null
+          health_score: number | null
+          hostname: string | null
+          id: string
+          ip: string | null
+          last_heartbeat_at: string | null
+          load_avg: number | null
+          metadata: Json
+          name: string
+          nginx_version: string | null
+          os: string | null
+          ram_mb: number | null
+          role: string | null
+          status: string
+          temperature: number | null
+          updated_at: string
+          uptime_seconds: number | null
+        }
+        Insert: {
+          cpu_cores?: number | null
+          created_at?: string
+          disk_gb?: number | null
+          docker_version?: string | null
+          health_score?: number | null
+          hostname?: string | null
+          id?: string
+          ip?: string | null
+          last_heartbeat_at?: string | null
+          load_avg?: number | null
+          metadata?: Json
+          name: string
+          nginx_version?: string | null
+          os?: string | null
+          ram_mb?: number | null
+          role?: string | null
+          status?: string
+          temperature?: number | null
+          updated_at?: string
+          uptime_seconds?: number | null
+        }
+        Update: {
+          cpu_cores?: number | null
+          created_at?: string
+          disk_gb?: number | null
+          docker_version?: string | null
+          health_score?: number | null
+          hostname?: string | null
+          id?: string
+          ip?: string | null
+          last_heartbeat_at?: string | null
+          load_avg?: number | null
+          metadata?: Json
+          name?: string
+          nginx_version?: string | null
+          os?: string | null
+          ram_mb?: number | null
+          role?: string | null
+          status?: string
+          temperature?: number | null
+          updated_at?: string
+          uptime_seconds?: number | null
+        }
+        Relationships: []
+      }
       price_intelligence: {
         Row: {
           categoria: string
@@ -5200,6 +5416,74 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_versions: {
+        Row: {
+          branch: string | null
+          build_seconds: number | null
+          commit_author: string | null
+          commit_hash: string | null
+          created_at: string
+          deploy_seconds: number | null
+          docker_image: string | null
+          environment: string
+          health: string | null
+          id: string
+          is_current: boolean
+          is_stable: boolean
+          release_notes: string | null
+          rollback_from: string | null
+          status: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          branch?: string | null
+          build_seconds?: number | null
+          commit_author?: string | null
+          commit_hash?: string | null
+          created_at?: string
+          deploy_seconds?: number | null
+          docker_image?: string | null
+          environment?: string
+          health?: string | null
+          id?: string
+          is_current?: boolean
+          is_stable?: boolean
+          release_notes?: string | null
+          rollback_from?: string | null
+          status?: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          branch?: string | null
+          build_seconds?: number | null
+          commit_author?: string | null
+          commit_hash?: string | null
+          created_at?: string
+          deploy_seconds?: number | null
+          docker_image?: string | null
+          environment?: string
+          health?: string | null
+          id?: string
+          is_current?: boolean
+          is_stable?: boolean
+          release_notes?: string | null
+          rollback_from?: string | null
+          status?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_versions_rollback_from_fkey"
+            columns: ["rollback_from"]
+            isOneToOne: false
+            referencedRelation: "system_versions"
             referencedColumns: ["id"]
           },
         ]

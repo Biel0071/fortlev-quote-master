@@ -555,9 +555,13 @@ export default function FashionHome() {
                   <span>Subtotal</span>
                   <span className="font-semibold">{brl(cartSubtotal)}</span>
                 </div>
-                <button className="w-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white font-semibold py-3 rounded-full">
+                <Link
+                  to="/loja/moda-fashion/checkout"
+                  onClick={() => setCartOpen(false)}
+                  className="block text-center w-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white font-semibold py-3 rounded-full"
+                >
                   Finalizar compra
-                </button>
+                </Link>
               </div>
             )}
           </aside>

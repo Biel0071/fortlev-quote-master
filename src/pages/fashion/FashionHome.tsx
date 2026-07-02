@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { Heart, Search, ShoppingBag, X, Plus, Minus, Trash2, Sparkles } from "lucide-react";
+import { loadFashionCart, saveFashionCart, type FashionCartLine } from "@/lib/fashionCart";
 
 type Product = {
   id: string;
@@ -24,16 +25,7 @@ type Variant = {
   stock: number;
 };
 
-type CartLine = {
-  productId: string;
-  name: string;
-  price: number;
-  size: string;
-  color: string;
-  colorHex: string;
-  gradient: string;
-  qty: number;
-};
+type CartLine = FashionCartLine;
 
 const CATEGORIES = [
   { key: "todos", label: "Todos" },

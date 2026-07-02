@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { NavLink, Routes, Route, Navigate } from "react-router-dom";
-import { LayoutDashboard, Store, Layers, FileCode2, Cpu, Globe, BarChart3, Settings, ShieldCheck, Activity, Sparkles, CreditCard, DollarSign, Palette } from "lucide-react";
+import { LayoutDashboard, Store, Layers, FileCode2, Cpu, Globe, BarChart3, Settings, ShieldCheck, Activity, Sparkles, CreditCard, DollarSign, Palette, Rocket, GitBranch, Server, Box, AlertTriangle, Database, Gauge } from "lucide-react";
 
 const MasterDashboard = lazy(() => import("@/components/admin/master/MasterDashboard"));
 const StoresList = lazy(() => import("@/components/admin/master/StoresList"));
@@ -13,6 +13,13 @@ const FinanceManager = lazy(() => import("@/components/admin/master/FinanceManag
 const WhiteLabelSettings = lazy(() => import("@/components/admin/master/WhiteLabelSettings"));
 const DomainsManager = lazy(() => import("@/components/admin/master/DomainsManager"));
 const StoreDetails = lazy(() => import("@/components/admin/master/StoreDetails"));
+const DeployCenter = lazy(() => import("@/components/admin/master/platform/DeployCenter"));
+const VersionCenter = lazy(() => import("@/components/admin/master/platform/VersionCenter"));
+const ServersManager = lazy(() => import("@/components/admin/master/platform/ServersManager"));
+const ContainersView = lazy(() => import("@/components/admin/master/platform/ContainersView"));
+const AlertsCenter = lazy(() => import("@/components/admin/master/platform/AlertsCenter"));
+const BackupsCenter = lazy(() => import("@/components/admin/master/platform/BackupsCenter"));
+const MonitoringDashboard = lazy(() => import("@/components/admin/master/platform/MonitoringDashboard"));
 
 function MasterPlaceholder({ title }: { title: string }) {
   return (

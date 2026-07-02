@@ -34,6 +34,8 @@ const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
 const MasterAdmin = lazy(() => import("@/pages/admin/MasterAdmin"));
 const CustomerInvoicePortal = lazy(() => import("@/pages/CustomerInvoicePortal"));
 const MasterRouteGuard = lazy(() => import("@/components/admin/MasterRouteGuard").then(m => ({ default: m.MasterRouteGuard })));
+const FashionHome = lazy(() => import("@/pages/fashion/FashionHome"));
+const FashionProduct = lazy(() => import("@/pages/fashion/FashionProduct"));
 
 
 const queryClient = new QueryClient({
@@ -124,6 +126,9 @@ const App = () => (
                 <Route path="/conta" element={<AccountPage />} />
                 <Route path="/pedidos" element={<OrdersPage />} />
                 <Route path="/rastreio/:id" element={<TrackingPage />} />
+
+                <Route path="/loja/moda-fashion" element={<FashionHome />} />
+                <Route path="/loja/moda-fashion/produto/:slug" element={<FashionProduct />} />
 
                 <Route path="/admin/master/*" element={<MasterRouteGuard><MasterAdmin /></MasterRouteGuard>} />
                 <Route path="/admin/store/:storeId/*" element={<AdminApp />} />

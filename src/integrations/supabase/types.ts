@@ -1596,6 +1596,310 @@ export type Database = {
         }
         Relationships: []
       }
+      fashion_banners: {
+        Row: {
+          active: boolean
+          created_at: string
+          cta_label: string | null
+          gradient: string | null
+          id: string
+          image_url: string | null
+          link_url: string | null
+          sort_order: number
+          store_id: string
+          subtitle: string | null
+          title: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          cta_label?: string | null
+          gradient?: string | null
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+          sort_order?: number
+          store_id: string
+          subtitle?: string | null
+          title?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          cta_label?: string | null
+          gradient?: string | null
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+          sort_order?: number
+          store_id?: string
+          subtitle?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fashion_banners_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fashion_coupons: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          id: string
+          min_subtotal: number
+          store_id: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          min_subtotal?: number
+          store_id: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          min_subtotal?: number
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fashion_coupons_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fashion_customers: {
+        Row: {
+          address: string | null
+          cep: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          phone: string | null
+          store_id: string
+        }
+        Insert: {
+          address?: string | null
+          cep?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          store_id: string
+        }
+        Update: {
+          address?: string | null
+          cep?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fashion_customers_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fashion_orders: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          discount: number
+          id: string
+          items: Json
+          payment_method: string | null
+          shipping: number
+          status: string
+          store_id: string
+          subtotal: number
+          total: number
+          tracking_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          discount?: number
+          id?: string
+          items?: Json
+          payment_method?: string | null
+          shipping?: number
+          status?: string
+          store_id: string
+          subtotal?: number
+          total?: number
+          tracking_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          discount?: number
+          id?: string
+          items?: Json
+          payment_method?: string | null
+          shipping?: number
+          status?: string
+          store_id?: string
+          subtotal?: number
+          total?: number
+          tracking_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fashion_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "fashion_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fashion_orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fashion_products: {
+        Row: {
+          active: boolean
+          badge: string | null
+          category: string
+          created_at: string
+          description: string | null
+          featured: boolean
+          gallery: Json
+          id: string
+          image_url: string | null
+          name: string
+          price: number
+          promo_price: number | null
+          slug: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          badge?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          featured?: boolean
+          gallery?: Json
+          id?: string
+          image_url?: string | null
+          name: string
+          price?: number
+          promo_price?: number | null
+          slug: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          badge?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          featured?: boolean
+          gallery?: Json
+          id?: string
+          image_url?: string | null
+          name?: string
+          price?: number
+          promo_price?: number | null
+          slug?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fashion_products_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fashion_variants: {
+        Row: {
+          color: string
+          color_hex: string | null
+          created_at: string
+          id: string
+          price_override: number | null
+          product_id: string
+          size: string
+          sku: string | null
+          stock: number
+        }
+        Insert: {
+          color: string
+          color_hex?: string | null
+          created_at?: string
+          id?: string
+          price_override?: number | null
+          product_id: string
+          size: string
+          sku?: string | null
+          stock?: number
+        }
+        Update: {
+          color?: string
+          color_hex?: string | null
+          created_at?: string
+          id?: string
+          price_override?: number | null
+          product_id?: string
+          size?: string
+          sku?: string | null
+          stock?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fashion_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "fashion_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fortlev_catalog_products: {
         Row: {
           active: boolean

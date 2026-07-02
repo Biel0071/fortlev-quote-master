@@ -135,6 +135,3 @@ const MasterAdmin = () => {
 };
 
 export default MasterAdmin;
-
-
-export default MasterAdmin;

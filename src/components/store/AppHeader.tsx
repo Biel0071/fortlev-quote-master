@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { AppDownloadBanner } from "@/components/store/AppDownloadBanner";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
 
+const HEADER_SAFE_GAP_PX = 12;
+
 type AppHeaderProps = {
   cartCount: number;
   onCartClick?: () => void;
@@ -25,7 +27,7 @@ export function AppHeader({
 
     let lastHeight = 0;
     const updateHeight = () => {
-      const height = Math.ceil(root.getBoundingClientRect().height);
+      const height = Math.ceil(root.getBoundingClientRect().height + HEADER_SAFE_GAP_PX);
       if (height > 0 && Math.abs(height - lastHeight) > 1) {
         lastHeight = height;
         document.documentElement.style.setProperty("--store-header-offset", `${height}px`);

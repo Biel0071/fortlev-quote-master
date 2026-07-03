@@ -43,6 +43,20 @@ import madeiraIcon from "@/assets/category-icons/madeira.png";
 import pinturaIcon from "@/assets/category-icons/pintura.png";
 import vergalhaoIcon from "@/assets/category-icons/vergalhao.png";
 
+function HouseLogoFallback({ brandLabel }: { brandLabel: string }) {
+  return (
+    <svg className="logo" viewBox="0 0 96 80" role="img" aria-label={`${brandLabel || "Loja"} - logo`}>
+      <path d="M10 39 48 8l38 31" fill="none" stroke="hsl(var(--accent))" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 38h56v34H20z" fill="hsl(var(--accent))" />
+      <path d="M29 42h38v18H29z" fill="hsl(var(--background))" />
+      <path d="M33 21h30v17H33z" fill="hsl(var(--primary))" />
+      <path d="M31 30h34" stroke="hsl(var(--background))" strokeWidth="3" />
+      <path d="M48 22v16" stroke="hsl(var(--background))" strokeWidth="3" />
+      <path d="M40 72V55h16v17" fill="hsl(var(--primary))" />
+    </svg>
+  );
+}
+
 function resolveCategoryPng(name: string, slug?: string) {
   const key = `${slug ?? ""} ${name ?? ""}`.trim().toLowerCase();
 
@@ -80,6 +94,7 @@ export function StoreTopbar({
   const [q, setQ] = useState("");
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [cartPulse, setCartPulse] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
   const prevCartCountRef = useRef(cartCount);
 
   useEffect(() => {
@@ -104,6 +119,11 @@ export function StoreTopbar({
 
   const brandLabel = footerStoreName || footer?.store_name || tenantStore?.name || "";
   const brandLogo = publicImageUrl("banner-images", footer?.logo_path) || storeLogoFallback.url;
+
+  useEffect(() => {
+    setLogoFailed(false);
+  }, [brandLogo]);
+
   const menuCategories = useMemo(
     () => ((categories?.length ? categories : activeCategories) ?? []).slice(0, 12),
     [categories, activeCategories],
@@ -126,18 +146,17 @@ export function StoreTopbar({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-center pt-[5px] pb-[2px]">
               <Link to="/" className="flex items-center justify-center" aria-label={brandLabel}>
-                {brandLogo ? (
+                {brandLogo && !logoFailed ? (
                   <img
                     src={brandLogo}
                     alt={`${brandLabel} - logo`}
                     className="logo"
                     loading="eager"
                     onLoad={() => window.dispatchEvent(new Event("resize"))}
+                    onError={() => setLogoFailed(true)}
                   />
                 ) : (
-                  <span className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
-                    {brandLabel || "Loja"}
-                  </span>
+                  <HouseLogoFallback brandLabel={brandLabel} />
                 )}
               </Link>
             </div>

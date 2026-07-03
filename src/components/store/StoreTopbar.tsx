@@ -28,6 +28,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useHomeContent } from "@/hooks/useHomeContent";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useStoreContact } from "@/hooks/useStoreContact";
+import storeLogoFallback from "@/assets/store-logo-materiais-cropped.png";
 import { useTenant } from "@/providers/TenantProvider";
 import { publicImageUrl } from "@/utils/storage";
 import { FloatingChat } from "@/components/store/mobile/FloatingChat";
@@ -102,7 +103,7 @@ export function StoreTopbar({
   };
 
   const brandLabel = footerStoreName || footer?.store_name || tenantStore?.name || "";
-  const brandLogo = publicImageUrl("banner-images", footer?.logo_path);
+  const brandLogo = publicImageUrl("banner-images", footer?.logo_path) || storeLogoFallback;
   const menuCategories = useMemo(
     () => ((categories?.length ? categories : activeCategories) ?? []).slice(0, 12),
     [categories, activeCategories],

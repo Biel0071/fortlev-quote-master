@@ -132,6 +132,7 @@ export function StoreTopbar({
                     alt={`${brandLabel} - logo`}
                     className="logo"
                     loading="eager"
+                    onLoad={() => window.dispatchEvent(new Event("resize"))}
                   />
                 ) : (
                   <span className="text-lg sm:text-xl font-bold tracking-tight text-foreground">

@@ -6,6 +6,7 @@ import { getProductImageUrl } from "@/utils/productImage";
 import { ShoppingCart, Star } from "lucide-react";
 import { useProductRatingSummary } from "@/hooks/useProductRatingSummary";
 import { getProductSlug } from "@/utils/productSlug";
+import { formatProductTitle } from "@/utils/productTitle";
 
 type Props = {
   product: any;
@@ -56,7 +57,7 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
 
       <CardContent className="flex flex-1 flex-col gap-1.5 p-2.5 sm:p-4">
         <h3 className="text-xs sm:text-sm font-semibold leading-snug line-clamp-2 min-h-[2.2em]">
-          {product.name}
+          {formatProductTitle(product.name)}
         </h3>
 
         <div className="flex items-center gap-1">

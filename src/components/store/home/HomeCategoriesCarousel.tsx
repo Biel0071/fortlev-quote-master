@@ -61,15 +61,15 @@ function CategoryAvatar({
   return (
     <div
       className={cn(
-        "h-[72px] w-[72px] sm:h-[76px] sm:w-[76px]",
+        "h-[72px] w-[72px] sm:h-[80px] sm:w-[80px]",
         "rounded-full",
-        "border border-border/70",
-        "bg-background/80",
+        "border border-primary/15",
+        "bg-gradient-to-br from-primary/10 via-primary/5 to-accent/10",
         "grid place-items-center",
-        "shadow-sm",
+        "shadow-sm ring-1 ring-inset ring-primary/5",
         "overflow-hidden",
-        "transition-shadow duration-200",
-        "group-hover:shadow-md",
+        "transition-all duration-200",
+        "group-hover:shadow-md group-hover:ring-primary/20 group-hover:from-primary/15 group-hover:to-accent/20",
       )}
       aria-hidden="true"
     >
@@ -84,8 +84,8 @@ function CategoryAvatar({
         />
       ) : (
         <Icon
-          size={46}
-          className={cn("text-primary", "transition-colors duration-200", "group-hover:text-accent")}
+          size={38}
+          className={cn("text-primary transition-colors duration-200 group-hover:text-accent")}
         />
       )}
     </div>
@@ -275,7 +275,7 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
                         }}
                       >
                         <CategoryAvatar name={c.name} img={img} Icon={Icon} />
-                        <div className="mt-3 text-[14px] font-semibold leading-snug tracking-tight text-foreground">{c.name}</div>
+                        <div className="mt-3 flex min-h-[2.6em] items-start justify-center text-[13px] sm:text-[14px] font-semibold leading-tight tracking-tight text-foreground line-clamp-2 px-1">{c.name}</div>
                       </Link>
                     );
                   })}

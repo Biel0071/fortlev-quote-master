@@ -199,10 +199,6 @@ export default function StorePage() {
               <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
               <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-accent/20 blur-3xl" />
               <div className="relative space-y-3 max-w-2xl">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/70 backdrop-blur px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Informação institucional
-                </div>
                 <h1 className="text-3xl sm:text-5xl font-bold tracking-tight leading-[1.05]">{pageTitle}</h1>
                 <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{headerSubtitle}</p>
               </div>
@@ -213,45 +209,54 @@ export default function StorePage() {
             ) : model ? (
               <InstitutionalPremiumContent model={model} />
             ) : (
-              <div className="space-y-6">
+              <Accordion
+                type="multiple"
+                defaultValue={sections.map((_, i) => `item-${i}`)}
+                className="space-y-3"
+              >
                 {sections.map((s, idx) => (
-                  <section
+                  <AccordionItem
                     key={idx}
-                    className="group relative rounded-2xl border border-border/60 bg-card p-6 sm:p-8 shadow-sm transition-all hover:shadow-md hover:border-primary/30"
+                    value={`item-${idx}`}
+                    className="group rounded-2xl border border-border/60 bg-card shadow-sm transition-all data-[state=open]:border-primary/30 data-[state=open]:shadow-md overflow-hidden"
                   >
-                    <div className="absolute left-0 top-6 bottom-6 w-1 rounded-r-full bg-gradient-to-b from-primary to-accent opacity-70 group-hover:opacity-100 transition-opacity" />
-                    {s.title ? (
-                      <div className="flex items-start gap-3 mb-4">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-sm">
+                    <AccordionTrigger className="px-5 sm:px-7 py-4 sm:py-5 hover:no-underline">
+                      <div className="flex items-center gap-3 text-left">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-xs">
                           {String(idx + 1).padStart(2, "0")}
                         </div>
-                        <h2 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight pt-0.5">{s.title}</h2>
+                        <span className="text-base sm:text-lg font-bold tracking-tight leading-tight">
+                          {s.title ?? "Detalhes"}
+                        </span>
                       </div>
-                    ) : null}
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5 sm:px-7 pb-6">
+                      <div className="pl-11 space-y-4">
+                        {s.paragraphs.length > 0 ? (
+                          <div className="space-y-3">
+                            {s.paragraphs.map((p, i) => (
+                              <p key={i} className="text-sm sm:text-base leading-relaxed text-foreground/85">
+                                {p}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
 
-                    {s.paragraphs.length > 0 ? (
-                      <div className="space-y-3 mb-3 last:mb-0">
-                        {s.paragraphs.map((p, i) => (
-                          <p key={i} className="text-sm sm:text-base leading-relaxed text-foreground/85">
-                            {p}
-                          </p>
-                        ))}
+                        {s.items.length > 0 ? (
+                          <ul className="space-y-2.5">
+                            {s.items.map((it, i) => (
+                              <li key={i} className="flex items-start gap-3 text-sm sm:text-base text-foreground/85">
+                                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                                <span className="leading-relaxed">{it}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
                       </div>
-                    ) : null}
-
-                    {s.items.length > 0 ? (
-                      <ul className="space-y-2.5 mt-2">
-                        {s.items.map((it, i) => (
-                          <li key={i} className="flex items-start gap-3 text-sm sm:text-base text-foreground/85">
-                            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                            <span className="leading-relaxed">{it}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </section>
+                    </AccordionContent>
+                  </AccordionItem>
                 ))}
-              </div>
+              </Accordion>
             )}
 
             <Card className="rounded-2xl">

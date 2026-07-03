@@ -116,7 +116,7 @@ export function AppDownloadBanner() {
   return (
     <>
       <div className="banner-top">
-        <div className="mx-auto grid h-full max-w-6xl grid-cols-[1fr_auto_auto] items-center gap-2 px-2 sm:px-4">
+        <div className="mx-auto grid h-full max-w-6xl grid-cols-[1fr_auto_auto] items-center gap-3 sm:gap-4 px-3 sm:px-5">
           <div className="flex min-w-0 items-center justify-center gap-2 overflow-hidden text-center whitespace-nowrap">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15">
               <Smartphone className="h-3 w-3" />

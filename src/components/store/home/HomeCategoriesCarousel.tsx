@@ -275,7 +275,7 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
                         }}
                       >
                         <CategoryAvatar name={c.name} img={img} Icon={Icon} />
-                        <div className="mt-3 text-[14px] font-semibold leading-snug tracking-tight text-foreground">{c.name}</div>
+                        <div className="mt-3 flex min-h-[2.6em] items-start justify-center text-[13px] sm:text-[14px] font-semibold leading-tight tracking-tight text-foreground line-clamp-2 px-1">{c.name}</div>
                       </Link>
                     );
                   })}

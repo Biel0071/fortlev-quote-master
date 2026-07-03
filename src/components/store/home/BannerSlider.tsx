@@ -59,23 +59,32 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
             const mobileUrl = mobileUrls.primary || mobileUrls.legacy;
             const destination = banner.link_url?.trim() || null;
 
+            const primarySrc = desktopUrl || mobileUrl || "/placeholder.svg";
             const imageContent = desktopUrl || mobileUrl ? (
-              <picture className="block h-full w-full">
-                {mobileUrl ? <source media="(max-width: 640px)" srcSet={mobileUrl} /> : null}
-                <img
-                  src={desktopUrl || mobileUrl || "/placeholder.svg"}
-                  alt={`Banner promocional ${banner.position || index + 1}`}
-                  className="h-full w-full object-contain bg-muted"
-                  loading="lazy"
-                  decoding="async"
-                  data-fallback-src={desktopUrls.legacy || mobileUrls.legacy || ""}
-                  onError={(event) => {
-                    const fallback = event.currentTarget.dataset.fallbackSrc;
-                    if (!fallback || event.currentTarget.src === fallback) return;
-                    event.currentTarget.src = fallback;
-                  }}
+              <div className="relative h-full w-full overflow-hidden bg-muted">
+                {/* Fundo desfocado para preencher as bordas em telas com proporção diferente */}
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-0 scale-110 bg-cover bg-center blur-xl opacity-70"
+                  style={{ backgroundImage: `url(${primarySrc})` }}
                 />
-              </picture>
+                <picture className="relative block h-full w-full">
+                  {mobileUrl ? <source media="(max-width: 640px)" srcSet={mobileUrl} /> : null}
+                  <img
+                    src={primarySrc}
+                    alt={`Banner promocional ${banner.position || index + 1}`}
+                    className="relative h-full w-full object-contain"
+                    loading="lazy"
+                    decoding="async"
+                    data-fallback-src={desktopUrls.legacy || mobileUrls.legacy || ""}
+                    onError={(event) => {
+                      const fallback = event.currentTarget.dataset.fallbackSrc;
+                      if (!fallback || event.currentTarget.src === fallback) return;
+                      event.currentTarget.src = fallback;
+                    }}
+                  />
+                </picture>
+              </div>
             ) : (
               <div className="h-full w-full bg-muted" />
             );

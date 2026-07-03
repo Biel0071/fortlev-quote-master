@@ -10,6 +10,7 @@ import { getProductImageUrl } from "@/utils/productImage";
 import { cloud } from "@/lib/cloud";
 import { getProductSlug } from "@/utils/productSlug";
 import { SmartImage } from "@/components/store/SmartImage";
+import { formatProductTitle } from "@/utils/productTitle";
 
 // Shared cache so we don't re-fetch per card
 const ratingsCache = new Map<string, { avg: number; total: number } | null>();
@@ -177,7 +178,7 @@ export function StoreProductCard({
         {/* Name + Stars */}
         <div className="min-w-0">
           <h3 className="text-xs sm:text-[15px] font-semibold leading-snug line-clamp-2 min-h-[2.2em] sm:min-h-[2.5em]">
-            {product?.name}
+            {formatProductTitle(product?.name)}
           </h3>
           <ProductCardRating productId={product?.id} />
         </div>

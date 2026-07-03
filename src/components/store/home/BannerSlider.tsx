@@ -65,7 +65,7 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
                 <img
                   src={desktopUrl || mobileUrl || "/placeholder.svg"}
                   alt={`Banner promocional ${banner.position || index + 1}`}
-                  className="h-full w-full object-cover bg-muted"
+                  className="h-full w-full object-contain bg-muted"
                   loading="lazy"
                   decoding="async"
                   data-fallback-src={desktopUrls.legacy || mobileUrls.legacy || ""}

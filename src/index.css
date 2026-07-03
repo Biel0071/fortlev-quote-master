@@ -11,7 +11,7 @@
 @layer base {
   :root {
     /* Global theme (Grey / Blue / Orange) */
-    --store-header-offset: 240px;
+    --store-header-offset: 268px;
     --background: 210 20% 97%;
     --foreground: 222 47% 11%;
 
@@ -215,7 +215,7 @@
   }
 
   .main-content {
-    padding-top: var(--store-header-offset);
+    padding-top: calc(var(--store-header-offset) + 0.75rem) !important;
     scroll-padding-top: calc(var(--store-header-offset) + 1rem);
   }
 

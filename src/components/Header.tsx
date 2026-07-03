@@ -16,15 +16,6 @@ export const Header = () => {
           <Link to="/" className="flex items-center">
             <img src={fortlevLogo} alt="Fortlev" className="h-12 sm:h-14 w-auto object-contain" />
           </Link>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight">
-                FORTLEV
-              </h1>
-              <p className="text-sm text-primary-foreground/80">
-                Sistema de Orçamentos • Caixas d'Água de Polietileno
-              </p>
-            </div>
-          </div>
 
           <div className="flex items-center gap-2">
             <Link to={returnPath}>

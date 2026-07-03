@@ -60,33 +60,57 @@ export async function processBannerImage(
 
   const srcRatio = img.naturalWidth / img.naturalHeight;
   const tgtRatio = target.width / target.height;
-  // Fundo borrado (cover) para preencher o canvas sem deixar faixas vazias.
-  ctx.filter = "blur(24px) brightness(0.9)";
-  let bgSx = 0;
-  let bgSy = 0;
-  let bgSw = img.naturalWidth;
-  let bgSh = img.naturalHeight;
-  if (srcRatio > tgtRatio) {
-    bgSw = Math.round(img.naturalHeight * tgtRatio);
-    bgSx = Math.round((img.naturalWidth - bgSw) / 2);
-  } else {
-    bgSh = Math.round(img.naturalWidth / tgtRatio);
-    bgSy = Math.round((img.naturalHeight - bgSh) / 2);
-  }
-  ctx.drawImage(img, bgSx, bgSy, bgSw, bgSh, -20, -20, target.width + 40, target.height + 40);
-  ctx.filter = "none";
+  const ratioDiff = Math.abs(srcRatio - tgtRatio) / tgtRatio;
 
-  // Imagem inteira centralizada (contain), sem cortes.
-  let dw = target.width;
-  let dh = target.height;
-  if (srcRatio > tgtRatio) {
-    dh = Math.round(target.width / srcRatio);
+  // Estratégia inteligente:
+  // - Diferença de proporção pequena (<=18%): usa "cover" com corte mínimo centralizado
+  //   → banner preenche todo o espaço sem faixas nem borrão.
+  // - Diferença grande: usa "contain" com fundo borrado da própria imagem
+  //   → mostra a imagem inteira sem cortar, preenchendo laterais elegantemente.
+  const useCover = ratioDiff <= 0.18;
+
+  if (useCover) {
+    let sx = 0;
+    let sy = 0;
+    let sw = img.naturalWidth;
+    let sh = img.naturalHeight;
+    if (srcRatio > tgtRatio) {
+      sw = Math.round(img.naturalHeight * tgtRatio);
+      sx = Math.round((img.naturalWidth - sw) / 2);
+    } else {
+      sh = Math.round(img.naturalWidth / tgtRatio);
+      sy = Math.round((img.naturalHeight - sh) / 2);
+    }
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, target.width, target.height);
   } else {
-    dw = Math.round(target.height * srcRatio);
+    // Fundo borrado (cover) para preencher o canvas sem deixar faixas vazias.
+    ctx.filter = "blur(28px) brightness(0.85)";
+    let bgSx = 0;
+    let bgSy = 0;
+    let bgSw = img.naturalWidth;
+    let bgSh = img.naturalHeight;
+    if (srcRatio > tgtRatio) {
+      bgSw = Math.round(img.naturalHeight * tgtRatio);
+      bgSx = Math.round((img.naturalWidth - bgSw) / 2);
+    } else {
+      bgSh = Math.round(img.naturalWidth / tgtRatio);
+      bgSy = Math.round((img.naturalHeight - bgSh) / 2);
+    }
+    ctx.drawImage(img, bgSx, bgSy, bgSw, bgSh, -24, -24, target.width + 48, target.height + 48);
+    ctx.filter = "none";
+
+    // Imagem inteira centralizada (contain), sem cortes.
+    let dw = target.width;
+    let dh = target.height;
+    if (srcRatio > tgtRatio) {
+      dh = Math.round(target.width / srcRatio);
+    } else {
+      dw = Math.round(target.height * srcRatio);
+    }
+    const dx = Math.round((target.width - dw) / 2);
+    const dy = Math.round((target.height - dh) / 2);
+    ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, dx, dy, dw, dh);
   }
-  const dx = Math.round((target.width - dw) / 2);
-  const dy = Math.round((target.height - dh) / 2);
-  ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, dx, dy, dw, dh);
 
   URL.revokeObjectURL(img.src);
 

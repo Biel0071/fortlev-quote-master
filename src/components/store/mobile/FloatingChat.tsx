@@ -38,7 +38,7 @@ export function FloatingChat({
 
   const bottomClass = isMobile
     ? "bottom-[calc(env(safe-area-inset-bottom)+160px)]"
-    : "bottom-24";
+    : "bottom-6";
 
   // (badge removido)
 

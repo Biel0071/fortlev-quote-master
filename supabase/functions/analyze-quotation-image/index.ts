@@ -89,27 +89,63 @@ serve(async (req) => {
 
     messages.push({ role: "user", content: userContent as any });
 
-    const gatewayResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5-mini", // Corrected model name for this environment
-        messages,
-        response_format: { type: "json_object" },
-      }),
-    });
+    // Timeout guard so the client button never hangs indefinitely
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+    let gatewayResp: Response;
+    try {
+      gatewayResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages,
+          response_format: { type: "json_object" },
+        }),
+        signal: controller.signal,
+      });
+    } catch (e: any) {
+      clearTimeout(timeoutId);
+      if (e?.name === "AbortError") {
+        return new Response(
+          JSON.stringify({ error: "Tempo esgotado ao analisar. Tente reduzir o texto/imagens e tente novamente." }),
+          { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw e;
+    }
+    clearTimeout(timeoutId);
 
     if (!gatewayResp.ok) {
       const errorText = await gatewayResp.text();
-      console.error("AI Gateway error:", errorText);
+      console.error("AI Gateway error:", gatewayResp.status, errorText);
+      if (gatewayResp.status === 429) {
+        return new Response(JSON.stringify({ error: "Muitas requisições. Aguarde alguns segundos e tente novamente." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (gatewayResp.status === 402) {
+        return new Response(JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos para continuar." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       throw new Error(`AI Gateway error: ${gatewayResp.status}`);
     }
 
     const data = await gatewayResp.json();
-    const result = JSON.parse(data.choices[0].message.content);
+    const content = data?.choices?.[0]?.message?.content ?? "{}";
+    let result: any;
+    try {
+      result = JSON.parse(content);
+    } catch {
+      // Some models wrap JSON in code fences
+      const cleaned = String(content).replace(/```json\s*|\s*```/g, "").trim();
+      result = JSON.parse(cleaned);
+    }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

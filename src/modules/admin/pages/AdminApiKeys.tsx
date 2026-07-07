@@ -95,7 +95,10 @@ export default function AdminApiKeys() {
     setCreating(false);
     if (error) return toast.error(error.message);
 
-    setNewKeyValue((data as any).key);
+    const rawKey = String((data as any).key ?? "");
+    // sanitiza: remove qualquer prefixo tipo "https://", espaços, quebras de linha
+    const cleanKey = rawKey.replace(/^\s*https?:\/\/[^\s]*?(?=sk_|ap_)/i, "").trim();
+    setNewKeyValue(cleanKey);
     setName("");
     setScopes(["quotation:read"]);
     setExpiresDays(30);
@@ -225,9 +228,14 @@ export default function AdminApiKeys() {
               </div>
               <Button
                 className="w-full"
-                onClick={() => {
-                  navigator.clipboard.writeText(newKeyValue);
-                  toast.success("Copiada!");
+                onClick={async () => {
+                  const clean = newKeyValue.trim();
+                  try {
+                    await navigator.clipboard.writeText(clean);
+                    toast.success("Copiada! (sem https, apenas o token)");
+                  } catch {
+                    toast.error("Falha ao copiar — selecione manualmente");
+                  }
                 }}
               >
                 <Copy size={14} className="mr-2" /> Copiar

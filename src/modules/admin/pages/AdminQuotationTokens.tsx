@@ -276,8 +276,11 @@ export default function AdminQuotationTokens() {
                       <TableCell>{t.device_hash ? `${t.device_hash.slice(0, 10)}...` : "—"}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
-                          <Button variant="outline" size="sm" onClick={() => copyTokenLink(t)}>
+                          <Button variant="outline" size="sm" onClick={() => copyTokenOnly(t)} title="Copiar apenas o token">
                             <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => copyTokenLink(t)} title="Copiar link completo">
+                            <Link2 className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => openLogs(t)}>
                             <Eye className="h-4 w-4" />

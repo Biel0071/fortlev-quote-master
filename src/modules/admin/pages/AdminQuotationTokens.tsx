@@ -67,6 +67,7 @@ export default function AdminQuotationTokens() {
   const [customExpireAt, setCustomExpireAt] = useState("");
   const [maxUses, setMaxUses] = useState("");
   const [lastCreatedLink, setLastCreatedLink] = useState<string | null>(null);
+  const [lastCreatedToken, setLastCreatedToken] = useState<string | null>(null);
 
   const tokenMetrics = useMemo(() => {
     const grouped = new Map<string, { accesses: number; created: number; last: string | null }>();

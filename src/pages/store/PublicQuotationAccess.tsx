@@ -93,7 +93,14 @@ export default function PublicQuotationAccess() {
   const scope = useMemo(() => valid?.access_scope ?? "both", [valid]);
 
   if (loading) {
-    return <div className="min-h-screen grid place-items-center text-muted-foreground">Validando acesso...</div>;
+    return (
+      <div className="min-h-screen grid place-items-center">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm font-medium">Validando seu acesso...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!valid) {

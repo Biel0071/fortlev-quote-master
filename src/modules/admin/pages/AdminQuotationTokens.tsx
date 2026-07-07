@@ -148,7 +148,8 @@ export default function AdminQuotationTokens() {
     const safeSlug = activeStoreSlug || "loja";
     const link = `${window.location.origin}/orcamento/${encodeURIComponent(safeSlug)}/${encodeURIComponent(raw)}`;
     setLastCreatedLink(link);
-    toast({ title: "Token criado", description: "Link público pronto para uso" });
+    setLastCreatedToken(raw);
+    toast({ title: "Token criado", description: "Copie o token ou o link completo" });
     setCreateOpen(false);
     setName("");
     setScope("both");

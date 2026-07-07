@@ -150,7 +150,7 @@ export default function AdminQuotationTokens() {
     setLastCreatedLink(link);
     setLastCreatedToken(raw);
     toast({ title: "Token criado", description: "Copie o token ou o link completo" });
-    setCreateOpen(false);
+    // mantém o dialog aberto para o usuário copiar o token/link
     setName("");
     setScope("both");
     setDuration("7");

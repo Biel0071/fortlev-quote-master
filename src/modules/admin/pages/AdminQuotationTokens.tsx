@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Eye, ShieldPlus, Ban, Lock, RotateCcw } from "lucide-react";
+import { Copy, Eye, ShieldPlus, Ban, Lock, RotateCcw, Link2, Loader2 } from "lucide-react";
 import { cloud } from "@/lib/cloud";
 import { useStore } from "@/contexts/StoreContext";
 import { toast } from "@/hooks/use-toast";
@@ -67,6 +67,7 @@ export default function AdminQuotationTokens() {
   const [customExpireAt, setCustomExpireAt] = useState("");
   const [maxUses, setMaxUses] = useState("");
   const [lastCreatedLink, setLastCreatedLink] = useState<string | null>(null);
+  const [lastCreatedToken, setLastCreatedToken] = useState<string | null>(null);
 
   const tokenMetrics = useMemo(() => {
     const grouped = new Map<string, { accesses: number; created: number; last: string | null }>();
@@ -147,8 +148,9 @@ export default function AdminQuotationTokens() {
     const safeSlug = activeStoreSlug || "loja";
     const link = `${window.location.origin}/orcamento/${encodeURIComponent(safeSlug)}/${encodeURIComponent(raw)}`;
     setLastCreatedLink(link);
-    toast({ title: "Token criado", description: "Link público pronto para uso" });
-    setCreateOpen(false);
+    setLastCreatedToken(raw);
+    toast({ title: "Token criado", description: "Copie o token ou o link completo" });
+    // mantém o dialog aberto para o usuário copiar o token/link
     setName("");
     setScope("both");
     setDuration("7");
@@ -197,6 +199,15 @@ export default function AdminQuotationTokens() {
     const link = `${window.location.origin}/orcamento/${encodeURIComponent(safeSlug)}/${encodeURIComponent(token.token)}`;
     await navigator.clipboard.writeText(link);
     toast({ title: "Link copiado" });
+  };
+
+  const copyTokenOnly = async (token: TokenRow) => {
+    if (!token.token) {
+      toast({ title: "Token completo indisponível", variant: "destructive" });
+      return;
+    }
+    await navigator.clipboard.writeText(token.token.trim());
+    toast({ title: "Token copiado (sem link)" });
   };
 
   const openLogs = (token: TokenRow) => {
@@ -265,8 +276,11 @@ export default function AdminQuotationTokens() {
                       <TableCell>{t.device_hash ? `${t.device_hash.slice(0, 10)}...` : "—"}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
-                          <Button variant="outline" size="sm" onClick={() => copyTokenLink(t)}>
+                          <Button variant="outline" size="sm" onClick={() => copyTokenOnly(t)} title="Copiar apenas o token">
                             <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => copyTokenLink(t)} title="Copiar link completo">
+                            <Link2 className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => openLogs(t)}>
                             <Eye className="h-4 w-4" />
@@ -326,13 +340,40 @@ export default function AdminQuotationTokens() {
               <Label>Limite de acessos (opcional)</Label>
               <Input value={maxUses} onChange={(e) => setMaxUses(e.target.value)} placeholder="Ex: 100" inputMode="numeric" />
             </div>
-            {lastCreatedLink && (
-              <div className="rounded-lg border border-border p-3 text-sm break-all">{lastCreatedLink}</div>
+            {(lastCreatedToken || lastCreatedLink) && (
+              <div className="space-y-3 rounded-lg border border-border p-3">
+                {lastCreatedToken && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Token (somente o código)</Label>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-xs break-all bg-muted p-2 rounded">{lastCreatedToken}</code>
+                      <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(lastCreatedToken!); toast({ title: "Token copiado" }); }}>
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {lastCreatedLink && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Link completo com token</Label>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-xs break-all bg-muted p-2 rounded">{lastCreatedLink}</code>
+                      <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(lastCreatedLink!); toast({ title: "Link copiado" }); }}>
+                        <Link2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-            <Button onClick={createToken} disabled={creating}>{creating ? "Criando..." : "Criar"}</Button>
+            <Button variant="outline" onClick={() => { setCreateOpen(false); setLastCreatedLink(null); setLastCreatedToken(null); }}>
+              {lastCreatedToken ? "Fechar" : "Cancelar"}
+            </Button>
+            <Button onClick={createToken} disabled={creating}>
+              {creating ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Criando...</>) : "Criar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

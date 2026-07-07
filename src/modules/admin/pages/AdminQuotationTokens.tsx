@@ -340,8 +340,31 @@ export default function AdminQuotationTokens() {
               <Label>Limite de acessos (opcional)</Label>
               <Input value={maxUses} onChange={(e) => setMaxUses(e.target.value)} placeholder="Ex: 100" inputMode="numeric" />
             </div>
-            {lastCreatedLink && (
-              <div className="rounded-lg border border-border p-3 text-sm break-all">{lastCreatedLink}</div>
+            {(lastCreatedToken || lastCreatedLink) && (
+              <div className="space-y-3 rounded-lg border border-border p-3">
+                {lastCreatedToken && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Token (somente o código)</Label>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-xs break-all bg-muted p-2 rounded">{lastCreatedToken}</code>
+                      <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(lastCreatedToken!); toast({ title: "Token copiado" }); }}>
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {lastCreatedLink && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Link completo com token</Label>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-xs break-all bg-muted p-2 rounded">{lastCreatedLink}</code>
+                      <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(lastCreatedLink!); toast({ title: "Link copiado" }); }}>
+                        <Link2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           <DialogFooter>

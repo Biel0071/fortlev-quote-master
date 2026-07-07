@@ -95,7 +95,10 @@ export default function AdminApiKeys() {
     setCreating(false);
     if (error) return toast.error(error.message);
 
-    setNewKeyValue((data as any).key);
+    const rawKey = String((data as any).key ?? "");
+    // sanitiza: remove qualquer prefixo tipo "https://", espaços, quebras de linha
+    const cleanKey = rawKey.replace(/^\s*https?:\/\/[^\s]*?(?=sk_|ap_)/i, "").trim();
+    setNewKeyValue(cleanKey);
     setName("");
     setScopes(["quotation:read"]);
     setExpiresDays(30);

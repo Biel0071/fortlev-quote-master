@@ -201,6 +201,15 @@ export default function AdminQuotationTokens() {
     toast({ title: "Link copiado" });
   };
 
+  const copyTokenOnly = async (token: TokenRow) => {
+    if (!token.token) {
+      toast({ title: "Token completo indisponível", variant: "destructive" });
+      return;
+    }
+    await navigator.clipboard.writeText(token.token.trim());
+    toast({ title: "Token copiado (sem link)" });
+  };
+
   const openLogs = (token: TokenRow) => {
     setSelectedToken(token);
     setLogsOpen(true);

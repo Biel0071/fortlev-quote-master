@@ -368,8 +368,12 @@ export default function AdminQuotationTokens() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-            <Button onClick={createToken} disabled={creating}>{creating ? "Criando..." : "Criar"}</Button>
+            <Button variant="outline" onClick={() => { setCreateOpen(false); setLastCreatedLink(null); setLastCreatedToken(null); }}>
+              {lastCreatedToken ? "Fechar" : "Cancelar"}
+            </Button>
+            <Button onClick={createToken} disabled={creating}>
+              {creating ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Criando...</>) : "Criar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

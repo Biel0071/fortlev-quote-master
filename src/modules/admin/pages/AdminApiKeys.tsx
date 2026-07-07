@@ -228,9 +228,14 @@ export default function AdminApiKeys() {
               </div>
               <Button
                 className="w-full"
-                onClick={() => {
-                  navigator.clipboard.writeText(newKeyValue);
-                  toast.success("Copiada!");
+                onClick={async () => {
+                  const clean = newKeyValue.trim();
+                  try {
+                    await navigator.clipboard.writeText(clean);
+                    toast.success("Copiada! (sem https, apenas o token)");
+                  } catch {
+                    toast.error("Falha ao copiar — selecione manualmente");
+                  }
                 }}
               >
                 <Copy size={14} className="mr-2" /> Copiar

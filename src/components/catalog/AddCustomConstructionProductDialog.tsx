@@ -69,18 +69,27 @@ export function AddCustomConstructionProductDialog({ open, onOpenChange, onCreat
         .replace(/\s+/g, "-")
         .slice(0, 80);
 
-      const { error } = await cloud.from("construction_catalog_products").insert({
+      const { data, error } = await cloud.from("construction_catalog_products").insert({
         legacy_id: legacyId,
         name: product.name,
         unit: product.unit,
         base_price: product.basePrice,
         category: product.category,
         active: true,
-      });
+      }).select("id, legacy_id, name, unit, base_price, category").single();
 
       if (error) throw error;
 
+      const createdProduct: ConstructionProduct = {
+        id: data?.legacy_id || data?.id || product.id,
+        name: data?.name || product.name,
+        unit: (data?.unit || product.unit) as ConstructionProduct["unit"],
+        basePrice: Number(data?.base_price ?? product.basePrice),
+        category: (data?.category || product.category) as ConstructionCategory,
+      };
+
       toast({ title: "Publicado", description: "Item publicado no catálogo (backend)." });
+      onCreated(createdProduct);
       onOpenChange(false);
     } catch (e: any) {
       toast({

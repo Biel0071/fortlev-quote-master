@@ -25,9 +25,10 @@ import { ConstructionQuotationsDashboard } from '@/components/construction/Const
 import { supabase } from '@/integrations/supabase/client';
 
 const ConstructionPage = () => {
-  const { quotations, saveQuotation, updateQuotation, deleteQuotation, duplicateQuotation, generateQuotationNumber } = useConstructionQuotations();
+  const { quotations, loading: quotationsLoading, saveQuotation, updateQuotation, deleteQuotation, duplicateQuotation, generateQuotationNumber } = useConstructionQuotations();
   const [searchParams] = useSearchParams();
   const publicToken = searchParams.get('token');
+  const editId = searchParams.get('edit');
   const returnPath = '/admin/orcamentos/construcao';
   const [activeTab, setActiveTab] = useState<'new' | 'saved'>('new');
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
@@ -114,7 +115,16 @@ const ConstructionPage = () => {
   };
 
   const handleAddItem = (item: ConstructionQuotationItem) => {
-    setItems((prev) => [...prev, item]);
+    setItems((prev) => {
+      const existing = prev.find((current) => current.product.id === item.product.id && current.unitPrice === item.unitPrice);
+      if (!existing) return [...prev, item];
+
+      return prev.map((current) => {
+        if (current.id !== existing.id) return current;
+        const quantity = current.quantity + item.quantity;
+        return { ...current, quantity, subtotal: quantity * current.unitPrice };
+      });
+    });
     toast({
       title: 'Item adicionado',
       description: `${item.product.name} adicionado ao orçamento`,
@@ -411,6 +421,12 @@ const ConstructionPage = () => {
       description: `Editando orçamento ${q.number}`,
     });
   };
+
+  useEffect(() => {
+    if (!editId || quotationsLoading || editingQuotationId === editId) return;
+    const quotation = quotations.find((q) => q.id === editId);
+    if (quotation) handleEditQuotation(quotation);
+  }, [editId, quotationsLoading, quotations, editingQuotationId]);
 
   const handleDeleteQuotation = (id: string) => {
     deleteQuotation(id);

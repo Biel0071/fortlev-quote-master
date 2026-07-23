@@ -809,8 +809,18 @@ export default function AdminAppMetrics() {
                 <div className="space-y-1.5">
                   {shortenerTokens.map((token) => (
                     <div key={token.id} className="flex items-center justify-between rounded border border-border px-2 py-1.5 text-xs">
-                      <span>{token.name}</span>
-                      <span className="text-muted-foreground">{token.token_prefix}•••• ({fmtDate(token.created_at)})</span>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{token.name}</span>
+                        <span className="text-[10px] text-muted-foreground">{token.token_prefix}•••• ({fmtDate(token.created_at)})</span>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteToken(token.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   ))}
                 </div>

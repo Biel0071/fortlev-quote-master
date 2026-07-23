@@ -738,6 +738,7 @@ export default function AdminAppMetrics() {
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <p className="text-[10px] text-muted-foreground/30 italic">link coloca no encurtador decve sair sai com domio material sluk e token</p>
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-semibold text-foreground">🔑 Token para script de geração</h3>
               <Button variant="outline" size="sm" onClick={handleGenerateToken} disabled={creatingToken || !activeStoreId} className="gap-1.5">

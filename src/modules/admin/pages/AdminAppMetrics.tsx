@@ -547,6 +547,28 @@ export default function AdminAppMetrics() {
     }
   };
 
+  const handleDeleteShortLink = async (id: string) => {
+    try {
+      const { error } = await cloud.from("app_short_links").delete().eq("id", id);
+      if (error) throw error;
+      setShortLinks((prev) => prev.filter((l) => l.id !== id));
+      toast.success("Link curto removido");
+    } catch (error: any) {
+      toast.error(`Erro ao remover link: ${error?.message ?? "falha desconhecida"}`);
+    }
+  };
+
+  const handleDeleteToken = async (id: string) => {
+    try {
+      const { error } = await cloud.from("app_shortener_tokens").delete().eq("id", id);
+      if (error) throw error;
+      setShortenerTokens((prev) => prev.filter((t) => t.id !== id));
+      toast.success("Token removido");
+    } catch (error: any) {
+      toast.error(`Erro ao remover token: ${error?.message ?? "falha desconhecida"}`);
+    }
+  };
+
   const copyText = async (value: string, label: string) => {
     await navigator.clipboard.writeText(value);
     toast.success(`${label} copiado`);

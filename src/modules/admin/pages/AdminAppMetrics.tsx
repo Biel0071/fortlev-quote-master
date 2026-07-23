@@ -18,6 +18,7 @@ import {
   Link2,
   KeyRound,
   Copy,
+  Trash2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -143,10 +144,14 @@ export default function AdminAppMetrics() {
 
   const shortBaseUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
-    // Se estiver em produção com o domínio customizado, usa ele
-    if (window.location.hostname === "materialdecontrucao.online" || window.location.hostname === "www.materialdecontrucao.online") {
-      return `https://${window.location.hostname}/r`;
+    
+    // Prioriza sempre o domínio customizado do cliente se estivermos em produção ou se o usuário quiser gerar links profissionais
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname.includes("127.0.0.1");
+    
+    if (!isLocal) {
+      return `https://materialdecontrucao.online/r`;
     }
+    
     return `${window.location.origin}/r`;
   }, []);
 
@@ -546,6 +551,28 @@ export default function AdminAppMetrics() {
     }
   };
 
+  const handleDeleteShortLink = async (id: string) => {
+    try {
+      const { error } = await cloud.from("app_short_links").delete().eq("id", id);
+      if (error) throw error;
+      setShortLinks((prev) => prev.filter((l) => l.id !== id));
+      toast.success("Link curto removido");
+    } catch (error: any) {
+      toast.error(`Erro ao remover link: ${error?.message ?? "falha desconhecida"}`);
+    }
+  };
+
+  const handleDeleteToken = async (id: string) => {
+    try {
+      const { error } = await cloud.from("app_shortener_tokens").delete().eq("id", id);
+      if (error) throw error;
+      setShortenerTokens((prev) => prev.filter((t) => t.id !== id));
+      toast.success("Token removido");
+    } catch (error: any) {
+      toast.error(`Erro ao remover token: ${error?.message ?? "falha desconhecida"}`);
+    }
+  };
+
   const copyText = async (value: string, label: string) => {
     await navigator.clipboard.writeText(value);
     toast.success(`${label} copiado`);
@@ -782,8 +809,18 @@ export default function AdminAppMetrics() {
                 <div className="space-y-1.5">
                   {shortenerTokens.map((token) => (
                     <div key={token.id} className="flex items-center justify-between rounded border border-border px-2 py-1.5 text-xs">
-                      <span>{token.name}</span>
-                      <span className="text-muted-foreground">{token.token_prefix}•••• ({fmtDate(token.created_at)})</span>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{token.name}</span>
+                        <span className="text-[10px] text-muted-foreground">{token.token_prefix}•••• ({fmtDate(token.created_at)})</span>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteToken(token.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -805,9 +842,19 @@ export default function AdminAppMetrics() {
                         <a href={shortUrl} target="_blank" rel="noreferrer" className="text-primary underline break-all">
                           {shortUrl}
                         </a>
-                        <Button size="sm" variant="outline" onClick={() => void copyText(shortUrl, "Link curto")} className="h-7 gap-1 px-2">
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={() => void copyText(shortUrl, "Link curto")} className="h-7 gap-1 px-2">
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleDeleteShortLink(link.id)} 
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                       <p className="text-muted-foreground break-all">Destino: {link.original_url}</p>
                       <div className="text-muted-foreground">Cliques: {link.clicks} • Criado em: {fmtDate(link.created_at)}</div>

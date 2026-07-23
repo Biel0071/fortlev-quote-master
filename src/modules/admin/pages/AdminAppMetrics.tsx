@@ -144,10 +144,14 @@ export default function AdminAppMetrics() {
 
   const shortBaseUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
-    // Se estiver em produção com o domínio customizado, usa ele
-    if (window.location.hostname === "materialdecontrucao.online" || window.location.hostname === "www.materialdecontrucao.online") {
-      return `https://${window.location.hostname}/r`;
+    
+    // Prioriza sempre o domínio customizado do cliente se estivermos em produção ou se o usuário quiser gerar links profissionais
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname.includes("127.0.0.1");
+    
+    if (!isLocal) {
+      return `https://materialdecontrucao.online/r`;
     }
+    
     return `${window.location.origin}/r`;
   }, []);
 

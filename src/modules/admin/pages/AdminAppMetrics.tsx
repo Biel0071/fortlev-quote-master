@@ -842,9 +842,19 @@ export default function AdminAppMetrics() {
                         <a href={shortUrl} target="_blank" rel="noreferrer" className="text-primary underline break-all">
                           {shortUrl}
                         </a>
-                        <Button size="sm" variant="outline" onClick={() => void copyText(shortUrl, "Link curto")} className="h-7 gap-1 px-2">
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={() => void copyText(shortUrl, "Link curto")} className="h-7 gap-1 px-2">
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleDeleteShortLink(link.id)} 
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                       <p className="text-muted-foreground break-all">Destino: {link.original_url}</p>
                       <div className="text-muted-foreground">Cliques: {link.clicks} • Criado em: {fmtDate(link.created_at)}</div>

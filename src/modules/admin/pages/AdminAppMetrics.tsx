@@ -19,6 +19,11 @@ import {
   KeyRound,
   Copy,
   Trash2,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Globe,
+  Monitor,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -55,6 +60,21 @@ interface ApkMeta {
   uploadedAt: string;
 }
 
+interface ShortLinkClick {
+  id: string;
+  ip_hash: string | null;
+  user_agent: string | null;
+  device: string | null;
+  browser: string | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
+  created_at: string;
+  utm_source: string | null;
+  utm_campaign: string | null;
+  referrer: string | null;
+}
+
 interface ShortLinkRow {
   id: string;
   slug: string;
@@ -64,6 +84,7 @@ interface ShortLinkRow {
   active: boolean;
   link_type?: "apk" | "product" | "page";
   metadata?: Record<string, unknown>;
+  click_details?: ShortLinkClick[];
 }
 
 interface ShortenerTokenRow {
@@ -136,6 +157,7 @@ export default function AdminAppMetrics() {
   const [creatingToken, setCreatingToken] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [apkToken, setApkToken] = useState<string | null>(null);
+  const [expandedLinks, setExpandedLinks] = useState<Record<string, boolean>>({});
 
   const professionalDownloadUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -551,6 +573,31 @@ export default function AdminAppMetrics() {
     }
   };
 
+  const toggleLinkDetails = async (linkId: string) => {
+    const isExpanded = !!expandedLinks[linkId];
+    setExpandedLinks((prev) => ({ ...prev, [linkId]: !isExpanded }));
+
+    if (!isExpanded) {
+      try {
+        const { data, error } = await cloud
+          .from("app_short_link_clicks")
+          .select("*")
+          .eq("short_link_id", linkId)
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        setShortLinks((prev) =>
+          prev.map((link) => (link.id === linkId ? { ...link, click_details: data as ShortLinkClick[] } : link)),
+        );
+      } catch (error: any) {
+        console.error("Erro ao carregar detalhes de cliques:", error);
+        toast.error("Erro ao carregar detalhes");
+      }
+    }
+  };
+
   const handleDeleteShortLink = async (id: string) => {
     try {
       const { error } = await cloud.from("app_short_links").delete().eq("id", id);
@@ -833,31 +880,81 @@ export default function AdminAppMetrics() {
             {shortLinks.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum link curto criado ainda.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-4">
                 {shortLinks.map((link) => {
                   const shortUrl = `${shortBaseUrl}/${link.slug}`;
+                  const isExpanded = !!expandedLinks[link.id];
                   return (
-                    <div key={link.id} className="rounded border border-border p-2.5 text-xs space-y-1.5">
+                    <div key={link.id} className="rounded-xl border border-border p-3 text-xs space-y-2 bg-background/50">
                       <div className="flex items-center justify-between gap-2">
-                        <a href={shortUrl} target="_blank" rel="noreferrer" className="text-primary underline break-all">
-                          {shortUrl}
-                        </a>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="outline" onClick={() => void copyText(shortUrl, "Link curto")} className="h-7 gap-1 px-2">
-                            <Copy className="h-3.5 w-3.5" />
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <a href={shortUrl} target="_blank" rel="noreferrer" className="text-primary font-bold underline truncate block">
+                            {shortUrl}
+                          </a>
+                          <p className="text-muted-foreground truncate" title={link.original_url}>Destino: {link.original_url}</p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button size="sm" variant="ghost" onClick={() => void toggleLinkDetails(link.id)} className="h-8 w-8 p-0">
+                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => void copyText(shortUrl, "Link curto")} className="h-8 w-8 p-0">
+                            <Copy className="h-4 w-4" />
                           </Button>
                           <Button 
                             size="sm" 
                             variant="outline" 
                             onClick={() => handleDeleteShortLink(link.id)} 
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
-                      <p className="text-muted-foreground break-all">Destino: {link.original_url}</p>
-                      <div className="text-muted-foreground">Cliques: {link.clicks} • Criado em: {fmtDate(link.created_at)}</div>
+
+                      <div className="flex items-center gap-4 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                        <div className="flex items-center gap-1"><MousePointerClick className="h-3 w-3" /> {link.clicks} cliques</div>
+                        <div className="flex items-center gap-1">Criado: {fmtDate(link.created_at)}</div>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="mt-3 pt-3 border-t border-border space-y-2 animate-in fade-in slide-in-from-top-1">
+                          <p className="font-bold text-foreground mb-2 flex items-center gap-1.5">
+                            <BarChart3 className="h-3.5 w-3.5 text-primary" /> Últimos cliques detalhados:
+                          </p>
+                          {link.click_details && link.click_details.length > 0 ? (
+                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                              {link.click_details.map((click) => (
+                                <div key={click.id} className="p-2 rounded bg-muted/30 border border-border/50 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-1.5 text-foreground font-medium">
+                                      <Globe className="h-3 w-3 text-muted-foreground" />
+                                      {click.ip_hash?.slice(0, 8)}...
+                                      <span className="text-[10px] text-muted-foreground font-normal">({fmtDate(click.created_at)})</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <MapPin className="h-3 w-3" />
+                                      {click.city || "?"}, {click.region || "?"}, {click.country || "?"}
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Monitor className="h-3 w-3" />
+                                      {click.device} / {click.browser}
+                                    </div>
+                                    {(click.utm_source || click.utm_campaign) && (
+                                      <div className="text-[10px] bg-primary/10 text-primary-foreground px-1.5 py-0.5 rounded-full inline-block">
+                                        {click.utm_source || 'direct'} / {click.utm_campaign || 'none'}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-center py-4 text-muted-foreground italic">Nenhum detalhe disponível ou carregando...</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

@@ -912,9 +912,14 @@ export default function AdminAppMetrics() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
                         <div className="flex items-center gap-1"><MousePointerClick className="h-3 w-3" /> {link.clicks} cliques</div>
                         <div className="flex items-center gap-1">Criado: {fmtDate(link.created_at)}</div>
+                        {link.link_type === 'apk' && (
+                          <div className="flex items-center gap-1 text-primary font-bold">
+                            <Smartphone className="h-3 w-3" /> Link de APK
+                          </div>
+                        )}
                       </div>
 
                       {isExpanded && (

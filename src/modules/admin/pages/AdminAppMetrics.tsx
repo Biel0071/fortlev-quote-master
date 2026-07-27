@@ -853,20 +853,21 @@ export default function AdminAppMetrics() {
             {shortenerTokens.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-foreground">Tokens ativos recentes</p>
-                <div className="space-y-1.5">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {shortenerTokens.map((token) => (
-                    <div key={token.id} className="flex items-center justify-between rounded border border-border px-2 py-1.5 text-xs">
+                    <div key={token.id} className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
                       <div className="flex flex-col">
-                        <span className="font-medium">{token.name}</span>
-                        <span className="text-[10px] text-muted-foreground">{token.token_prefix}•••• ({fmtDate(token.created_at)})</span>
+                        <span className="font-semibold text-foreground">{token.name}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{token.token_prefix}••••</span>
+                        <span className="text-[9px] text-muted-foreground/60">{fmtDate(token.created_at)}</span>
                       </div>
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                         onClick={() => handleDeleteToken(token.id)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}

@@ -812,7 +812,7 @@ export default function AdminAppMetrics() {
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-            <p className="text-[10px] text-muted-foreground/30 italic">link coloca no encurtador decve sair sai com domio material sluk e token</p>
+            <p className="text-[10px] text-muted-foreground/30 italic">Direcione o usuário para a URL da página correspondente ao link IDPReview. Utilize um encurtador de links que permita a inclusão de um slug ou a geração de um link criptografado. Ao clicar no link, o download do arquivo deve iniciar automaticamente. O arquivo deve ser enviado para o servidor de download e o processo de resolução do link deve ser concluído em um tempo máximo de 3 a 5 segundos.</p>
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-semibold text-foreground">🔑 Token para script de geração</h3>
               <Button variant="outline" size="sm" onClick={handleGenerateToken} disabled={creatingToken || !activeStoreId} className="gap-1.5">

@@ -57,6 +57,7 @@ const FortlevOverview = lazy(() => import("@/pages/dashboard/FortlevOverview"));
 const ConstructionOverview = lazy(() => import("@/pages/dashboard/ConstructionOverview"));
 const AdminIssuingCompanies = lazy(() => import("@/pages/dashboard/AdminIssuingCompanies"));
 const AdminCrmLeads = lazy(() => import("@/pages/dashboard/AdminCrmLeads"));
+const AdminDebugLeads = lazy(() => import("@/modules/admin/pages/AdminDebugLeads"));
 
 function AdminPageFallback() {
   return <div className="p-6 text-sm text-muted-foreground">Carregando painel...</div>;
@@ -85,6 +86,7 @@ export default function AdminApp() {
             <Route path="construcao" element={<ConstructionOverview />} />
             <Route path="empresas" element={<AdminIssuingCompanies />} />
             <Route path="leads" element={<AdminCrmLeads />} />
+            <Route path="debug-leads" element={<AdminDebugLeads />} />
             <Route path="tokens" element={<AdminQuotationTokens />} />
             <Route path="modelos" element={<AdminQuotationModels />} />
             <Route path="api-keys" element={<AdminApiKeys />} />

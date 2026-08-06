@@ -2734,6 +2734,425 @@ export type Database = {
         }
         Relationships: []
       }
+      order_tracking_addresses: {
+        Row: {
+          city: string | null
+          complement: string | null
+          country: string | null
+          created_at: string | null
+          id: string
+          neighborhood: string | null
+          number: string | null
+          state: string | null
+          store_id: string
+          street: string | null
+          type: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          city?: string | null
+          complement?: string | null
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          neighborhood?: string | null
+          number?: string | null
+          state?: string | null
+          store_id: string
+          street?: string | null
+          type?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          city?: string | null
+          complement?: string | null
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          neighborhood?: string | null
+          number?: string | null
+          state?: string | null
+          store_id?: string
+          street?: string | null
+          type?: string | null
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_tracking_addresses_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_tracking_carriers: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          id: string
+          name: string
+          slug: string
+          store_id: string
+          tracking_url_template: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          name: string
+          slug: string
+          store_id: string
+          tracking_url_template?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          store_id?: string
+          tracking_url_template?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_tracking_carriers_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_tracking_files: {
+        Row: {
+          created_at: string | null
+          file_type: string | null
+          file_url: string
+          id: string
+          label: string | null
+          timeline_event_id: string | null
+          tracking_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          label?: string | null
+          timeline_event_id?: string | null
+          tracking_id: string
+        }
+        Update: {
+          created_at?: string | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          label?: string | null
+          timeline_event_id?: string | null
+          tracking_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_tracking_files_timeline_event_id_fkey"
+            columns: ["timeline_event_id"]
+            isOneToOne: false
+            referencedRelation: "order_tracking_timeline"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_tracking_files_tracking_id_fkey"
+            columns: ["tracking_id"]
+            isOneToOne: false
+            referencedRelation: "order_tracking_main"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_tracking_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          tracking_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          tracking_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          tracking_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_tracking_logs_tracking_id_fkey"
+            columns: ["tracking_id"]
+            isOneToOne: false
+            referencedRelation: "order_tracking_main"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_tracking_main: {
+        Row: {
+          carrier_id: string | null
+          created_at: string | null
+          current_status_id: string | null
+          delivered_at: string | null
+          destination_address_id: string | null
+          estimated_delivery_at: string | null
+          id: string
+          metadata: Json | null
+          order_id: string
+          origin_address_id: string | null
+          posted_at: string | null
+          store_id: string
+          tracking_code: string
+          updated_at: string | null
+        }
+        Insert: {
+          carrier_id?: string | null
+          created_at?: string | null
+          current_status_id?: string | null
+          delivered_at?: string | null
+          destination_address_id?: string | null
+          estimated_delivery_at?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id: string
+          origin_address_id?: string | null
+          posted_at?: string | null
+          store_id: string
+          tracking_code: string
+          updated_at?: string | null
+        }
+        Update: {
+          carrier_id?: string | null
+          created_at?: string | null
+          current_status_id?: string | null
+          delivered_at?: string | null
+          destination_address_id?: string | null
+          estimated_delivery_at?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id?: string
+          origin_address_id?: string | null
+          posted_at?: string | null
+          store_id?: string
+          tracking_code?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_tracking_main_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "order_tracking_carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_tracking_main_current_status_id_fkey"
+            columns: ["current_status_id"]
+            isOneToOne: false
+            referencedRelation: "order_tracking_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_tracking_main_destination_address_id_fkey"
+            columns: ["destination_address_id"]
+            isOneToOne: false
+            referencedRelation: "order_tracking_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_tracking_main_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "store_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_tracking_main_origin_address_id_fkey"
+            columns: ["origin_address_id"]
+            isOneToOne: false
+            referencedRelation: "order_tracking_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_tracking_main_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_tracking_notifications: {
+        Row: {
+          id: string
+          message_content: string | null
+          recipient: string | null
+          sent_at: string | null
+          status: string | null
+          tracking_id: string
+          type: string | null
+        }
+        Insert: {
+          id?: string
+          message_content?: string | null
+          recipient?: string | null
+          sent_at?: string | null
+          status?: string | null
+          tracking_id: string
+          type?: string | null
+        }
+        Update: {
+          id?: string
+          message_content?: string | null
+          recipient?: string | null
+          sent_at?: string | null
+          status?: string | null
+          tracking_id?: string
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_tracking_notifications_tracking_id_fkey"
+            columns: ["tracking_id"]
+            isOneToOne: false
+            referencedRelation: "order_tracking_main"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_tracking_status: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_terminal: boolean | null
+          label: string
+          order: number | null
+          progress_percentage: number | null
+          store_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_terminal?: boolean | null
+          label: string
+          order?: number | null
+          progress_percentage?: number | null
+          store_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_terminal?: boolean | null
+          label?: string
+          order?: number | null
+          progress_percentage?: number | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_tracking_status_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_tracking_timeline: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          event_at: string | null
+          id: string
+          location_city: string | null
+          location_lat: number | null
+          location_lng: number | null
+          location_state: string | null
+          responsible: string | null
+          status_id: string | null
+          title: string
+          tracking_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          event_at?: string | null
+          id?: string
+          location_city?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_state?: string | null
+          responsible?: string | null
+          status_id?: string | null
+          title: string
+          tracking_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          event_at?: string | null
+          id?: string
+          location_city?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_state?: string | null
+          responsible?: string | null
+          status_id?: string | null
+          title?: string
+          tracking_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_tracking_timeline_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "order_tracking_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_tracking_timeline_tracking_id_fkey"
+            columns: ["tracking_id"]
+            isOneToOne: false
+            referencedRelation: "order_tracking_main"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_api_keys: {
         Row: {
           active: boolean
@@ -6569,6 +6988,10 @@ export type Database = {
       }
       revoke_quotation_access_token: {
         Args: { _token_id: string }
+        Returns: undefined
+      }
+      seed_order_tracking_status: {
+        Args: { target_store_id: string }
         Returns: undefined
       }
       upsert_checkout_session: {

@@ -60,6 +60,7 @@ export default function AdminDashboardTracking() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewStep, setPreviewStep] = useState(0);
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [generateForm, setGenerateForm] = useState({
     carrier_id: "",

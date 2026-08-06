@@ -246,24 +246,48 @@ export default function AdminDashboardTracking() {
       const code = generateForm.tracking_code || `RT${Math.floor(Math.random() * 90000000 + 10000000)}BR`;
       
       // 1. Create a placeholder order for the manual tracking
-      const { data: order, error: orderError } = await cloud.from("store_orders").insert({
-        store_id: activeStoreId,
-        customer_name: generateForm.customer_name,
-        customer_cpf: generateForm.customer_cpf.replace(/\D/g, ""), // Ensure we have the CPF here
-        total: 0,
-        status: "separando", // Using "separando" as it's a valid enum value
-      }).select().single();
+      // We check if an order with this CPF already exists to avoid duplication if it's a re-tracking
+      const { data: existingOrder } = await cloud.from("store_orders")
+        .select("id")
+        .eq("customer_cpf", generateForm.customer_cpf.replace(/\D/g, ""))
+        .eq("store_id", activeStoreId)
+        .limit(1)
+        .maybeSingle();
 
-      if (orderError) throw orderError;
+      let orderId = existingOrder?.id;
+
+      if (!orderId) {
+        const { data: newOrder, error: orderError } = await cloud.from("store_orders").insert({
+          store_id: activeStoreId,
+          customer_name: generateForm.customer_name,
+          customer_cpf: generateForm.customer_cpf.replace(/\D/g, ""),
+          total: 0,
+          subtotal: 0,
+          shipping: 0,
+          status: "aguardando", // Using "aguardando" as per RLS policy
+        }).select().single();
+
+        if (orderError) throw orderError;
+        orderId = newOrder.id;
+      }
 
       // 2. Create the tracking record
+      // Buscar o ID do status "Coletado" ou o primeiro disponível para iniciar
+      const { data: statuses } = await cloud.from("order_tracking_status")
+        .select("id, label")
+        .eq("store_id", activeStoreId);
+      
+      const initialStatus = statuses?.find(s => s.label.includes("Coletado") || s.label.includes("Transporte")) || statuses?.[0];
+      const initialStatusId = initialStatus?.id;
+      const initialStatusLabel = initialStatus?.label || "Objeto postado";
+
       const { data: tracking, error: trackingError } = await cloud.from("order_tracking_main").insert({
         store_id: activeStoreId,
-        order_id: order.id,
+        order_id: orderId,
         carrier_id: generateForm.carrier_id,
         tracking_code: code,
-        current_status_id: "77777777-7777-7777-7777-777777777771", // Objeto postado
-        posted_at: new Date(generateForm.start_date + "T10:00:00").toISOString(), // Usar data de início
+        current_status_id: initialStatusId,
+        posted_at: new Date(generateForm.start_date + "T10:00:00").toISOString(),
         estimated_delivery_at: new Date(new Date(generateForm.start_date + "T10:00:00").getTime() + (parseInt(generateForm.estimated_days) * 86400000)).toISOString()
       }).select().single();
 
@@ -272,9 +296,9 @@ export default function AdminDashboardTracking() {
       // 3. Add initial timeline event
       await cloud.from("order_tracking_timeline").insert({
         tracking_id: tracking.id,
-        status_id: "77777777-7777-7777-7777-777777777771",
-        title: "Objeto postado",
-        description: "O vendedor postou o seu objeto.",
+        status_id: initialStatusId,
+        title: initialStatusLabel,
+        description: "O objeto foi entregue à transportadora e está em processamento.",
         location_city: "Centro de Distribuição",
         event_at: new Date(generateForm.start_date + "T10:00:00").toISOString()
       });

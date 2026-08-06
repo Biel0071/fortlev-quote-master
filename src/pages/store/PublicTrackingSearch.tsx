@@ -11,6 +11,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { formatCurrency } from "@/utils/formatters";
+import { Badge } from "@/components/ui/badge";
 
 
 export default function PublicTrackingSearch() {
@@ -124,45 +125,80 @@ export default function PublicTrackingSearch() {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Main Result Card */}
             <Card className="overflow-hidden border-2 border-primary/10 shadow-2xl rounded-3xl">
-              <div className="bg-primary p-6 sm:p-8 text-primary-foreground">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="bg-primary p-6 sm:p-8 text-primary-foreground relative overflow-hidden">
+                {/* Background Pattern */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl pointer-events-none" />
+
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                   <div className="space-y-1">
                     <p className="text-[10px] uppercase font-black tracking-[0.2em] opacity-80">Status do seu pedido</p>
                     <div className="flex items-center gap-3">
                       <h2 className="text-3xl font-black uppercase">{result.status?.label || 'Em processamento'}</h2>
+                      <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                     </div>
                     <p className="text-sm font-medium opacity-90">Pedido #{result.order?.id?.slice(0, 8)} • Código {result.tracking_code}</p>
                   </div>
-                  <div className="flex flex-col items-start md:items-end gap-2">
+                  <div className="flex flex-col items-start md:items-end gap-2 relative z-10">
                     {result.estimated_delivery_at && (
-                      <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20">
-                         <p className="text-[10px] uppercase font-black tracking-wider opacity-70 leading-none mb-1">Previsão de Entrega</p>
+                      <div className="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 shadow-lg">
+                         <div className="flex items-center gap-2 mb-1">
+                           <Calendar className="w-3.5 h-3.5 opacity-70" />
+                           <p className="text-[10px] uppercase font-black tracking-wider opacity-70 leading-none">Previsão de Entrega</p>
+                         </div>
                          <p className="text-xl font-black">{new Date(result.estimated_delivery_at).toLocaleDateString()}</p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="mt-8 space-y-2">
-                   <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">
-                      <span>Logística em andamento</span>
-                      <span>{result.status?.progress_percentage || 10}%</span>
+                {/* Stepper Modernizado */}
+                <div className="mt-10 relative z-10">
+                   <div className="flex justify-between items-end mb-4">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60 block">Progresso Logístico</span>
+                        <div className="text-xs font-black bg-white/20 px-2 py-0.5 rounded-full inline-block">
+                          {result.status?.progress_percentage || 10}% Concluído
+                        </div>
+                      </div>
+                      <Box className="w-8 h-8 opacity-20" />
                    </div>
-                   <Progress value={result.status?.progress_percentage || 10} className="h-3 bg-white/20" />
-                   <div className="flex justify-between text-[9px] font-black uppercase tracking-tighter opacity-70 mt-1">
-                      <span>Preparação</span>
-                      <span>Em transporte</span>
-                      <span>Entregue</span>
+
+                   <div className="relative h-4 bg-white/10 rounded-full overflow-hidden p-1 shadow-inner">
+                      <div 
+                        className="h-full bg-white rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+                        style={{ width: `${result.status?.progress_percentage || 10}%` }}
+                      />
+                   </div>
+
+                   <div className="flex justify-between mt-3">
+                      {[
+                        { label: 'Preparação', active: (result.status?.progress_percentage || 0) >= 10 },
+                        { label: 'Em transporte', active: (result.status?.progress_percentage || 0) >= 50 },
+                        { label: 'Entregue', active: (result.status?.progress_percentage || 0) >= 100 }
+                      ].map((step, idx) => (
+                        <div key={idx} className="flex flex-col items-center gap-1.5">
+                          <div className={`w-2 h-2 rounded-full ${step.active ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-white/20'}`} />
+                          <span className={`text-[9px] font-black uppercase tracking-tighter transition-opacity ${step.active ? 'opacity-100' : 'opacity-40'}`}>
+                            {step.label}
+                          </span>
+                        </div>
+                      ))}
                    </div>
                 </div>
               </div>
 
-              <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-5 gap-8">
+              <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-5 gap-10">
                  {/* Timeline */}
-                 <div className="lg:col-span-3 space-y-6">
-                    <div className="flex items-center gap-2 mb-4">
-                       <Clock className="w-5 h-5 text-primary" />
-                       <h3 className="font-black uppercase tracking-wider text-sm">Linha do Tempo</h3>
+                 <div className="lg:col-span-3 space-y-8">
+                    <div className="flex items-center justify-between mb-2">
+                       <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                             <Clock className="w-4 h-4" />
+                          </div>
+                          <h3 className="font-black uppercase tracking-widest text-sm text-slate-800">Linha do Tempo</h3>
+                       </div>
+                       <Badge variant="outline" className="text-[10px] font-black uppercase border-primary/20 text-primary">Tempo Real</Badge>
                     </div>
 
                     <div className="relative pl-6 space-y-10 before:absolute before:left-6 before:top-2 before:bottom-2 before:w-1 before:bg-slate-100">

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { formatCurrency } from "@/utils/formatters";
-import { Package, Truck, CheckCircle2, MapPin, Calendar, Clock, ArrowLeft, Box } from "lucide-react";
+import { Package, Truck, CheckCircle2, MapPin, Calendar, Clock, ArrowLeft, Box, ShieldCheck } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Badge as UIBadge } from "@/components/ui/badge";
 
 type OrderRow = {
   id: string;
@@ -112,7 +113,7 @@ export default function TrackingPage() {
                <p className="text-sm text-muted-foreground">Acompanhe atualizações da entrega.</p>
              </div>
           </div>
-          <Badge variant="outline" className="hidden sm:flex">Pedido #{id?.slice(0,8)}</Badge>
+          <UIBadge variant="outline" className="hidden sm:flex font-black border-primary/20 text-primary">Pedido #{id?.slice(0,8)}</UIBadge>
         </header>
 
         {loading ? (
@@ -131,37 +132,54 @@ export default function TrackingPage() {
         ) : (
           <div className="space-y-6">
             {/* Progress Card */}
-            <Card className="overflow-hidden border-2 border-primary/5">
-              <CardContent className="p-6 md:p-8 space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                      {progress === 100 ? <CheckCircle2 className="w-7 h-7" /> : <Truck className="w-7 h-7" />}
+            <Card className="overflow-hidden border-2 border-primary/10 shadow-lg relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+              <CardContent className="p-6 md:p-10 space-y-8 relative z-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                      {progress === 100 ? <CheckCircle2 className="w-9 h-9" /> : <Truck className="w-9 h-9" />}
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold">{tracking?.status?.label || statusLabel(order.status)}</h2>
+                      <h2 className="text-2xl font-black uppercase tracking-tight text-slate-800">{tracking?.status?.label || statusLabel(order.status)}</h2>
                       {tracking?.tracking_code && (
-                        <p className="text-sm text-muted-foreground">Código: <span className="font-mono text-foreground font-medium">{tracking.tracking_code}</span></p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Código:</span>
+                          <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded-lg text-slate-600 font-bold tracking-tighter">
+                            {tracking.tracking_code}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
                   {tracking?.estimated_delivery_at && (
-                    <div className="bg-muted/50 p-3 rounded-xl flex items-center gap-3">
-                      <Calendar className="w-5 h-5 text-primary" />
+                    <div className="bg-slate-50 border border-slate-100 p-4 rounded-3xl flex items-center gap-4 shadow-sm">
+                      <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary">
+                        <Calendar className="w-5 h-5" />
+                      </div>
                       <div>
-                        <p className="text-[10px] uppercase font-bold text-muted-foreground leading-none mb-1">Previsão de Entrega</p>
-                        <p className="font-semibold">{new Date(tracking.estimated_delivery_at).toLocaleDateString()}</p>
+                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest leading-none mb-1">Previsão de Entrega</p>
+                        <p className="text-lg font-black text-slate-800">{new Date(tracking.estimated_delivery_at).toLocaleDateString()}</p>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Progress value={progress} className="h-3" />
-                  <div className="flex justify-between text-[10px] uppercase font-bold text-muted-foreground px-1">
-                    <span>Pedido Criado</span>
-                    <span>Em Transporte</span>
-                    <span>Entregue</span>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60">Logística de Entrega</span>
+                    <span className="text-xs font-black bg-primary/10 text-primary px-3 py-1 rounded-full">{progress}% Concluído</span>
+                  </div>
+                  <div className="relative h-4 bg-slate-100 rounded-full p-1 overflow-hidden shadow-inner">
+                    <div 
+                      className="h-full bg-primary rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(30,58,138,0.3)]"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">
+                    <span className={progress >= 10 ? "text-primary" : ""}>Pedido Criado</span>
+                    <span className={progress >= 50 ? "text-primary" : ""}>Em Transporte</span>
+                    <span className={progress >= 100 ? "text-primary" : ""}>Entregue</span>
                   </div>
                 </div>
               </CardContent>

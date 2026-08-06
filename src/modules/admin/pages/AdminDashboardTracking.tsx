@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Edit2, Package, Truck, CheckCircle2, AlertCircle, Clock, MapPin, Globe, ExternalLink, Trash2 } from "lucide-react";
+import { Search, Plus, Edit2, Package, Truck, CheckCircle2, AlertCircle, Clock, MapPin, Globe, ExternalLink, Trash2, Eye } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { OrderTrackingDialog } from "../components/OrderTrackingDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+import { ScrollArea } from "@/components/ui/scroll-area";
+import PublicTrackingSearch from "@/pages/store/PublicTrackingSearch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -56,6 +57,7 @@ export default function AdminDashboardTracking() {
   const [editingCarrier, setEditingCarrier] = useState<Carrier | null>(null);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [generateForm, setGenerateForm] = useState({
     carrier_id: "",
@@ -285,9 +287,10 @@ export default function AdminDashboardTracking() {
       </div>
 
       <Tabs defaultValue="tracking" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="tracking">Rastreios Ativos</TabsTrigger>
           <TabsTrigger value="carriers">Transportadoras</TabsTrigger>
+          <TabsTrigger value="preview">Preview do Cliente</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tracking" className="space-y-4">
@@ -481,6 +484,29 @@ export default function AdminDashboardTracking() {
                   )}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="preview" className="space-y-4">
+          <Card className="overflow-hidden border-2 border-primary/20 shadow-xl bg-slate-50/50">
+            <CardHeader className="bg-white border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Eye className="w-5 h-5 text-primary" /> Visualização do Cliente
+                  </CardTitle>
+                  <CardDescription>Simule como seu cliente verá a página de rastreio público.</CardDescription>
+                </div>
+                <Badge variant="outline" className="bg-primary/10 text-primary font-bold">Modo Preview</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[700px] w-full">
+                <div className="scale-[0.9] origin-top transform-gpu">
+                  <PublicTrackingSearch />
+                </div>
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>

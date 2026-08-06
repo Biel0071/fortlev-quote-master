@@ -179,7 +179,46 @@ export default function AdminDashboardTracking() {
     }
   };
 
+  const handleGenerateTracking = async () => {
+    if (!activeStoreId) return;
+    try {
+      const code = generateForm.tracking_code || `RT${Math.floor(Math.random() * 90000000 + 10000000)}BR`;
+      
+      // 1. Create a placeholder order for the manual tracking
+      const { data: order, error: orderError } = await cloud.from("store_orders").insert({
+        store_id: activeStoreId,
+        customer_name: generateForm.customer_name,
+        customer_cpf: generateForm.customer_cpf,
+        total: 0,
+        status: "shipping",
+        items: []
+      }).select().single();
+
+      if (orderError) throw orderError;
+
+      // 2. Create the tracking record
+      const { error: trackingError } = await cloud.from("order_tracking_main").insert({
+        store_id: activeStoreId,
+        order_id: order.id,
+        carrier_id: generateForm.carrier_id,
+        tracking_code: code,
+        status_id: "77777777-7777-7777-7777-777777777771", // Objeto postado
+        estimated_delivery: new Date(Date.now() + (parseInt(generateForm.estimated_days) * 86400000)).toISOString()
+      });
+
+      if (trackingError) throw trackingError;
+
+      toast({ title: "Sucesso", description: `Rastreio ${code} gerado!` });
+      setGenerateDialogOpen(false);
+      setGenerateForm({ customer_name: "", customer_cpf: "", carrier_id: "", estimated_days: "7", tracking_code: "" });
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
   const filteredTracking = trackingData.filter(item => 
+
     item.tracking_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.order?.customer_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );

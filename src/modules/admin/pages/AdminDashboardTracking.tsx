@@ -990,6 +990,7 @@ export default function AdminDashboardTracking() {
                           key={idx}
                           className="w-full text-left px-3 py-2 rounded-md hover:bg-primary/10 transition-colors flex flex-col gap-0.5"
                           onClick={async () => {
+                            const cpfNumbers = client.document?.replace(/\D/g, "") || "";
                             setGenerateForm({
                               ...generateForm,
                               customer_name: client.name,
@@ -998,23 +999,26 @@ export default function AdminDashboardTracking() {
                             setClientSearch(client.name);
                             setMatchingClients([]);
 
-                            // Carregar pedidos e orçamentos do cliente selecionado
                             try {
                               const [orders, fortlev, construction] = await Promise.all([
-                                cloud.from("store_orders").select("*").eq("customer_cpf", client.document?.replace(/\D/g, "") || "").eq("store_id", activeStoreId),
-                                cloud.from("fortlev_quotations").select("*").filter("customer_json->>document", "eq", client.document?.replace(/\D/g, "") || ""),
-                                cloud.from("construction_quotations").select("*").filter("customer_json->>document", "eq", client.document?.replace(/\D/g, "") || "")
+                                cloud.from("store_orders").select("*").eq("customer_cpf", cpfNumbers).eq("store_id", activeStoreId),
+                                cloud.from("fortlev_quotations").select("*").filter("customer_json->>document", "eq", cpfNumbers),
+                                cloud.from("construction_quotations").select("*").filter("customer_json->>document", "eq", cpfNumbers)
                               ]);
                               setSelectedClientOrders(orders.data || []);
                               setSelectedClientQuotations([...(fortlev.data || []), ...(construction.data || [])]);
+                              if (orders.data && orders.data.length > 0) setVinculoPedido("existente");
                             } catch (e) {
                               console.error("Erro ao carregar detalhes do cliente", e);
                             }
                           }}
                         >
-                          <span className="text-sm font-bold text-primary">{client.name}</span>
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-sm font-bold text-primary">{client.name}</span>
+                            <div className={`w-2 h-2 rounded-full ${client.document ? 'bg-green-500' : 'bg-red-500'}`} />
+                          </div>
                           <span className="text-[10px] text-muted-foreground font-mono">
-                            {client.document ? `CPF: ${client.document}` : client.phone}
+                            {client.document ? `CPF: ${client.document}` : client.phone || 'Sem contato'}
                           </span>
                         </button>
                       ))}

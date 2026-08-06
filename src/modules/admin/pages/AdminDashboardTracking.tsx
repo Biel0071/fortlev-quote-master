@@ -304,13 +304,42 @@ export default function AdminDashboardTracking() {
                   <CardTitle className="text-lg">Transportadoras Parceiras</CardTitle>
                   <CardDescription>Gerencie as transportadoras cadastradas no sistema.</CardDescription>
                 </div>
-                <Button onClick={() => {
-                  setEditingCarrier(null);
-                  setCarrierForm({ name: "", website: "", tracking_url_template: "" });
-                  setCarrierDialogOpen(true);
-                }}>
-                  <Plus className="w-4 h-4 mr-2" /> Adicionar
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={async () => {
+                    const defaultCarriers = [
+                      { name: "Correios", website: "https://www.correios.com.br", tracking_url_template: "https://rastreamento.correios.com.br/app/index.php?codigo={code}" },
+                      { name: "Jadlog", website: "https://www.jadlog.com.br", tracking_url_template: "https://www.jadlog.com.br/siteInstitucional/tracking.jad?tracking={code}" },
+                      { name: "Loggi", website: "https://www.loggi.com", tracking_url_template: "https://www.loggi.com/rastreio/{code}" },
+                      { name: "Total Express", website: "https://totalexpress.com.br", tracking_url_template: "https://tracking.totalexpress.com.br/prakashtracking.php?trck={code}" },
+                      { name: "Azul Cargo", website: "https://www.azulcargo.com.br", tracking_url_template: "https://www.azulcargo.com.br/Rastreio.aspx?n={code}" }
+                    ];
+
+                    try {
+                      for (const carrier of defaultCarriers) {
+                        const slug = carrier.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "-");
+                        await cloud.from("order_tracking_carriers").insert({
+                          ...carrier,
+                          slug,
+                          store_id: activeStoreId,
+                          active: true
+                        });
+                      }
+                      toast({ title: "Sucesso", description: "Transportadoras padrão adicionadas." });
+                      loadData();
+                    } catch (err: any) {
+                      toast({ title: "Erro ao gerar padrão", description: err.message, variant: "destructive" });
+                    }
+                  }}>
+                    Gerar Transportadoras Padrão
+                  </Button>
+                  <Button onClick={() => {
+                    setEditingCarrier(null);
+                    setCarrierForm({ name: "", website: "", tracking_url_template: "" });
+                    setCarrierDialogOpen(true);
+                  }}>
+                    <Plus className="w-4 h-4 mr-2" /> Adicionar
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

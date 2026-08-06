@@ -180,8 +180,8 @@ export function StoreTopbar({
               </div>
 
               <nav className="shrink-0 flex items-center gap-1" aria-label="Ações rápidas">
-                <Button asChild variant="ghost" size="icon" className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl" aria-label="Pedidos e rastreio">
-                  <Link to="/pedidos">
+                <Button asChild variant="ghost" size="icon" className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl" aria-label="Rastreio">
+                  <Link to="/rastreio">
                     <PackageSearch className="h-5 w-5" />
                   </Link>
                 </Button>

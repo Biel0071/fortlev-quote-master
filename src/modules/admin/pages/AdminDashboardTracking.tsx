@@ -664,8 +664,8 @@ export default function AdminDashboardTracking() {
                   </div>
                 </ScrollArea>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

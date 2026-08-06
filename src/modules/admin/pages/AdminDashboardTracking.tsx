@@ -69,6 +69,7 @@ export default function AdminDashboardTracking() {
   const [clientSearch, setClientSearch] = useState("");
   const [matchingClients, setMatchingClients] = useState<any[]>([]);
   const [filterType, setFilterType] = useState<"all" | "with_cpf" | "without_cpf">("all");
+  const [selectedOrderId, setSelectedOrderId] = useState<string>("");
   const [generateForm, setGenerateForm] = useState({
     carrier_id: "",
     customer_name: "",

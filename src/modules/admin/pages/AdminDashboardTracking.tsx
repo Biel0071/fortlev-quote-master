@@ -379,27 +379,8 @@ export default function AdminDashboardTracking() {
                     setClientSearch("");
                     setMatchingClients([]);
                     
-                    // Pré-carregar lista inicial de clientes (contatos recentes)
-                    try {
-                      const { data } = await cloud
-                        .from("store_orders")
-                        .select("customer_name, customer_cpf")
-                        .eq("store_id", activeStoreId)
-                        .order('created_at', { ascending: false })
-                        .limit(10);
-                      
-                      if (data) {
-                        const uniqueClients = data.reduce((acc: any[], curr: any) => {
-                          if (!acc.find(c => c.customer_cpf === curr.customer_cpf)) {
-                            acc.push(curr);
-                          }
-                          return acc;
-                        }, []);
-                        setMatchingClients(uniqueClients);
-                      }
-                    } catch (e) {
-                      console.error("Erro ao carregar pré-lista:", e);
-                    }
+                    // Forçar carregamento da lista inicial em ordem alfabética
+                    await searchClients("");
                     
                     setGenerateDialogOpen(true);
                   }}>

@@ -225,12 +225,29 @@ export default function AdminDashboardTracking() {
     if (location.state && location.state.customer_name) {
       console.log("Recebido estado de navegação:", location.state);
       setGenerateDialogOpen(true);
+      const name = location.state.customer_name;
+      const cpf = location.state.customer_cpf || "";
+      
       setGenerateForm(prev => ({
         ...prev,
-        customer_name: location.state.customer_name,
-        customer_cpf: location.state.customer_cpf || ""
+        customer_name: name,
+        customer_cpf: cpf
       }));
       setVinculoPedido(location.state.vinculo || "independente");
+      setClientSearch(name);
+
+      // Se viemos de um orçamento, vamos tentar carregar os orçamentos do cliente imediatamente
+      if (location.state.source === 'quotation') {
+        const cpfNumbers = cpf.replace(/\D/g, "");
+        Promise.all([
+          cloud.from("store_orders").select("*").eq("customer_cpf", cpfNumbers).eq("store_id", activeStoreId),
+          cloud.from("fortlev_quotations").select("*").filter("customer_json->>document", "eq", cpfNumbers),
+          cloud.from("construction_quotations").select("*").filter("customer_json->>document", "eq", cpfNumbers)
+        ]).then(([orders, fortlev, construction]) => {
+          setSelectedClientOrders(orders.data || []);
+          setSelectedClientQuotations([...(fortlev.data || []), ...(construction.data || [])]);
+        }).catch(e => console.error("Erro ao carregar detalhes do cliente vindo de orçamento", e));
+      }
       
       // Limpar o estado para não reabrir ao atualizar
       window.history.replaceState({}, document.title);

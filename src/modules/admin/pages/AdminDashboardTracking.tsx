@@ -442,7 +442,8 @@ export default function AdminDashboardTracking() {
                     setVinculoPedido("existente");
                     
                     // Forçar carregamento da lista inicial em ordem alfabética
-                    await searchClients("");
+                    await searchClients("", "all");
+                    setFilterType("all");
                     
                     setGenerateDialogOpen(true);
                   }}>

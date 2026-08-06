@@ -172,15 +172,17 @@ export default function PublicTrackingSearch() {
                       />
                    </div>
 
-                   <div className="flex justify-between mt-3">
+                   <div className="flex justify-between mt-3 text-center">
                       {[
-                        { label: 'Preparação', active: (result.status?.progress_percentage || 0) >= 10 },
-                        { label: 'Em transporte', active: (result.status?.progress_percentage || 0) >= 50 },
+                        { label: 'Loja', active: (result.status?.progress_percentage || 0) >= 10 },
+                        { label: 'CD Logístico', active: (result.status?.progress_percentage || 0) >= 30 },
+                        { label: 'Em transporte', active: (result.status?.progress_percentage || 0) >= 60 },
+                        { label: 'Saiu para Entrega', active: (result.status?.progress_percentage || 0) >= 90 },
                         { label: 'Entregue', active: (result.status?.progress_percentage || 0) >= 100 }
                       ].map((step, idx) => (
-                        <div key={idx} className="flex flex-col items-center gap-1.5">
-                          <div className={`w-2 h-2 rounded-full ${step.active ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-white/20'}`} />
-                          <span className={`text-[9px] font-black uppercase tracking-tighter transition-opacity ${step.active ? 'opacity-100' : 'opacity-40'}`}>
+                        <div key={idx} className="flex flex-col items-center gap-1.5 flex-1">
+                          <div className={`w-2 h-2 rounded-full transition-all duration-500 ${step.active ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-white/20'}`} />
+                          <span className={`text-[8px] font-black uppercase tracking-tighter transition-opacity leading-none ${step.active ? 'opacity-100' : 'opacity-40'}`}>
                             {step.label}
                           </span>
                         </div>

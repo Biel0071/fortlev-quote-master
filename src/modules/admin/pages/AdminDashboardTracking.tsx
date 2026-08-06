@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/contexts/StoreContext";
 import { cloud } from "@/lib/cloud";
@@ -48,6 +49,7 @@ interface TrackingRecord {
 }
 
 export default function AdminDashboardTracking() {
+  const location = useLocation();
   const nav = useNavigate();
   const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);

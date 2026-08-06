@@ -56,6 +56,14 @@ export default function AdminDashboardTracking() {
   const [editingCarrier, setEditingCarrier] = useState<Carrier | null>(null);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [generateForm, setGenerateForm] = useState({
+    carrier_id: "",
+    customer_name: "",
+    customer_cpf: "",
+    estimated_days: "7",
+    tracking_code: ""
+  });
   const [carrierForm, setCarrierForm] = useState({
 
     name: "",
@@ -119,9 +127,32 @@ export default function AdminDashboardTracking() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [activeStoreId]);
+  const handleDeleteCarrier = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta transportadora?")) return;
+    try {
+      await cloud.from("order_tracking_carriers").delete().eq("id", id);
+      toast({ title: "Sucesso", description: "Transportadora excluída." });
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDuplicateCarrier = async (carrier: Carrier) => {
+    try {
+      const { id, ...rest } = carrier;
+      const slug = `${carrier.slug}-copy-${Math.floor(Math.random() * 1000)}`;
+      await cloud.from("order_tracking_carriers").insert({
+        ...rest,
+        name: `${carrier.name} (Cópia)`,
+        slug
+      });
+      toast({ title: "Sucesso", description: "Transportadora duplicada." });
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
 
   const handleSaveCarrier = async () => {
     if (!activeStoreId) return;
@@ -131,6 +162,7 @@ export default function AdminDashboardTracking() {
         ...carrierForm,
         slug,
         store_id: activeStoreId,
+        active: true
       };
 
       if (editingCarrier) {
@@ -147,7 +179,46 @@ export default function AdminDashboardTracking() {
     }
   };
 
+  const handleGenerateTracking = async () => {
+    if (!activeStoreId) return;
+    try {
+      const code = generateForm.tracking_code || `RT${Math.floor(Math.random() * 90000000 + 10000000)}BR`;
+      
+      // 1. Create a placeholder order for the manual tracking
+      const { data: order, error: orderError } = await cloud.from("store_orders").insert({
+        store_id: activeStoreId,
+        customer_name: generateForm.customer_name,
+        customer_cpf: generateForm.customer_cpf,
+        total: 0,
+        status: "shipping",
+        items: []
+      }).select().single();
+
+      if (orderError) throw orderError;
+
+      // 2. Create the tracking record
+      const { error: trackingError } = await cloud.from("order_tracking_main").insert({
+        store_id: activeStoreId,
+        order_id: order.id,
+        carrier_id: generateForm.carrier_id,
+        tracking_code: code,
+        status_id: "77777777-7777-7777-7777-777777777771", // Objeto postado
+        estimated_delivery: new Date(Date.now() + (parseInt(generateForm.estimated_days) * 86400000)).toISOString()
+      });
+
+      if (trackingError) throw trackingError;
+
+      toast({ title: "Sucesso", description: `Rastreio ${code} gerado!` });
+      setGenerateDialogOpen(false);
+      setGenerateForm({ customer_name: "", customer_cpf: "", carrier_id: "", estimated_days: "7", tracking_code: "" });
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
   const filteredTracking = trackingData.filter(item => 
+
     item.tracking_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.order?.customer_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -223,7 +294,21 @@ export default function AdminDashboardTracking() {
           <Card>
             <CardHeader>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <CardTitle className="text-lg">Gestão de Entregas</CardTitle>
+                <div className="flex items-center gap-4">
+                  <CardTitle className="text-lg">Gestão de Entregas</CardTitle>
+                  <Button size="sm" onClick={() => {
+                    setGenerateForm({
+                      carrier_id: carriers[0]?.id || "",
+                      customer_name: "",
+                      customer_cpf: "",
+                      estimated_days: "7",
+                      tracking_code: ""
+                    });
+                    setGenerateDialogOpen(true);
+                  }}>
+                    <Plus className="w-4 h-4 mr-2" /> Gerar Rastreio Manual
+                  </Button>
+                </div>
                 <div className="relative w-full max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
@@ -371,13 +456,21 @@ export default function AdminDashboardTracking() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => {
-                          setEditingCarrier(c);
-                          setCarrierForm({ name: c.name, website: c.website || "", tracking_url_template: c.tracking_url_template || "" });
-                          setCarrierDialogOpen(true);
-                        }}>
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleDuplicateCarrier(c)} title="Duplicar">
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setEditingCarrier(c);
+                            setCarrierForm({ name: c.name, website: c.website || "", tracking_url_template: c.tracking_url_template || "" });
+                            setCarrierDialogOpen(true);
+                          }} title="Editar">
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteCarrier(c.id)} title="Excluir">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -394,7 +487,107 @@ export default function AdminDashboardTracking() {
       </Tabs>
 
       <Dialog open={carrierDialogOpen} onOpenChange={setCarrierDialogOpen}>
-        ...
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingCarrier ? "Editar Transportadora" : "Nova Transportadora"}</DialogTitle>
+            <DialogDescription>Preencha os dados da transportadora parceira.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome da Transportadora</Label>
+              <Input 
+                value={carrierForm.name} 
+                onChange={(e) => setCarrierForm({ ...carrierForm, name: e.target.value })}
+                placeholder="Ex: Correios, Loggi..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Site Oficial (URL)</Label>
+              <Input 
+                value={carrierForm.website} 
+                onChange={(e) => setCarrierForm({ ...carrierForm, website: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Template da URL de Rastreio</Label>
+              <Input 
+                value={carrierForm.tracking_url_template} 
+                onChange={(e) => setCarrierForm({ ...carrierForm, tracking_url_template: e.target.value })}
+                placeholder="https://.../{code}"
+              />
+              <p className="text-[10px] text-muted-foreground">Use {"{code}"} para onde o código de rastreio será inserido.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCarrierDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveCarrier}>Salvar Transportadora</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gerar Novo Rastreio</DialogTitle>
+            <DialogDescription>Crie um registro de rastreio manualmente para um cliente.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nome do Cliente</Label>
+                <Input 
+                  value={generateForm.customer_name} 
+                  onChange={(e) => setGenerateForm({ ...generateForm, customer_name: e.target.value })}
+                  placeholder="Nome completo"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>CPF</Label>
+                <Input 
+                  value={generateForm.customer_cpf} 
+                  onChange={(e) => setGenerateForm({ ...generateForm, customer_cpf: e.target.value })}
+                  placeholder="000.000.000-00"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Transportadora</Label>
+              <select 
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={generateForm.carrier_id} 
+                onChange={(e) => setGenerateForm({ ...generateForm, carrier_id: e.target.value })}
+              >
+                <option value="">Selecione...</option>
+                {carriers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Prazo de Entrega (Dias)</Label>
+                <Input 
+                  type="number"
+                  value={generateForm.estimated_days} 
+                  onChange={(e) => setGenerateForm({ ...generateForm, estimated_days: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Código (Opcional)</Label>
+                <Input 
+                  value={generateForm.tracking_code} 
+                  onChange={(e) => setGenerateForm({ ...generateForm, tracking_code: e.target.value })}
+                  placeholder="Auto-gerar se vazio"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGenerateDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleGenerateTracking} disabled={!generateForm.customer_name || !generateForm.carrier_id}>Gerar Rastreio</Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
 
       {selectedOrder && (
@@ -412,6 +605,5 @@ export default function AdminDashboardTracking() {
         </Dialog>
       )}
     </div>
-
   );
 }

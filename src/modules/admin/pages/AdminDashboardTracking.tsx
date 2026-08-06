@@ -106,7 +106,7 @@ export default function AdminDashboardTracking() {
             *,
             status:order_tracking_status!order_tracking_main_current_status_id_fkey(label, color),
             carrier:order_tracking_carriers(name),
-            order:store_orders(customer_name, customer_phone, customer_cpf, store_id)
+            order:store_orders(id, customer_name, customer_phone, customer_cpf, store_id)
           `)
           .eq("store_id", activeStoreId)
           .order("created_at", { ascending: false }),
@@ -264,7 +264,8 @@ export default function AdminDashboardTracking() {
           total: 0,
           subtotal: 0,
           shipping: 0,
-          status: "aguardando", // Using "aguardando" as per RLS policy
+          checkout_mode: 'whatsapp',
+          status: "aguardando",
         }).select().single();
 
         if (orderError) throw orderError;
@@ -454,7 +455,7 @@ export default function AdminDashboardTracking() {
                         <TableCell className="font-mono font-medium">{item.tracking_code}</TableCell>
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="font-medium">#{item.order_id.slice(0, 8)}</span>
+                            <span className="font-medium">#{item.order_id?.slice(0, 8) || "N/A"}</span>
                             {item.order_id && (
                               <Button 
                                 variant="link" 
@@ -488,7 +489,7 @@ export default function AdminDashboardTracking() {
                             variant="ghost" 
                             size="icon"
                             onClick={() => {
-                              setSelectedOrder({ id: item.order_id });
+                              setSelectedOrder(item.order || { id: item.order_id });
                               setTrackingDialogOpen(true);
                             }}
                           >

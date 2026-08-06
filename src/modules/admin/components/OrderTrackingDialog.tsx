@@ -90,6 +90,34 @@ export function OrderTrackingDialog({ order, onClose, onUpdate }: OrderTrackingD
         res = await cloud.from("order_tracking_main").insert(payload).select().single();
       }
 
+      if (res.error) {
+        // HINT: Check for RLS or missing fields
+        console.error("Error saving tracking:", res.error);
+        throw res.error;
+      }
+
+      // If it's a new tracking, check if we need to add a default first event
+      if (!tracking && res.data) {
+        const { data: statuses } = await cloud.from("order_tracking_status")
+          .select("id, label")
+          .eq("store_id", activeStoreId)
+          .order("order", { ascending: true });
+        
+        if (statuses && statuses.length > 0) {
+          await cloud.from("order_tracking_timeline").insert({
+            tracking_id: res.data.id,
+            status_id: statuses[0].id,
+            title: statuses[0].label,
+            description: "Objeto postado e em processamento.",
+            event_at: new Date().toISOString()
+          });
+          
+          await cloud.from("order_tracking_main").update({
+            current_status_id: statuses[0].id
+          }).eq("id", res.data.id);
+        }
+      }
+
       if (res.error) throw res.error;
       toast({ title: "Sucesso", description: "Dados de rastreio salvos." });
       loadInitialData();

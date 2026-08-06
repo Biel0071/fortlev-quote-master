@@ -106,7 +106,7 @@ export default function AdminDashboardTracking() {
             *,
             status:order_tracking_status!order_tracking_main_current_status_id_fkey(label, color),
             carrier:order_tracking_carriers(name),
-            order:store_orders(customer_name, customer_phone, customer_cpf, store_id)
+            order:store_orders(id, customer_name, customer_phone, customer_cpf, store_id)
           `)
           .eq("store_id", activeStoreId)
           .order("created_at", { ascending: false }),
@@ -489,7 +489,7 @@ export default function AdminDashboardTracking() {
                             variant="ghost" 
                             size="icon"
                             onClick={() => {
-                              setSelectedOrder({ id: item.order_id });
+                              setSelectedOrder(item.order || { id: item.order_id });
                               setTrackingDialogOpen(true);
                             }}
                           >

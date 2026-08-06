@@ -210,7 +210,8 @@ export default function AdminDashboardTracking() {
         carrier_id: generateForm.carrier_id,
         tracking_code: code,
         status_id: "77777777-7777-7777-7777-777777777771", // Objeto postado
-        estimated_delivery_at: new Date(Date.now() + (parseInt(generateForm.estimated_days) * 86400000)).toISOString()
+        created_at: new Date(generateForm.start_date + "T10:00:00").toISOString(), // Usar data de início
+        estimated_delivery_at: new Date(new Date(generateForm.start_date + "T10:00:00").getTime() + (parseInt(generateForm.estimated_days) * 86400000)).toISOString()
       }).select().single();
 
       if (trackingError) throw trackingError;

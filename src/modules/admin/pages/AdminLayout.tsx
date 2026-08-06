@@ -64,6 +64,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     label: "Visão Geral",
     items: [
       { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, page: "dashboard" },
+      { title: "Rastreamento", url: "/tracking-dashboard", icon: MapPin, page: "tracking-dashboard" },
       { title: "Home", url: "/home", icon: Home, page: "home" },
     ],
   },
@@ -94,7 +95,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     items: [
       { title: "Análise de Clientes", url: "/clientes", icon: Users, page: "clientes" },
       { title: "Funil de Conversão", url: "/funil", icon: Target, page: "funil" },
-      { title: "Mapa de Cliques", url: "/mapa-cliques", icon: MapPin, page: "mapa-cliques" },
+      { title: "Mapa de Cliques", url: "/mapa-cliques", icon: MousePointerClick, page: "mapa-cliques" },
       { title: "Métricas do App", url: "/app-metricas", icon: Smartphone, page: "app-metricas" },
       { title: "Insights IA", url: "/insights-ia", icon: Brain, page: "insights-ia" },
       { title: "Análise e Relatórios IA", url: "/inteligencia-ia", icon: Sparkles, page: "inteligencia-ia" },

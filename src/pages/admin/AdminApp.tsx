@@ -10,6 +10,7 @@ const AdminProductsList = lazy(() => import("@/modules/admin/pages/AdminProducts
 const AdminProductForm = lazy(() => import("@/modules/admin/pages/AdminProductForm"));
 const AdminCategoriesList = lazy(() => import("@/modules/admin/pages/AdminCategoriesList"));
 const AdminCategoryForm = lazy(() => import("@/modules/admin/pages/AdminCategoryForm"));
+const AdminDashboardTracking = lazy(() => import("@/modules/admin/pages/AdminDashboardTracking"));
 const AdminOrders = lazy(() => import("@/modules/admin/pages/AdminOrders"));
 const AdminPages = lazy(() => import("@/modules/admin/pages/AdminPages"));
 const AdminCustomers = lazy(() => import("@/modules/admin/pages/AdminCustomers"));
@@ -112,7 +113,8 @@ export default function AdminApp() {
           <Route path="categorias/nova" element={<AdminCategoryForm />} />
           <Route path="categorias/editar/:id" element={<AdminCategoryForm />} />
 
-          <Route path="pedidos" element={<AdminOrders />} />
+        <Route path="tracking-dashboard" element={<AdminDashboardTracking />} />
+        <Route path="pedidos" element={<AdminOrders />} />
           <Route path="paginas" element={<AdminPages />} />
           <Route path="clientes" element={<AdminCustomers />} />
           <Route path="banners" element={<AdminBanners />} />

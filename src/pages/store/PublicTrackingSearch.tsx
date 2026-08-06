@@ -53,11 +53,11 @@ export default function PublicTrackingSearch() {
       const resultData = Array.isArray(data) ? data[0] : data;
 
       if (error) throw error;
-      if (!data) {
+      if (!resultData) {
         setResult({ notFound: true });
         toast({ title: "Não encontrado", description: "Nenhum pedido encontrado para os dados informados.", variant: "destructive" });
       } else {
-        setResult(data);
+        setResult(resultData);
       }
     } catch (error: any) {
       toast({ title: "Erro na consulta", description: "Ocorreu um erro ao buscar seu rastreio.", variant: "destructive" });

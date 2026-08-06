@@ -5025,6 +5025,7 @@ export type Database = {
           id: string
           order_id: string
           status: string
+          store_id: string | null
         }
         Insert: {
           created_at?: string
@@ -5032,6 +5033,7 @@ export type Database = {
           id?: string
           order_id: string
           status: string
+          store_id?: string | null
         }
         Update: {
           created_at?: string
@@ -5039,6 +5041,7 @@ export type Database = {
           id?: string
           order_id?: string
           status?: string
+          store_id?: string | null
         }
         Relationships: [
           {
@@ -5046,6 +5049,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "store_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_order_tracking_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]

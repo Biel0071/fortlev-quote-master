@@ -22,7 +22,6 @@ const AdminUsersAccess = lazy(() => import("@/modules/admin/pages/AdminUsersAcce
 const AdminSettingsIdentidade = lazy(() => import("@/modules/admin/pages/AdminSettingsPlaceholder").then((m) => ({ default: m.AdminSettingsIdentidade })));
 const AdminSettingsIntegracoes = lazy(() => import("@/modules/admin/pages/AdminSettingsPlaceholder").then((m) => ({ default: m.AdminSettingsIntegracoes })));
 const AdminTheme = lazy(() => import("@/modules/admin/pages/AdminTheme"));
-const AdminDashboardTracking = lazy(() => import("@/modules/admin/pages/AdminDashboardTracking"));
 const AdminIntelligence = lazy(() => import("@/modules/admin/pages/AdminIntelligence"));
 const AdminDashboardQuotations = lazy(() => import("@/modules/admin/pages/AdminDashboardQuotations"));
 const AdminQuotations = lazy(() => import("@/modules/admin/pages/AdminQuotations"));

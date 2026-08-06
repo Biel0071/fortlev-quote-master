@@ -11,6 +11,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { formatCurrency } from "@/utils/formatters";
+import { Badge } from "@/components/ui/badge";
 
 
 export default function PublicTrackingSearch() {

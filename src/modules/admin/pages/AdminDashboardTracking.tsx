@@ -56,6 +56,14 @@ export default function AdminDashboardTracking() {
   const [editingCarrier, setEditingCarrier] = useState<Carrier | null>(null);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [generateForm, setGenerateForm] = useState({
+    carrier_id: "",
+    customer_name: "",
+    customer_cpf: "",
+    estimated_days: "7",
+    tracking_code: ""
+  });
   const [carrierForm, setCarrierForm] = useState({
 
     name: "",
@@ -247,7 +255,21 @@ export default function AdminDashboardTracking() {
           <Card>
             <CardHeader>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <CardTitle className="text-lg">Gestão de Entregas</CardTitle>
+                <div className="flex items-center gap-4">
+                  <CardTitle className="text-lg">Gestão de Entregas</CardTitle>
+                  <Button size="sm" onClick={() => {
+                    setGenerateForm({
+                      carrier_id: carriers[0]?.id || "",
+                      customer_name: "",
+                      customer_cpf: "",
+                      estimated_days: "7",
+                      tracking_code: ""
+                    });
+                    setGenerateDialogOpen(true);
+                  }}>
+                    <Plus className="w-4 h-4 mr-2" /> Gerar Rastreio Manual
+                  </Button>
+                </div>
                 <div className="relative w-full max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
@@ -439,7 +461,69 @@ export default function AdminDashboardTracking() {
                 onChange={(e) => setCarrierForm({ ...carrierForm, name: e.target.value })}
                 placeholder="Ex: Correios, Loggi..."
               />
+      <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gerar Novo Rastreio</DialogTitle>
+            <DialogDescription>Crie um registro de rastreio manualmente para um cliente.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nome do Cliente</Label>
+                <Input 
+                  value={generateForm.customer_name} 
+                  onChange={(e) => setGenerateForm({ ...generateForm, customer_name: e.target.value })}
+                  placeholder="Nome completo"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>CPF</Label>
+                <Input 
+                  value={generateForm.customer_cpf} 
+                  onChange={(e) => setGenerateForm({ ...generateForm, customer_cpf: e.target.value })}
+                  placeholder="000.000.000-00"
+                />
+              </div>
             </div>
+            
+            <div className="space-y-2">
+              <Label>Transportadora</Label>
+              <select 
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={generateForm.carrier_id} 
+                onChange={(e) => setGenerateForm({ ...generateForm, carrier_id: e.target.value })}
+              >
+                <option value="">Selecione...</option>
+                {carriers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Prazo de Entrega (Dias)</Label>
+                <Input 
+                  type="number"
+                  value={generateForm.estimated_days} 
+                  onChange={(e) => setGenerateForm({ ...generateForm, estimated_days: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Código (Opcional)</Label>
+                <Input 
+                  value={generateForm.tracking_code} 
+                  onChange={(e) => setGenerateForm({ ...generateForm, tracking_code: e.target.value })}
+                  placeholder="Auto-gerar se vazio"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGenerateDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleGenerateTracking} disabled={!generateForm.customer_name || !generateForm.carrier_id}>Gerar Rastreio</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
             <div className="space-y-2">
               <Label>Site Oficial (URL)</Label>
               <Input 

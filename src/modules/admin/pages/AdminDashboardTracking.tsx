@@ -1110,20 +1110,18 @@ export default function AdminDashboardTracking() {
             {vinculoPedido === "existente" && selectedClientOrders.length > 0 && (
                <div className="space-y-2">
                  <Label>Selecionar Pedido</Label>
-                 <select 
-                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                   onChange={(e) => {
-                      const order = selectedClientOrders.find(o => o.id === e.target.value);
-                      if (order) {
-                        // Poderíamos preencher mais campos aqui se necessário
-                      }
-                   }}
-                 >
-                   <option value="">Selecione um pedido...</option>
-                   {selectedClientOrders.map(o => (
-                     <option key={o.id} value={o.id}>Pedido #{o.id.slice(0, 8)} - R$ {o.total}</option>
-                   ))}
-                 </select>
+                  <select 
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={selectedOrderId}
+                    onChange={(e) => {
+                      setSelectedOrderId(e.target.value);
+                    }}
+                  >
+                    <option value="">Selecione um pedido...</option>
+                    {selectedClientOrders.map(o => (
+                      <option key={o.id} value={o.id}>Pedido #{o.id.slice(0, 8)} - R$ {o.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</option>
+                    ))}
+                  </select>
                </div>
              )}
             

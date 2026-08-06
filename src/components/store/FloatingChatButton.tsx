@@ -3,6 +3,7 @@ import { MessageCircle, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "react-router-dom";
 import { useStoreContact } from "@/hooks/useStoreContact";
+import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 
 const FloatingChatDialog = lazy(() => import("@/components/store/mobile/FloatingChatDialog"));
 
@@ -10,11 +11,11 @@ export function FloatingChatButton() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith("/admin");
   const contact = useStoreContact();
+  const tracker = useVisitorTracker();
   const [assistantOpen, setAssistantOpen] = useState(false);
 
   if (isAdmin) return null;
 
-  // Hide on checkout/cart as requested in previous turns
   const shouldHide = location.pathname.startsWith("/checkout") || location.pathname.startsWith("/carrinho");
   if (shouldHide) return null;
 
@@ -48,6 +49,10 @@ export function FloatingChatButton() {
             open={assistantOpen}
             onOpenChange={setAssistantOpen}
             phoneDigits={contact.phoneDigits}
+            chatSessionId={null}
+            scoreSnapshot={0}
+            trackerSessionToken={tracker.sessionToken}
+            consentOk={tracker.consentOk}
           />
         </Suspense>
       )}

@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { formatCurrency } from "@/utils/formatters";
 import { Badge } from "@/components/ui/badge";
-
+import { FloatingChatButton } from "@/components/store/FloatingChatButton";
 
 export default function PublicTrackingSearch() {
   const [searchParams] = useSearchParams();
@@ -73,6 +73,8 @@ export default function PublicTrackingSearch() {
     <div className="min-h-screen bg-background pb-24 md:pb-12 tracking-search-page">
       <AppHeader cartCount={0} />
       <StoreMobileChrome cartCount={0} />
+      <FloatingChatButton />
+
       
       <main className="max-w-4xl mx-auto px-4 pt-[var(--store-header-offset)] pb-8 sm:py-12 space-y-8">
         <div className="flex flex-col items-center text-center space-y-4">
@@ -87,36 +89,40 @@ export default function PublicTrackingSearch() {
 
         <Card className="border-2 border-primary/5 shadow-xl rounded-3xl overflow-hidden">
           <CardContent className="p-6 sm:p-8">
-            <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form onSubmit={handleSearch} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="code" className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">Código de Rastreio ou Pedido</Label>
+                <Label htmlFor="search" className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">
+                  Código de Rastreio, Pedido ou CPF
+                </Label>
                 <div className="relative">
                   <Package className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <Input 
-                    id="code" 
-                    value={code} 
-                    onChange={e => setCode(e.target.value)} 
-                    placeholder="Ex: BR123456789 ou #83271" 
+                    id="search" 
+                    value={code || cpf} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      // Tenta identificar se é CPF (apenas números e comprimento > 9) ou código
+                      if (/^\d+$/.test(val.replace(/[\.\-]/g, "")) && val.replace(/[\.\-]/g, "").length > 6) {
+                        setCpf(val);
+                        setCode("");
+                      } else {
+                        setCode(val);
+                        setCpf("");
+                      }
+                    }} 
+                    placeholder="Digite seu código ou CPF" 
                     className="h-12 sm:h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700 text-sm sm:text-base"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cpf" className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">Ou CPF do comprador</Label>
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                  <Input 
-                    id="cpf" 
-                    value={cpf} 
-                    onChange={e => setCpf(e.target.value)} 
-                    placeholder="000.000.000-00" 
-                    className="h-12 sm:h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700 text-sm sm:text-base"
-                  />
-                </div>
-              </div>
-              <Button type="submit" className="md:col-span-2 w-full h-12 sm:h-14 text-sm sm:text-lg font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all" disabled={loading || (!code && !cpf)}>
-                {loading ? <Clock className="animate-spin mr-3 w-5 h-5 sm:w-6 sm:h-6" /> : <Search className="mr-3 w-5 h-5 sm:w-6 sm:h-6" />}
-                Consultar Status de Entrega
+              
+              <Button 
+                type="submit" 
+                className="w-full h-12 sm:h-14 text-[13px] sm:text-base font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all px-2" 
+                disabled={loading || (!code && !cpf)}
+              >
+                {loading ? <Clock className="animate-spin mr-2 w-4 h-4 sm:w-5 sm:h-5" /> : <Search className="mr-2 w-4 h-4 sm:w-5 sm:h-5" />}
+                <span className="truncate">Consultar Status de Entrega</span>
               </Button>
             </form>
           </CardContent>

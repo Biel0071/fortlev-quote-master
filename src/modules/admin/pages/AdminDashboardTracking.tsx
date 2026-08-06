@@ -618,13 +618,13 @@ export default function AdminDashboardTracking() {
                     )}
                     {previewStep === 2 && (
                       <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">
-                         <div className="bg-green-600 p-8 text-white rounded-t-3xl flex items-center justify-between">
+                          <div className={`bg-green-600 ${previewMode === "mobile" ? "p-4" : "p-8"} text-white rounded-t-3xl flex items-center justify-between`}>
                             <div>
-                               <h2 className="text-3xl font-black uppercase mb-1">Entregue</h2>
-                               <p className="opacity-80 text-sm font-bold">O objeto foi entregue ao destinatário</p>
+                               <h2 className={`${previewMode === "mobile" ? "text-xl" : "text-3xl"} font-black uppercase mb-1`}>Entregue</h2>
+                               <p className="opacity-80 text-[10px] md:text-sm font-bold">O objeto foi entregue ao destinatário</p>
                             </div>
-                            <CheckCircle2 className="w-16 h-16 opacity-30" />
-                         </div>
+                            <CheckCircle2 className={`${previewMode === "mobile" ? "w-8 h-8" : "w-16 h-16"} opacity-30`} />
+                          </div>
                          <div className="bg-white p-8 rounded-b-3xl border-x border-b">
                             <div className="flex flex-col items-center text-center py-10 space-y-4">
                                <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center text-green-600">

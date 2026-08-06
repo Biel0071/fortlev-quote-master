@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, MoreHorizontal, Building2, Users, Search, Filter, Eye } from "lucide-react";
+import { BarChart3, DollarSign, Receipt, TrendingUp, Plus, Pencil, Copy, Trash2, FileText, Image, FileDown, MoreHorizontal, Building2, Users, Search, Filter, Eye, Truck } from "lucide-react";
 import SmartQuotationGenerator from "@/components/admin/SmartQuotationGenerator";
 import { useQuotations } from "@/hooks/useQuotations";
 import { useSales } from "@/hooks/useSales";
@@ -415,6 +415,10 @@ export default function FortlevOverview() {
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadNFe(q)}>
                                 <Receipt className="h-4 w-4 mr-2" />Baixar DANFE / NF-e
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate("/admin/dashboard/tracking", { state: { customer_name: q.customer.name, customer_cpf: q.customer.cnpj, vinculo: 'existente', order_id: q.id } })}>
+                                <Truck className="h-4 w-4 mr-2 text-orange-500" />
+                                Gerar Rastreio
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/contexts/StoreContext";
 import { cloud } from "@/lib/cloud";
@@ -48,6 +49,7 @@ interface TrackingRecord {
 }
 
 export default function AdminDashboardTracking() {
+  const location = useLocation();
   const nav = useNavigate();
   const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
@@ -213,6 +215,27 @@ export default function AdminDashboardTracking() {
       console.error("Erro ao buscar leads/clientes:", err);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, [activeStoreId]);
+
+  useEffect(() => {
+    // Verificar se veio do painel de orçamentos (location.state)
+    if (location.state && location.state.customer_name) {
+      console.log("Recebido estado de navegação:", location.state);
+      setGenerateDialogOpen(true);
+      setGenerateForm(prev => ({
+        ...prev,
+        customer_name: location.state.customer_name,
+        customer_cpf: location.state.customer_cpf || ""
+      }));
+      setVinculoPedido(location.state.vinculo || "independente");
+      
+      // Limpar o estado para não reabrir ao atualizar
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const [vinculoPedido, setVinculoPedido] = useState<"existente" | "independente">("existente");
   const [selectedClientOrders, setSelectedClientOrders] = useState<any[]>([]);

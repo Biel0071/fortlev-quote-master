@@ -915,7 +915,7 @@ export default function AdminDashboardTracking() {
                         <button
                           key={idx}
                           className="w-full text-left px-3 py-2 rounded-md hover:bg-primary/10 transition-colors flex flex-col gap-0.5"
-                          onClick={() => {
+                          onClick={async () => {
                             setGenerateForm({
                               ...generateForm,
                               customer_name: client.name,
@@ -923,6 +923,19 @@ export default function AdminDashboardTracking() {
                             });
                             setClientSearch(client.name);
                             setMatchingClients([]);
+
+                            // Carregar pedidos e orçamentos do cliente selecionado
+                            try {
+                              const [orders, fortlev, construction] = await Promise.all([
+                                cloud.from("store_orders").select("*").eq("customer_cpf", client.document?.replace(/\D/g, "") || "").eq("store_id", activeStoreId),
+                                cloud.from("fortlev_quotations").select("*").filter("customer_json->>document", "eq", client.document?.replace(/\D/g, "") || ""),
+                                cloud.from("construction_quotations").select("*").filter("customer_json->>document", "eq", client.document?.replace(/\D/g, "") || "")
+                              ]);
+                              setSelectedClientOrders(orders.data || []);
+                              setSelectedClientQuotations([...(fortlev.data || []), ...(construction.data || [])]);
+                            } catch (e) {
+                              console.error("Erro ao carregar detalhes do cliente", e);
+                            }
                           }}
                         >
                           <span className="text-sm font-bold text-primary">{client.name}</span>
@@ -946,7 +959,81 @@ export default function AdminDashboardTracking() {
                   placeholder="Nome completo"
                 />
               </div>
-              <div className="space-y-2">
+            {selectedClientOrders.length > 0 && (
+              <div className="space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <Label className="text-xs font-bold uppercase text-slate-500">Pedidos encontrados</Label>
+                <div className="space-y-1">
+                  {selectedClientOrders.map(order => (
+                    <div key={order.id} className="text-[11px] flex justify-between items-center bg-white p-2 rounded border border-slate-100">
+                      <span className="font-mono font-bold">#{order.id.slice(0, 8)}</span>
+                      <span className="font-bold text-primary">R$ {order.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-slate-400">{new Date(order.created_at).toLocaleDateString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedClientQuotations.length > 0 && (
+              <div className="space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <Label className="text-xs font-bold uppercase text-slate-500">Orçamentos encontrados</Label>
+                <div className="space-y-1">
+                  {selectedClientQuotations.map(q => (
+                    <div key={q.id} className="text-[11px] flex justify-between items-center bg-white p-2 rounded border border-slate-100">
+                      <span className="font-mono font-bold">{q.number || q.id.slice(0, 8)}</span>
+                      <Badge variant="outline" className="text-[9px]">{q.status || 'Pendente'}</Badge>
+                      <span className="font-bold text-slate-600">R$ {q.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3 pt-2 border-t">
+              <Label>Como deseja gerar o rastreio?</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="vinculo" 
+                    checked={vinculoPedido === "existente"} 
+                    onChange={() => setVinculoPedido("existente")} 
+                  />
+                  <span className="text-sm">Vincular ao Pedido</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="vinculo" 
+                    checked={vinculoPedido === "independente"} 
+                    onChange={() => setVinculoPedido("independente")} 
+                  />
+                  <span className="text-sm">Criar Independente</span>
+                </label>
+              </div>
+            </div>
+
+            {vinculoPedido === "existente" && selectedClientOrders.length > 0 && (
+               <div className="space-y-2">
+                 <Label>Selecionar Pedido</Label>
+                 <select 
+                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                   onChange={(e) => {
+                      const order = selectedClientOrders.find(o => o.id === e.target.value);
+                      if (order) {
+                        // Poderíamos preencher mais campos aqui se necessário
+                      }
+                   }}
+                 >
+                   <option value="">Selecione um pedido...</option>
+                   {selectedClientOrders.map(o => (
+                     <option key={o.id} value={o.id}>Pedido #{o.id.slice(0, 8)} - R$ {o.total}</option>
+                   ))}
+                 </select>
+               </div>
+            )}
+
+            <div className="space-y-2">
                 <Label>CPF (Confirmado)</Label>
                 <Input 
                   value={generateForm.customer_cpf} 

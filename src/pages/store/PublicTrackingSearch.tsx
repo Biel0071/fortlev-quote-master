@@ -48,7 +48,9 @@ export default function PublicTrackingSearch() {
         query = query.filter("order.customer_cpf", "eq", cleanCpf);
       }
 
-      const { data, error } = await query.maybeSingle();
+      const { data, error } = await query;
+      
+      const resultData = Array.isArray(data) ? data[0] : data;
 
       if (error) throw error;
       if (!data) {

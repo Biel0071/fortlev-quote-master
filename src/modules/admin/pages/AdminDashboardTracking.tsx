@@ -68,13 +68,14 @@ export default function AdminDashboardTracking() {
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [matchingClients, setMatchingClients] = useState<any[]>([]);
+  const [filterType, setFilterType] = useState<"all" | "with_cpf" | "without_cpf">("all");
   const [generateForm, setGenerateForm] = useState({
     carrier_id: "",
     customer_name: "",
     customer_cpf: "",
     estimated_days: "7",
     tracking_code: "",
-    start_date: format(new Date(), "yyyy-MM-dd"), // Nova data de início
+    start_date: format(new Date(), "yyyy-MM-dd"),
   });
   const [carrierForm, setCarrierForm] = useState({
 
@@ -191,13 +192,23 @@ export default function AdminDashboardTracking() {
     }
   };
 
-  const searchClients = async (query: string) => {
+  const searchClients = async (query: string, currentFilter?: string) => {
     setClientSearch(query);
+    const activeFilter = currentFilter || filterType;
     try {
-      const { data, error } = await cloud
-        .from("store_customer_contacts")
-        .select("*")
-        .or(query ? `name.ilike.%${query}%,document.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%` : "name.neq.null")
+      let queryBuilder = cloud.from("store_customer_contacts").select("*");
+
+      if (query) {
+        queryBuilder = queryBuilder.or(`name.ilike.%${query}%,document.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%`);
+      }
+
+      if (activeFilter === "with_cpf") {
+        queryBuilder = queryBuilder.not("document", "is", null).neq("document", "");
+      } else if (activeFilter === "without_cpf") {
+        queryBuilder = queryBuilder.or("document.is.null,document.eq.");
+      }
+
+      const { data, error } = await queryBuilder
         .order("name", { ascending: true })
         .limit(50);
 
@@ -208,9 +219,6 @@ export default function AdminDashboardTracking() {
       }
 
       setMatchingClients(data || []);
-      
-      // Se tiver apenas 1 resultado e for pesquisa exata, poderíamos carregar detalhes, 
-      // mas vamos manter o fluxo de seleção manual por enquanto.
     } catch (err) {
       console.error("Erro ao buscar leads/clientes:", err);
     }
@@ -434,7 +442,8 @@ export default function AdminDashboardTracking() {
                     setVinculoPedido("existente");
                     
                     // Forçar carregamento da lista inicial em ordem alfabética
-                    await searchClients("");
+                    await searchClients("", "all");
+                    setFilterType("all");
                     
                     setGenerateDialogOpen(true);
                   }}>
@@ -931,21 +940,43 @@ export default function AdminDashboardTracking() {
             <DialogTitle>Gerar Novo Rastreio</DialogTitle>
             <DialogDescription>Crie um registro de rastreio manualmente para um cliente.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2 relative">
-              <Label>Pesquisar Cliente (Nome ou CPF)</Label>
+          <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-3 relative">
+              <div className="flex items-center justify-between">
+                <Label>Pesquisar Cliente</Label>
+                <div className="flex bg-muted p-0.5 rounded-md text-[10px]">
+                  <button 
+                    onClick={() => { setFilterType("all"); searchClients(clientSearch, "all"); }}
+                    className={`px-2 py-1 rounded ${filterType === 'all' ? 'bg-white shadow-sm font-bold' : 'text-muted-foreground'}`}
+                  >
+                    Todos
+                  </button>
+                  <button 
+                    onClick={() => { setFilterType("with_cpf"); searchClients(clientSearch, "with_cpf"); }}
+                    className={`px-2 py-1 rounded flex items-center gap-1 ${filterType === 'with_cpf' ? 'bg-white shadow-sm font-bold' : 'text-muted-foreground'}`}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Com CPF
+                  </button>
+                  <button 
+                    onClick={() => { setFilterType("without_cpf"); searchClients(clientSearch, "without_cpf"); }}
+                    className={`px-2 py-1 rounded flex items-center gap-1 ${filterType === 'without_cpf' ? 'bg-white shadow-sm font-bold' : 'text-muted-foreground'}`}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" /> Sem CPF
+                  </button>
+                </div>
+              </div>
+
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                   value={clientSearch}
                   onFocus={() => {
-                    // Sempre recarregar a lista inicial ao focar se estiver vazio
                     if (clientSearch.length === 0) {
-                      searchClients("");
+                      searchClients("", filterType);
                     }
                   }}
                   onChange={(e) => searchClients(e.target.value)}
-                  placeholder="Selecione um cliente da lista ou digite para buscar..."
+                  placeholder="Nome, CPF, Tel ou Email..."
                   className="pl-9"
                 />
               </div>
@@ -959,6 +990,7 @@ export default function AdminDashboardTracking() {
                           key={idx}
                           className="w-full text-left px-3 py-2 rounded-md hover:bg-primary/10 transition-colors flex flex-col gap-0.5"
                           onClick={async () => {
+                            const cpfNumbers = client.document?.replace(/\D/g, "") || "";
                             setGenerateForm({
                               ...generateForm,
                               customer_name: client.name,
@@ -967,23 +999,26 @@ export default function AdminDashboardTracking() {
                             setClientSearch(client.name);
                             setMatchingClients([]);
 
-                            // Carregar pedidos e orçamentos do cliente selecionado
                             try {
                               const [orders, fortlev, construction] = await Promise.all([
-                                cloud.from("store_orders").select("*").eq("customer_cpf", client.document?.replace(/\D/g, "") || "").eq("store_id", activeStoreId),
-                                cloud.from("fortlev_quotations").select("*").filter("customer_json->>document", "eq", client.document?.replace(/\D/g, "") || ""),
-                                cloud.from("construction_quotations").select("*").filter("customer_json->>document", "eq", client.document?.replace(/\D/g, "") || "")
+                                cloud.from("store_orders").select("*").eq("customer_cpf", cpfNumbers).eq("store_id", activeStoreId),
+                                cloud.from("fortlev_quotations").select("*").filter("customer_json->>document", "eq", cpfNumbers),
+                                cloud.from("construction_quotations").select("*").filter("customer_json->>document", "eq", cpfNumbers)
                               ]);
                               setSelectedClientOrders(orders.data || []);
                               setSelectedClientQuotations([...(fortlev.data || []), ...(construction.data || [])]);
+                              if (orders.data && orders.data.length > 0) setVinculoPedido("existente");
                             } catch (e) {
                               console.error("Erro ao carregar detalhes do cliente", e);
                             }
                           }}
                         >
-                          <span className="text-sm font-bold text-primary">{client.name}</span>
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-sm font-bold text-primary">{client.name}</span>
+                            <div className={`w-2 h-2 rounded-full ${client.document ? 'bg-green-500' : 'bg-red-500'}`} />
+                          </div>
                           <span className="text-[10px] text-muted-foreground font-mono">
-                            {client.document ? `CPF: ${client.document}` : client.phone}
+                            {client.document ? `CPF: ${client.document}` : client.phone || 'Sem contato'}
                           </span>
                         </button>
                       ))}

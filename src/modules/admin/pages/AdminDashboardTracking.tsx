@@ -218,7 +218,9 @@ export default function AdminDashboardTracking() {
 
   useEffect(() => {
     loadData();
-    
+  }, [activeStoreId]);
+
+  useEffect(() => {
     // Verificar se veio do painel de orçamentos (location.state)
     if (location.state && location.state.customer_name) {
       console.log("Recebido estado de navegação:", location.state);
@@ -233,7 +235,7 @@ export default function AdminDashboardTracking() {
       // Limpar o estado para não reabrir ao atualizar
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, activeStoreId]);
+  }, [location.state]);
 
   const [vinculoPedido, setVinculoPedido] = useState<"existente" | "independente">("existente");
   const [selectedClientOrders, setSelectedClientOrders] = useState<any[]>([]);

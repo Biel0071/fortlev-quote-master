@@ -1043,9 +1043,7 @@ export default function AdminDashboardTracking() {
                    ))}
                  </select>
                </div>
-            )}
-
-            </div>
+             )}
             
             <div className="space-y-2">
               <Label>Transportadora</Label>

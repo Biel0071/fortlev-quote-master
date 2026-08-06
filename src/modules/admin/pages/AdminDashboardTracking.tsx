@@ -191,19 +191,22 @@ export default function AdminDashboardTracking() {
 
   const searchClients = async (query: string) => {
     setClientSearch(query);
-    if (query.length < 3) {
-      setMatchingClients([]);
-      return;
-    }
+    // Se a query for pequena, podemos mostrar os últimos clientes por padrão
+    const isInitialLoad = query.length === 0;
 
     try {
-      // Buscar em pedidos e orçamentos (unificado via store_orders)
-      const { data, error } = await cloud
+      let queryBuilder = cloud
         .from("store_orders")
         .select("customer_name, customer_cpf")
-        .eq("store_id", activeStoreId)
-        .or(`customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%`)
-        .limit(5);
+        .eq("store_id", activeStoreId);
+      
+      if (!isInitialLoad) {
+        queryBuilder = queryBuilder.or(`customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%`);
+      }
+      
+      const { data, error } = await queryBuilder
+        .order('created_at', { ascending: false })
+        .limit(10);
 
       if (error) throw error;
 
@@ -356,7 +359,7 @@ export default function AdminDashboardTracking() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <CardTitle className="text-lg">Gestão de Entregas</CardTitle>
-                  <Button size="sm" onClick={() => {
+                  <Button size="sm" onClick={async () => {
                     setGenerateForm({
                       carrier_id: carriers[0]?.id || "",
                       customer_name: "",
@@ -365,6 +368,31 @@ export default function AdminDashboardTracking() {
                       tracking_code: "",
                       start_date: format(new Date(), "yyyy-MM-dd")
                     });
+                    setClientSearch("");
+                    setMatchingClients([]);
+                    
+                    // Pré-carregar lista inicial de clientes (contatos recentes)
+                    try {
+                      const { data } = await cloud
+                        .from("store_orders")
+                        .select("customer_name, customer_cpf")
+                        .eq("store_id", activeStoreId)
+                        .order('created_at', { ascending: false })
+                        .limit(10);
+                      
+                      if (data) {
+                        const uniqueClients = data.reduce((acc: any[], curr: any) => {
+                          if (!acc.find(c => c.customer_cpf === curr.customer_cpf)) {
+                            acc.push(curr);
+                          }
+                          return acc;
+                        }, []);
+                        setMatchingClients(uniqueClients);
+                      }
+                    } catch (e) {
+                      console.error("Erro ao carregar pré-lista:", e);
+                    }
+                    
                     setGenerateDialogOpen(true);
                   }}>
                     <Plus className="w-4 h-4 mr-2" /> Gerar Rastreio Manual
@@ -867,8 +895,14 @@ export default function AdminDashboardTracking() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                   value={clientSearch}
+                  onFocus={() => {
+                    if (clientSearch.length === 0 && matchingClients.length === 0) {
+                      // Se estiver vazio ao focar, tenta recarregar os recentes
+                      searchClients("");
+                    }
+                  }}
                   onChange={(e) => searchClients(e.target.value)}
-                  placeholder="Busque clientes que já compraram ou orçaram..."
+                  placeholder="Busque clientes ou veja a lista abaixo..."
                   className="pl-9"
                 />
               </div>

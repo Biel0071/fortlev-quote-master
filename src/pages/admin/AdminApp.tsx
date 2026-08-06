@@ -114,7 +114,8 @@ export default function AdminApp() {
           <Route path="categorias/editar/:id" element={<AdminCategoryForm />} />
 
         <Route path="tracking-dashboard" element={<AdminDashboardTracking />} />
-        <Route path="pedidos" element={<AdminOrders />} />
+          <Route path="tracking-dashboard" element={<AdminDashboardTracking />} />
+          <Route path="pedidos" element={<AdminOrders />} />
           <Route path="paginas" element={<AdminPages />} />
           <Route path="clientes" element={<AdminCustomers />} />
           <Route path="banners" element={<AdminBanners />} />

@@ -92,29 +92,37 @@ export default function PublicTrackingSearch() {
         <Card className="border-2 border-primary/5 shadow-xl rounded-3xl overflow-hidden">
           <CardContent className="p-6 sm:p-8">
             <form onSubmit={handleSearch} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="search" className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">
-                  Código de Rastreio, Pedido ou CPF
-                </Label>
-                <div className="relative">
-                  <Package className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                  <Input 
-                    id="search" 
-                    value={code || cpf} 
-                    onChange={e => {
-                      const val = e.target.value;
-                      // Tenta identificar se é CPF (apenas números e comprimento > 9) ou código
-                      if (/^\d+$/.test(val.replace(/[\.\-]/g, "")) && val.replace(/[\.\-]/g, "").length > 6) {
-                        setCpf(val);
-                        setCode("");
-                      } else {
-                        setCode(val);
-                        setCpf("");
-                      }
-                    }} 
-                    placeholder="Digite seu código ou CPF" 
-                    className="h-12 sm:h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700 text-sm sm:text-base"
-                  />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="search" className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">
+                    Código de Rastreio ou Pedido
+                  </Label>
+                  <div className="relative">
+                    <Package className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Input 
+                      id="search" 
+                      value={code} 
+                      onChange={e => setCode(e.target.value)} 
+                      placeholder="Digite seu código" 
+                      className="h-12 sm:h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700 text-sm sm:text-base"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cpf" className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">
+                    CPF
+                  </Label>
+                  <div className="relative">
+                    <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Input 
+                      id="cpf" 
+                      value={cpf} 
+                      onChange={e => setCpf(e.target.value)} 
+                      placeholder="Digite seu CPF" 
+                      className="h-12 sm:h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700 text-sm sm:text-base"
+                    />
+                  </div>
                 </div>
               </div>
               
@@ -313,24 +321,6 @@ export default function PublicTrackingSearch() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-3 sm:gap-6 pt-12">
-             {[
-               { icon: Truck, title: "Tempo Real", desc: "Acompanhe cada etapa logística da sua obra, desde a separação até a entrega final." },
-               { icon: ShieldCheck, title: "Segurança Total", desc: "Seus dados estão protegidos por criptografia de ponta a ponta durante toda a consulta." },
-               { icon: Calendar, title: "Previsões Reais", desc: "Algoritmos avançados calculam a data de entrega baseada no histórico de transporte." },
-             ].map((feature, i) => (
-                <button 
-                  key={i} 
-                  onClick={() => setActiveInfo({ title: feature.title, desc: feature.desc })}
-                  className="p-3 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-50/50 border border-slate-100 flex flex-col items-center text-center gap-2 sm:gap-4 hover:bg-white hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary">
-                     <feature.icon className="w-4 h-4 sm:w-6 sm:h-6" />
-                  </div>
-                  <h3 className="font-black uppercase tracking-tighter text-[10px] sm:text-base text-slate-800 leading-tight">{feature.title}</h3>
-               </button>
-             ))}
-          </div>
         )}
 
         <Dialog open={!!activeInfo} onOpenChange={(open) => !open && setActiveInfo(null)}>

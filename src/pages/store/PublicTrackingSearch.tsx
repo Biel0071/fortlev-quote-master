@@ -320,8 +320,7 @@ export default function PublicTrackingSearch() {
               Tentar Novamente
             </button>
           </div>
-        ) : (
-        )}
+        null)}
 
         <Dialog open={!!activeInfo} onOpenChange={(open) => !open && setActiveInfo(null)}>
           <DialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md">

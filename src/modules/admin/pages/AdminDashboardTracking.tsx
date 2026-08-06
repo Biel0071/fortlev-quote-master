@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useStore } from "@/contexts/StoreContext";
 import { cloud } from "@/lib/cloud";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -47,6 +48,7 @@ interface TrackingRecord {
 }
 
 export default function AdminDashboardTracking() {
+  const nav = useNavigate();
   const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
   const [trackingData, setTrackingData] = useState<TrackingRecord[]>([]);
@@ -347,7 +349,21 @@ export default function AdminDashboardTracking() {
                     {filteredTracking.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="font-mono font-medium">{item.tracking_code}</TableCell>
-                        <TableCell>#{item.order_id.slice(0, 8)}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">#{item.order_id.slice(0, 8)}</span>
+                            {item.order_id && (
+                              <Button 
+                                variant="link" 
+                                size="sm" 
+                                className="h-auto p-0 text-xs justify-start"
+                                onClick={() => nav(`/admin/pedidos?id=${item.order_id}`)}
+                              >
+                                Ver Detalhes
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="text-sm">
                             <div className="font-medium">{item.order?.customer_name || "N/A"}</div>
@@ -376,7 +392,6 @@ export default function AdminDashboardTracking() {
                             <Edit2 className="w-4 h-4" />
                           </Button>
                         </TableCell>
-
                       </TableRow>
                     ))}
                   </TableBody>

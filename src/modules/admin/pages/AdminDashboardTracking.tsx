@@ -191,42 +191,42 @@ export default function AdminDashboardTracking() {
 
   const searchClients = async (query: string) => {
     setClientSearch(query);
-    // Se a query for pequena, podemos mostrar os últimos clientes por padrão
     const isInitialLoad = query.length === 0;
 
     try {
       // Buscar em pedidos (store_orders) e orçamentos (store_quotations)
-      // Como store_orders já unifica muitos dados, mas o usuário quer "virando LEAD", 
-      // vamos garantir que pegamos de ambas as fontes se necessário ou tratar como leads unificados.
-      
       const [ordersRes, quotesRes] = await Promise.all([
         cloud.from("store_orders")
           .select("customer_name, customer_cpf")
           .eq("store_id", activeStoreId)
-          .or(!isInitialLoad ? `customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%` : "customer_name.neq.null")
-          .order('created_at', { ascending: false })
-          .limit(10),
+          .or(!isInitialLoad ? `customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%` : "customer_name.neq.null"),
         cloud.from("store_quotations")
           .select("customer_name, customer_cpf")
           .eq("store_id", activeStoreId)
           .or(!isInitialLoad ? `customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%` : "customer_name.neq.null")
-          .order('created_at', { ascending: false })
-          .limit(10)
       ]);
 
       const combinedData = [...(ordersRes.data || []), ...(quotesRes.data || [])];
 
-      // Remover duplicatas por CPF e tratar como Lista de Leads/Clientes unificada
+      // Remover duplicatas por CPF, normalizar e filtrar campos vazios
       const uniqueLeads = combinedData.reduce((acc: any[], curr: any) => {
-        if (!curr.customer_cpf || !curr.customer_name) return acc;
+        if (!curr.customer_name || !curr.customer_cpf) return acc;
+        
         const normalizedCpf = curr.customer_cpf.replace(/\D/g, "");
+        if (normalizedCpf.length < 1) return acc;
+
         if (!acc.find(c => (c.customer_cpf?.replace(/\D/g, "") === normalizedCpf))) {
           acc.push(curr);
         }
         return acc;
       }, []);
 
-      setMatchingClients(uniqueLeads.slice(0, 10));
+      // Ordenar por ordem alfabética do nome
+      const sortedLeads = uniqueLeads.sort((a, b) => 
+        a.customer_name.localeCompare(b.customer_name, 'pt-BR', { sensitivity: 'base' })
+      );
+
+      setMatchingClients(sortedLeads.slice(0, 50)); // Aumentado para ver mais na lista inicial
     } catch (err) {
       console.error("Erro ao buscar leads/clientes:", err);
     }
@@ -904,13 +904,13 @@ export default function AdminDashboardTracking() {
                 <Input 
                   value={clientSearch}
                   onFocus={() => {
-                    if (clientSearch.length === 0 && matchingClients.length === 0) {
-                      // Se estiver vazio ao focar, tenta recarregar os recentes
+                    // Sempre recarregar a lista inicial ao focar se estiver vazio
+                    if (clientSearch.length === 0) {
                       searchClients("");
                     }
                   }}
                   onChange={(e) => searchClients(e.target.value)}
-                  placeholder="Busque clientes ou veja a lista abaixo..."
+                  placeholder="Selecione um cliente da lista ou digite para buscar..."
                   className="pl-9"
                 />
               </div>

@@ -105,10 +105,11 @@ const App = () => (
             <ThemeBoot>
               <Toaster />
               <Sonner />
-            <ScrollToTop />
-            <RoutePrefetcher />
-            <CookieConsentBanner />
-            <Suspense fallback={<PageSkeleton />}>
+              <ScrollToTop />
+              <RoutePrefetcher />
+              <CookieConsentBanner />
+              <FloatingChatButton />
+              <Suspense fallback={<PageSkeleton />}>
               <Routes>
                 {/* Rota raiz explicitamente definida */}
                 <Route path="/" element={<StoreHome />} />

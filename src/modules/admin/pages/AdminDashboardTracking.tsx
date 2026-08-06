@@ -14,6 +14,7 @@ import { OrderTrackingDialog } from "../components/OrderTrackingDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import PublicTrackingSearch from "@/pages/store/PublicTrackingSearch";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -58,6 +59,7 @@ export default function AdminDashboardTracking() {
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewStep, setPreviewStep] = useState(0);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [generateForm, setGenerateForm] = useState({
     carrier_id: "",
@@ -290,7 +292,7 @@ export default function AdminDashboardTracking() {
         <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="tracking">Rastreios Ativos</TabsTrigger>
           <TabsTrigger value="carriers">Transportadoras</TabsTrigger>
-          <TabsTrigger value="preview">Preview do Cliente</TabsTrigger>
+          <TabsTrigger value="preview">Preview & Fluxo</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tracking" className="space-y-4">

@@ -50,6 +50,7 @@ export default function PublicTrackingSearch() {
 
       if (error) throw error;
       if (!data) {
+        setResult({ notFound: true });
         toast({ title: "Não encontrado", description: "Nenhum pedido encontrado para os dados informados.", variant: "destructive" });
       } else {
         setResult(data);
@@ -121,7 +122,7 @@ export default function PublicTrackingSearch() {
           </CardContent>
         </Card>
 
-        {result ? (
+        {result && !result.notFound ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Main Result Card */}
             <Card className="overflow-hidden border-2 border-primary/10 shadow-2xl rounded-3xl">
@@ -283,6 +284,24 @@ export default function PublicTrackingSearch() {
                </button>
             </div>
           </div>
+        ) : result?.notFound ? (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-6 animate-in fade-in zoom-in duration-300">
+            <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+              <Search className="w-10 h-10" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-slate-800 uppercase">Não encontrado</h2>
+              <p className="text-muted-foreground max-w-sm">Não foi encontrado rastreio para o pedido com os dados informados.</p>
+            </div>
+            <Button asChild className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-green-500/20 bg-green-600 hover:bg-green-700">
+              <a href="https://wa.me/553175193626?text=Olá, não consegui rastrear minha entrega" target="_blank" rel="noreferrer">
+                Falar no WhatsApp
+              </a>
+            </Button>
+            <button onClick={() => { setResult(null); setCode(""); setCpf(""); }} className="text-xs font-black uppercase tracking-widest text-primary hover:underline">
+              Tentar Novamente
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12">
              {[
@@ -290,8 +309,8 @@ export default function PublicTrackingSearch() {
                { icon: ShieldCheck, title: "Segurança Total", desc: "Seus dados estão protegidos por criptografia de ponta a ponta durante toda a consulta." },
                { icon: Calendar, title: "Previsões Reais", desc: "Algoritmos avançados calculam a data de entrega baseada no histórico de transporte." },
              ].map((feature, i) => (
-               <div key={i} className="p-6 rounded-3xl bg-slate-50/50 border border-slate-100 space-y-3 text-center md:text-left hover:bg-white hover:shadow-lg transition-all duration-300">
-                  <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary mx-auto md:mx-0">
+                <div key={i} className="p-6 rounded-3xl bg-slate-50/50 border border-slate-100 space-y-4 text-center hover:bg-white hover:shadow-lg transition-all duration-300">
+                  <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary mx-auto">
                      <feature.icon className="w-6 h-6" />
                   </div>
                   <h3 className="font-black uppercase tracking-tight text-base text-slate-800">{feature.title}</h3>

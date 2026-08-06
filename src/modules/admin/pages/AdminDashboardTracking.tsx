@@ -193,10 +193,8 @@ export default function AdminDashboardTracking() {
       const { data: order, error: orderError } = await cloud.from("store_orders").insert({
         store_id: activeStoreId,
         customer_name: generateForm.customer_name,
-        customer_cpf: generateForm.customer_cpf,
         total: 0,
         status: "shipping",
-        items: []
       }).select().single();
 
       if (orderError) throw orderError;
@@ -549,8 +547,10 @@ export default function AdminDashboardTracking() {
               </div>
             </CardHeader>
             <CardContent className="px-0">
-              <div className={`mx-auto transition-all duration-500 ease-in-out relative border rounded-[2.5rem] overflow-hidden bg-slate-50 shadow-2xl ${
-                previewMode === "mobile" ? "max-w-[375px] h-[750px] border-[12px] border-slate-900" : "w-full h-[800px] border border-slate-200"
+              <div className={`mx-auto transition-all duration-500 ease-in-out relative border overflow-hidden bg-slate-50 shadow-2xl ${
+                previewMode === "mobile" 
+                  ? "w-[392px] h-[852px] rounded-[3rem] border-[12px] border-slate-900" 
+                  : "w-full h-[800px] rounded-[2.5rem] border border-slate-200"
               }`}>
                 <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-20">
                   <Button 
@@ -576,7 +576,7 @@ export default function AdminDashboardTracking() {
                   </Button>
                 </div>
 
-                <ScrollArea className={`${previewMode === "mobile" ? "h-[734px]" : "h-[790px]"} w-full`}>
+                <ScrollArea className={`${previewMode === "mobile" ? "h-[830px]" : "h-[790px]"} w-full`}>
                   <div className={`p-4 pt-16 admin-preview-mode ${previewMode === "mobile" ? "px-2" : "px-6"}`}>
                     {previewStep === 0 && <PublicTrackingSearch />}
                     {previewStep === 1 && (

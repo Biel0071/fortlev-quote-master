@@ -323,6 +323,10 @@ export default function ConstructionOverview() {
                               <DropdownMenuItem onClick={() => handleDownloadNFe(q)}>
                                 <Receipt className="h-4 w-4 mr-2" />Baixar DANFE / NF-e
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate("/admin/dashboard/tracking", { state: { customer_name: q.customer.name, customer_cpf: q.customer.cpfCnpj, vinculo: 'existente', order_id: q.id } })}>
+                                <Truck className="h-4 w-4 mr-2 text-orange-500" />
+                                Gerar Rastreio
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

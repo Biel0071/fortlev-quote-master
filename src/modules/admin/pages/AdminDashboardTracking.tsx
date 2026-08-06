@@ -216,6 +216,25 @@ export default function AdminDashboardTracking() {
     }
   };
 
+  useEffect(() => {
+    loadData();
+    
+    // Verificar se veio do painel de orçamentos (location.state)
+    if (location.state && location.state.customer_name) {
+      console.log("Recebido estado de navegação:", location.state);
+      setGenerateDialogOpen(true);
+      setGenerateForm(prev => ({
+        ...prev,
+        customer_name: location.state.customer_name,
+        customer_cpf: location.state.customer_cpf || ""
+      }));
+      setVinculoPedido(location.state.vinculo || "independente");
+      
+      // Limpar o estado para não reabrir ao atualizar
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, activeStoreId]);
+
   const [vinculoPedido, setVinculoPedido] = useState<"existente" | "independente">("existente");
   const [selectedClientOrders, setSelectedClientOrders] = useState<any[]>([]);
   const [selectedClientQuotations, setSelectedClientQuotations] = useState<any[]>([]);

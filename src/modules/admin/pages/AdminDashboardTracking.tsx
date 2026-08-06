@@ -206,10 +206,17 @@ export default function AdminDashboardTracking() {
       }
 
       setMatchingClients(data || []);
+      
+      // Se tiver apenas 1 resultado e for pesquisa exata, poderíamos carregar detalhes, 
+      // mas vamos manter o fluxo de seleção manual por enquanto.
     } catch (err) {
       console.error("Erro ao buscar leads/clientes:", err);
     }
   };
+
+  const [vinculoPedido, setVinculoPedido] = useState<"existente" | "independente">("existente");
+  const [selectedClientOrders, setSelectedClientOrders] = useState<any[]>([]);
+  const [selectedClientQuotations, setSelectedClientQuotations] = useState<any[]>([]);
 
   const handleGenerateTracking = async () => {
     if (!activeStoreId) return;

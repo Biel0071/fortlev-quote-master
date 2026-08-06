@@ -64,6 +64,8 @@ export default function AdminDashboardTracking() {
   const [previewStep, setPreviewStep] = useState(0);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
+  const [matchingClients, setMatchingClients] = useState<any[]>([]);
   const [generateForm, setGenerateForm] = useState({
     carrier_id: "",
     customer_name: "",
@@ -184,6 +186,38 @@ export default function AdminDashboardTracking() {
       loadData();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const searchClients = async (query: string) => {
+    setClientSearch(query);
+    if (query.length < 3) {
+      setMatchingClients([]);
+      return;
+    }
+
+    try {
+      // Buscar em pedidos e orçamentos (unificado via store_orders)
+      const { data, error } = await cloud
+        .from("store_orders")
+        .select("customer_name, customer_cpf")
+        .eq("store_id", activeStoreId)
+        .or(`customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%`)
+        .limit(5);
+
+      if (error) throw error;
+
+      // Remover duplicatas por CPF
+      const uniqueClients = (data || []).reduce((acc: any[], curr: any) => {
+        if (!acc.find(c => c.customer_cpf === curr.customer_cpf)) {
+          acc.push(curr);
+        }
+        return acc;
+      }, []);
+
+      setMatchingClients(uniqueClients);
+    } catch (err) {
+      console.error("Erro ao buscar clientes:", err);
     }
   };
 
@@ -827,9 +861,49 @@ export default function AdminDashboardTracking() {
             <DialogDescription>Crie um registro de rastreio manualmente para um cliente.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2 relative">
+              <Label>Pesquisar Cliente (Nome ou CPF)</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  value={clientSearch}
+                  onChange={(e) => searchClients(e.target.value)}
+                  placeholder="Busque clientes que já compraram ou orçaram..."
+                  className="pl-9"
+                />
+              </div>
+              
+              {matchingClients.length > 0 && (
+                <Card className="absolute z-50 w-full mt-1 shadow-xl border-primary/20 animate-in fade-in zoom-in-95 duration-200">
+                  <ScrollArea className="h-[200px]">
+                    <div className="p-1">
+                      {matchingClients.map((client, idx) => (
+                        <button
+                          key={idx}
+                          className="w-full text-left px-3 py-2 rounded-md hover:bg-primary/10 transition-colors flex flex-col gap-0.5"
+                          onClick={() => {
+                            setGenerateForm({
+                              ...generateForm,
+                              customer_name: client.customer_name,
+                              customer_cpf: client.customer_cpf
+                            });
+                            setClientSearch(client.customer_name);
+                            setMatchingClients([]);
+                          }}
+                        >
+                          <span className="text-sm font-bold text-primary">{client.customer_name}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">CPF: {client.customer_cpf}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </Card>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nome do Cliente</Label>
+                <Label>Nome do Cliente (Confirmado)</Label>
                 <Input 
                   value={generateForm.customer_name} 
                   onChange={(e) => setGenerateForm({ ...generateForm, customer_name: e.target.value })}
@@ -837,7 +911,7 @@ export default function AdminDashboardTracking() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>CPF</Label>
+                <Label>CPF (Confirmado)</Label>
                 <Input 
                   value={generateForm.customer_cpf} 
                   onChange={(e) => setGenerateForm({ ...generateForm, customer_cpf: e.target.value })}

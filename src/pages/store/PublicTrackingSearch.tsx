@@ -70,7 +70,7 @@ export default function PublicTrackingSearch() {
 
 
   return (
-    <div className="min-h-screen bg-background pb-24 md:pb-12">
+    <div className="min-h-screen bg-background pb-24 md:pb-12 tracking-search-page">
       <AppHeader cartCount={0} />
       <StoreMobileChrome cartCount={0} />
       

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Edit2, Package, Truck, CheckCircle2, AlertCircle, Clock, MapPin, Globe, ExternalLink, Trash2, Eye } from "lucide-react";
+import { Search, Plus, Edit2, Package, Truck, CheckCircle2, AlertCircle, Clock, MapPin, Globe, ExternalLink, Trash2, Eye, Smartphone, Monitor } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -60,6 +60,7 @@ export default function AdminDashboardTracking() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewStep, setPreviewStep] = useState(0);
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [generateForm, setGenerateForm] = useState({
     carrier_id: "",
@@ -491,73 +492,98 @@ export default function AdminDashboardTracking() {
         </TabsContent>
 
         <TabsContent value="preview" className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card className="border-none shadow-none bg-transparent">
+            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 px-0">
               <div>
-                <CardTitle className="text-lg">Fluxo de Experiência do Cliente</CardTitle>
+                <CardTitle className="text-xl font-bold">Fluxo de Experiência do Cliente</CardTitle>
                 <CardDescription>Simule a jornada do cliente desde a pesquisa até a entrega.</CardDescription>
               </div>
-              <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
-                <Button 
-                  variant={previewStep === 0 ? "default" : "ghost"} 
-                  size="sm" 
-                  onClick={() => setPreviewStep(0)}
-                  className="rounded-lg text-xs"
-                >
-                  1. Pesquisa
-                </Button>
-                <Button 
-                  variant={previewStep === 1 ? "default" : "ghost"} 
-                  size="sm" 
-                  onClick={() => setPreviewStep(1)}
-                  className="rounded-lg text-xs"
-                >
-                  2. Em Trânsito
-                </Button>
-                <Button 
-                  variant={previewStep === 2 ? "default" : "ghost"} 
-                  size="sm" 
-                  onClick={() => setPreviewStep(2)}
-                  className="rounded-lg text-xs"
-                >
-                  3. Entregue
-                </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                  <Button 
+                    variant={previewMode === "desktop" ? "default" : "ghost"} 
+                    size="sm" 
+                    onClick={() => setPreviewMode("desktop")}
+                    className="rounded-lg h-8 w-8 p-0"
+                    title="Desktop"
+                  >
+                    <Monitor className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant={previewMode === "mobile" ? "default" : "ghost"} 
+                    size="sm" 
+                    onClick={() => setPreviewMode("mobile")}
+                    className="rounded-lg h-8 w-8 p-0"
+                    title="Mobile"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                  <Button 
+                    variant={previewStep === 0 ? "default" : "ghost"} 
+                    size="sm" 
+                    onClick={() => setPreviewStep(0)}
+                    className="rounded-lg text-[10px] font-bold uppercase tracking-tighter h-8"
+                  >
+                    1. Pesquisa
+                  </Button>
+                  <Button 
+                    variant={previewStep === 1 ? "default" : "ghost"} 
+                    size="sm" 
+                    onClick={() => setPreviewStep(1)}
+                    className="rounded-lg text-[10px] font-bold uppercase tracking-tighter h-8"
+                  >
+                    2. Trânsito
+                  </Button>
+                  <Button 
+                    variant={previewStep === 2 ? "default" : "ghost"} 
+                    size="sm" 
+                    onClick={() => setPreviewStep(2)}
+                    className="rounded-lg text-[10px] font-bold uppercase tracking-tighter h-8"
+                  >
+                    3. Entregue
+                  </Button>
+                </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="relative border rounded-2xl overflow-hidden bg-slate-50 min-h-[600px]">
+            <CardContent className="px-0">
+              <div className={`mx-auto transition-all duration-500 ease-in-out relative border rounded-[2.5rem] overflow-hidden bg-slate-50 shadow-2xl ${
+                previewMode === "mobile" ? "max-w-[375px] h-[750px] border-[12px] border-slate-900" : "w-full h-[800px] border border-slate-200"
+              }`}>
                 <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-20">
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    className="rounded-full bg-white/80 backdrop-blur shadow-sm"
+                    className="rounded-full bg-white/80 backdrop-blur shadow-sm h-8 w-8"
                     disabled={previewStep === 0}
                     onClick={() => setPreviewStep(s => s - 1)}
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4" />
                   </Button>
-                  <div className="px-4 py-2 rounded-full bg-slate-900/80 text-white text-[10px] font-black uppercase tracking-widest backdrop-blur">
-                    {previewStep === 0 ? "Tela de Busca Pública" : previewStep === 1 ? "Acompanhamento em Trânsito" : "Confirmação de Entrega"}
+                  <div className="px-3 py-1 rounded-full bg-slate-900/90 text-white text-[8px] font-black uppercase tracking-widest backdrop-blur">
+                    {previewStep === 0 ? "Busca" : previewStep === 1 ? "Trânsito" : "Entregue"}
                   </div>
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    className="rounded-full bg-white/80 backdrop-blur shadow-sm"
+                    className="rounded-full bg-white/80 backdrop-blur shadow-sm h-8 w-8"
                     disabled={previewStep === 2}
                     onClick={() => setPreviewStep(s => s + 1)}
                   >
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>
 
-                <ScrollArea className="h-[700px] w-full">
-                  <div className="p-4 pt-16">
+                <ScrollArea className={`${previewMode === "mobile" ? "h-[734px]" : "h-[790px]"} w-full`}>
+                  <div className={`p-4 pt-16 admin-preview-mode ${previewMode === "mobile" ? "px-2" : "px-6"}`}>
                     {previewStep === 0 && <PublicTrackingSearch />}
                     {previewStep === 1 && (
                       <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">
-                         <div className="bg-primary p-8 text-white rounded-t-3xl">
-                            <h2 className="text-3xl font-black uppercase mb-1">Em Transporte</h2>
-                            <p className="opacity-80 text-sm font-bold">Objeto em trânsito para a unidade de distribuição</p>
+                         <div className={`bg-primary ${previewMode === "mobile" ? "p-4" : "p-8"} text-white rounded-t-3xl`}>
+                            <h2 className={`${previewMode === "mobile" ? "text-xl" : "text-3xl"} font-black uppercase mb-1`}>Em Transporte</h2>
+                            <p className="opacity-80 text-[10px] md:text-sm font-bold">Objeto em trânsito para a unidade de distribuição</p>
                             <div className="mt-8 space-y-4">
                                <div className="flex justify-between text-xs font-black uppercase opacity-60">
                                   <span>Progresso</span>
@@ -592,13 +618,13 @@ export default function AdminDashboardTracking() {
                     )}
                     {previewStep === 2 && (
                       <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">
-                         <div className="bg-green-600 p-8 text-white rounded-t-3xl flex items-center justify-between">
+                          <div className={`bg-green-600 ${previewMode === "mobile" ? "p-4" : "p-8"} text-white rounded-t-3xl flex items-center justify-between`}>
                             <div>
-                               <h2 className="text-3xl font-black uppercase mb-1">Entregue</h2>
-                               <p className="opacity-80 text-sm font-bold">O objeto foi entregue ao destinatário</p>
+                               <h2 className={`${previewMode === "mobile" ? "text-xl" : "text-3xl"} font-black uppercase mb-1`}>Entregue</h2>
+                               <p className="opacity-80 text-[10px] md:text-sm font-bold">O objeto foi entregue ao destinatário</p>
                             </div>
-                            <CheckCircle2 className="w-16 h-16 opacity-30" />
-                         </div>
+                            <CheckCircle2 className={`${previewMode === "mobile" ? "w-8 h-8" : "w-16 h-16"} opacity-30`} />
+                          </div>
                          <div className="bg-white p-8 rounded-b-3xl border-x border-b">
                             <div className="flex flex-col items-center text-center py-10 space-y-4">
                                <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center text-green-600">

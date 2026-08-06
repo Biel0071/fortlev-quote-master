@@ -103,8 +103,7 @@ export default function AdminDashboardTracking() {
             *,
             status:order_tracking_status(label, color),
             carrier:order_tracking_carriers(name),
-            order:store_orders(customer_name, customer_phone, store_id)
-          
+            order:store_orders(customer_name, customer_phone, customer_cpf, store_id)
           `)
           .eq("store_id", activeStoreId)
           .order("created_at", { ascending: false }),
@@ -196,23 +195,34 @@ export default function AdminDashboardTracking() {
       const { data: order, error: orderError } = await cloud.from("store_orders").insert({
         store_id: activeStoreId,
         customer_name: generateForm.customer_name,
+        customer_cpf: generateForm.customer_cpf.replace(/\D/g, ""), // Ensure we have the CPF here
         total: 0,
-        status: "shipping",
+        status: "separando", // Using "separando" as it's a valid enum value
       }).select().single();
 
       if (orderError) throw orderError;
 
       // 2. Create the tracking record
-      const { error: trackingError } = await cloud.from("order_tracking_main").insert({
+      const { data: tracking, error: trackingError } = await cloud.from("order_tracking_main").insert({
         store_id: activeStoreId,
         order_id: order.id,
         carrier_id: generateForm.carrier_id,
         tracking_code: code,
         status_id: "77777777-7777-7777-7777-777777777771", // Objeto postado
         estimated_delivery_at: new Date(Date.now() + (parseInt(generateForm.estimated_days) * 86400000)).toISOString()
-      });
+      }).select().single();
 
       if (trackingError) throw trackingError;
+
+      // 3. Add initial timeline event
+      await cloud.from("order_tracking_timeline").insert({
+        tracking_id: tracking.id,
+        status_id: "77777777-7777-7777-7777-777777777771",
+        title: "Objeto postado",
+        description: "O vendedor postou o seu objeto.",
+        location_city: "Centro de Distribuição",
+        event_at: new Date().toISOString()
+      });
 
       toast({ title: "Sucesso", description: `Rastreio ${code} gerado!` });
       setGenerateDialogOpen(false);

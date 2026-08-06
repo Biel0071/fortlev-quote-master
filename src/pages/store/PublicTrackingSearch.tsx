@@ -95,31 +95,24 @@ export default function PublicTrackingSearch() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="search" className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">
-                    Código de Rastreio ou Pedido
+                    Código de Rastreio, Pedido ou CPF
                   </Label>
                   <div className="relative">
                     <Package className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                     <Input 
                       id="search" 
                       value={code} 
-                      onChange={e => setCode(e.target.value)} 
-                      placeholder="Digite seu código" 
-                      className="h-12 sm:h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700 text-sm sm:text-base"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cpf" className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">
-                    CPF
-                  </Label>
-                  <div className="relative">
-                    <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                    <Input 
-                      id="cpf" 
-                      value={cpf} 
-                      onChange={e => setCpf(e.target.value)} 
-                      placeholder="Digite seu CPF" 
+                      onChange={e => {
+                        const val = e.target.value;
+                        setCode(val);
+                        // Auto-detect CPF to sync fields if needed, but here we unify the logic
+                        if (/^\d+$/.test(val.replace(/[\.\-]/g, "")) && val.replace(/[\.\-]/g, "").length > 9) {
+                          setCpf(val);
+                        } else {
+                          setCpf("");
+                        }
+                      }} 
+                      placeholder="Digite seu código ou CPF" 
                       className="h-12 sm:h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700 text-sm sm:text-base"
                     />
                   </div>
@@ -129,7 +122,7 @@ export default function PublicTrackingSearch() {
               <Button 
                 type="submit" 
                 className="w-full h-12 sm:h-14 text-[13px] sm:text-base font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all px-2" 
-                disabled={loading || (!code && !cpf)}
+                disabled={loading || !code}
               >
                 {loading ? <Clock className="animate-spin mr-2 w-4 h-4 sm:w-5 sm:h-5" /> : <Search className="mr-2 w-4 h-4 sm:w-5 sm:h-5" />}
                 <span className="truncate">Consultar Status de Entrega</span>

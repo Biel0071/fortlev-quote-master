@@ -195,32 +195,40 @@ export default function AdminDashboardTracking() {
     const isInitialLoad = query.length === 0;
 
     try {
-      let queryBuilder = cloud
-        .from("store_orders")
-        .select("customer_name, customer_cpf")
-        .eq("store_id", activeStoreId);
+      // Buscar em pedidos (store_orders) e orçamentos (store_quotations)
+      // Como store_orders já unifica muitos dados, mas o usuário quer "virando LEAD", 
+      // vamos garantir que pegamos de ambas as fontes se necessário ou tratar como leads unificados.
       
-      if (!isInitialLoad) {
-        queryBuilder = queryBuilder.or(`customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%`);
-      }
-      
-      const { data, error } = await queryBuilder
-        .order('created_at', { ascending: false })
-        .limit(10);
+      const [ordersRes, quotesRes] = await Promise.all([
+        cloud.from("store_orders")
+          .select("customer_name, customer_cpf")
+          .eq("store_id", activeStoreId)
+          .or(!isInitialLoad ? `customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%` : "customer_name.neq.null")
+          .order('created_at', { ascending: false })
+          .limit(10),
+        cloud.from("store_quotations")
+          .select("customer_name, customer_cpf")
+          .eq("store_id", activeStoreId)
+          .or(!isInitialLoad ? `customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%` : "customer_name.neq.null")
+          .order('created_at', { ascending: false })
+          .limit(10)
+      ]);
 
-      if (error) throw error;
+      const combinedData = [...(ordersRes.data || []), ...(quotesRes.data || [])];
 
-      // Remover duplicatas por CPF
-      const uniqueClients = (data || []).reduce((acc: any[], curr: any) => {
-        if (!acc.find(c => c.customer_cpf === curr.customer_cpf)) {
+      // Remover duplicatas por CPF e tratar como Lista de Leads/Clientes unificada
+      const uniqueLeads = combinedData.reduce((acc: any[], curr: any) => {
+        if (!curr.customer_cpf || !curr.customer_name) return acc;
+        const normalizedCpf = curr.customer_cpf.replace(/\D/g, "");
+        if (!acc.find(c => (c.customer_cpf?.replace(/\D/g, "") === normalizedCpf))) {
           acc.push(curr);
         }
         return acc;
       }, []);
 
-      setMatchingClients(uniqueClients);
+      setMatchingClients(uniqueLeads.slice(0, 10));
     } catch (err) {
-      console.error("Erro ao buscar clientes:", err);
+      console.error("Erro ao buscar leads/clientes:", err);
     }
   };
 

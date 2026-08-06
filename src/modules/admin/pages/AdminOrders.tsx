@@ -165,7 +165,14 @@ export default function AdminOrders() {
 
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>{selectedTitle}</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>{selectedTitle}</CardTitle>
+              {selected && (
+                <Button variant="outline" size="sm" onClick={() => setTrackingOpen(true)} className="gap-2">
+                  <MapPin className="w-4 h-4" /> Rastreamento
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {!selected ? (
@@ -256,6 +263,21 @@ export default function AdminOrders() {
           </CardContent>
         </Card>
       </main>
+
+      {selected && (
+        <Dialog open={trackingOpen} onOpenChange={setTrackingOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Gerenciar Rastreamento - Pedido #{selected.id.slice(0, 8)}</DialogTitle>
+            </DialogHeader>
+            <OrderTrackingDialog 
+              order={selected} 
+              onClose={() => setTrackingOpen(false)} 
+              onUpdate={load}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

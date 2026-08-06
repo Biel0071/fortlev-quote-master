@@ -11,6 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
 import type { StoreOrder, StoreOrderItem } from "@/types/store";
+import { OrderTrackingDialog } from "../components/OrderTrackingDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MapPin } from "lucide-react";
+
 
 const STATUS_OPTIONS = ["aguardando", "pago", "separando", "enviado", "finalizado"] as const;
 

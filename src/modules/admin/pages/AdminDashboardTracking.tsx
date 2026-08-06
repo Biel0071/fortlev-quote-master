@@ -101,7 +101,8 @@ export default function AdminDashboardTracking() {
             *,
             status:order_tracking_status(label, color),
             carrier:order_tracking_carriers(name),
-            order:store_orders(customer_name, customer_phone)
+            order:store_orders(customer_name, customer_phone, store_id)
+          
           `)
           .eq("store_id", activeStoreId)
           .order("created_at", { ascending: false }),
@@ -206,7 +207,7 @@ export default function AdminDashboardTracking() {
         carrier_id: generateForm.carrier_id,
         tracking_code: code,
         status_id: "77777777-7777-7777-7777-777777777771", // Objeto postado
-        estimated_delivery: new Date(Date.now() + (parseInt(generateForm.estimated_days) * 86400000)).toISOString()
+        estimated_delivery_at: new Date(Date.now() + (parseInt(generateForm.estimated_days) * 86400000)).toISOString()
       });
 
       if (trackingError) throw trackingError;

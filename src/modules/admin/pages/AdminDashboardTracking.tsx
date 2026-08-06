@@ -581,9 +581,9 @@ export default function AdminDashboardTracking() {
                     {previewStep === 0 && <PublicTrackingSearch />}
                     {previewStep === 1 && (
                       <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">
-                         <div className="bg-primary p-8 text-white rounded-t-3xl">
-                            <h2 className="text-3xl font-black uppercase mb-1">Em Transporte</h2>
-                            <p className="opacity-80 text-sm font-bold">Objeto em trânsito para a unidade de distribuição</p>
+                         <div className={`bg-primary ${previewMode === "mobile" ? "p-4" : "p-8"} text-white rounded-t-3xl`}>
+                            <h2 className={`${previewMode === "mobile" ? "text-xl" : "text-3xl"} font-black uppercase mb-1`}>Em Transporte</h2>
+                            <p className="opacity-80 text-[10px] md:text-sm font-bold">Objeto em trânsito para a unidade de distribuição</p>
                             <div className="mt-8 space-y-4">
                                <div className="flex justify-between text-xs font-black uppercase opacity-60">
                                   <span>Progresso</span>

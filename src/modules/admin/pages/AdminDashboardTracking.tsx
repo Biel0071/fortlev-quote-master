@@ -344,9 +344,12 @@ export default function AdminDashboardTracking() {
         tracking_code: "",
         start_date: format(new Date(), "yyyy-MM-dd")
       });
+      setSelectedOrderId("");
       loadData();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
   };
 

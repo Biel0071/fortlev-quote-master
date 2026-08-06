@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Package, Truck, CheckCircle2, MapPin, Calendar, Clock, ArrowLeft, Box, ShieldCheck, CreditCard } from "lucide-react";
+import { Search, Package, Truck, CheckCircle2, MapPin, Calendar, Clock, ArrowLeft, Box, ShieldCheck, CreditCard, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useSearchParams, Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { formatCurrency } from "@/utils/formatters";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ export default function PublicTrackingSearch() {
   const [code, setCode] = useState(searchParams.get("q") || "");
   const [cpf, setCpf] = useState("");
   const [result, setResult] = useState<any>(null);
+  const [activeInfo, setActiveInfo] = useState<{ title: string; desc: string } | null>(null);
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -311,22 +313,44 @@ export default function PublicTrackingSearch() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12">
+          <div className="grid grid-cols-3 gap-3 sm:gap-6 pt-12">
              {[
                { icon: Truck, title: "Tempo Real", desc: "Acompanhe cada etapa logística da sua obra, desde a separação até a entrega final." },
                { icon: ShieldCheck, title: "Segurança Total", desc: "Seus dados estão protegidos por criptografia de ponta a ponta durante toda a consulta." },
                { icon: Calendar, title: "Previsões Reais", desc: "Algoritmos avançados calculam a data de entrega baseada no histórico de transporte." },
              ].map((feature, i) => (
-                <div key={i} className="p-6 rounded-3xl bg-slate-50/50 border border-slate-100 space-y-4 text-center hover:bg-white hover:shadow-lg transition-all duration-300">
-                  <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary mx-auto">
-                     <feature.icon className="w-6 h-6" />
+                <button 
+                  key={i} 
+                  onClick={() => setActiveInfo({ title: feature.title, desc: feature.desc })}
+                  className="p-3 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-50/50 border border-slate-100 flex flex-col items-center text-center gap-2 sm:gap-4 hover:bg-white hover:shadow-lg transition-all duration-300"
+                >
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary">
+                     <feature.icon className="w-4 h-4 sm:w-6 sm:h-6" />
                   </div>
-                  <h3 className="font-black uppercase tracking-tight text-base text-slate-800">{feature.title}</h3>
-                  <p className="text-xs text-slate-500 font-medium leading-relaxed">{feature.desc}</p>
-               </div>
+                  <h3 className="font-black uppercase tracking-tighter text-[10px] sm:text-base text-slate-800 leading-tight">{feature.title}</h3>
+               </button>
              ))}
           </div>
         )}
+
+        <Dialog open={!!activeInfo} onOpenChange={(open) => !open && setActiveInfo(null)}>
+          <DialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md">
+            <DialogHeader className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto">
+                <Info className="w-6 h-6" />
+              </div>
+              <DialogTitle className="text-xl font-black uppercase text-center tracking-tight">
+                {activeInfo?.title}
+              </DialogTitle>
+              <DialogDescription className="text-center text-base font-medium leading-relaxed text-slate-600">
+                {activeInfo?.desc}
+              </DialogDescription>
+            </DialogHeader>
+            <Button onClick={() => setActiveInfo(null)} className="w-full rounded-2xl h-12 font-black uppercase tracking-widest mt-4">
+              Entendi
+            </Button>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
 

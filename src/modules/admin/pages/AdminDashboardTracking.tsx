@@ -860,21 +860,30 @@ export default function AdminDashboardTracking() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Prazo de Entrega (Dias)</Label>
+                <Label>Data de Início</Label>
+                <Input 
+                  type="date"
+                  value={generateForm.start_date} 
+                  onChange={(e) => setGenerateForm({ ...generateForm, start_date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Prazo (Dias)</Label>
                 <Input 
                   type="number"
                   value={generateForm.estimated_days} 
                   onChange={(e) => setGenerateForm({ ...generateForm, estimated_days: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Código (Opcional)</Label>
-                <Input 
-                  value={generateForm.tracking_code} 
-                  onChange={(e) => setGenerateForm({ ...generateForm, tracking_code: e.target.value })}
-                  placeholder="Auto-gerar se vazio"
-                />
-              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Código (Opcional)</Label>
+              <Input 
+                value={generateForm.tracking_code} 
+                onChange={(e) => setGenerateForm({ ...generateForm, tracking_code: e.target.value })}
+                placeholder="Auto-gerar se vazio"
+              />
             </div>
           </div>
           <DialogFooter>

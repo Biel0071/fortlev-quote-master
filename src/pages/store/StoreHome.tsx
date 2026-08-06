@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Flame, Store, Package, LayoutGrid, Info } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Flame, Store, Package, LayoutGrid, Info, Search, Truck, ArrowRight, ShieldCheck, CreditCard } from "lucide-react";
+import { Input } from "@/components/ui/input";
+
 import { useOfferProducts } from "@/hooks/useOfferProducts";
 import { AppHeader } from "@/components/store/AppHeader";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
@@ -56,6 +58,9 @@ function ProductGridSkeleton({ count = 4 }: { count?: number }) {
 export default function StoreHome() {
   const cart = useCart();
   const { store: tenantStore } = useTenant();
+  const navigate = useNavigate();
+  const [trackingSearch, setTrackingSearch] = useState("");
+
 
   const [phase, setPhase] = useState({
     categories: true,
@@ -279,6 +284,66 @@ export default function StoreHome() {
           <div className="w-full overflow-hidden">
             <HomeHeroCarousel banners={home.banners} loading={home.loading} />
           </div>
+
+          {/* Tracking Callout */}
+          <section className="container mx-auto px-4 -mt-8 sm:-mt-12 relative z-10 mb-8">
+            <div className="bg-white rounded-3xl shadow-xl border border-primary/5 p-6 md:p-8">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+                <div className="space-y-2 max-w-md text-center lg:text-left">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider">
+                     <Truck className="w-3 h-3" /> Rastreamento Enterprise
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 leading-tight">
+                    ACOMPANHE SUA <span className="text-primary">OBRA EM TEMPO REAL</span>
+                  </h2>
+                  <p className="text-sm text-slate-500 font-medium">
+                    Digite seu CPF ou o código do pedido para rastrear sua entrega agora mesmo.
+                  </p>
+                </div>
+
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (trackingSearch.trim()) navigate(`/rastreio?q=${encodeURIComponent(trackingSearch.trim())}`);
+                  }} 
+                  className="w-full lg:max-w-md flex flex-col sm:flex-row gap-3"
+                >
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Input 
+                      placeholder="CPF ou Código do Pedido" 
+                      className="h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700"
+                      value={trackingSearch}
+                      onChange={(e) => setTrackingSearch(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" className="h-14 px-8 rounded-2xl font-black text-base uppercase tracking-wide shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all group">
+                    Rastrear <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </form>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-slate-50">
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-primary"><ShieldCheck className="w-5 h-5" /></div>
+                    <div className="text-[10px] uppercase font-black text-slate-400 leading-tight">Compra<br/>100% Segura</div>
+                 </div>
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-primary"><Package className="w-5 h-5" /></div>
+                    <div className="text-[10px] uppercase font-black text-slate-400 leading-tight">Estoque<br/>Garantido</div>
+                 </div>
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-primary"><Truck className="w-5 h-5" /></div>
+                    <div className="text-[10px] uppercase font-black text-slate-400 leading-tight">Entrega<br/>Rápida</div>
+                 </div>
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-primary"><CreditCard className="w-5 h-5" /></div>
+                    <div className="text-[10px] uppercase font-black text-slate-400 leading-tight">Pagamento<br/>Facilitado</div>
+                 </div>
+              </div>
+            </div>
+          </section>
+
 
 
           <HomeSection

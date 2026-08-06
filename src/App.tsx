@@ -28,6 +28,8 @@ const TrackingPage = lazy(() => import("@/pages/account/TrackingPage"));
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
 const SignupPage = lazy(() => import("@/pages/auth/SignupPage"));
 const PublicQuotationAccess = lazy(() => import("@/pages/store/PublicQuotationAccess"));
+const PublicTrackingSearch = lazy(() => import("@/pages/store/PublicTrackingSearch"));
+
 const QuotationsIndex = lazy(() => import("@/modules/checkout/pages/QuotationsIndex"));
 const Construction = lazy(() => import("@/modules/checkout/pages/Construction"));
 const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
@@ -128,6 +130,8 @@ const App = () => (
                 <Route path="/conta" element={<AccountPage />} />
                 <Route path="/pedidos" element={<OrdersPage />} />
                 <Route path="/rastreio/:id" element={<TrackingPage />} />
+                <Route path="/rastreio" element={<PublicTrackingSearch />} />
+
 
                 <Route path="/loja/moda-fashion" element={<FashionHome />} />
                 <Route path="/loja/moda-fashion/produto/:slug" element={<FashionProduct />} />

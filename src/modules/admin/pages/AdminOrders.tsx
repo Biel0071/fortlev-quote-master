@@ -11,6 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
 import type { StoreOrder, StoreOrderItem } from "@/types/store";
+import { OrderTrackingDialog } from "../components/OrderTrackingDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MapPin } from "lucide-react";
+
 
 const STATUS_OPTIONS = ["aguardando", "pago", "separando", "enviado", "finalizado"] as const;
 
@@ -26,6 +30,8 @@ export default function AdminOrders() {
   const [selected, setSelected] = useState<StoreOrder | null>(null);
   const [items, setItems] = useState<StoreOrderItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [trackingOpen, setTrackingOpen] = useState(false);
+
 
   const load = async () => {
     if (!activeStoreId) return;
@@ -159,7 +165,14 @@ export default function AdminOrders() {
 
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>{selectedTitle}</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>{selectedTitle}</CardTitle>
+              {selected && (
+                <Button variant="outline" size="sm" onClick={() => setTrackingOpen(true)} className="gap-2">
+                  <MapPin className="w-4 h-4" /> Rastreamento
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {!selected ? (
@@ -250,6 +263,21 @@ export default function AdminOrders() {
           </CardContent>
         </Card>
       </main>
+
+      {selected && (
+        <Dialog open={trackingOpen} onOpenChange={setTrackingOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Gerenciar Rastreamento - Pedido #{selected.id.slice(0, 8)}</DialogTitle>
+            </DialogHeader>
+            <OrderTrackingDialog 
+              order={selected} 
+              onClose={() => setTrackingOpen(false)} 
+              onUpdate={load}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

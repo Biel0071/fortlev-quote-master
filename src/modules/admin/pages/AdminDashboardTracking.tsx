@@ -69,7 +69,8 @@ export default function AdminDashboardTracking() {
     customer_name: "",
     customer_cpf: "",
     estimated_days: "7",
-    tracking_code: ""
+    tracking_code: "",
+    start_date: format(new Date(), "yyyy-MM-dd"), // Nova data de início
   });
   const [carrierForm, setCarrierForm] = useState({
 

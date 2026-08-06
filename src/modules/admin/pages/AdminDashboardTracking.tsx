@@ -516,94 +516,68 @@ export default function AdminDashboardTracking() {
         </TabsContent>
 
         <TabsContent value="preview" className="space-y-4">
-          <Card className="border-none shadow-none bg-transparent">
-            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 px-0">
-              <div>
-                <CardTitle className="text-xl font-bold">Fluxo de Experiência do Cliente</CardTitle>
-                <CardDescription>Simule a jornada do cliente desde a pesquisa até a entrega.</CardDescription>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div className="flex items-center gap-4">
+                <div className="flex bg-muted p-1 rounded-lg">
                   <Button 
-                    variant={previewMode === "desktop" ? "default" : "ghost"} 
+                    variant={previewMode === "desktop" ? "secondary" : "ghost"} 
                     size="sm" 
                     onClick={() => setPreviewMode("desktop")}
-                    className="rounded-lg h-8 w-8 p-0"
-                    title="Desktop"
+                    className="gap-2"
                   >
-                    <Monitor className="w-4 h-4" />
+                    <Monitor className="w-4 h-4" /> Desktop
                   </Button>
                   <Button 
-                    variant={previewMode === "mobile" ? "default" : "ghost"} 
+                    variant={previewMode === "mobile" ? "secondary" : "ghost"} 
                     size="sm" 
                     onClick={() => setPreviewMode("mobile")}
-                    className="rounded-lg h-8 w-8 p-0"
-                    title="Mobile"
+                    className="gap-2"
                   >
-                    <Smartphone className="w-4 h-4" />
+                    <Smartphone className="w-4 h-4" /> Mobile
                   </Button>
                 </div>
-
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                  <Button 
-                    variant={previewStep === 0 ? "default" : "ghost"} 
-                    size="sm" 
-                    onClick={() => setPreviewStep(0)}
-                    className="rounded-lg text-[10px] font-bold uppercase tracking-tighter h-8"
-                  >
-                    1. Pesquisa
-                  </Button>
-                  <Button 
-                    variant={previewStep === 1 ? "default" : "ghost"} 
-                    size="sm" 
-                    onClick={() => setPreviewStep(1)}
-                    className="rounded-lg text-[10px] font-bold uppercase tracking-tighter h-8"
-                  >
-                    2. Trânsito
-                  </Button>
-                  <Button 
-                    variant={previewStep === 2 ? "default" : "ghost"} 
-                    size="sm" 
-                    onClick={() => setPreviewStep(2)}
-                    className="rounded-lg text-[10px] font-bold uppercase tracking-tighter h-8"
-                  >
-                    3. Entregue
-                  </Button>
+                
+                <div className="h-6 w-px bg-border" />
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">Etapa do Fluxo:</span>
+                  <div className="flex bg-muted p-1 rounded-lg">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      disabled={previewStep === 0}
+                      onClick={() => setPreviewStep(prev => prev - 1)}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <div className="px-3 flex items-center justify-center min-w-[140px] text-xs font-bold uppercase tracking-wider">
+                      {previewStep === 0 ? "Pesquisa" : 
+                       previewStep === 1 ? "Em Trânsito" : "Entregue"}
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      disabled={previewStep === 2}
+                      onClick={() => setPreviewStep(prev => prev + 1)}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="px-0">
-              <div className={`mx-auto transition-all duration-500 ease-in-out relative border overflow-hidden bg-slate-50 shadow-2xl ${
-                previewMode === "mobile" 
-                  ? "w-[392px] h-[852px] rounded-[3rem] border-[12px] border-slate-900" 
-                  : "w-full h-[800px] rounded-[2.5rem] border border-slate-200"
-              }`}>
-                <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-20">
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="rounded-full bg-white/80 backdrop-blur shadow-sm h-8 w-8"
-                    disabled={previewStep === 0}
-                    onClick={() => setPreviewStep(s => s - 1)}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <div className="px-3 py-1 rounded-full bg-slate-900/90 text-white text-[8px] font-black uppercase tracking-widest backdrop-blur">
-                    {previewStep === 0 ? "Busca" : previewStep === 1 ? "Trânsito" : "Entregue"}
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="rounded-full bg-white/80 backdrop-blur shadow-sm h-8 w-8"
-                    disabled={previewStep === 2}
-                    onClick={() => setPreviewStep(s => s + 1)}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
+            </div>
 
-                <ScrollArea className={`${previewMode === "mobile" ? "h-[830px]" : "h-[790px]"} w-full`}>
-                  <div className={`p-4 pt-16 admin-preview-mode ${previewMode === "mobile" ? "px-2" : "px-6"}`}>
+            <div className="flex justify-center bg-slate-100/50 rounded-3xl p-4 md:p-10 min-h-[600px] border-2 border-dashed border-slate-200">
+              {previewMode === "mobile" ? (
+                <div className="relative mx-auto border-[8px] border-slate-800 rounded-[3rem] h-[852px] w-[392px] shadow-2xl bg-white overflow-hidden">
+                  <div className="absolute top-0 inset-x-0 h-6 bg-slate-800 flex items-center justify-center z-50">
+                    <div className="w-20 h-4 bg-slate-900 rounded-full" />
+                  </div>
+                  <ScrollArea className="h-full w-full pt-6">
+                    <div className="p-4 admin-preview-mode px-2">
                     {previewStep === 0 && <PublicTrackingSearch />}
                     {previewStep === 1 && (
                       <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500 space-y-4">

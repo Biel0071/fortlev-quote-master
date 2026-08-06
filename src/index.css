@@ -312,3 +312,17 @@
 html, body {
   scrollbar-width: none;
 }
+
+/* Botão flutuante de chat */
+.floating-chat-button {
+  position: fixed;
+  bottom: 75px; /* 60px nav + 15px margin */
+  right: 20px;
+  z-index: 45;
+}
+
+@media (min-width: 768px) {
+  .floating-chat-button {
+    bottom: 30px;
+  }
+}

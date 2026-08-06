@@ -455,7 +455,7 @@ export default function AdminDashboardTracking() {
                         <TableCell className="font-mono font-medium">{item.tracking_code}</TableCell>
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="font-medium">#{item.order_id.slice(0, 8)}</span>
+                            <span className="font-medium">#{item.order_id?.slice(0, 8) || "N/A"}</span>
                             {item.order_id && (
                               <Button 
                                 variant="link" 

@@ -549,8 +549,8 @@ export default function AdminDashboardTracking() {
               </div>
             </CardHeader>
             <CardContent className="px-0">
-              <div className={`mx-auto transition-all duration-500 ease-in-out relative border rounded-[2rem] overflow-hidden bg-slate-50 shadow-2xl ${
-                previewMode === "mobile" ? "max-w-[375px] h-[750px] border-8 border-slate-900" : "w-full h-[800px]"
+              <div className={`mx-auto transition-all duration-500 ease-in-out relative border rounded-[2.5rem] overflow-hidden bg-slate-50 shadow-2xl ${
+                previewMode === "mobile" ? "max-w-[375px] h-[750px] border-[12px] border-slate-900" : "w-full h-[800px] border border-slate-200"
               }`}>
                 <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-20">
                   <Button 

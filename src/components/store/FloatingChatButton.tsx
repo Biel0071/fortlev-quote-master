@@ -10,7 +10,7 @@ export function FloatingChatButton() {
   if (isAdmin) return null;
 
   return (
-    <div className="fixed bottom-[calc(var(--mobile-nav-height)+15px)] right-4 md:bottom-[15px] md:right-8 z-50 flex flex-col gap-3">
+    <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+75px)] right-4 md:bottom-[15px] md:right-8 z-50 flex flex-col gap-3">
       <Button
         className="w-12 h-12 rounded-full shadow-xl p-0 flex items-center justify-center bg-primary hover:bg-primary/90 text-primary-foreground"
         onClick={() => window.open("https://wa.me/553175193626", "_blank")}

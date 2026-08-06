@@ -911,15 +911,17 @@ export default function AdminDashboardTracking() {
                           onClick={() => {
                             setGenerateForm({
                               ...generateForm,
-                              customer_name: client.customer_name,
-                              customer_cpf: client.customer_cpf
+                              customer_name: client.name,
+                              customer_cpf: client.document || ""
                             });
-                            setClientSearch(client.customer_name);
+                            setClientSearch(client.name);
                             setMatchingClients([]);
                           }}
                         >
-                          <span className="text-sm font-bold text-primary">{client.customer_name}</span>
-                          <span className="text-[10px] text-muted-foreground font-mono">CPF: {client.customer_cpf}</span>
+                          <span className="text-sm font-bold text-primary">{client.name}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {client.document ? `CPF: ${client.document}` : client.phone}
+                          </span>
                         </button>
                       ))}
                     </div>

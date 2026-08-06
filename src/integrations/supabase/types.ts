@@ -5486,6 +5486,7 @@ export type Database = {
           checkout_mode: string
           coupon_code: string | null
           created_at: string
+          customer_cpf: string | null
           customer_email: string | null
           customer_id: string | null
           customer_name: string | null
@@ -5508,6 +5509,7 @@ export type Database = {
           checkout_mode?: string
           coupon_code?: string | null
           created_at?: string
+          customer_cpf?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name?: string | null
@@ -5530,6 +5532,7 @@ export type Database = {
           checkout_mode?: string
           coupon_code?: string | null
           created_at?: string
+          customer_cpf?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name?: string | null

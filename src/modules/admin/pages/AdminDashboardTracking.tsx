@@ -328,7 +328,8 @@ export default function AdminDashboardTracking() {
                       customer_name: "",
                       customer_cpf: "",
                       estimated_days: "7",
-                      tracking_code: ""
+                      tracking_code: "",
+                      start_date: format(new Date(), "yyyy-MM-dd")
                     });
                     setGenerateDialogOpen(true);
                   }}>

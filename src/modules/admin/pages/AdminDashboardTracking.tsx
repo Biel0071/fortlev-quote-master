@@ -14,6 +14,7 @@ import { OrderTrackingDialog } from "../components/OrderTrackingDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import PublicTrackingSearch from "@/pages/store/PublicTrackingSearch";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -58,6 +59,7 @@ export default function AdminDashboardTracking() {
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewStep, setPreviewStep] = useState(0);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [generateForm, setGenerateForm] = useState({
     carrier_id: "",
@@ -290,7 +292,7 @@ export default function AdminDashboardTracking() {
         <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="tracking">Rastreios Ativos</TabsTrigger>
           <TabsTrigger value="carriers">Transportadoras</TabsTrigger>
-          <TabsTrigger value="preview">Preview do Cliente</TabsTrigger>
+          <TabsTrigger value="preview">Preview & Fluxo</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tracking" className="space-y-4">
@@ -489,24 +491,129 @@ export default function AdminDashboardTracking() {
         </TabsContent>
 
         <TabsContent value="preview" className="space-y-4">
-          <Card className="overflow-hidden border-2 border-primary/20 shadow-xl bg-slate-50/50">
-            <CardHeader className="bg-white border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Eye className="w-5 h-5 text-primary" /> Visualização do Cliente
-                  </CardTitle>
-                  <CardDescription>Simule como seu cliente verá a página de rastreio público.</CardDescription>
-                </div>
-                <Badge variant="outline" className="bg-primary/10 text-primary font-bold">Modo Preview</Badge>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Fluxo de Experiência do Cliente</CardTitle>
+                <CardDescription>Simule a jornada do cliente desde a pesquisa até a entrega.</CardDescription>
+              </div>
+              <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                <Button 
+                  variant={previewStep === 0 ? "default" : "ghost"} 
+                  size="sm" 
+                  onClick={() => setPreviewStep(0)}
+                  className="rounded-lg text-xs"
+                >
+                  1. Pesquisa
+                </Button>
+                <Button 
+                  variant={previewStep === 1 ? "default" : "ghost"} 
+                  size="sm" 
+                  onClick={() => setPreviewStep(1)}
+                  className="rounded-lg text-xs"
+                >
+                  2. Em Trânsito
+                </Button>
+                <Button 
+                  variant={previewStep === 2 ? "default" : "ghost"} 
+                  size="sm" 
+                  onClick={() => setPreviewStep(2)}
+                  className="rounded-lg text-xs"
+                >
+                  3. Entregue
+                </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[700px] w-full">
-                <div className="scale-[0.9] origin-top transform-gpu">
-                  <PublicTrackingSearch />
+            <CardContent>
+              <div className="relative border rounded-2xl overflow-hidden bg-slate-50 min-h-[600px]">
+                <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-20">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="rounded-full bg-white/80 backdrop-blur shadow-sm"
+                    disabled={previewStep === 0}
+                    onClick={() => setPreviewStep(s => s - 1)}
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </Button>
+                  <div className="px-4 py-2 rounded-full bg-slate-900/80 text-white text-[10px] font-black uppercase tracking-widest backdrop-blur">
+                    {previewStep === 0 ? "Tela de Busca Pública" : previewStep === 1 ? "Acompanhamento em Trânsito" : "Confirmação de Entrega"}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="rounded-full bg-white/80 backdrop-blur shadow-sm"
+                    disabled={previewStep === 2}
+                    onClick={() => setPreviewStep(s => s + 1)}
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </Button>
                 </div>
-              </ScrollArea>
+
+                <ScrollArea className="h-[700px] w-full">
+                  <div className="p-4 pt-16">
+                    {previewStep === 0 && <PublicTrackingSearch />}
+                    {previewStep === 1 && (
+                      <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">
+                         <div className="bg-primary p-8 text-white rounded-t-3xl">
+                            <h2 className="text-3xl font-black uppercase mb-1">Em Transporte</h2>
+                            <p className="opacity-80 text-sm font-bold">Objeto em trânsito para a unidade de distribuição</p>
+                            <div className="mt-8 space-y-4">
+                               <div className="flex justify-between text-xs font-black uppercase opacity-60">
+                                  <span>Progresso</span>
+                                  <span>65%</span>
+                                </div>
+                                <div className="h-3 bg-white/20 rounded-full overflow-hidden">
+                                   <div className="h-full bg-white w-[65%]" />
+                                </div>
+                            </div>
+                         </div>
+                         <div className="bg-white p-8 rounded-b-3xl border-x border-b space-y-8">
+                            <div className="space-y-6">
+                               <div className="flex gap-4 items-start border-l-4 border-primary pl-4">
+                                  <div className="bg-primary/10 p-2 rounded-lg text-primary"><Truck className="w-5 h-5" /></div>
+                                  <div>
+                                     <h4 className="font-black text-sm uppercase">Em trânsito</h4>
+                                     <p className="text-xs text-slate-500 font-bold">Encaminhado para BELO HORIZONTE/MG</p>
+                                     <span className="text-[10px] text-slate-400">06/08/2026 14:30</span>
+                                  </div>
+                               </div>
+                               <div className="flex gap-4 items-start opacity-40 pl-4 border-l-4 border-slate-100">
+                                  <div className="bg-slate-100 p-2 rounded-lg text-slate-400"><Package className="w-5 h-5" /></div>
+                                  <div>
+                                     <h4 className="font-black text-sm uppercase">Objeto Postado</h4>
+                                     <p className="text-xs text-slate-500 font-bold">Agência de Correios - SAO PAULO/SP</p>
+                                     <span className="text-[10px] text-slate-400">05/08/2026 10:15</span>
+                                  </div>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                    )}
+                    {previewStep === 2 && (
+                      <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">
+                         <div className="bg-green-600 p-8 text-white rounded-t-3xl flex items-center justify-between">
+                            <div>
+                               <h2 className="text-3xl font-black uppercase mb-1">Entregue</h2>
+                               <p className="opacity-80 text-sm font-bold">O objeto foi entregue ao destinatário</p>
+                            </div>
+                            <CheckCircle2 className="w-16 h-16 opacity-30" />
+                         </div>
+                         <div className="bg-white p-8 rounded-b-3xl border-x border-b">
+                            <div className="flex flex-col items-center text-center py-10 space-y-4">
+                               <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                                  <CheckCircle2 className="w-10 h-10" />
+                                </div>
+                               <h3 className="text-xl font-black uppercase">Entrega Realizada</h3>
+                               <p className="text-sm text-slate-500 max-w-xs font-medium">Seu pedido foi entregue com sucesso no endereço cadastrado.</p>
+                               <Button className="rounded-2xl font-black uppercase tracking-widest px-8">Ver Detalhes da Compra</Button>
+                            </div>
+                         </div>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

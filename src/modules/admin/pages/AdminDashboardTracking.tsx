@@ -69,6 +69,7 @@ export default function AdminDashboardTracking() {
   const [clientSearch, setClientSearch] = useState("");
   const [matchingClients, setMatchingClients] = useState<any[]>([]);
   const [filterType, setFilterType] = useState<"all" | "with_cpf" | "without_cpf">("all");
+  const [selectedOrderId, setSelectedOrderId] = useState<string>("");
   const [generateForm, setGenerateForm] = useState({
     carrier_id: "",
     customer_name: "",
@@ -268,38 +269,41 @@ export default function AdminDashboardTracking() {
 
   const handleGenerateTracking = async () => {
     if (!activeStoreId) return;
+    setLoading(true);
     try {
       const code = generateForm.tracking_code || `RT${Math.floor(Math.random() * 90000000 + 10000000)}BR`;
       
-      // 1. Create a placeholder order for the manual tracking
-      // We check if an order with this CPF already exists to avoid duplication if it's a re-tracking
-      const { data: existingOrder } = await cloud.from("store_orders")
-        .select("id")
-        .eq("customer_cpf", generateForm.customer_cpf.replace(/\D/g, ""))
-        .eq("store_id", activeStoreId)
-        .limit(1)
-        .maybeSingle();
+      let orderId = selectedOrderId;
 
-      let orderId = existingOrder?.id;
-
+      // Se não tiver selecionado um pedido existente, criar um ou buscar o ID
       if (!orderId) {
-        const { data: newOrder, error: orderError } = await cloud.from("store_orders").insert({
-          store_id: activeStoreId,
-          customer_name: generateForm.customer_name,
-          customer_cpf: generateForm.customer_cpf.replace(/\D/g, ""),
-          total: 0,
-          subtotal: 0,
-          shipping: 0,
-          checkout_mode: 'whatsapp',
-          status: "aguardando",
-        }).select().single();
+        const { data: existingOrder } = await cloud.from("store_orders")
+          .select("id")
+          .eq("customer_cpf", generateForm.customer_cpf.replace(/\D/g, ""))
+          .eq("store_id", activeStoreId)
+          .limit(1)
+          .maybeSingle();
 
-        if (orderError) throw orderError;
-        orderId = newOrder.id;
+        orderId = existingOrder?.id;
+
+        if (!orderId) {
+          const { data: newOrder, error: orderError } = await cloud.from("store_orders").insert({
+            store_id: activeStoreId,
+            customer_name: generateForm.customer_name,
+            customer_cpf: generateForm.customer_cpf.replace(/\D/g, ""),
+            total: 0,
+            subtotal: 0,
+            shipping: 0,
+            checkout_mode: 'whatsapp',
+            status: "aguardando",
+          }).select().single();
+
+          if (orderError) throw orderError;
+          orderId = newOrder.id;
+        }
       }
 
       // 2. Create the tracking record
-      // Buscar o ID do status "Coletado" ou o primeiro disponível para iniciar
       const { data: statuses } = await cloud.from("order_tracking_status")
         .select("id, label")
         .eq("store_id", activeStoreId);
@@ -312,7 +316,7 @@ export default function AdminDashboardTracking() {
         store_id: activeStoreId,
         order_id: orderId,
         carrier_id: generateForm.carrier_id,
-        tracking_code: code,
+        tracking_code: code.toUpperCase().trim(),
         current_status_id: initialStatusId,
         posted_at: new Date(generateForm.start_date + "T10:00:00").toISOString(),
         estimated_delivery_at: new Date(new Date(generateForm.start_date + "T10:00:00").getTime() + (parseInt(generateForm.estimated_days) * 86400000)).toISOString()
@@ -340,9 +344,12 @@ export default function AdminDashboardTracking() {
         tracking_code: "",
         start_date: format(new Date(), "yyyy-MM-dd")
       });
+      setSelectedOrderId("");
       loadData();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1103,20 +1110,18 @@ export default function AdminDashboardTracking() {
             {vinculoPedido === "existente" && selectedClientOrders.length > 0 && (
                <div className="space-y-2">
                  <Label>Selecionar Pedido</Label>
-                 <select 
-                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                   onChange={(e) => {
-                      const order = selectedClientOrders.find(o => o.id === e.target.value);
-                      if (order) {
-                        // Poderíamos preencher mais campos aqui se necessário
-                      }
-                   }}
-                 >
-                   <option value="">Selecione um pedido...</option>
-                   {selectedClientOrders.map(o => (
-                     <option key={o.id} value={o.id}>Pedido #{o.id.slice(0, 8)} - R$ {o.total}</option>
-                   ))}
-                 </select>
+                  <select 
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={selectedOrderId}
+                    onChange={(e) => {
+                      setSelectedOrderId(e.target.value);
+                    }}
+                  >
+                    <option value="">Selecione um pedido...</option>
+                    {selectedClientOrders.map(o => (
+                      <option key={o.id} value={o.id}>Pedido #{o.id.slice(0, 8)} - R$ {o.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</option>
+                    ))}
+                  </select>
                </div>
              )}
             

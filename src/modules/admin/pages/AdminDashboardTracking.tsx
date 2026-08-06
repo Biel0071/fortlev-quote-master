@@ -119,9 +119,32 @@ export default function AdminDashboardTracking() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [activeStoreId]);
+  const handleDeleteCarrier = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta transportadora?")) return;
+    try {
+      await cloud.from("order_tracking_carriers").delete().eq("id", id);
+      toast({ title: "Sucesso", description: "Transportadora excluída." });
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDuplicateCarrier = async (carrier: Carrier) => {
+    try {
+      const { id, ...rest } = carrier;
+      const slug = `${carrier.slug}-copy-${Math.floor(Math.random() * 1000)}`;
+      await cloud.from("order_tracking_carriers").insert({
+        ...rest,
+        name: `${carrier.name} (Cópia)`,
+        slug
+      });
+      toast({ title: "Sucesso", description: "Transportadora duplicada." });
+      loadData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
 
   const handleSaveCarrier = async () => {
     if (!activeStoreId) return;
@@ -131,6 +154,7 @@ export default function AdminDashboardTracking() {
         ...carrierForm,
         slug,
         store_id: activeStoreId,
+        active: true
       };
 
       if (editingCarrier) {
@@ -371,13 +395,21 @@ export default function AdminDashboardTracking() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => {
-                          setEditingCarrier(c);
-                          setCarrierForm({ name: c.name, website: c.website || "", tracking_url_template: c.tracking_url_template || "" });
-                          setCarrierDialogOpen(true);
-                        }}>
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleDuplicateCarrier(c)} title="Duplicar">
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setEditingCarrier(c);
+                            setCarrierForm({ name: c.name, website: c.website || "", tracking_url_template: c.tracking_url_template || "" });
+                            setCarrierDialogOpen(true);
+                          }} title="Editar">
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteCarrier(c.id)} title="Excluir">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -394,7 +426,43 @@ export default function AdminDashboardTracking() {
       </Tabs>
 
       <Dialog open={carrierDialogOpen} onOpenChange={setCarrierDialogOpen}>
-        ...
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingCarrier ? "Editar Transportadora" : "Nova Transportadora"}</DialogTitle>
+            <DialogDescription>Preencha os dados da transportadora parceira.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome da Transportadora</Label>
+              <Input 
+                value={carrierForm.name} 
+                onChange={(e) => setCarrierForm({ ...carrierForm, name: e.target.value })}
+                placeholder="Ex: Correios, Loggi..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Site Oficial (URL)</Label>
+              <Input 
+                value={carrierForm.website} 
+                onChange={(e) => setCarrierForm({ ...carrierForm, website: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Template da URL de Rastreio</Label>
+              <Input 
+                value={carrierForm.tracking_url_template} 
+                onChange={(e) => setCarrierForm({ ...carrierForm, tracking_url_template: e.target.value })}
+                placeholder="https://.../{code}"
+              />
+              <p className="text-[10px] text-muted-foreground">Use {"{code}"} para onde o código de rastreio será inserido.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCarrierDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveCarrier}>Salvar Transportadora</Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
 
       {selectedOrder && (

@@ -389,6 +389,9 @@ export default function AdminDashboardTracking() {
                     });
                     setClientSearch("");
                     setMatchingClients([]);
+                    setSelectedClientOrders([]);
+                    setSelectedClientQuotations([]);
+                    setVinculoPedido("existente");
                     
                     // Forçar carregamento da lista inicial em ordem alfabética
                     await searchClients("");

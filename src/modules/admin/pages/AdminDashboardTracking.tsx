@@ -264,7 +264,8 @@ export default function AdminDashboardTracking() {
           total: 0,
           subtotal: 0,
           shipping: 0,
-          status: "aguardando", // Using "aguardando" as per RLS policy
+          checkout_mode: 'whatsapp',
+          status: "aguardando",
         }).select().single();
 
         if (orderError) throw orderError;

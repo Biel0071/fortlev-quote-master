@@ -1,28 +1,61 @@
-import React from "react";
-import { MessageCircle } from "lucide-react";
+import React, { useState, lazy, Suspense } from "react";
+import { MessageCircle, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "react-router-dom";
+import { useStoreContact } from "@/hooks/useStoreContact";
+import { useVisitorTracker } from "@/hooks/useVisitorTracker";
+
+const FloatingChatDialog = lazy(() => import("@/components/store/mobile/FloatingChatDialog"));
 
 export function FloatingChatButton() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith("/admin");
+  const contact = useStoreContact();
+  const tracker = useVisitorTracker();
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   if (isAdmin) return null;
 
+  const shouldHide = location.pathname.startsWith("/checkout") || location.pathname.startsWith("/carrinho");
+  if (shouldHide) return null;
+
+  const whatsappNumber = contact.phoneDigits || "553175193626";
+
   return (
-    <div className="fixed bottom-[calc(var(--mobile-nav-height)+15px)] right-4 md:bottom-8 md:right-8 z-50 flex flex-col gap-3">
-      <Button
-        className="w-12 h-12 rounded-full shadow-xl p-0 flex items-center justify-center bg-primary hover:bg-primary/90 text-primary-foreground"
-        onClick={() => window.open("https://wa.me/553175193626", "_blank")}
-      >
-        <MessageCircle className="w-6 h-6" />
-      </Button>
-      <Button
-        className="w-12 h-12 rounded-full shadow-xl p-0 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white"
-        onClick={() => window.open("https://wa.me/553175193626?text=Olá, preciso de ajuda com meu pedido", "_blank")}
-      >
-        <MessageCircle className="w-6 h-6" />
-      </Button>
-    </div>
+    <>
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+75px)] right-4 md:bottom-[15px] md:right-8 z-50 flex flex-col gap-3">
+        {/* Assistente AI */}
+        <Button
+          className="w-12 h-12 rounded-full shadow-xl p-0 flex items-center justify-center bg-accent hover:bg-accent/90 text-accent-foreground"
+          onClick={() => setAssistantOpen(true)}
+          aria-label="Falar com assistente"
+        >
+          <Headphones className="w-6 h-6" />
+        </Button>
+
+        {/* WhatsApp Direto */}
+        <Button
+          className="w-12 h-12 rounded-full shadow-xl p-0 flex items-center justify-center bg-whatsapp hover:bg-whatsapp/90 text-whatsapp-foreground"
+          onClick={() => window.open(`https://wa.me/${whatsappNumber}`, "_blank")}
+          aria-label="WhatsApp"
+        >
+          <MessageCircle className="w-6 h-6" />
+        </Button>
+      </div>
+
+      {assistantOpen && (
+        <Suspense fallback={null}>
+          <FloatingChatDialog
+            open={assistantOpen}
+            onOpenChange={setAssistantOpen}
+            phoneDigits={contact.phoneDigits}
+            chatSessionId={null}
+            scoreSnapshot={0}
+            trackerSessionToken={tracker.sessionToken}
+            consentOk={tracker.consentOk}
+          />
+        </Suspense>
+      )}
+    </>
   );
 }

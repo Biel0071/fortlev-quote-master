@@ -74,7 +74,7 @@ export default function PublicTrackingSearch() {
       <AppHeader cartCount={0} />
       <StoreMobileChrome cartCount={0} />
       
-      <main className="max-w-4xl mx-auto px-4 py-8 sm:py-12 space-y-8">
+      <main className="max-w-4xl mx-auto px-4 pt-[var(--store-header-offset)] pb-8 sm:py-12 space-y-8">
         <div className="flex flex-col items-center text-center space-y-4">
           <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary">
             <Truck className="w-8 h-8" />
@@ -89,7 +89,7 @@ export default function PublicTrackingSearch() {
           <CardContent className="p-6 sm:p-8">
             <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="code" className="text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">Código de Rastreio ou Pedido</Label>
+                <Label htmlFor="code" className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">Código de Rastreio ou Pedido</Label>
                 <div className="relative">
                   <Package className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <Input 
@@ -97,12 +97,12 @@ export default function PublicTrackingSearch() {
                     value={code} 
                     onChange={e => setCode(e.target.value)} 
                     placeholder="Ex: BR123456789 ou #83271" 
-                    className="h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700"
+                    className="h-12 sm:h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700 text-sm sm:text-base"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cpf" className="text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">Ou CPF do comprador</Label>
+                <Label htmlFor="cpf" className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">Ou CPF do comprador</Label>
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <Input 
@@ -110,12 +110,12 @@ export default function PublicTrackingSearch() {
                     value={cpf} 
                     onChange={e => setCpf(e.target.value)} 
                     placeholder="000.000.000-00" 
-                    className="h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700"
+                    className="h-12 sm:h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700 text-sm sm:text-base"
                   />
                 </div>
               </div>
-              <Button type="submit" className="md:col-span-2 w-full h-14 text-lg font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all" disabled={loading || (!code && !cpf)}>
-                {loading ? <Clock className="animate-spin mr-3 w-6 h-6" /> : <Search className="mr-3 w-6 h-6" />}
+              <Button type="submit" className="md:col-span-2 w-full h-12 sm:h-14 text-sm sm:text-lg font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all" disabled={loading || (!code && !cpf)}>
+                {loading ? <Clock className="animate-spin mr-3 w-5 h-5 sm:w-6 sm:h-6" /> : <Search className="mr-3 w-5 h-5 sm:w-6 sm:h-6" />}
                 Consultar Status de Entrega
               </Button>
             </form>

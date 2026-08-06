@@ -227,7 +227,7 @@
   }
 
   .main-content {
-    padding-top: calc(var(--store-header-offset) + 0.75rem) !important;
+    padding-top: var(--store-header-offset) !important;
     scroll-padding-top: calc(var(--store-header-offset) + 1rem);
   }
 

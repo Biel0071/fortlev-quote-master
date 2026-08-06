@@ -192,13 +192,23 @@ export default function AdminDashboardTracking() {
     }
   };
 
-  const searchClients = async (query: string) => {
+  const searchClients = async (query: string, currentFilter?: string) => {
     setClientSearch(query);
+    const activeFilter = currentFilter || filterType;
     try {
-      const { data, error } = await cloud
-        .from("store_customer_contacts")
-        .select("*")
-        .or(query ? `name.ilike.%${query}%,document.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%` : "name.neq.null")
+      let queryBuilder = cloud.from("store_customer_contacts").select("*");
+
+      if (query) {
+        queryBuilder = queryBuilder.or(`name.ilike.%${query}%,document.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%`);
+      }
+
+      if (activeFilter === "with_cpf") {
+        queryBuilder = queryBuilder.not("document", "is", null).neq("document", "");
+      } else if (activeFilter === "without_cpf") {
+        queryBuilder = queryBuilder.or("document.is.null,document.eq.");
+      }
+
+      const { data, error } = await queryBuilder
         .order("name", { ascending: true })
         .limit(50);
 
@@ -209,9 +219,6 @@ export default function AdminDashboardTracking() {
       }
 
       setMatchingClients(data || []);
-      
-      // Se tiver apenas 1 resultado e for pesquisa exata, poderíamos carregar detalhes, 
-      // mas vamos manter o fluxo de seleção manual por enquanto.
     } catch (err) {
       console.error("Erro ao buscar leads/clientes:", err);
     }

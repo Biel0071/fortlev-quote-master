@@ -70,9 +70,19 @@ export default function AdminOrders() {
   };
 
   useEffect(() => {
-    if (user && isAdmin) load();
+    if (user && isAdmin) {
+      load();
+      
+      // Handle direct order focus from URL
+      const params = new URLSearchParams(window.location.search);
+      const orderId = params.get('id');
+      if (orderId && orders.length > 0) {
+        const order = orders.find(o => o.id === orderId);
+        if (order) setSelected(order);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isAdmin, activeStoreId]);
+  }, [user, isAdmin, activeStoreId, orders.length]);
 
 
   useEffect(() => {

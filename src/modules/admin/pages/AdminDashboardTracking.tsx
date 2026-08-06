@@ -461,6 +461,32 @@ export default function AdminDashboardTracking() {
                 onChange={(e) => setCarrierForm({ ...carrierForm, name: e.target.value })}
                 placeholder="Ex: Correios, Loggi..."
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Site Oficial (URL)</Label>
+              <Input 
+                value={carrierForm.website} 
+                onChange={(e) => setCarrierForm({ ...carrierForm, website: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Template da URL de Rastreio</Label>
+              <Input 
+                value={carrierForm.tracking_url_template} 
+                onChange={(e) => setCarrierForm({ ...carrierForm, tracking_url_template: e.target.value })}
+                placeholder="https://.../{code}"
+              />
+              <p className="text-[10px] text-muted-foreground">Use {"{code}"} para onde o código de rastreio será inserido.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCarrierDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveCarrier}>Salvar Transportadora</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -524,30 +550,6 @@ export default function AdminDashboardTracking() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-            <div className="space-y-2">
-              <Label>Site Oficial (URL)</Label>
-              <Input 
-                value={carrierForm.website} 
-                onChange={(e) => setCarrierForm({ ...carrierForm, website: e.target.value })}
-                placeholder="https://..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Template da URL de Rastreio</Label>
-              <Input 
-                value={carrierForm.tracking_url_template} 
-                onChange={(e) => setCarrierForm({ ...carrierForm, tracking_url_template: e.target.value })}
-                placeholder="https://.../{code}"
-              />
-              <p className="text-[10px] text-muted-foreground">Use {"{code}"} para onde o código de rastreio será inserido.</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCarrierDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveCarrier}>Salvar Transportadora</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {selectedOrder && (
         <Dialog open={trackingDialogOpen} onOpenChange={setTrackingDialogOpen}>
@@ -564,6 +566,5 @@ export default function AdminDashboardTracking() {
         </Dialog>
       )}
     </div>
-
   );
 }

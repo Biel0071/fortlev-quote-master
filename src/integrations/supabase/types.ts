@@ -6848,7 +6848,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      store_customer_contacts: {
+        Row: {
+          address: string | null
+          cep: string | null
+          created_at: string | null
+          document: string | null
+          email: string | null
+          name: string | null
+          phone: string | null
+          reference_id: string | null
+          source: string | null
+          store_id: string | null
+          value: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       api_consume_key: {

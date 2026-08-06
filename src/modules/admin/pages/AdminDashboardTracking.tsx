@@ -661,11 +661,11 @@ export default function AdminDashboardTracking() {
                          </div>
                       </div>
                     )}
-                  </div>
-                </ScrollArea>
+                    </div>
+                  </ScrollArea>
+                </div>
               </div>
             </div>
-          </div>
         </TabsContent>
       </Tabs>
 

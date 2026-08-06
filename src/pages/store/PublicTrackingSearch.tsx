@@ -302,7 +302,7 @@ export default function PublicTrackingSearch() {
                </button>
             </div>
           </div>
-        ) : result?.notFound ? (
+        ) : result?.notFound && (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-6 animate-in fade-in zoom-in duration-300">
             <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
               <Search className="w-10 h-10" />
@@ -320,7 +320,7 @@ export default function PublicTrackingSearch() {
               Tentar Novamente
             </button>
           </div>
-        null)}
+        )}
 
         <Dialog open={!!activeInfo} onOpenChange={(open) => !open && setActiveInfo(null)}>
           <DialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md">

@@ -1,8 +1,14 @@
 import React from "react";
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocation } from "react-router-dom";
 
 export function FloatingChatButton() {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith("/admin");
+
+  if (isAdmin) return null;
+
   return (
     <div className="fixed bottom-[calc(var(--mobile-nav-height)+15px)] right-4 md:bottom-8 md:right-8 z-50 flex flex-col gap-3">
       <Button

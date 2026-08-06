@@ -4,6 +4,7 @@ import { useStoreContact } from "@/hooks/useStoreContact";
 import { AppDownloadConfirmDialog } from "./AppDownloadConfirmDialog";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/contexts/StoreContext";
+import { useLocation } from "react-router-dom";
 
 const DISMISS_KEY = "APP_BANNER_DISMISSED_AT";
 const DOWNLOAD_CLICKED_KEY = "app_download_clicked";
@@ -25,11 +26,15 @@ export function AppDownloadBanner() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [downloadClicked, setDownloadClicked] = useState(false);
   const { activeStoreId } = useStore();
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith("/admin");
   const appUrl = getDownloadUrl(activeStoreId);
   const contact = useStoreContact();
   const waLink = contact.phoneDigits
     ? `https://wa.me/55${contact.phoneDigits}`
     : "";
+
+  if (isAdmin) return null;
 
   useEffect(() => {
     try {

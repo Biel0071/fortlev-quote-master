@@ -10,6 +10,7 @@ import { StoreProvider } from "@/contexts/StoreContext";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import ScrollToTop from "@/components/ScrollToTop";
 import "@/styles/budget-template.css";
+import { FloatingChatButton } from "@/components/store/FloatingChatButton";
 import NotFound from "@/pages/NotFound";
 
 const StoreHome = lazy(() => import("@/pages/store/StoreHome"));
@@ -105,10 +106,11 @@ const App = () => (
             <ThemeBoot>
               <Toaster />
               <Sonner />
-            <ScrollToTop />
-            <RoutePrefetcher />
-            <CookieConsentBanner />
-            <Suspense fallback={<PageSkeleton />}>
+              <ScrollToTop />
+              <RoutePrefetcher />
+              <CookieConsentBanner />
+              <FloatingChatButton />
+              <Suspense fallback={<PageSkeleton />}>
               <Routes>
                 {/* Rota raiz explicitamente definida */}
                 <Route path="/" element={<StoreHome />} />

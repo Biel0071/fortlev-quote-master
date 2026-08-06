@@ -68,6 +68,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { title: "Home", url: "/home", icon: Home, page: "home" },
     ],
   },
+
   {
     label: "Vendas",
     items: [

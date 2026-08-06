@@ -10,7 +10,9 @@ import { Search, Plus, Edit2, Package, Truck, CheckCircle2, AlertCircle, Clock, 
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { OrderTrackingDialog } from "../components/OrderTrackingDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -52,7 +54,10 @@ export default function AdminDashboardTracking() {
   // Carrier Dialog
   const [carrierDialogOpen, setCarrierDialogOpen] = useState(false);
   const [editingCarrier, setEditingCarrier] = useState<Carrier | null>(null);
+  const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [carrierForm, setCarrierForm] = useState({
+
     name: "",
     website: "",
     tracking_url_template: "",
@@ -270,10 +275,18 @@ export default function AdminDashboardTracking() {
                           {item.estimated_delivery_at ? format(new Date(item.estimated_delivery_at), "dd/MM/yyyy") : "-"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                              setSelectedOrder({ id: item.order_id });
+                              setTrackingDialogOpen(true);
+                            }}
+                          >
                             <Edit2 className="w-4 h-4" />
                           </Button>
                         </TableCell>
+
                       </TableRow>
                     ))}
                   </TableBody>
@@ -352,47 +365,24 @@ export default function AdminDashboardTracking() {
       </Tabs>
 
       <Dialog open={carrierDialogOpen} onOpenChange={setCarrierDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingCarrier ? "Editar Transportadora" : "Nova Transportadora"}</DialogTitle>
-            <DialogDescription>Preencha os dados da transportadora para integrar com o sistema.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome da Transportadora</Label>
-              <Input 
-                id="name" 
-                value={carrierForm.name} 
-                onChange={e => setCarrierForm({...carrierForm, name: e.target.value})} 
-                placeholder="Ex: Correios, Jadlog"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="website">Site Oficial</Label>
-              <Input 
-                id="website" 
-                value={carrierForm.website} 
-                onChange={e => setCarrierForm({...carrierForm, website: e.target.value})} 
-                placeholder="https://..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="template">Template URL de Rastreio</Label>
-              <Input 
-                id="template" 
-                value={carrierForm.tracking_url_template} 
-                onChange={e => setCarrierForm({...carrierForm, tracking_url_template: e.target.value})} 
-                placeholder="https://tracker.com/{{code}}"
-              />
-              <p className="text-[10px] text-muted-foreground">Use {"{{code}}"} como marcador para o código de rastreio.</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCarrierDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveCarrier} disabled={!carrierForm.name}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
+        ...
       </Dialog>
+
+      {selectedOrder && (
+        <Dialog open={trackingDialogOpen} onOpenChange={setTrackingDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Gerenciar Rastreamento - Pedido #{selectedOrder.id.slice(0, 8)}</DialogTitle>
+            </DialogHeader>
+            <OrderTrackingDialog 
+              order={selectedOrder} 
+              onClose={() => setTrackingDialogOpen(false)} 
+              onUpdate={loadData}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
+
   );
 }

@@ -68,13 +68,14 @@ export default function AdminDashboardTracking() {
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [matchingClients, setMatchingClients] = useState<any[]>([]);
+  const [filterType, setFilterType] = useState<"all" | "with_cpf" | "without_cpf">("all");
   const [generateForm, setGenerateForm] = useState({
     carrier_id: "",
     customer_name: "",
     customer_cpf: "",
     estimated_days: "7",
     tracking_code: "",
-    start_date: format(new Date(), "yyyy-MM-dd"), // Nova data de início
+    start_date: format(new Date(), "yyyy-MM-dd"),
   });
   const [carrierForm, setCarrierForm] = useState({
 

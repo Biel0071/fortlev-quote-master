@@ -30,6 +30,8 @@ export default function AdminOrders() {
   const [selected, setSelected] = useState<StoreOrder | null>(null);
   const [items, setItems] = useState<StoreOrderItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [trackingOpen, setTrackingOpen] = useState(false);
+
 
   const load = async () => {
     if (!activeStoreId) return;

@@ -962,6 +962,15 @@ export default function AdminDashboardTracking() {
                   placeholder="Nome completo"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>CPF (Confirmado)</Label>
+                <Input 
+                  value={generateForm.customer_cpf} 
+                  onChange={(e) => setGenerateForm({ ...generateForm, customer_cpf: e.target.value })}
+                  placeholder="000.000.000-00"
+                />
+              </div>
+            </div>
             {selectedClientOrders.length > 0 && (
               <div className="space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <Label className="text-xs font-bold uppercase text-slate-500">Pedidos encontrados</Label>
@@ -1036,14 +1045,6 @@ export default function AdminDashboardTracking() {
                </div>
             )}
 
-            <div className="space-y-2">
-                <Label>CPF (Confirmado)</Label>
-                <Input 
-                  value={generateForm.customer_cpf} 
-                  onChange={(e) => setGenerateForm({ ...generateForm, customer_cpf: e.target.value })}
-                  placeholder="000.000.000-00"
-                />
-              </div>
             </div>
             
             <div className="space-y-2">

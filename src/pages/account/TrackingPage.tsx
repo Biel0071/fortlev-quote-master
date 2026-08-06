@@ -98,11 +98,11 @@ export default function TrackingPage() {
   const progress = tracking?.status?.progress_percentage ?? 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-[var(--store-header-offset)]">
       <AppHeader cartCount={0} />
       <StoreMobileChrome cartCount={0} />
 
-      <main className="main-content max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
              <Button asChild variant="ghost" size="icon" className="rounded-full">

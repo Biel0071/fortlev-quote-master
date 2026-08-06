@@ -24,16 +24,7 @@ export function FloatingChatButton() {
   return (
     <>
       <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+75px)] right-4 md:bottom-[15px] md:right-8 z-50 flex flex-col gap-3">
-        {/* Assistente AI */}
-        <Button
-          className="w-12 h-12 rounded-full shadow-xl p-0 flex items-center justify-center bg-accent hover:bg-accent/90 text-accent-foreground"
-          onClick={() => setAssistantOpen(true)}
-          aria-label="Falar com assistente"
-        >
-          <Headphones className="w-6 h-6" />
-        </Button>
-
-        {/* WhatsApp Direto */}
+        {/* WhatsApp Direto - Único botão visível conforme solicitado */}
         <Button
           className="w-12 h-12 rounded-full shadow-xl p-0 flex items-center justify-center bg-whatsapp hover:bg-whatsapp/90 text-whatsapp-foreground"
           onClick={() => window.open(`https://wa.me/${whatsappNumber}`, "_blank")}

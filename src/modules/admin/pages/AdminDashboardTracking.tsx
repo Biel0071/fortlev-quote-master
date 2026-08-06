@@ -194,19 +194,27 @@ export default function AdminDashboardTracking() {
     const isInitialLoad = query.length === 0;
 
     try {
-      // Buscar em pedidos (store_orders) e orçamentos (store_quotations)
-      const [ordersRes, quotesRes] = await Promise.all([
+      // Buscar em pedidos (store_orders) e orçamentos
+      const [ordersRes, fortlevRes, constructionRes] = await Promise.all([
         cloud.from("store_orders")
           .select("customer_name, customer_cpf")
           .eq("store_id", activeStoreId)
           .or(!isInitialLoad ? `customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%` : "customer_name.neq.null"),
-        cloud.from("store_quotations")
+        cloud.from("fortlev_quotations")
+          .select("customer_name, customer_cpf")
+          .eq("store_id", activeStoreId)
+          .or(!isInitialLoad ? `customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%` : "customer_name.neq.null"),
+        cloud.from("construction_quotations")
           .select("customer_name, customer_cpf")
           .eq("store_id", activeStoreId)
           .or(!isInitialLoad ? `customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%` : "customer_name.neq.null")
       ]);
 
-      const combinedData = [...(ordersRes.data || []), ...(quotesRes.data || [])];
+      const combinedData = [
+        ...(ordersRes.data || []), 
+        ...(fortlevRes.data || []),
+        ...(constructionRes.data || [])
+      ];
 
       // Remover duplicatas por CPF, normalizar e filtrar campos vazios
       const uniqueLeads = combinedData.reduce((acc: any[], curr: any) => {

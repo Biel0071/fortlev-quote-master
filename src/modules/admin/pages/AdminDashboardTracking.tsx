@@ -577,7 +577,7 @@ export default function AdminDashboardTracking() {
                 </div>
 
                 <ScrollArea className={`${previewMode === "mobile" ? "h-[734px]" : "h-[790px]"} w-full`}>
-                  <div className={`p-4 pt-16 ${previewMode === "mobile" ? "px-2" : "px-6"}`}>
+                  <div className={`p-4 pt-16 admin-preview-mode ${previewMode === "mobile" ? "px-2" : "px-6"}`}>
                     {previewStep === 0 && <PublicTrackingSearch />}
                     {previewStep === 1 && (
                       <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">

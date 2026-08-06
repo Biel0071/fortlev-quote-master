@@ -580,59 +580,83 @@ export default function AdminDashboardTracking() {
                   <div className={`p-4 pt-16 admin-preview-mode ${previewMode === "mobile" ? "px-2" : "px-6"}`}>
                     {previewStep === 0 && <PublicTrackingSearch />}
                     {previewStep === 1 && (
-                      <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">
-                         <div className={`bg-primary ${previewMode === "mobile" ? "p-4" : "p-8"} text-white rounded-t-3xl`}>
-                            <h2 className={`${previewMode === "mobile" ? "text-xl" : "text-3xl"} font-black uppercase mb-1`}>Em Transporte</h2>
-                            <p className="opacity-80 text-[10px] md:text-sm font-bold">Objeto em trânsito para a unidade de distribuição</p>
-                            <div className="mt-8 space-y-4">
-                               <div className="flex justify-between text-xs font-black uppercase opacity-60">
-                                  <span>Progresso</span>
-                                  <span>65%</span>
-                                </div>
-                                <div className="h-3 bg-white/20 rounded-full overflow-hidden">
-                                   <div className="h-full bg-white w-[65%]" />
-                                </div>
+                      <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500 space-y-4">
+                         <div className={`bg-primary ${previewMode === "mobile" ? "p-6" : "p-8"} text-white rounded-3xl relative overflow-hidden shadow-xl`}>
+                            <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
+                            <div className="relative z-10">
+                              <h2 className={`${previewMode === "mobile" ? "text-xl" : "text-3xl"} font-black uppercase mb-1`}>Em Transporte</h2>
+                              <p className="opacity-80 text-[10px] md:text-sm font-bold">Pedido #83271 • Código BR123456789</p>
+                              <div className="mt-8 space-y-4">
+                                 <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-60">
+                                    <span>Progresso Logístico</span>
+                                    <span className="bg-white/20 px-2 py-0.5 rounded-full">65% Concluído</span>
+                                  </div>
+                                  <div className="h-3 bg-white/20 rounded-full overflow-hidden p-0.5">
+                                     <div className="h-full bg-white rounded-full transition-all duration-1000 w-[65%] shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+                                  </div>
+                              </div>
                             </div>
                          </div>
-                         <div className="bg-white p-8 rounded-b-3xl border-x border-b space-y-8">
-                            <div className="space-y-6">
-                               <div className="flex gap-4 items-start border-l-4 border-primary pl-4">
-                                  <div className="bg-primary/10 p-2 rounded-lg text-primary"><Truck className="w-5 h-5" /></div>
-                                  <div>
-                                     <h4 className="font-black text-sm uppercase">Em trânsito</h4>
-                                     <p className="text-xs text-slate-500 font-bold">Encaminhado para BELO HORIZONTE/MG</p>
-                                     <span className="text-[10px] text-slate-400">06/08/2026 14:30</span>
-                                  </div>
+                         
+                         <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-sm space-y-8">
+                            <div className="flex items-center gap-2 mb-2">
+                               <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                  <Clock className="w-4 h-4" />
                                </div>
-                               <div className="flex gap-4 items-start opacity-40 pl-4 border-l-4 border-slate-100">
-                                  <div className="bg-slate-100 p-2 rounded-lg text-slate-400"><Package className="w-5 h-5" /></div>
-                                  <div>
-                                     <h4 className="font-black text-sm uppercase">Objeto Postado</h4>
-                                     <p className="text-xs text-slate-500 font-bold">Agência de Correios - SAO PAULO/SP</p>
-                                     <span className="text-[10px] text-slate-400">05/08/2026 10:15</span>
-                                  </div>
-                               </div>
+                               <h3 className="font-black uppercase tracking-widest text-xs text-slate-800">Linha do Tempo</h3>
+                            </div>
+
+                            <div className="relative pl-6 space-y-10 before:absolute before:left-6 before:top-2 before:bottom-2 before:w-1 before:bg-slate-100">
+                               {[
+                                 { title: "Em Transporte", date: "Hoje, 14:30", city: "BELO HORIZONTE/MG", icon: Truck, active: true, desc: "Objeto encaminhado para a unidade de distribuição." },
+                                 { title: "Coletado pela Transportadora", date: "Ontem, 09:15", city: "SAO PAULO/SP", icon: CheckCircle2, active: false, desc: "A transportadora coletou o pedido na nossa unidade." },
+                                 { title: "Pedido Criado", date: "05/08/2026, 10:00", city: "LOJA", icon: Package, active: false, desc: "Seu pedido foi recebido e está em processamento." }
+                               ].map((step, i) => (
+                                 <div key={i} className="relative pl-10">
+                                   <div className={`absolute left-[-6px] top-1.5 w-4 h-4 rounded-full border-4 border-white shadow-sm flex items-center justify-center ${step.active ? 'bg-primary scale-125' : 'bg-slate-300'}`}>
+                                     {step.active && <step.icon className="w-1.5 h-1.5 text-white" />}
+                                   </div>
+                                   <div className="flex flex-col gap-1">
+                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                       <span className={`font-black uppercase tracking-tight text-sm ${step.active ? 'text-primary' : 'text-slate-700'}`}>{step.title}</span>
+                                       <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
+                                         {step.date}
+                                       </span>
+                                     </div>
+                                     <p className="text-xs text-slate-500 font-medium leading-relaxed">{step.desc}</p>
+                                     {step.city && (
+                                       <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 mt-1">
+                                         <MapPin className="w-3.5 h-3.5 text-primary" /> {step.city}
+                                       </div>
+                                     )}
+                                   </div>
+                                 </div>
+                               ))}
                             </div>
                          </div>
                       </div>
                     )}
                     {previewStep === 2 && (
-                      <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">
-                          <div className={`bg-green-600 ${previewMode === "mobile" ? "p-4" : "p-8"} text-white rounded-t-3xl flex items-center justify-between`}>
-                            <div>
+                      <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500 space-y-4">
+                          <div className={`bg-green-600 ${previewMode === "mobile" ? "p-6" : "p-8"} text-white rounded-3xl flex items-center justify-between relative overflow-hidden shadow-xl`}>
+                            <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
+                            <div className="relative z-10">
                                <h2 className={`${previewMode === "mobile" ? "text-xl" : "text-3xl"} font-black uppercase mb-1`}>Entregue</h2>
                                <p className="opacity-80 text-[10px] md:text-sm font-bold">O objeto foi entregue ao destinatário</p>
                             </div>
-                            <CheckCircle2 className={`${previewMode === "mobile" ? "w-8 h-8" : "w-16 h-16"} opacity-30`} />
+                            <CheckCircle2 className={`${previewMode === "mobile" ? "w-12 h-12" : "w-16 h-16"} opacity-30 relative z-10`} />
                           </div>
-                         <div className="bg-white p-8 rounded-b-3xl border-x border-b">
-                            <div className="flex flex-col items-center text-center py-10 space-y-4">
-                               <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                                  <CheckCircle2 className="w-10 h-10" />
+                         <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                            <div className="flex flex-col items-center text-center py-10 space-y-6">
+                               <div className="w-24 h-24 rounded-full bg-green-50 flex items-center justify-center text-green-600 relative">
+                                  <div className="absolute inset-0 rounded-full bg-green-600/10 animate-ping opacity-20" />
+                                  <CheckCircle2 className="w-12 h-12" />
                                 </div>
-                               <h3 className="text-xl font-black uppercase">Entrega Realizada</h3>
-                               <p className="text-sm text-slate-500 max-w-xs font-medium">Seu pedido foi entregue com sucesso no endereço cadastrado.</p>
-                               <Button className="rounded-2xl font-black uppercase tracking-widest px-8">Ver Detalhes da Compra</Button>
+                               <div className="space-y-2">
+                                 <h3 className="text-2xl font-black uppercase text-slate-800 leading-none">Entrega Realizada</h3>
+                                 <p className="text-sm text-slate-500 max-w-xs font-medium">Seu pedido foi entregue com sucesso no endereço cadastrado em 12/08/2026 às 16:42.</p>
+                               </div>
+                               <Button className="h-12 rounded-2xl font-black uppercase tracking-widest px-10 shadow-lg shadow-green-500/20">Ver Detalhes da Compra</Button>
                             </div>
                          </div>
                       </div>

@@ -165,23 +165,34 @@ export default function TrackingPage() {
                   )}
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex justify-between items-end">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60">Logística de Entrega</span>
-                    <span className="text-xs font-black bg-primary/10 text-primary px-3 py-1 rounded-full">{progress}% Concluído</span>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-end">
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60">Logística de Entrega</span>
+                      <span className="text-xs font-black bg-primary/10 text-primary px-3 py-1 rounded-full">{progress}% Concluído</span>
+                    </div>
+                    <div className="relative h-4 bg-slate-100 rounded-full p-1 overflow-hidden shadow-inner">
+                      <div 
+                        className="h-full bg-primary rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(30,58,138,0.3)]"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-center px-1">
+                      {[
+                        { label: 'Loja', active: progress >= 10 },
+                        { label: 'CD Logístico', active: progress >= 30 },
+                        { label: 'Em transporte', active: progress >= 60 },
+                        { label: 'Saiu para Entrega', active: progress >= 90 },
+                        { label: 'Entregue', active: progress >= 100 }
+                      ].map((step, idx) => (
+                        <div key={idx} className="flex flex-col items-center gap-1 flex-1">
+                          <div className={`w-2 h-2 rounded-full transition-all duration-500 ${step.active ? 'bg-primary shadow-[0_0_8px_rgba(30,58,138,0.4)]' : 'bg-slate-200'}`} />
+                          <span className={`text-[8px] font-black uppercase tracking-tighter transition-opacity leading-none ${step.active ? 'text-primary' : 'text-slate-400 opacity-40'}`}>
+                            {step.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="relative h-4 bg-slate-100 rounded-full p-1 overflow-hidden shadow-inner">
-                    <div 
-                      className="h-full bg-primary rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(30,58,138,0.3)]"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">
-                    <span className={progress >= 10 ? "text-primary" : ""}>Pedido Criado</span>
-                    <span className={progress >= 50 ? "text-primary" : ""}>Em Transporte</span>
-                    <span className={progress >= 100 ? "text-primary" : ""}>Entregue</span>
-                  </div>
-                </div>
               </CardContent>
             </Card>
 

@@ -31,7 +31,7 @@ import { useStoreContact } from "@/hooks/useStoreContact";
 import storeLogoFallback from "@/assets/store-logo-house.png.asset.json";
 import { useTenant } from "@/providers/TenantProvider";
 import { publicImageUrl } from "@/utils/storage";
-import { FloatingChat } from "@/components/store/mobile/FloatingChat";
+
 import { cn } from "@/lib/utils";
 import areiaIcon from "@/assets/category-icons/areia.png";
 import blocosIcon from "@/assets/category-icons/blocos.png";
@@ -334,7 +334,7 @@ export function StoreTopbar({
         </div>
       </header>
 
-      <FloatingChat phoneDigits={contact.phoneDigits} />
+      
     </>
   );
 }

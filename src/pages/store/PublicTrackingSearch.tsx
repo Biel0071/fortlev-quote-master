@@ -78,8 +78,8 @@ export default function PublicTrackingSearch() {
             <Truck className="w-8 h-8" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">Rastreio Enterprise</h1>
-            <p className="text-muted-foreground max-w-md mx-auto">Consulte o status da sua entrega em tempo real com precisão absoluta.</p>
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">Rastreio de Pedidos</h1>
+            <p className="text-muted-foreground max-w-md mx-auto">Acompanhe o status da sua entrega em tempo real.</p>
           </div>
         </div>
 

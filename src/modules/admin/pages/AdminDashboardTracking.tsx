@@ -191,19 +191,22 @@ export default function AdminDashboardTracking() {
 
   const searchClients = async (query: string) => {
     setClientSearch(query);
-    if (query.length < 3) {
-      setMatchingClients([]);
-      return;
-    }
+    // Se a query for pequena, podemos mostrar os últimos clientes por padrão
+    const isInitialLoad = query.length === 0;
 
     try {
-      // Buscar em pedidos e orçamentos (unificado via store_orders)
-      const { data, error } = await cloud
+      let queryBuilder = cloud
         .from("store_orders")
         .select("customer_name, customer_cpf")
-        .eq("store_id", activeStoreId)
-        .or(`customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%`)
-        .limit(5);
+        .eq("store_id", activeStoreId);
+      
+      if (!isInitialLoad) {
+        queryBuilder = queryBuilder.or(`customer_name.ilike.%${query}%,customer_cpf.ilike.%${query}%`);
+      }
+      
+      const { data, error } = await queryBuilder
+        .order('created_at', { ascending: false })
+        .limit(10);
 
       if (error) throw error;
 

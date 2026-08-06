@@ -223,12 +223,19 @@ export default function AdminDashboardTracking() {
         title: "Objeto postado",
         description: "O vendedor postou o seu objeto.",
         location_city: "Centro de Distribuição",
-        event_at: new Date().toISOString()
+        event_at: new Date(generateForm.start_date + "T10:00:00").toISOString()
       });
 
       toast({ title: "Sucesso", description: `Rastreio ${code} gerado!` });
       setGenerateDialogOpen(false);
-      setGenerateForm({ customer_name: "", customer_cpf: "", carrier_id: "", estimated_days: "7", tracking_code: "" });
+      setGenerateForm({ 
+        customer_name: "", 
+        customer_cpf: "", 
+        carrier_id: "", 
+        estimated_days: "7", 
+        tracking_code: "",
+        start_date: format(new Date(), "yyyy-MM-dd")
+      });
       loadData();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });

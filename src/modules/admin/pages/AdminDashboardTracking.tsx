@@ -69,7 +69,8 @@ export default function AdminDashboardTracking() {
     customer_name: "",
     customer_cpf: "",
     estimated_days: "7",
-    tracking_code: ""
+    tracking_code: "",
+    start_date: format(new Date(), "yyyy-MM-dd"), // Nova data de início
   });
   const [carrierForm, setCarrierForm] = useState({
 
@@ -209,7 +210,8 @@ export default function AdminDashboardTracking() {
         carrier_id: generateForm.carrier_id,
         tracking_code: code,
         status_id: "77777777-7777-7777-7777-777777777771", // Objeto postado
-        estimated_delivery_at: new Date(Date.now() + (parseInt(generateForm.estimated_days) * 86400000)).toISOString()
+        created_at: new Date(generateForm.start_date + "T10:00:00").toISOString(), // Usar data de início
+        estimated_delivery_at: new Date(new Date(generateForm.start_date + "T10:00:00").getTime() + (parseInt(generateForm.estimated_days) * 86400000)).toISOString()
       }).select().single();
 
       if (trackingError) throw trackingError;
@@ -221,12 +223,19 @@ export default function AdminDashboardTracking() {
         title: "Objeto postado",
         description: "O vendedor postou o seu objeto.",
         location_city: "Centro de Distribuição",
-        event_at: new Date().toISOString()
+        event_at: new Date(generateForm.start_date + "T10:00:00").toISOString()
       });
 
       toast({ title: "Sucesso", description: `Rastreio ${code} gerado!` });
       setGenerateDialogOpen(false);
-      setGenerateForm({ customer_name: "", customer_cpf: "", carrier_id: "", estimated_days: "7", tracking_code: "" });
+      setGenerateForm({ 
+        customer_name: "", 
+        customer_cpf: "", 
+        carrier_id: "", 
+        estimated_days: "7", 
+        tracking_code: "",
+        start_date: format(new Date(), "yyyy-MM-dd")
+      });
       loadData();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -319,7 +328,8 @@ export default function AdminDashboardTracking() {
                       customer_name: "",
                       customer_cpf: "",
                       estimated_days: "7",
-                      tracking_code: ""
+                      tracking_code: "",
+                      start_date: format(new Date(), "yyyy-MM-dd")
                     });
                     setGenerateDialogOpen(true);
                   }}>
@@ -850,21 +860,30 @@ export default function AdminDashboardTracking() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Prazo de Entrega (Dias)</Label>
+                <Label>Data de Início</Label>
+                <Input 
+                  type="date"
+                  value={generateForm.start_date} 
+                  onChange={(e) => setGenerateForm({ ...generateForm, start_date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Prazo (Dias)</Label>
                 <Input 
                   type="number"
                   value={generateForm.estimated_days} 
                   onChange={(e) => setGenerateForm({ ...generateForm, estimated_days: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Código (Opcional)</Label>
-                <Input 
-                  value={generateForm.tracking_code} 
-                  onChange={(e) => setGenerateForm({ ...generateForm, tracking_code: e.target.value })}
-                  placeholder="Auto-gerar se vazio"
-                />
-              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Código (Opcional)</Label>
+              <Input 
+                value={generateForm.tracking_code} 
+                onChange={(e) => setGenerateForm({ ...generateForm, tracking_code: e.target.value })}
+                placeholder="Auto-gerar se vazio"
+              />
             </div>
           </div>
           <DialogFooter>

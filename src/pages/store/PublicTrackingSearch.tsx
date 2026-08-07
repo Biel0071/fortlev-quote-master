@@ -30,7 +30,7 @@ export default function PublicTrackingSearch() {
     setResult(null);
 
     try {
-      const cleanCode = code.trim();
+      const cleanCode = code.trim().toUpperCase();
       const cleanCpf = cpf.replace(/\D/g, "");
       
       let query = cloud
@@ -44,13 +44,11 @@ export default function PublicTrackingSearch() {
           items:store_order_items(*)
         `);
       
-      if (cleanCode) {
-        query = query.or(`tracking_code.eq.${cleanCode},order_id.eq.${cleanCode}`);
-      }
-      
-      if (cleanCpf) {
-        // We use order_id as a filter bridge or a filter if supported, 
-        // but order.customer_cpf is better if RLS allows.
+      if (cleanCode && !cleanCpf) {
+        // Search by tracking code or order ID
+        query = query.or(`tracking_code.eq."${cleanCode}",order_id.eq."${cleanCode}"`);
+      } else if (cleanCpf) {
+        // Search strictly by CPF through the related order
         query = query.filter("order.customer_cpf", "eq", cleanCpf);
       }
 

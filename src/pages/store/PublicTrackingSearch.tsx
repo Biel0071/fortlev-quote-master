@@ -50,7 +50,7 @@ export default function PublicTrackingSearch() {
         `);
       
       if (cleanCode && !cleanCpf) {
-        query = query.or(`tracking_code.eq.${cleanCode},order_id.eq.${cleanCode}`);
+        query = query.or(`tracking_code.eq."${cleanCode}",order_id.eq."${cleanCode}"`);
       } else if (cleanCpf) {
         // First find orders for this CPF
         const { data: orders, error: orderError } = await cloud

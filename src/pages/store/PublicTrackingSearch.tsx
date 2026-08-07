@@ -40,7 +40,7 @@ export default function PublicTrackingSearch() {
           carrier:order_tracking_carriers(*), 
           status:order_tracking_status(*), 
           timeline:order_tracking_timeline(*), 
-          order:store_orders!inner(*),
+          order:store_orders(*),
           items:store_order_items(*)
         `);
       
@@ -49,7 +49,9 @@ export default function PublicTrackingSearch() {
       }
       
       if (cleanCpf) {
-        query = query.eq("order.customer_cpf", cleanCpf);
+        // We use order_id as a filter bridge or a filter if supported, 
+        // but order.customer_cpf is better if RLS allows.
+        query = query.filter("order.customer_cpf", "eq", cleanCpf);
       }
 
       const { data, error } = await query;

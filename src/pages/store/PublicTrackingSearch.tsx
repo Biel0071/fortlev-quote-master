@@ -53,8 +53,7 @@ export default function PublicTrackingSearch() {
             status,
             total,
             customer_name,
-            customer_city,
-            customer_state
+            address
           )
         `)
         .eq("tracking_code", cleanCode)
@@ -116,8 +115,7 @@ export default function PublicTrackingSearch() {
               status,
               total,
               customer_name,
-              customer_city,
-              customer_state
+              address
             )
             `)
             .in("order_id", orders.map(o => o.id))
@@ -215,9 +213,8 @@ export default function PublicTrackingSearch() {
         'PA': 'Belém/PA',
       };
 
-      const destState = result.order?.customer_state || 'SP';
-      const destCity = result.order?.customer_city || 'São Paulo';
-      const majorCity = cityMap[destState] || `${destCity}/${destState}`;
+      const destCity = result.order?.address || 'São Paulo';
+      const majorCity = `${destCity}`;
 
       const timeline = [...(result.timeline || [])];
       const sortedTimeline = timeline.sort((a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime());

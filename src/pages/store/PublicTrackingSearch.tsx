@@ -36,6 +36,7 @@ export default function PublicTrackingSearch() {
       const cleanCode = code.trim().toUpperCase();
       const cleanCpf = cpf.replace(/\D/g, "");
       
+      // Separate lookups to avoid 400 errors from complex joins in the public context
       const { data: tracking, error: trackingError } = await cloud
         .from("order_tracking_main")
         .select(`
@@ -54,8 +55,10 @@ export default function PublicTrackingSearch() {
             customer_state
           )
         `)
-        .or(`tracking_code.eq.${cleanCode},order_id.eq.${cleanCode}`)
+        .eq("tracking_code", cleanCode)
         .maybeSingle();
+
+      if (trackingError) throw trackingError;
 
       if (trackingError) throw trackingError;
 

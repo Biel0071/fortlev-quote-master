@@ -54,7 +54,7 @@ export default function PublicTrackingSearch() {
             customer_state
           )
         `)
-        .or(`tracking_code.eq."${cleanCode}",order_id.eq."${cleanCode}"`)
+        .or(`tracking_code.eq.${cleanCode},order_id.eq.${cleanCode}`)
         .maybeSingle();
 
       if (trackingError) throw trackingError;

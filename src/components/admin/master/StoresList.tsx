@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreHorizontal, ExternalLink, Copy, Trash2, Archive, History, Layers, Settings, Globe, Cpu, Sparkles, Activity, CreditCard, ShieldCheck, AlertCircle } from "lucide-react";
+import { Plus, Search, MoreHorizontal, ExternalLink, Copy, Trash2, Archive, History, Layers, Settings, Globe, Cpu, Sparkles, Activity, CreditCard, ShieldCheck, AlertCircle, Pencil } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import StoreFactory from "./StoreFactory";
@@ -205,6 +205,9 @@ const StoresList = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Ações Master</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => navigate(cockpitUrl)}>
+                        <Pencil size={14} className="mr-2" /> Editar Loja (Configurações)
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate(cockpitUrl)}>
                         <Settings size={14} className="mr-2" /> Cockpit da Loja
                       </DropdownMenuItem>

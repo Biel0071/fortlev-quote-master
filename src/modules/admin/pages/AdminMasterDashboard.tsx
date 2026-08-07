@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   Pause,
   Globe,
+  Pencil,
+  Trash2
 } from "lucide-react";
 
 type StoreRow = {
@@ -90,6 +92,16 @@ export default function AdminMasterDashboard() {
   const toggleSuspend = async (storeId: string, suspended: boolean) => {
     await cloud.from("stores").update({ suspended: !suspended }).eq("id", storeId);
     loadData();
+  };
+
+  const deleteStore = async (storeId: string, name: string) => {
+    if (!confirm(`Remover permanentemente a loja ${name}? Todos os dados relacionados serão perdidos.`)) return;
+    const { error } = await cloud.from("stores").delete().eq("id", storeId);
+    if (error) {
+      alert("Erro ao remover: " + error.message);
+    } else {
+      loadData();
+    }
   };
 
   const toggleActive = async (storeId: string, active: boolean) => {
@@ -187,6 +199,26 @@ export default function AdminMasterDashboard() {
                       onClick={() => toggleSuspend(m.store.id, m.store.suspended)}
                     >
                       {m.store.suspended ? <TrendingUp className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs"
+                      title="Configurações da Loja"
+                      onClick={() => {
+                        nav(`/admin/master/cockpit/${m.store.id}`);
+                      }}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                      title="Excluir Loja"
+                      onClick={() => deleteStore(m.store.id, m.store.name)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                     <Button
                       size="sm"

@@ -43,8 +43,10 @@ export default function PublicTrackingSearch() {
           carrier:order_tracking_carriers(*), 
           status:order_tracking_status(*), 
           timeline:order_tracking_timeline(*), 
-          order:store_orders(*),
-          items:store_order_items(*)
+          order:store_orders(
+            *,
+            items:store_order_items(*)
+          )
         `);
       
       if (cleanCode && !cleanCpf) {

@@ -227,8 +227,7 @@
   }
 
   .main-content {
-    padding-top: var(--store-header-offset) !important;
-    scroll-padding-top: calc(var(--store-header-offset) + 1rem);
+    scroll-padding-top: 1rem;
   }
 
   .banner-text {

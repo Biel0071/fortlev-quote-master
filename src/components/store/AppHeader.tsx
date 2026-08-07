@@ -30,7 +30,7 @@ export function AppHeader({
       const height = Math.ceil(root.getBoundingClientRect().height + HEADER_SAFE_GAP_PX);
       if (height > 0 && Math.abs(height - lastHeight) > 1) {
         lastHeight = height;
-        document.documentElement.style.setProperty("--store-header-offset", `${height}px`);
+        // document.documentElement.style.setProperty("--store-header-offset", `${height}px`);
       }
     };
 

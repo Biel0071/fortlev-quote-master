@@ -44,7 +44,7 @@ export default function PublicTrackingSearch() {
           status:order_tracking_status(*), 
           timeline:order_tracking_timeline(*), 
           order:store_orders(
-            *,
+            id, status, customer_name, customer_city, customer_state,
             items:store_order_items(*)
           )
         `);

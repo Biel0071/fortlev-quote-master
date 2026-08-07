@@ -126,10 +126,11 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
         }
 
-        // 3. Resolve by Slug (/p/:slug)
+        // 3. Resolve by Slug (/p/:slug) ou Rota Raiz
         if (!storeId) {
           const pMatch = pathname.match(/\/p\/([^\/]+)/);
-          const possibleSlug = pMatch ? pMatch[1] : (pathParts[1] && !['admin', 'auth', 'master'].includes(pathParts[1]) ? pathParts[1] : null);
+          // Se for root (/), podemos tentar resolver por slug 'materiais' se nada mais for achado
+          const possibleSlug = pMatch ? pMatch[1] : (pathParts[1] && !['admin', 'auth', 'master', 'home', 'loja', 'rastreio'].includes(pathParts[1]) ? pathParts[1] : null);
           
           if (possibleSlug) {
             const { data: slugData } = await supabase

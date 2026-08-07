@@ -53,7 +53,7 @@ export function AppHeader({
   }, [showBanner, categories?.length, footerStoreName]);
 
   return (
-    <div ref={rootRef} id="app-header-root" className="fixed top-0 left-0 right-0 z-[9999] w-full bg-background shadow-sm">
+    <div ref={rootRef} id="app-header-root" className="sticky top-0 left-0 right-0 z-[9999] w-full bg-background shadow-sm">
       {showBanner ? <AppDownloadBanner /> : null}
       <StoreTopbar
         cartCount={cartCount}

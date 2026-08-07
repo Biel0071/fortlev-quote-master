@@ -30,6 +30,9 @@ export default function PublicTrackingSearch() {
     setResult(null);
 
     try {
+      const cleanCode = code.trim().toUpperCase();
+      const cleanCpf = cpf.replace(/\D/g, "");
+      
       let query = cloud
         .from("order_tracking_main")
         .select(`
@@ -41,18 +44,31 @@ export default function PublicTrackingSearch() {
           items:store_order_items(*)
         `);
       
-      if (code) {
-        query = query.or(`tracking_code.eq.${code.trim()},order_id.eq.${code.trim()}`);
-      } else if (cpf) {
-        const cleanCpf = cpf.replace(/\D/g, "");
-        query = query.filter("order.customer_cpf", "eq", cleanCpf);
+      if (cleanCode && !cleanCpf) {
+        query = query.or(`tracking_code.eq.${cleanCode},order_id.eq.${cleanCode}`);
+      } else if (cleanCpf) {
+        // First find orders for this CPF
+        const { data: orders, error: orderError } = await cloud
+          .from("store_orders")
+          .select("id")
+          .eq("customer_cpf", cleanCpf);
+        
+        if (orderError) throw orderError;
+
+        if (orders && orders.length > 0) {
+          const orderIds = orders.map(o => o.id);
+          // Query tracking records for these orders
+          query = query.in("order_id", orderIds).order('created_at', { ascending: false });
+        } else {
+          // Force no result if order not found
+          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+        }
       }
 
       const { data, error } = await query;
       
-      const resultData = Array.isArray(data) ? data[0] : data;
-
       if (error) throw error;
+      const resultData = data && data.length > 0 ? data[0] : null;
       if (!resultData) {
         setResult({ notFound: true });
         toast({ title: "Não encontrado", description: "Nenhum pedido encontrado para os dados informados.", variant: "destructive" });
@@ -108,8 +124,9 @@ export default function PublicTrackingSearch() {
                         const val = e.target.value;
                         setCode(val);
                         // Auto-detect CPF to sync fields if needed, but here we unify the logic
-                        if (/^\d+$/.test(val.replace(/[\.\-]/g, "")) && val.replace(/[\.\-]/g, "").length > 9) {
-                          setCpf(val);
+                        const cleanVal = val.replace(/\D/g, "");
+                        if (cleanVal.length === 11 || cleanVal.length === 14) {
+                          setCpf(cleanVal);
                         } else {
                           setCpf("");
                         }

@@ -47,14 +47,18 @@ export default function PublicTrackingSearch() {
       if (cleanCode && !cleanCpf) {
         query = query.or(`tracking_code.eq.${cleanCode},order_id.eq.${cleanCode}`);
       } else if (cleanCpf) {
-        const { data: orders } = await cloud
+        // First find the order
+        const { data: orders, error: orderError } = await cloud
           .from("store_orders")
           .select("id")
           .eq("customer_cpf", cleanCpf);
         
+        if (orderError) throw orderError;
+
         if (orders && orders.length > 0) {
           const orderIds = orders.map(o => o.id);
-          query = query.in("order_id", orderIds);
+          // If multiple orders, we take the one that has a tracking record
+          query = query.in("order_id", orderIds).order('created_at', { ascending: false }).limit(1);
         } else {
           query = query.eq("id", "00000000-0000-0000-0000-000000000000");
         }
@@ -63,7 +67,7 @@ export default function PublicTrackingSearch() {
       const { data, error } = await query;
       
       if (error) throw error;
-      const resultData = Array.isArray(data) ? data[0] : data;
+      const resultData = data && data.length > 0 ? data[0] : null;
       if (!resultData) {
         setResult({ notFound: true });
         toast({ title: "Não encontrado", description: "Nenhum pedido encontrado para os dados informados.", variant: "destructive" });

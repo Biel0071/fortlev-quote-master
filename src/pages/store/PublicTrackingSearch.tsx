@@ -156,7 +156,7 @@ export default function PublicTrackingSearch() {
       toast({ title: "Não encontrado", description: "Nenhum pedido encontrado para os dados informados.", variant: "destructive" });
     } catch (error: any) {
       console.error("DEBUG: Error in handleSearch:", error);
-      toast({ title: "Erro na consulta", description: `Erro: ${error.message || "desconhecido"}`, variant: "destructive" });
+      toast({ title: "Erro na consulta", description: "Ocorreu um erro ao buscar seu rastreio.", variant: "destructive" });
     } finally {
       setLoading(false);
     }

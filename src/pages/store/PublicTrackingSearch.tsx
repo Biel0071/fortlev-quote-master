@@ -50,6 +50,7 @@ export default function PublicTrackingSearch() {
           order:store_orders(
             id,
             status,
+            total,
             customer_name,
             customer_city,
             customer_state
@@ -79,9 +80,9 @@ export default function PublicTrackingSearch() {
         const resultData = {
           ...tracking,
           timeline: timeline || [],
+          items: items || [],
           order: {
-            ...tracking.order,
-            items: items || []
+            ...tracking.order
           }
         };
         setResult(resultData);
@@ -109,13 +110,14 @@ export default function PublicTrackingSearch() {
               delivered_at,
               carrier:order_tracking_carriers(id, name, logo_url), 
               status:order_tracking_status(id, label, progress_percentage), 
-              order:store_orders(
-                id,
-                status,
-                customer_name,
-                customer_city,
-                customer_state
-              )
+            order:store_orders(
+              id,
+              status,
+              total,
+              customer_name,
+              customer_city,
+              customer_state
+            )
             `)
             .in("order_id", orders.map(o => o.id))
             .order('created_at', { ascending: false })
@@ -140,9 +142,9 @@ export default function PublicTrackingSearch() {
             setResult({
               ...tracking,
               timeline: timeline || [],
+              items: items || [],
               order: {
-                ...tracking.order,
-                items: items || []
+                ...tracking.order
               }
             });
             setLoading(false);

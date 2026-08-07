@@ -47,7 +47,7 @@ export default function PublicTrackingSearch() {
       if (cleanCode && !cleanCpf) {
         query = query.or(`tracking_code.eq.${cleanCode},order_id.eq.${cleanCode}`);
       } else if (cleanCpf) {
-        // First find the order
+        // First find orders for this CPF
         const { data: orders, error: orderError } = await cloud
           .from("store_orders")
           .select("id")
@@ -57,9 +57,9 @@ export default function PublicTrackingSearch() {
 
         if (orders && orders.length > 0) {
           const orderIds = orders.map(o => o.id);
-          // If multiple orders, we take the one that has a tracking record
-          query = query.in("order_id", orderIds).order('created_at', { ascending: false }).limit(1);
+          query = query.in("order_id", orderIds).order('created_at', { ascending: false });
         } else {
+          // Force no result if order not found
           query = query.eq("id", "00000000-0000-0000-0000-000000000000");
         }
       }

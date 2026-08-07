@@ -140,9 +140,9 @@ export default function PublicTrackingSearch() {
             setResult({
               ...tracking,
               timeline: timeline || [],
+              items: items || [],
               order: {
-                ...tracking.order,
-                items: items || []
+                ...tracking.order
               }
             });
             setLoading(false);

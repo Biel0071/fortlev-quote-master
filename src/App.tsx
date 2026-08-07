@@ -114,6 +114,7 @@ const App = () => (
               <Routes>
                 {/* Rota raiz explicitamente definida */}
                 <Route path="/" element={<StoreHome />} />
+                <Route path="/home" element={<Navigate to="/" replace />} />
                 
                 <Route path="/materiais" element={<Navigate to="/" replace />} />
                 <Route path="/loja" element={<StoreCatalog />} />

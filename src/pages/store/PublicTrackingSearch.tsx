@@ -30,6 +30,9 @@ export default function PublicTrackingSearch() {
     setResult(null);
 
     try {
+      const cleanCode = code.trim();
+      const cleanCpf = cpf.replace(/\D/g, "");
+      
       let query = cloud
         .from("order_tracking_main")
         .select(`
@@ -37,24 +40,22 @@ export default function PublicTrackingSearch() {
           carrier:order_tracking_carriers(*), 
           status:order_tracking_status(*), 
           timeline:order_tracking_timeline(*), 
-          order:store_orders(*),
+          order:store_orders!inner(*),
           items:store_order_items(*)
         `);
       
-      if (code) {
-        // Try exact match on code or order_id
-        query = query.or(`tracking_code.eq.${code.trim()},order_id.eq.${code.trim()}`);
-      } else if (cpf) {
-        const cleanCpf = cpf.replace(/\D/g, "");
-        // Filter by customer_cpf using the linked store_orders table
+      if (cleanCode) {
+        query = query.or(`tracking_code.eq.${cleanCode},order_id.eq.${cleanCode}`);
+      }
+      
+      if (cleanCpf) {
         query = query.eq("order.customer_cpf", cleanCpf);
       }
 
       const { data, error } = await query;
       
-      const resultData = Array.isArray(data) ? data[0] : data;
-
       if (error) throw error;
+      const resultData = Array.isArray(data) ? data[0] : data;
       if (!resultData) {
         setResult({ notFound: true });
         toast({ title: "Não encontrado", description: "Nenhum pedido encontrado para os dados informados.", variant: "destructive" });

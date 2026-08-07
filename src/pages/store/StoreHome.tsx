@@ -242,7 +242,7 @@ export default function StoreHome() {
   const isEmptyStore = phase.featured && !loading && !tenantLoading && activeProducts.length === 0 && !home.loading;
 
   return (
-    <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen pt-[var(--store-header-offset,80px)]">
+    <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">
       <AppHeader
         cartCount={cart.totalItems}
         onCartClick={() => setCartOpen(true)}

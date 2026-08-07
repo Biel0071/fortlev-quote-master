@@ -30,7 +30,7 @@ export function AppHeader({
       const height = Math.ceil(root.getBoundingClientRect().height + HEADER_SAFE_GAP_PX);
       if (height > 0 && Math.abs(height - lastHeight) > 1) {
         lastHeight = height;
-        document.documentElement.style.setProperty("--store-header-offset", `${height}px`);
+        // document.documentElement.style.setProperty("--store-header-offset", `${height}px`);
       }
     };
 
@@ -53,7 +53,7 @@ export function AppHeader({
   }, [showBanner, categories?.length, footerStoreName]);
 
   return (
-    <div ref={rootRef} id="app-header-root" className="fixed top-0 left-0 right-0 z-[9999] w-full bg-background shadow-sm">
+    <div ref={rootRef} id="app-header-root" className="sticky top-0 left-0 right-0 z-[9999] w-full bg-background shadow-sm">
       {showBanner ? <AppDownloadBanner /> : null}
       <StoreTopbar
         cartCount={cartCount}

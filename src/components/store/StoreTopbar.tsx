@@ -141,16 +141,16 @@ export function StoreTopbar({
 
   return (
     <>
-      <header className="header-main w-full overflow-x-hidden border-b border-border">
+      <header className="w-full overflow-x-hidden border-b border-border">
         <div className="mx-auto max-w-6xl px-3 pt-0 pb-2 sm:px-6 sm:pt-0 sm:pb-3">
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-center pt-[5px] pb-[2px]">
+            <div className="flex items-center justify-center py-2">
               <Link to="/" className="flex items-center justify-center" aria-label={brandLabel}>
                 {brandLogo && !logoFailed ? (
                   <img
                     src={brandLogo}
                     alt={`${brandLabel} - logo`}
-                    className="logo"
+                    className="h-10 sm:h-12 w-auto object-contain"
                     loading="eager"
                     onLoad={() => window.dispatchEvent(new Event("resize"))}
                     onError={() => setLogoFailed(true)}

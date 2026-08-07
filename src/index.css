@@ -227,8 +227,7 @@
   }
 
   .main-content {
-    padding-top: var(--store-header-offset) !important;
-    scroll-padding-top: calc(var(--store-header-offset) + 1rem);
+    scroll-padding-top: 1rem;
   }
 
   .banner-text {
@@ -240,15 +239,15 @@
   }
 
   .logo {
-    @apply block h-[72px] w-auto object-contain;
-    max-width: 320px;
+    @apply block h-10 w-auto object-contain;
+    max-width: 240px;
   }
 }
 
 @media (min-width: 640px) {
   .logo {
-    height: 84px;
-    max-width: 420px;
+    height: 48px;
+    max-width: 300px;
   }
 }
 

@@ -184,7 +184,7 @@ export default function PublicTrackingSearch() {
       <FloatingChatButton />
 
       
-      <main className="max-w-4xl mx-auto px-4 pt-[var(--store-header-offset)] pb-8 sm:py-12 space-y-8">
+      <main className="max-w-4xl mx-auto px-4 pb-8 sm:py-12 space-y-8">
         <div className="flex flex-col items-center text-center space-y-4">
           <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary">
             <Truck className="w-8 h-8" />

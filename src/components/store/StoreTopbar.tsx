@@ -150,7 +150,7 @@ export function StoreTopbar({
                   <img
                     src={brandLogo}
                     alt={`${brandLabel} - logo`}
-                    className="h-14 w-auto object-contain"
+                    className="h-10 sm:h-12 w-auto object-contain"
                     loading="eager"
                     onLoad={() => window.dispatchEvent(new Event("resize"))}
                     onError={() => setLogoFailed(true)}

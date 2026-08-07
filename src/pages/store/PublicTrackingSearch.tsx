@@ -42,10 +42,12 @@ export default function PublicTrackingSearch() {
         `);
       
       if (code) {
+        // Try exact match on code or order_id
         query = query.or(`tracking_code.eq.${code.trim()},order_id.eq.${code.trim()}`);
       } else if (cpf) {
         const cleanCpf = cpf.replace(/\D/g, "");
-        query = query.filter("order.customer_cpf", "eq", cleanCpf);
+        // Filter by customer_cpf using the linked store_orders table
+        query = query.eq("order.customer_cpf", cleanCpf);
       }
 
       const { data, error } = await query;
@@ -108,8 +110,9 @@ export default function PublicTrackingSearch() {
                         const val = e.target.value;
                         setCode(val);
                         // Auto-detect CPF to sync fields if needed, but here we unify the logic
-                        if (/^\d+$/.test(val.replace(/[\.\-]/g, "")) && val.replace(/[\.\-]/g, "").length > 9) {
-                          setCpf(val);
+                        const cleanVal = val.replace(/\D/g, "");
+                        if (cleanVal.length === 11 || cleanVal.length === 14) {
+                          setCpf(cleanVal);
                         } else {
                           setCpf("");
                         }

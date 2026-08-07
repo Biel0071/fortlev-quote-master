@@ -206,7 +206,7 @@ export default function AdminMasterDashboard() {
                       className="h-7 text-xs"
                       title="Configurações da Loja"
                       onClick={() => {
-                        nav(`/admin/master/cockpit/${m.store.id}`);
+                        nav(`/admin/master/stores/${m.store.id}`);
                       }}
                     >
                       <Pencil className="w-3.5 h-3.5" />

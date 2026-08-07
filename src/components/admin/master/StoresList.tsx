@@ -205,10 +205,10 @@ const StoresList = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Ações Master</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => navigate(cockpitUrl)}>
+                      <DropdownMenuItem onClick={() => navigate(`/admin/master/stores/${store.id}`)}>
                         <Pencil size={14} className="mr-2" /> Editar Loja (Configurações)
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate(cockpitUrl)}>
+                      <DropdownMenuItem onClick={() => navigate(`/admin/master/stores/${store.id}`)}>
                         <Settings size={14} className="mr-2" /> Cockpit da Loja
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => window.open(publicUrl, '_blank')}>

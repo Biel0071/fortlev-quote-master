@@ -45,10 +45,8 @@ export default function PublicTrackingSearch() {
         `);
       
       if (cleanCode && !cleanCpf) {
-        // Search by tracking code or order ID
-        query = query.or(`tracking_code.eq."${cleanCode}",order_id.eq."${cleanCode}"`);
+        query = query.or(`tracking_code.eq.${cleanCode},order_id.eq.${cleanCode}`);
       } else if (cleanCpf) {
-        // Search strictly by CPF through the related order
         query = query.filter("order.customer_cpf", "eq", cleanCpf);
       }
 

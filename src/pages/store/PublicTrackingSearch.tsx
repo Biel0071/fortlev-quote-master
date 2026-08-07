@@ -36,7 +36,7 @@ export default function PublicTrackingSearch() {
       const cleanCode = code.trim().toUpperCase();
       const cleanCpf = cpf.replace(/\D/g, "");
       
-      let query = cloud
+      const { data: tracking, error: trackingError } = await cloud
         .from("order_tracking_main")
         .select(`
           id,
@@ -46,20 +46,48 @@ export default function PublicTrackingSearch() {
           delivered_at,
           carrier:order_tracking_carriers(id, name, logo_url), 
           status:order_tracking_status(id, label, progress_percentage), 
-          timeline:order_tracking_timeline(*), 
           order:store_orders(
             id,
             status,
             customer_name,
             customer_city,
-            customer_state,
-            items:store_order_items(*)
+            customer_state
           )
-        `);
-      
-      if (cleanCode && !cleanCpf) {
-        query = query.or(`tracking_code.eq."${cleanCode}",order_id.eq."${cleanCode}"`);
-      } else if (cleanCpf) {
+        `)
+        .or(`tracking_code.eq."${cleanCode}",order_id.eq."${cleanCode}"`)
+        .maybeSingle();
+
+      if (trackingError) throw trackingError;
+
+      if (tracking) {
+        // Fetch timeline separately to avoid complex join issues
+        const { data: timeline } = await cloud
+          .from("order_tracking_timeline")
+          .select("*")
+          .eq("tracking_id", tracking.id)
+          .order("event_at", { ascending: false });
+
+        // Fetch items separately
+        const { data: items } = await cloud
+          .from("store_order_items")
+          .select("*")
+          .eq("order_id", tracking.order?.id);
+
+        const resultData = {
+          ...tracking,
+          timeline: timeline || [],
+          order: {
+            ...tracking.order,
+            items: items || []
+          }
+        };
+        setResult(resultData);
+        setLoading(false);
+        return;
+      }
+
+      // If code search fails, try CPF search
+      if (cleanCpf) {
         // First find orders for this CPF
         const { data: orders, error: orderError } = await cloud
           .from("store_orders")

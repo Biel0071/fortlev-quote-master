@@ -79,9 +79,9 @@ export default function PublicTrackingSearch() {
         const resultData = {
           ...tracking,
           timeline: timeline || [],
+          items: items || [],
           order: {
-            ...tracking.order,
-            items: items || []
+            ...tracking.order
           }
         };
         setResult(resultData);

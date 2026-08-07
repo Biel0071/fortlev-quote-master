@@ -45,7 +45,8 @@ export default function PublicTrackingSearch() {
           posted_at,
           estimated_delivery_at,
           delivered_at,
-          carrier:order_tracking_carriers(id, name, logo_url), 
+          carrier:order_tracking_carriers(id, name), 
+
           status:order_tracking_status(id, label, progress_percentage), 
           order:store_orders(
             id,
@@ -108,7 +109,7 @@ export default function PublicTrackingSearch() {
               posted_at,
               estimated_delivery_at,
               delivered_at,
-              carrier:order_tracking_carriers(id, name, logo_url), 
+              carrier:order_tracking_carriers(id, name), 
               status:order_tracking_status(id, label, progress_percentage), 
             order:store_orders(
               id,

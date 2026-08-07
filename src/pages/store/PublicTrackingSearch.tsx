@@ -22,6 +22,9 @@ export default function PublicTrackingSearch() {
   const [cpf, setCpf] = useState("");
   const [result, setResult] = useState<any>(null);
   const [activeInfo, setActiveInfo] = useState<{ title: string; desc: string } | null>(null);
+  const [simulatedTimeline, setSimulatedTimeline] = useState<any[]>([]);
+  const [simulatedProgress, setSimulatedProgress] = useState<number>(0);
+  const [isSimulating, setIsSimulating] = useState(false);
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -88,6 +91,91 @@ export default function PublicTrackingSearch() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!result || result.notFound) return;
+
+    // Reset simulation states
+    setSimulatedTimeline(result.timeline || []);
+    setSimulatedProgress(result.status?.progress_percentage || 10);
+    
+    const statusLabel = result.status?.label?.toLowerCase() || "";
+    const isOngoing = statusLabel.includes("transporte") || statusLabel.includes("trânsito") || statusLabel.includes("postado") || statusLabel.includes("coletado");
+    
+    if (isOngoing && (result.status?.progress_percentage || 0) < 100) {
+      setIsSimulating(true);
+      
+      // Simulation Logic: Add events to make it look "live"
+      const now = new Date();
+      const postedAt = new Date(result.posted_at || result.created_at);
+      const estimatedAt = new Date(result.estimated_delivery_at);
+      
+      const timeDiff = estimatedAt.getTime() - postedAt.getTime();
+      const elapsed = now.getTime() - postedAt.getTime();
+      const progressRatio = Math.min(0.9, elapsed / timeDiff); // Max 90% in simulation
+      
+      const newProgress = Math.max(result.status?.progress_percentage || 10, Math.floor(progressRatio * 100));
+      setSimulatedProgress(newProgress);
+
+      // Major cities mapping for "Distribution Centers"
+      const cityMap: Record<string, string> = {
+        'MG': 'Belo Horizonte/MG',
+        'SP': 'Guarulhos/SP',
+        'RJ': 'Rio de Janeiro/RJ',
+        'PR': 'Curitiba/PR',
+        'SC': 'Joinville/SC',
+        'RS': 'Porto Alegre/RS',
+        'BA': 'Salvador/BA',
+        'CE': 'Fortaleza/CE',
+        'DF': 'Brasília/DF',
+        'PE': 'Recife/PE',
+        'ES': 'Vitória/ES',
+        'GO': 'Goiânia/GO',
+        'MT': 'Cuiabá/MT',
+        'MS': 'Campo Grande/MS',
+        'AM': 'Manaus/AM',
+        'PA': 'Belém/PA',
+      };
+
+      const destState = result.order?.customer_state || 'SP';
+      const destCity = result.order?.customer_city || 'São Paulo';
+      const majorCity = cityMap[destState] || `${destCity}/${destState}`;
+
+      const timeline = [...(result.timeline || [])];
+      const sortedTimeline = timeline.sort((a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime());
+      const lastEvent = sortedTimeline[0];
+      
+      // If last event was more than 12 hours ago and we are in transit, add a simulated step
+      const lastEventTime = new Date(lastEvent?.event_at || postedAt).getTime();
+      const hoursSinceLast = (now.getTime() - lastEventTime) / (1000 * 60 * 60);
+
+      if (hoursSinceLast > 12 && newProgress >= 30 && newProgress < 90) {
+        const simulatedEvent = {
+          id: 'sim-1',
+          title: "Objeto chegou no Centro de Distribuição",
+          description: `O objeto chegou à unidade de tratamento em ${majorCity} e segue para a próxima etapa de entrega.`,
+          location_city: majorCity.split('/')[0],
+          location_state: majorCity.split('/')[1],
+          event_at: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+          is_simulated: true
+        };
+        setSimulatedTimeline([simulatedEvent, ...sortedTimeline]);
+      } else {
+        setSimulatedTimeline(sortedTimeline);
+      }
+
+      // Interval to "refresh" data from DB every 45s (real update)
+      const interval = setInterval(() => {
+        handleSearch();
+      }, 45000);
+
+      return () => clearInterval(interval);
+    } else {
+      setIsSimulating(false);
+      setSimulatedTimeline((result.timeline || []).sort((a: any, b: any) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime()));
+    }
+  }, [result]);
+
+
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-12 tracking-search-page">
@@ -152,6 +240,14 @@ export default function PublicTrackingSearch() {
 
         {result && !result.notFound ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {isSimulating && (
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3 animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">
+                  Atualização Automática Ativa: Acompanhando em tempo real...
+                </p>
+              </div>
+            )}
             {/* Main Result Card */}
             <Card className="overflow-hidden border-2 border-primary/10 shadow-2xl rounded-3xl">
               <div className="bg-primary p-6 sm:p-8 text-primary-foreground relative overflow-hidden">
@@ -187,7 +283,7 @@ export default function PublicTrackingSearch() {
                       <div className="space-y-1">
                         <span className="text-[10px] font-black uppercase tracking-widest opacity-60 block">Progresso Logístico</span>
                         <div className="text-xs font-black bg-white/20 px-2 py-0.5 rounded-full inline-block">
-                          {result.status?.progress_percentage || 10}% Concluído
+                          {isSimulating ? simulatedProgress : (result.status?.progress_percentage || 10)}% Concluído
                         </div>
                       </div>
                       <Box className="w-8 h-8 opacity-20" />
@@ -196,7 +292,7 @@ export default function PublicTrackingSearch() {
                    <div className="relative h-4 bg-white/10 rounded-full overflow-hidden p-1 shadow-inner">
                       <div 
                         className="h-full bg-white rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(255,255,255,0.5)]"
-                        style={{ width: `${result.status?.progress_percentage || 10}%` }}
+                        style={{ width: `${isSimulating ? simulatedProgress : (result.status?.progress_percentage || 10)}%` }}
                       />
                    </div>
 
@@ -229,11 +325,13 @@ export default function PublicTrackingSearch() {
                           </div>
                           <h3 className="font-black uppercase tracking-widest text-sm text-slate-800">Linha do Tempo</h3>
                        </div>
-                       <Badge variant="outline" className="text-[10px] font-black uppercase border-primary/20 text-primary">Tempo Real</Badge>
+                       <Badge variant="outline" className={`text-[10px] font-black uppercase border-primary/20 text-primary ${isSimulating ? 'animate-pulse bg-primary/5' : ''}`}>
+                         {isSimulating ? 'Monitoramento Ativo' : 'Tempo Real'}
+                       </Badge>
                     </div>
 
                     <div className="relative pl-6 space-y-10 before:absolute before:left-6 before:top-2 before:bottom-2 before:w-1 before:bg-slate-100">
-                      {(result.timeline || []).sort((a:any, b:any) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime()).map((event: any, idx: number) => (
+                      {simulatedTimeline.map((event: any, idx: number) => (
                         <div key={event.id} className="relative pl-10">
                           <div className={`absolute left-[-6px] top-1.5 w-4 h-4 rounded-full border-4 border-white shadow-sm ${idx === 0 ? 'bg-primary scale-125' : 'bg-slate-300'}`} />
                           <div className="flex flex-col gap-1.5">

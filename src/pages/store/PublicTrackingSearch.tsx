@@ -22,6 +22,9 @@ export default function PublicTrackingSearch() {
   const [cpf, setCpf] = useState("");
   const [result, setResult] = useState<any>(null);
   const [activeInfo, setActiveInfo] = useState<{ title: string; desc: string } | null>(null);
+  const [simulatedTimeline, setSimulatedTimeline] = useState<any[]>([]);
+  const [simulatedProgress, setSimulatedProgress] = useState<number>(0);
+  const [isSimulating, setIsSimulating] = useState(false);
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();

@@ -50,6 +50,7 @@ export default function PublicTrackingSearch() {
           order:store_orders(
             id,
             status,
+            total,
             customer_name,
             customer_city,
             customer_state

@@ -275,7 +275,7 @@ export default function PublicTrackingSearch() {
                       <div className="space-y-1">
                         <span className="text-[10px] font-black uppercase tracking-widest opacity-60 block">Progresso Logístico</span>
                         <div className="text-xs font-black bg-white/20 px-2 py-0.5 rounded-full inline-block">
-                          {result.status?.progress_percentage || 10}% Concluído
+                          {isSimulating ? simulatedProgress : (result.status?.progress_percentage || 10)}% Concluído
                         </div>
                       </div>
                       <Box className="w-8 h-8 opacity-20" />
@@ -284,7 +284,7 @@ export default function PublicTrackingSearch() {
                    <div className="relative h-4 bg-white/10 rounded-full overflow-hidden p-1 shadow-inner">
                       <div 
                         className="h-full bg-white rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(255,255,255,0.5)]"
-                        style={{ width: `${result.status?.progress_percentage || 10}%` }}
+                        style={{ width: `${isSimulating ? simulatedProgress : (result.status?.progress_percentage || 10)}%` }}
                       />
                    </div>
 

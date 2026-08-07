@@ -39,12 +39,20 @@ export default function PublicTrackingSearch() {
       let query = cloud
         .from("order_tracking_main")
         .select(`
-          *, 
-          carrier:order_tracking_carriers(*), 
-          status:order_tracking_status(*), 
+          id,
+          tracking_code,
+          posted_at,
+          estimated_delivery_at,
+          delivered_at,
+          carrier:order_tracking_carriers(id, name, logo_url), 
+          status:order_tracking_status(id, label, progress_percentage), 
           timeline:order_tracking_timeline(*), 
           order:store_orders(
-            id, status, customer_name, customer_city, customer_state,
+            id,
+            status,
+            customer_name,
+            customer_city,
+            customer_state,
             items:store_order_items(*)
           )
         `);

@@ -40,16 +40,26 @@ export default function PublicTrackingSearch() {
           carrier:order_tracking_carriers(*), 
           status:order_tracking_status(*), 
           timeline:order_tracking_timeline(*), 
-          order:store_orders!inner(*),
+          order:store_orders(*),
           items:store_order_items(*)
         `);
       
       if (cleanCode && !cleanCpf) {
         query = query.or(`tracking_code.eq.${cleanCode},order_id.eq.${cleanCode}`);
-      }
-      
-      if (cleanCpf) {
-        query = query.eq("order.customer_cpf", cleanCpf);
+      } else if (cleanCpf) {
+        // Find order first to avoid inner join issues with empty tracking_main
+        const { data: orders } = await cloud
+          .from("store_orders")
+          .select("id")
+          .eq("customer_cpf", cleanCpf);
+        
+        if (orders && orders.length > 0) {
+          const orderIds = orders.map(o => o.id).join(",");
+          query = query.filter("order_id", "in", `(${orderIds})`);
+        } else {
+          // Force no result if order not found
+          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+        }
       }
 
       const { data, error } = await query;

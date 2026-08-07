@@ -321,7 +321,7 @@ export default function PublicTrackingSearch() {
                     </div>
 
                     <div className="relative pl-6 space-y-10 before:absolute before:left-6 before:top-2 before:bottom-2 before:w-1 before:bg-slate-100">
-                      {(result.timeline || []).sort((a:any, b:any) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime()).map((event: any, idx: number) => (
+                      {simulatedTimeline.map((event: any, idx: number) => (
                         <div key={event.id} className="relative pl-10">
                           <div className={`absolute left-[-6px] top-1.5 w-4 h-4 rounded-full border-4 border-white shadow-sm ${idx === 0 ? 'bg-primary scale-125' : 'bg-slate-300'}`} />
                           <div className="flex flex-col gap-1.5">

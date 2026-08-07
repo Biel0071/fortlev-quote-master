@@ -455,9 +455,9 @@ export default function PublicTrackingSearch() {
                     <div className="p-5 rounded-3xl border-2 border-slate-50 space-y-4">
                        <h4 className="font-black uppercase tracking-wider text-xs text-slate-400">Produtos do pedido</h4>
                        <div className="space-y-3">
-                          {(result.items || []).map((item: any, i: number) => (
+                          {(result.order?.items || []).map((item: any, i: number) => (
                              <div key={i} className="flex items-center justify-between gap-4 text-sm">
-                                <span className="font-bold text-slate-700 line-clamp-1">{item.name_snapshot}</span>
+                                <span className="font-bold text-slate-700 line-clamp-1">{item.product_name}</span>
                                 <span className="font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg">x{item.quantity}</span>
                              </div>
                           ))}

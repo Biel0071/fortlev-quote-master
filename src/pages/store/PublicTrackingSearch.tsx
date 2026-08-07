@@ -240,6 +240,14 @@ export default function PublicTrackingSearch() {
 
         {result && !result.notFound ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {isSimulating && (
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3 animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">
+                  Atualização Automática Ativa: Acompanhando em tempo real...
+                </p>
+              </div>
+            )}
             {/* Main Result Card */}
             <Card className="overflow-hidden border-2 border-primary/10 shadow-2xl rounded-3xl">
               <div className="bg-primary p-6 sm:p-8 text-primary-foreground relative overflow-hidden">

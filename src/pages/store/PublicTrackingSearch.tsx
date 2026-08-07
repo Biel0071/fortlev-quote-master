@@ -80,9 +80,9 @@ export default function PublicTrackingSearch() {
         const resultData = {
           ...tracking,
           timeline: timeline || [],
-          items: items || [],
           order: {
-            ...tracking.order
+            ...tracking.order,
+            items: items || []
           }
         };
         setResult(resultData);
@@ -142,9 +142,9 @@ export default function PublicTrackingSearch() {
             setResult({
               ...tracking,
               timeline: timeline || [],
-              items: items || [],
               order: {
-                ...tracking.order
+                ...tracking.order,
+                items: items || []
               }
             });
             setLoading(false);

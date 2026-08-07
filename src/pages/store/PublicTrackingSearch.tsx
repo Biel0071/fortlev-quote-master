@@ -36,7 +36,8 @@ export default function PublicTrackingSearch() {
       const cleanCode = code.trim().toUpperCase();
       const cleanCpf = cpf.replace(/\D/g, "");
       
-      let query = cloud
+      // Separate lookups to avoid 400 errors from complex joins in the public context
+      const { data: tracking, error: trackingError } = await cloud
         .from("order_tracking_main")
         .select(`
           id,
@@ -46,21 +47,50 @@ export default function PublicTrackingSearch() {
           delivered_at,
           carrier:order_tracking_carriers(id, name, logo_url), 
           status:order_tracking_status(id, label, progress_percentage), 
-          timeline:order_tracking_timeline(*), 
           order:store_orders(
             id,
             status,
             customer_name,
             customer_city,
-            customer_state,
-            items:store_order_items(*)
+            customer_state
           )
-        `);
-      
-      if (cleanCode && !cleanCpf) {
-        query = query.or(`tracking_code.eq."${cleanCode}",order_id.eq."${cleanCode}"`);
-      } else if (cleanCpf) {
-        // First find orders for this CPF
+        `)
+        .eq("tracking_code", cleanCode)
+        .maybeSingle();
+
+      if (trackingError) throw trackingError;
+
+      if (trackingError) throw trackingError;
+
+      if (tracking) {
+        // Fetch timeline separately to avoid complex join issues
+        const { data: timeline } = await cloud
+          .from("order_tracking_timeline")
+          .select("*")
+          .eq("tracking_id", tracking.id)
+          .order("event_at", { ascending: false });
+
+        // Fetch items separately
+        const { data: items } = await cloud
+          .from("store_order_items")
+          .select("*")
+          .eq("order_id", tracking.order?.id);
+
+        const resultData = {
+          ...tracking,
+          timeline: timeline || [],
+          order: {
+            ...tracking.order,
+            items: items || []
+          }
+        };
+        setResult(resultData);
+        setLoading(false);
+        return;
+      }
+
+      // If code search fails, try CPF search
+      if (cleanCpf) {
         const { data: orders, error: orderError } = await cloud
           .from("store_orders")
           .select("id")
@@ -69,25 +99,60 @@ export default function PublicTrackingSearch() {
         if (orderError) throw orderError;
 
         if (orders && orders.length > 0) {
-          const orderIds = orders.map(o => o.id);
-          // Query tracking records for these orders
-          query = query.in("order_id", orderIds).order('created_at', { ascending: false });
-        } else {
-          // Force no result if order not found
-          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+          const { data: cpfTracking, error: cpfError } = await cloud
+            .from("order_tracking_main")
+            .select(`
+              id,
+              tracking_code,
+              posted_at,
+              estimated_delivery_at,
+              delivered_at,
+              carrier:order_tracking_carriers(id, name, logo_url), 
+              status:order_tracking_status(id, label, progress_percentage), 
+              order:store_orders(
+                id,
+                status,
+                customer_name,
+                customer_city,
+                customer_state
+              )
+            `)
+            .in("order_id", orders.map(o => o.id))
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (cpfError) throw cpfError;
+          
+          const tracking = cpfTracking && cpfTracking.length > 0 ? cpfTracking[0] : null;
+
+          if (tracking) {
+            const { data: timeline } = await cloud
+              .from("order_tracking_timeline")
+              .select("*")
+              .eq("tracking_id", tracking.id)
+              .order("event_at", { ascending: false });
+
+            const { data: items } = await cloud
+              .from("store_order_items")
+              .select("*")
+              .eq("order_id", tracking.order?.id);
+
+            setResult({
+              ...tracking,
+              timeline: timeline || [],
+              order: {
+                ...tracking.order,
+                items: items || []
+              }
+            });
+            setLoading(false);
+            return;
+          }
         }
       }
 
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      const resultData = data && data.length > 0 ? data[0] : null;
-      if (!resultData) {
-        setResult({ notFound: true });
-        toast({ title: "Não encontrado", description: "Nenhum pedido encontrado para os dados informados.", variant: "destructive" });
-      } else {
-        setResult(resultData);
-      }
+      setResult({ notFound: true });
+      toast({ title: "Não encontrado", description: "Nenhum pedido encontrado para os dados informados.", variant: "destructive" });
     } catch (error: any) {
       toast({ title: "Erro na consulta", description: "Ocorreu um erro ao buscar seu rastreio.", variant: "destructive" });
     } finally {

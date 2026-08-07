@@ -40,28 +40,15 @@ export default function PublicTrackingSearch() {
           carrier:order_tracking_carriers(*), 
           status:order_tracking_status(*), 
           timeline:order_tracking_timeline(*), 
-          order:store_orders(*),
+          order:store_orders!inner(*),
           items:store_order_items(*)
         `);
       
       if (cleanCode && !cleanCpf) {
         query = query.or(`tracking_code.eq.${cleanCode},order_id.eq.${cleanCode}`);
       } else if (cleanCpf) {
-        // First find orders for this CPF
-        const { data: orders, error: orderError } = await cloud
-          .from("store_orders")
-          .select("id")
-          .eq("customer_cpf", cleanCpf);
-        
-        if (orderError) throw orderError;
-
-        if (orders && orders.length > 0) {
-          const orderIds = orders.map(o => o.id);
-          query = query.in("order_id", orderIds).order('created_at', { ascending: false });
-        } else {
-          // Force no result if order not found
-          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
-        }
+        // Force the relation to match the CPF via !inner join
+        query = query.eq("store_orders.customer_cpf", cleanCpf);
       }
 
       const { data, error } = await query;

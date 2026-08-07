@@ -325,7 +325,9 @@ export default function PublicTrackingSearch() {
                           </div>
                           <h3 className="font-black uppercase tracking-widest text-sm text-slate-800">Linha do Tempo</h3>
                        </div>
-                       <Badge variant="outline" className="text-[10px] font-black uppercase border-primary/20 text-primary">Tempo Real</Badge>
+                       <Badge variant="outline" className={`text-[10px] font-black uppercase border-primary/20 text-primary ${isSimulating ? 'animate-pulse bg-primary/5' : ''}`}>
+                         {isSimulating ? 'Monitoramento Ativo' : 'Tempo Real'}
+                       </Badge>
                     </div>
 
                     <div className="relative pl-6 space-y-10 before:absolute before:left-6 before:top-2 before:bottom-2 before:w-1 before:bg-slate-100">

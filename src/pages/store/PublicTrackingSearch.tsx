@@ -45,15 +45,15 @@ export default function PublicTrackingSearch() {
           posted_at,
           estimated_delivery_at,
           delivered_at,
-          carrier:order_tracking_carriers(id, name, logo_url), 
+          carrier:order_tracking_carriers(id, name), 
+
           status:order_tracking_status(id, label, progress_percentage), 
           order:store_orders(
             id,
             status,
             total,
             customer_name,
-            customer_city,
-            customer_state
+            address
           )
         `)
         .eq("tracking_code", cleanCode)
@@ -80,9 +80,9 @@ export default function PublicTrackingSearch() {
         const resultData = {
           ...tracking,
           timeline: timeline || [],
-          items: items || [],
           order: {
-            ...tracking.order
+            ...tracking.order,
+            items: items || []
           }
         };
         setResult(resultData);
@@ -108,15 +108,14 @@ export default function PublicTrackingSearch() {
               posted_at,
               estimated_delivery_at,
               delivered_at,
-              carrier:order_tracking_carriers(id, name, logo_url), 
+              carrier:order_tracking_carriers(id, name), 
               status:order_tracking_status(id, label, progress_percentage), 
             order:store_orders(
               id,
               status,
               total,
               customer_name,
-              customer_city,
-              customer_state
+              address
             )
             `)
             .in("order_id", orders.map(o => o.id))
@@ -142,9 +141,9 @@ export default function PublicTrackingSearch() {
             setResult({
               ...tracking,
               timeline: timeline || [],
-              items: items || [],
               order: {
-                ...tracking.order
+                ...tracking.order,
+                items: items || []
               }
             });
             setLoading(false);
@@ -156,6 +155,7 @@ export default function PublicTrackingSearch() {
       setResult({ notFound: true });
       toast({ title: "Não encontrado", description: "Nenhum pedido encontrado para os dados informados.", variant: "destructive" });
     } catch (error: any) {
+      console.error("DEBUG: Error in handleSearch:", error);
       toast({ title: "Erro na consulta", description: "Ocorreu um erro ao buscar seu rastreio.", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -213,9 +213,8 @@ export default function PublicTrackingSearch() {
         'PA': 'Belém/PA',
       };
 
-      const destState = result.order?.customer_state || 'SP';
-      const destCity = result.order?.customer_city || 'São Paulo';
-      const majorCity = cityMap[destState] || `${destCity}/${destState}`;
+      const destCity = result.order?.address || 'São Paulo';
+      const majorCity = `${destCity}`;
 
       const timeline = [...(result.timeline || [])];
       const sortedTimeline = timeline.sort((a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime());
@@ -455,9 +454,9 @@ export default function PublicTrackingSearch() {
                     <div className="p-5 rounded-3xl border-2 border-slate-50 space-y-4">
                        <h4 className="font-black uppercase tracking-wider text-xs text-slate-400">Produtos do pedido</h4>
                        <div className="space-y-3">
-                          {(result.items || []).map((item: any, i: number) => (
+                          {(result.order?.items || []).map((item: any, i: number) => (
                              <div key={i} className="flex items-center justify-between gap-4 text-sm">
-                                <span className="font-bold text-slate-700 line-clamp-1">{item.name_snapshot}</span>
+                                <span className="font-bold text-slate-700 line-clamp-1">{item.product_name}</span>
                                 <span className="font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg">x{item.quantity}</span>
                              </div>
                           ))}

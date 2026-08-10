@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, MapPin, Truck, Calendar } from "lucide-react";
+import { Loader2, Plus, Trash2, MapPin, Truck, Calendar, CheckCircle2, Save } from "lucide-react";
 import { format } from "date-fns";
 
 interface OrderTrackingDialogProps {
@@ -161,21 +161,111 @@ export function OrderTrackingDialog({ order, onClose, onUpdate }: OrderTrackingD
     }
   };
 
+  const handleUpdateEvent = async (eventId: string, updates: any) => {
+    setLoading(true);
+    try {
+      const { error } = await cloud.from("order_tracking_timeline").update(updates).eq("id", eventId);
+      if (error) throw error;
+      toast({ title: "Sucesso", description: "Evento atualizado." });
+      loadInitialData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm("Excluir esta etapa do histórico?")) return;
+    setLoading(true);
+    try {
+      const { error } = await cloud.from("order_tracking_timeline").delete().eq("id", eventId);
+      if (error) throw error;
+      toast({ title: "Sucesso", description: "Evento excluído." });
+      loadInitialData();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const currentStatus = statuses.find(s => s.id === tracking?.current_status_id);
+  const currentStatusIndex = currentStatus ? statuses.findIndex(s => s.id === currentStatus.id) : -1;
+
+  const handleStepClick = async (statusId: string) => {
+    if (!tracking) return;
+    setLoading(true);
+    try {
+      const status = statuses.find(s => s.id === statusId);
+      await cloud.from("order_tracking_main").update({
+        current_status_id: statusId
+      }).eq("id", tracking.id);
+      
+      // Also add a timeline event for this status change
+      await cloud.from("order_tracking_timeline").insert({
+        tracking_id: tracking.id,
+        status_id: statusId,
+        title: status?.label || "Status Atualizado",
+        description: `O status do pedido foi alterado para ${status?.label}.`,
+        event_at: new Date().toISOString()
+      });
+
+      toast({ title: "Status Atualizado", description: `Pedido movido para: ${status?.label}` });
+      loadInitialData();
+      onUpdate();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      <div className="bg-muted/30 p-4 rounded-xl border border-border space-y-4">
+        <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Avançar / Retornar Etapas</h4>
+        <div className="flex items-center justify-between gap-2 overflow-x-auto pb-2 no-scrollbar">
+          {statuses.map((s, idx) => {
+            const isActive = s.id === tracking?.current_status_id;
+            const isCompleted = currentStatusIndex > idx;
+            
+            return (
+              <button
+                key={s.id}
+                onClick={() => handleStepClick(s.id)}
+                disabled={loading}
+                className={`flex flex-col items-center gap-2 min-w-[80px] transition-all ${isActive ? 'scale-110' : 'opacity-60 hover:opacity-100'}`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors ${
+                  isActive ? 'bg-primary border-primary text-white shadow-lg' : 
+                  isCompleted ? 'bg-primary/20 border-primary/40 text-primary' : 'bg-background border-muted'
+                }`}>
+                  {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : <span className="text-xs font-bold">{idx + 1}</span>}
+                </div>
+                <span className={`text-[10px] font-black uppercase tracking-tighter text-center leading-none max-w-[70px] ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {s.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Código de Rastreio</Label>
+          <Label className="text-xs font-bold uppercase">Código de Rastreio</Label>
           <Input 
             value={form.tracking_code} 
             onChange={e => setForm({...form, tracking_code: e.target.value})}
             placeholder="Ex: BR123456789"
+            className="h-10 font-bold"
           />
         </div>
         <div className="space-y-2">
-          <Label>Transportadora</Label>
+          <Label className="text-xs font-bold uppercase">Transportadora</Label>
           <Select value={form.carrier_id} onValueChange={v => setForm({...form, carrier_id: v})}>
-            <SelectTrigger>
+            <SelectTrigger className="h-10 font-bold">
               <SelectValue placeholder="Selecione..." />
             </SelectTrigger>
             <SelectContent>
@@ -184,31 +274,35 @@ export function OrderTrackingDialog({ order, onClose, onUpdate }: OrderTrackingD
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Previsão de Entrega</Label>
+          <Label className="text-xs font-bold uppercase">Previsão de Entrega</Label>
           <Input 
             type="date"
             value={form.estimated_delivery_at} 
             onChange={e => setForm({...form, estimated_delivery_at: e.target.value})}
+            className="h-10 font-bold"
           />
         </div>
         <div className="flex items-end">
-          <Button className="w-full" onClick={handleCreateOrUpdateTracking} disabled={loading || !form.tracking_code}>
-            {loading ? <Loader2 className="animate-spin mr-2" /> : null}
-            {tracking ? "Atualizar Rastreio" : "Criar Rastreio"}
+          <Button className="w-full h-10 font-bold uppercase tracking-widest" onClick={handleCreateOrUpdateTracking} disabled={loading || !form.tracking_code}>
+            {loading ? <Loader2 className="animate-spin mr-2 w-4 h-4" /> : <Save className="mr-2 w-4 h-4" />}
+            {tracking ? "Atualizar Dados" : "Criar Rastreio"}
           </Button>
         </div>
       </div>
 
       {tracking && (
-        <div className="border-t pt-6 space-y-4">
-          <h3 className="font-semibold text-lg flex items-center gap-2">
-            <Plus className="w-5 h-5" /> Personalizar Etapa e Mensagem da Entrega
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="border-t pt-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="font-black uppercase tracking-widest text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4 text-primary" /> Personalizar Etapa
+            </h3>
+          </div>
+          
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
              <div className="space-y-2">
-              <Label>Status</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400">Status do Evento</Label>
               <Select value={newEvent.status_id} onValueChange={v => setNewEvent({...newEvent, status_id: v})}>
-                <SelectTrigger>
+                <SelectTrigger className="h-10 bg-white">
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -217,62 +311,105 @@ export function OrderTrackingDialog({ order, onClose, onUpdate }: OrderTrackingD
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Título (Opcional)</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400">Título Personalizado</Label>
               <Input 
                 value={newEvent.title} 
                 onChange={e => setNewEvent({...newEvent, title: e.target.value})}
                 placeholder="Ex: Saiu para entrega"
+                className="h-10 bg-white"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400">Cidade</Label>
+                <Input 
+                  value={newEvent.location_city} 
+                  onChange={e => setNewEvent({...newEvent, location_city: e.target.value})}
+                  className="h-10 bg-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400">UF</Label>
+                <Input 
+                  value={newEvent.location_state} 
+                  onChange={e => setNewEvent({...newEvent, location_state: e.target.value})}
+                  className="h-10 bg-white"
+                />
+              </div>
             </div>
             <div className="space-y-2">
-              <Label>Cidade</Label>
-              <Input 
-                value={newEvent.location_city} 
-                onChange={e => setNewEvent({...newEvent, location_city: e.target.value})}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>UF</Label>
-              <Input 
-                value={newEvent.location_state} 
-                onChange={e => setNewEvent({...newEvent, location_state: e.target.value})}
-              />
-            </div>
-            <div className="md:col-span-2 space-y-2">
-              <Label>Mensagem Personalizada da Etapa</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400">Mensagem da Etapa</Label>
               <Input 
                 value={newEvent.description} 
                 onChange={e => setNewEvent({...newEvent, description: e.target.value})}
-                placeholder="Ex: Seu pedido está cruzando a fronteira do estado..."
+                placeholder="Ex: Objeto em trânsito para..."
+                className="h-10 bg-white"
               />
             </div>
-            <Button className="md:col-span-2" variant="secondary" onClick={handleAddEvent} disabled={loading || !newEvent.status_id}>
+            <Button className="md:col-span-2 h-10 font-bold uppercase tracking-widest" variant="secondary" onClick={handleAddEvent} disabled={loading || !newEvent.status_id}>
               Adicionar ao Histórico
             </Button>
           </div>
 
-          <div className="mt-6 space-y-4">
-            <h4 className="font-medium">Linha do Tempo Atual</h4>
+          <div className="space-y-4">
+            <h4 className="font-black uppercase tracking-widest text-xs text-muted-foreground">Linha do Tempo (Edição)</h4>
             <div className="space-y-3">
               {timeline.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhum evento registrado.</p>
+                <p className="text-sm text-center py-8 text-muted-foreground border-2 border-dashed rounded-xl">Nenhum evento registrado.</p>
               ) : (
                 timeline.sort((a,b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime()).map(event => (
-                  <div key={event.id} className="flex gap-3 p-3 rounded-lg bg-muted/30 border border-border">
-                    <div className="mt-1">
-                      <div className="w-2 h-2 rounded-full bg-primary" />
+                  <div key={event.id} className="group relative flex gap-3 p-4 rounded-xl bg-white border border-slate-100 shadow-sm hover:border-primary/30 transition-all">
+                    <div className="mt-1.5 relative">
+                      <div className="w-3 h-3 rounded-full bg-primary ring-4 ring-primary/10" />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{event.title}</span>
-                        <span className="text-xs text-muted-foreground">{new Date(event.event_at).toLocaleString()}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{event.description}</p>
-                      {(event.location_city || event.location_state) && (
-                        <div className="text-xs flex items-center gap-1 mt-1 text-muted-foreground">
-                          <MapPin className="w-3 h-3" /> {event.location_city}{event.location_city && event.location_state ? ', ' : ''}{event.location_state}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center justify-between gap-4">
+                        <Input 
+                          className="h-7 text-sm font-bold border-none p-0 focus-visible:ring-0 w-full bg-transparent"
+                          defaultValue={event.title}
+                          onBlur={(e) => handleUpdateEvent(event.id, { title: e.target.value })}
+                        />
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Input 
+                            type="datetime-local"
+                            className="h-6 text-[10px] w-32 border-none p-0 focus-visible:ring-0 bg-transparent text-muted-foreground"
+                            defaultValue={format(new Date(event.event_at), "yyyy-MM-dd'T'HH:mm")}
+                            onBlur={(e) => handleUpdateEvent(event.id, { event_at: new Date(e.target.value).toISOString() })}
+                          />
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteEvent(event.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
-                      )}
+                      </div>
+                      <Input 
+                        className="h-6 text-xs text-slate-500 border-none p-0 focus-visible:ring-0 w-full bg-transparent"
+                        defaultValue={event.description}
+                        placeholder="Sem descrição..."
+                        onBlur={(e) => handleUpdateEvent(event.id, { description: e.target.value })}
+                      />
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
+                          <MapPin className="w-3 h-3" />
+                          <Input 
+                            className="h-5 text-[10px] border-none p-0 focus-visible:ring-0 w-24 bg-transparent"
+                            defaultValue={event.location_city}
+                            placeholder="Cidade"
+                            onBlur={(e) => handleUpdateEvent(event.id, { location_city: e.target.value })}
+                          />
+                          <span>/</span>
+                          <Input 
+                            className="h-5 text-[10px] border-none p-0 focus-visible:ring-0 w-8 bg-transparent"
+                            defaultValue={event.location_state}
+                            placeholder="UF"
+                            onBlur={(e) => handleUpdateEvent(event.id, { location_state: e.target.value })}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))

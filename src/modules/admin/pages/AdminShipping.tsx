@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Truck, Calculator, MapPin, Save, Info } from "lucide-react";
+import { Truck, Calculator, MapPin, Save, Info, Settings2, Power } from "lucide-react";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 
 export default function AdminShipping() {
   const qc = useQueryClient();
@@ -97,41 +98,65 @@ export default function AdminShipping() {
         </CardContent>
       </Card>
 
-      {/* Rules config */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Info className="h-4 w-4" /> Regras gerais
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Frete mínimo (R$)</label>
-              <Input type="number" value={ruleValues.min_freight} onChange={(e) => updateRule("min_freight", parseFloat(e.target.value) || 0)} />
+      {/* Configurações Enterprise */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Settings2 className="h-4 w-4" /> Configurações de Rastreio
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border">
+              <div className="space-y-0.5">
+                <label className="text-sm font-bold uppercase tracking-tight">Ativar Rastreamento Público</label>
+                <p className="text-xs text-muted-foreground">Permitir que clientes consultem pedidos via CPF/Código.</p>
+              </div>
+              <Switch checked={ruleValues.tracking_enabled ?? true} onCheckedChange={(val) => updateRule("tracking_enabled", val ? 1 : 0)} />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Taxa sobre subtotal (%)</label>
-              <Input type="number" value={ruleValues.rate_percent} onChange={(e) => updateRule("rate_percent", parseFloat(e.target.value) || 0)} />
+            
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase text-muted-foreground">Prazo Padrão de Entrega (Dias Úteis)</label>
+              <Input type="number" value={ruleValues.default_delivery_days || 7} onChange={(e) => updateRule("default_delivery_days", parseInt(e.target.value) || 0)} />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Valor por km (R$)</label>
-              <Input type="number" value={ruleValues.rate_per_km} step="0.01" onChange={(e) => updateRule("rate_per_km", parseFloat(e.target.value) || 0)} />
+
+            <Button className="w-full" size="sm" onClick={() => saveRules.mutate()} disabled={saveRules.isPending}>
+              <Save className="h-4 w-4 mr-2" /> Salvar Configurações
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Info className="h-4 w-4" /> Regras Gerais de Frete
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-muted-foreground">Frete Mínimo (R$)</label>
+                <Input type="number" value={ruleValues.min_freight} onChange={(e) => updateRule("min_freight", parseFloat(e.target.value) || 0)} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-muted-foreground">Taxa Subtotal (%)</label>
+                <Input type="number" value={ruleValues.rate_percent} onChange={(e) => updateRule("rate_percent", parseFloat(e.target.value) || 0)} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-muted-foreground">Valor por KM (R$)</label>
+                <Input type="number" value={ruleValues.rate_per_km} step="0.01" onChange={(e) => updateRule("rate_per_km", parseFloat(e.target.value) || 0)} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-muted-foreground">Peso Máx (kg)</label>
+                <Input type="number" value={ruleValues.max_weight_kg} onChange={(e) => updateRule("max_weight_kg", parseFloat(e.target.value) || 0)} />
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Peso máximo (kg)</label>
-              <Input type="number" value={ruleValues.max_weight_kg} onChange={(e) => updateRule("max_weight_kg", parseFloat(e.target.value) || 0)} />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Distância máxima (km)</label>
-              <Input type="number" value={ruleValues.max_distance_km} onChange={(e) => updateRule("max_distance_km", parseFloat(e.target.value) || 0)} />
-            </div>
-          </div>
-          <Button className="mt-4" size="sm" onClick={() => saveRules.mutate()} disabled={saveRules.isPending}>
-            <Save className="h-4 w-4 mr-2" /> Salvar regras
-          </Button>
-        </CardContent>
-      </Card>
+            <Button className="w-full" variant="secondary" size="sm" onClick={() => saveRules.mutate()} disabled={saveRules.isPending}>
+              <Save className="h-4 w-4 mr-2" /> Atualizar Valores
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Zones */}
       <Card>

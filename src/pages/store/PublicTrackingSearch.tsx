@@ -354,41 +354,47 @@ export default function PublicTrackingSearch() {
                 </div>
 
                 {/* Stepper Modernizado */}
-                <div className="mt-10 relative z-10">
-                   <div className="flex justify-between items-end mb-4">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60 block">Progresso Logístico</span>
-                        <div className="text-xs font-black bg-white/20 px-2 py-0.5 rounded-full inline-block">
-                          {isSimulating ? simulatedProgress : (result.status?.progress_percentage || 10)}% Concluído
-                        </div>
-                      </div>
-                      <Box className="w-8 h-8 opacity-20" />
-                   </div>
+                 <div className="mt-10 relative z-10">
+                    <div className="flex justify-between items-end mb-4">
+                       <div className="space-y-1">
+                         <span className="text-[10px] font-black uppercase tracking-widest opacity-60 block">Progresso Logístico</span>
+                         <div className="text-xs font-black bg-white/20 px-3 py-1 rounded-full inline-block border border-white/10 backdrop-blur-sm">
+                           {isSimulating ? simulatedProgress : (result.status?.progress_percentage || 10)}% Concluído
+                         </div>
+                       </div>
+                       <Box className="w-8 h-8 opacity-20" />
+                    </div>
 
-                   <div className="relative h-4 bg-white/10 rounded-full overflow-hidden p-1 shadow-inner">
-                      <div 
-                        className="h-full bg-white rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(255,255,255,0.5)]"
-                        style={{ width: `${isSimulating ? simulatedProgress : (result.status?.progress_percentage || 10)}%` }}
-                      />
-                   </div>
+                    <div className="relative h-5 bg-black/20 rounded-full overflow-hidden p-1 shadow-inner border border-white/5">
+                       <div 
+                         className="h-full bg-gradient-to-r from-white/80 to-white rounded-full transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(255,255,255,0.6)] relative"
+                         style={{ width: `${isSimulating ? simulatedProgress : (result.status?.progress_percentage || 10)}%` }}
+                       >
+                         <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:20px_20px] animate-[progress-bar-stripes_1s_linear_infinite]" />
+                       </div>
+                    </div>
 
-                   <div className="flex justify-between mt-3 text-center">
-                      {[
-                        { label: 'Loja', active: (result.status?.progress_percentage || 0) >= 10 },
-                        { label: 'CD Logístico', active: (result.status?.progress_percentage || 0) >= 30 },
-                        { label: 'Em transporte', active: (result.status?.progress_percentage || 0) >= 60 },
-                        { label: 'Saiu para Entrega', active: (result.status?.progress_percentage || 0) >= 90 },
-                        { label: 'Entregue', active: (result.status?.progress_percentage || 0) >= 100 }
-                      ].map((step, idx) => (
-                        <div key={idx} className="flex flex-col items-center gap-1.5 flex-1">
-                          <div className={`w-2 h-2 rounded-full transition-all duration-500 ${step.active ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-white/20'}`} />
-                          <span className={`text-[8px] font-black uppercase tracking-tighter transition-opacity leading-none ${step.active ? 'opacity-100' : 'opacity-40'}`}>
-                            {step.label}
-                          </span>
-                        </div>
-                      ))}
-                   </div>
-                </div>
+                    <div className="flex justify-between mt-4 px-1">
+                       {[
+                         { label: 'Loja', icon: <Package className="w-3 h-3" />, active: (result.status?.progress_percentage || 0) >= 10 },
+                         { label: 'CD', icon: <MapPin className="w-3 h-3" />, active: (result.status?.progress_percentage || 0) >= 30 },
+                         { label: 'Trânsito', icon: <Truck className="w-3 h-3" />, active: (result.status?.progress_percentage || 0) >= 60 },
+                         { label: 'Entrega', icon: <Smartphone className="w-3 h-3" />, active: (result.status?.progress_percentage || 0) >= 90 },
+                         { label: 'Entregue', icon: <CheckCircle2 className="w-3 h-3" />, active: (result.status?.progress_percentage || 0) >= 100 }
+                       ].map((step, idx) => (
+                         <div key={idx} className="flex flex-col items-center gap-2 flex-1 relative">
+                           <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-500 border backdrop-blur-md ${
+                             step.active ? 'bg-white text-primary border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-110' : 'bg-white/5 text-white/40 border-white/10'
+                           }`}>
+                             {step.icon}
+                           </div>
+                           <span className={`text-[9px] font-black uppercase tracking-tighter transition-all leading-none text-center max-w-[50px] ${step.active ? 'opacity-100' : 'opacity-40'}`}>
+                             {step.label}
+                           </span>
+                         </div>
+                       ))}
+                    </div>
+                 </div>
               </div>
 
               <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-5 gap-10">

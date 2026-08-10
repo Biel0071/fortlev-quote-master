@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, MapPin, Truck, Calendar } from "lucide-react";
+import { Loader2, Plus, Trash2, MapPin, Truck, Calendar, CheckCircle2, Save } from "lucide-react";
 import { format } from "date-fns";
 
 interface OrderTrackingDialogProps {

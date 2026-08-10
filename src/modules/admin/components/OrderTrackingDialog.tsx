@@ -238,6 +238,7 @@ export function OrderTrackingDialog({ order, onClose, onUpdate }: OrderTrackingD
                 onChange={e => setNewEvent({...newEvent, location_state: e.target.value})}
               />
             </div>
+            <div className="md:col-span-2 space-y-2">
               <Label>Mensagem Personalizada da Etapa</Label>
               <Input 
                 value={newEvent.description} 

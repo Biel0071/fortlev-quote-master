@@ -202,7 +202,7 @@ export function OrderTrackingDialog({ order, onClose, onUpdate }: OrderTrackingD
       {tracking && (
         <div className="border-t pt-6 space-y-4">
           <h3 className="font-semibold text-lg flex items-center gap-2">
-            <Plus className="w-5 h-5" /> Adicionar Evento na Timeline
+            <Plus className="w-5 h-5" /> Personalizar Etapa e Mensagem da Entrega
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
              <div className="space-y-2">
@@ -239,10 +239,11 @@ export function OrderTrackingDialog({ order, onClose, onUpdate }: OrderTrackingD
               />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <Label>Descrição</Label>
+              <Label>Mensagem Personalizada da Etapa</Label>
               <Input 
                 value={newEvent.description} 
                 onChange={e => setNewEvent({...newEvent, description: e.target.value})}
+                placeholder="Ex: Seu pedido está cruzando a fronteira do estado..."
               />
             </div>
             <Button className="md:col-span-2" variant="secondary" onClick={handleAddEvent} disabled={loading || !newEvent.status_id}>

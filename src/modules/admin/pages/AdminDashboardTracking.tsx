@@ -372,8 +372,8 @@ export default function AdminDashboardTracking() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Centro de Operações de Rastreamento</h1>
-          <p className="text-sm text-muted-foreground">Orquestração completa de logística e entregas.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Orquestrador de Logística Profissional</h1>
+          <p className="text-sm text-muted-foreground">Sistema enterprise para ajuste de fretes, gestão de etapas e controle total da jornada do cliente.</p>
         </div>
       </div>
 
@@ -649,6 +649,10 @@ export default function AdminDashboardTracking() {
         <TabsContent value="preview" className="space-y-4">
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between border-b pb-4">
+              <div>
+                <h3 className="text-lg font-bold">Simulador de Experiência do Cliente</h3>
+                <p className="text-xs text-muted-foreground">Visualize como as etapas e prazos aparecem para o usuário final.</p>
+              </div>
               <div className="flex items-center gap-4">
                 <div className="flex bg-muted p-1 rounded-lg">
                   <Button 
@@ -734,7 +738,7 @@ export default function AdminDashboardTracking() {
                                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                                     <Clock className="w-4 h-4" />
                                  </div>
-                                 <h3 className="font-black uppercase tracking-widest text-xs text-slate-800">Linha do Tempo</h3>
+                                 <h3 className="font-black uppercase tracking-widest text-xs text-slate-800">Linha do Tempo e Datas das Etapas</h3>
                               </div>
 
                               <div className="relative pl-6 space-y-10 before:absolute before:left-6 before:top-2 before:bottom-2 before:w-1 before:bg-slate-100">

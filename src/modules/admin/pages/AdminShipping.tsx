@@ -76,7 +76,7 @@ export default function AdminShipping() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Truck className="h-6 w-6 text-primary" /> Frete
         </h1>
-        <p className="text-sm text-muted-foreground">Configure regras de frete e zonas de entrega.</p>
+        <p className="text-sm text-muted-foreground">Ajuste o valor do frete, margens de lucro por km e regras de precificação logística.</p>
       </div>
 
       {/* Formula display */}

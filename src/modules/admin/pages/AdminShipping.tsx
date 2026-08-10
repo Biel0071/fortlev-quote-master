@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Truck, Calculator, MapPin, Save, Info } from "lucide-react";
+import { Truck, Calculator, MapPin, Save, Info, Settings2, Power } from "lucide-react";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 
 export default function AdminShipping() {
   const qc = useQueryClient();

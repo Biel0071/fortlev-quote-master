@@ -100,7 +100,12 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Admin/master/auth routes without an explicit store must not wait for
         // storefront tenant resolution. This keeps admin navigation instant and
         // prevents stale storefront state from freezing the app after returning home.
-        // No longer skipping for admin/master/auth sections to allow full system visibility in the Lovable preview.
+        // We now skip resolution for known system paths to prevent the "page palette" from getting confused.
+        const isSystemPath = ['admin', 'auth', 'master'].includes(section);
+        if (isSystemPath && !storeId) {
+          setIsLoading(false);
+          return;
+        }
         // If needed for performance on real domains, we could add a check for window.location.hostname.includes('lovable.app')
 
 
@@ -125,7 +130,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (!storeId) {
           const pMatch = pathname.match(/\/p\/([^\/]+)/);
           // Se for root (/), podemos tentar resolver por slug 'materiais' se nada mais for achado
-          const possibleSlug = pMatch ? pMatch[1] : (pathParts[1] && !['admin', 'auth', 'master', 'home', 'loja', 'rastreio'].includes(pathParts[1]) ? pathParts[1] : null);
+          const possibleSlug = pMatch ? pMatch[1] : (pathParts[1] && !['admin', 'auth', 'master', 'home', 'loja', 'rastreio', 'rastrear-pedido', 'orcamentos', 'checkout', 'carrinho'].includes(pathParts[1]) ? pathParts[1] : null);
           
           if (possibleSlug) {
             const { data: slugData } = await supabase

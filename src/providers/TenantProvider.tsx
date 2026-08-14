@@ -100,14 +100,9 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Admin/master/auth routes without an explicit store must not wait for
         // storefront tenant resolution. This keeps admin navigation instant and
         // prevents stale storefront state from freezing the app after returning home.
-        if (!storeId && ['admin', 'master', 'auth'].includes(section)) {
-          if (!alive) return;
-          setStore(null);
-          setTenant(null);
-          setError(null);
-          setIsLoading(false);
-          return;
-        }
+        // No longer skipping for admin/master/auth sections to allow full system visibility in the Lovable preview.
+        // If needed for performance on real domains, we could add a check for window.location.hostname.includes('lovable.app')
+
 
         // 2. Resolve by Domain (only verified domains count as real mappings)
         if (!storeId) {

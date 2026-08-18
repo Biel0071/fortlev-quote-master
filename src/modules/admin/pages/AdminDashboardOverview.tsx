@@ -37,21 +37,19 @@ export default function AdminDashboardOverview() {
     try {
       // Sessions
       const { data: sessions } = await cloud.from("tracking_sessions")
-        .select("id, score, temperature, device")
+        .select("id, score, temperature, device, ip_address, geo_city, geo_country")
         .eq("store_id", activeStoreId)
-        .limit(1000);
+        .order("created_at", { ascending: false })
+        .limit(2000);
       const allSessions = sessions ?? [];
 
       // Events
       const { data: events } = await cloud.from("tracking_events")
-        .select("type, created_at")
+        .select("type, created_at, metadata")
         .eq("store_id", activeStoreId)
-        .limit(1000);
-      const { data: vEvents } = await cloud.from("visitor_events")
-        .select("type, created_at")
-        .eq("store_id", activeStoreId)
-        .limit(1000);
-      const allEvents = [...(events ?? []), ...(vEvents ?? [])];
+        .order("created_at", { ascending: false })
+        .limit(2000);
+      const allEvents = events ?? [];
 
       // Count types
       const counts: Record<string, number> = {};
@@ -147,7 +145,7 @@ export default function AdminDashboardOverview() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Visão Geral em Tempo Real</h2>
+        <h2 className="text-lg font-black uppercase tracking-tight text-slate-800">Métricas Reais da Operação</h2>
         <Button variant="outline" size="sm" onClick={loadTracking} disabled={loading} className="gap-1.5">
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
         </Button>

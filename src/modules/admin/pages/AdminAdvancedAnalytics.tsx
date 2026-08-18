@@ -10,6 +10,9 @@ type SessionRow = {
   session_token: string;
   temperature: "frio" | "morno" | "quente";
   score: number;
+  ip_address: string;
+  geo_city: string;
+  geo_country: string;
   first_seen_at: string;
   last_seen_at: string;
 };
@@ -37,7 +40,7 @@ export default function AdminAdvancedAnalytics() {
 
         const { data, error } = await cloud
           .from("tracking_sessions")
-          .select("id, session_token, temperature, score, first_seen_at, last_seen_at")
+          .select("id, session_token, temperature, score, first_seen_at, last_seen_at, ip_address, geo_city, geo_country")
           .gte("first_seen_at", since)
           .order("score", { ascending: false })
           .limit(50);
@@ -118,9 +121,12 @@ export default function AdminAdvancedAnalytics() {
                 return (
                   <div key={s.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
                     <div className="min-w-0">
-                      <div className="font-medium truncate">Sessão {s.session_token.slice(0, 12)}…</div>
+                      <div className="font-bold truncate flex items-center gap-2">
+                        {s.ip_address || "Visitante"} 
+                        {s.geo_city && <span className="text-[10px] font-normal text-muted-foreground">({s.geo_city}, {s.geo_country})</span>}
+                      </div>
                       <div className="text-xs text-muted-foreground">
-                        Início: {new Date(s.first_seen_at).toLocaleTimeString()} • Última ação: {new Date(s.last_seen_at).toLocaleTimeString()}
+                        Sessão: {s.session_token.slice(0, 8)}… • Início: {new Date(s.first_seen_at).toLocaleTimeString()} • Última ação: {new Date(s.last_seen_at).toLocaleTimeString()}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

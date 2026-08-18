@@ -263,7 +263,6 @@ export default function PublicTrackingSearch() {
       <AppHeader cartCount={0} />
       <StoreMobileChrome cartCount={0} />
       <FloatingChatButton />
-      <ConsentBanner />
 
       
       <main className="max-w-4xl mx-auto px-4 pb-8 sm:py-12 space-y-8">

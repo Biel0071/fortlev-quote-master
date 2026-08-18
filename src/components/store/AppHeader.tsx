@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { AppDownloadBanner } from "@/components/store/AppDownloadBanner";
 import { StoreTopbar } from "@/components/store/StoreTopbar";
+import { ConsentBanner } from "@/components/store/consent/ConsentBanner";
 
 const HEADER_SAFE_GAP_PX = 12;
 
@@ -61,6 +62,7 @@ export function AppHeader({
         footerStoreName={footerStoreName}
         categories={categories}
       />
+      <ConsentBanner />
     </div>
   );
 }

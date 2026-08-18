@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Package, Truck, CheckCircle2, MapPin, Calendar, Clock, ArrowLeft, Box, ShieldCheck, CreditCard, Info, Smartphone } from "lucide-react";
+import { Search, Package, Truck, CheckCircle2, MapPin, Calendar, Clock, ArrowLeft, Box, ShieldCheck, CreditCard, Info, Smartphone, Bell, BellRing, Navigation2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useSearchParams, Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
@@ -14,6 +14,9 @@ import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { formatCurrency } from "@/utils/formatters";
 import { Badge } from "@/components/ui/badge";
 import { FloatingChatButton } from "@/components/store/FloatingChatButton";
+import { TrackingMap } from "@/components/store/tracking/TrackingMap";
+import { ConsentBanner } from "@/components/store/consent/ConsentBanner";
+import { useConsent } from "@/hooks/store/useConsent";
 
 export default function PublicTrackingSearch() {
   const [searchParams] = useSearchParams();
@@ -25,6 +28,8 @@ export default function PublicTrackingSearch() {
   const [simulatedTimeline, setSimulatedTimeline] = useState<any[]>([]);
   const [simulatedProgress, setSimulatedProgress] = useState<number>(0);
   const [isSimulating, setIsSimulating] = useState(false);
+  const { consent, saveConsent } = useConsent();
+  const [showNotificationEnroll, setShowNotificationEnroll] = useState(false);
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -324,6 +329,33 @@ export default function PublicTrackingSearch() {
                 </p>
               </div>
             )}
+
+            {/* Notification Enrollment Card */}
+            {(simulatedProgress >= 60 || (result.status?.progress_percentage || 0) >= 60) && (!consent?.notifications) && (
+              <Card className="bg-slate-900 text-white rounded-3xl overflow-hidden shadow-xl border-none">
+                 <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                       <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-primary">
+                          <BellRing className="w-6 h-6 text-white animate-bounce" />
+                       </div>
+                       <div>
+                          <h4 className="font-black uppercase tracking-tight text-lg">Ativar Alertas de Entrega?</h4>
+                          <p className="text-white/60 text-sm">Receba notificações em tempo real sobre cada etapa da sua encomenda.</p>
+                       </div>
+                    </div>
+                    <Button 
+                      onClick={() => {
+                        saveConsent({ notifications: true });
+                        toast({ title: "Notificações Ativadas", description: "Você receberá atualizações sobre seu pedido." });
+                      }}
+                      className="bg-white text-slate-900 hover:bg-white/90 rounded-2xl h-12 px-8 font-black uppercase tracking-widest shrink-0"
+                    >
+                       Ativar Agora
+                    </Button>
+                 </CardContent>
+              </Card>
+            )}
+
             {/* Main Result Card */}
             <Card className="overflow-hidden border-2 border-primary/10 shadow-2xl rounded-3xl">
               <div className="bg-primary p-6 sm:p-8 text-primary-foreground relative overflow-hidden">
@@ -398,8 +430,21 @@ export default function PublicTrackingSearch() {
               </div>
 
               <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-5 gap-10">
-                 {/* Timeline */}
+                 {/* Map and Timeline */}
                  <div className="lg:col-span-3 space-y-8">
+                    {/* Visual Route Map - Only when in delivery phase */}
+                    {(simulatedProgress >= 90 || (result.status?.progress_percentage || 0) >= 90) && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                             <Navigation2 className="w-4 h-4 fill-primary" />
+                          </div>
+                          <h3 className="font-black uppercase tracking-widest text-sm text-slate-800">Mapa de Entrega</h3>
+                        </div>
+                        <TrackingMap address={result.order?.address} />
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between mb-2">
                        <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">

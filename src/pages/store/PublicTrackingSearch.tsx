@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Package, Truck, CheckCircle2, MapPin, Calendar, Clock, ArrowLeft, Box, ShieldCheck, CreditCard, Info, Smartphone } from "lucide-react";
+import { Search, Package, Truck, CheckCircle2, MapPin, Calendar, Clock, ArrowLeft, Box, ShieldCheck, CreditCard, Info, Smartphone, Bell, BellRing } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useSearchParams, Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
@@ -14,6 +14,9 @@ import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { formatCurrency } from "@/utils/formatters";
 import { Badge } from "@/components/ui/badge";
 import { FloatingChatButton } from "@/components/store/FloatingChatButton";
+import { TrackingMap } from "@/components/store/tracking/TrackingMap";
+import { ConsentBanner } from "@/components/store/consent/ConsentBanner";
+import { useConsent } from "@/hooks/store/useConsent";
 
 export default function PublicTrackingSearch() {
   const [searchParams] = useSearchParams();

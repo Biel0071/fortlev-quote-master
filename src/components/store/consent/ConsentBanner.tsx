@@ -11,7 +11,7 @@ export function ConsentBanner() {
   useEffect(() => {
     // Show after 2 seconds if no consent exists
     if (consent === null) {
-      const timer = setTimeout(() => setShow(true), 2000);
+      const timer = setTimeout(() => setShow(true), 3000);
       return () => clearTimeout(timer);
     }
   }, [consent]);

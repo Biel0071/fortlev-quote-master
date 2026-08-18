@@ -437,7 +437,7 @@ export default function PublicTrackingSearch() {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                             <BellRing className="w-4 h-4 text-primary" />
+                             <Navigation2 className="w-4 h-4 fill-primary" />
                           </div>
                           <h3 className="font-black uppercase tracking-widest text-sm text-slate-800">Mapa de Entrega</h3>
                         </div>

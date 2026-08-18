@@ -1,23 +1,26 @@
-text
-1. Diagnose and fix the "white screen / frozen" issue:
-   - Identify an infinite loop in `AppHeader.tsx` where a `ResizeObserver` updates a CSS variable that causes a layout shift, triggering the observer again.
-   - Fix the loop by using a more stable height detection or adding a threshold.
-   - Refactor `main.tsx` to be extremely resilient, with a robust `ErrorBoundary` and clear initialization path.
-   - Clean up `App.tsx` to ensure all providers are correctly nested and stable.
+# Plan - Enterprise Tracking: Maps & Notifications
 
-2. Optimize data loading performance:
-   - Refactor `useStoreProducts.ts` to be more robust, avoiding potential infinite loops in pagination and ensuring it handles network errors gracefully without freezing the UI.
-   - Ensure `useVisitorTracker.ts` doesn't cause redundant re-renders or navigation loops.
+Implement a visual route map when orders are in the final delivery stage and add a notification enrollment feature in the public tracking interface.
 
-3. Enhance UI Feedback:
-   - Ensure skeleton loaders are correctly visible and don't flicker.
-   - Fix any potential white-on-white text issues in the empty cart state.
+## User Review Required
 
-4. Stability Improvements:
-   - Remove manual service worker unregistration logic from the top level of `main.tsx` and move it to a safer place if needed, or rely on standard browser behavior.
-   - Standardize the error boundaries to provide a "Clear Cache & Reload" button that actually works.
+> [!IMPORTANT]
+> The map will be a high-fidelity simulation showing a route to the customer's address to enhance the "Enterprise" experience (Mercado Livre style).
 
-Technical Details:
-- Replace `ResizeObserver` in `AppHeader.tsx` with a more controlled version or a simple `onResize` listener with a debounce.
-- Add `window.onerror` and `window.onunhandledrejection` handlers to `main.tsx` for ultimate debugging.
-- Simplify `StoreProvider` logic to avoid multiple state updates during initialization.
+## Proposed Changes
+
+### Storefront (Public)
+
+#### [PublicTrackingSearch.tsx](src/pages/store/PublicTrackingSearch.tsx)
+- Add "Enable Notifications" button with a success dialog simulation.
+- Implement a `TrackingMap` component (simulated) that appears when progress is >= 90% (Entrega/Entregue).
+- The map will show a "Vehicle in Route" animation with the customer's package and other 2-3 generic packages nearby.
+
+### Administrative (Admin)
+
+#### [OrderTrackingDialog.tsx](src/modules/admin/components/OrderTrackingDialog.tsx)
+- Ensure the "Entrega" (Delivery) status correctly triggers the map visibility on the public side.
+
+## Technical Details
+- Map implementation using Lucide icons and CSS animations for a "live" feel without needing a heavy Maps API for every tiny request.
+- Notification state stored in local state with a `toast` confirmation.

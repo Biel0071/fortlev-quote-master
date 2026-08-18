@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Package, Truck, CheckCircle2, MapPin, Calendar, Clock, ArrowLeft, Box, ShieldCheck, CreditCard, Info, Smartphone, Bell, BellRing } from "lucide-react";
+import { Search, Package, Truck, CheckCircle2, MapPin, Calendar, Clock, ArrowLeft, Box, ShieldCheck, CreditCard, Info, Smartphone, Bell, BellRing, Navigation2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useSearchParams, Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";

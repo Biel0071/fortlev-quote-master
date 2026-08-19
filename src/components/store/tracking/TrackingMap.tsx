@@ -16,6 +16,18 @@ export function TrackingMap({ address }: { address?: string }) {
       <div className="absolute top-0 left-1/3 w-8 h-full bg-slate-200" />
       <div className="absolute top-1/4 right-1/4 w-8 h-full bg-slate-200 rotate-45" />
 
+      {/* Distribution Center (CD) Marker */}
+      <div className="absolute top-1/2 left-4 -translate-y-full z-10">
+        <div className="flex flex-col items-center">
+          <div className="bg-primary text-white p-1.5 rounded-xl shadow-md border-2 border-white">
+            <Box className="w-4 h-4" />
+          </div>
+          <div className="bg-white px-2 py-0.5 rounded-full shadow-sm mt-1 border border-slate-100">
+             <span className="text-[7px] font-black uppercase text-slate-800 whitespace-nowrap">CD Distribuição</span>
+          </div>
+        </div>
+      </div>
+
       {/* Destination Marker */}
       <div className="absolute top-1/2 left-3/4 -translate-x-1/2 -translate-y-full z-10">
         <motion.div 
@@ -35,8 +47,16 @@ export function TrackingMap({ address }: { address?: string }) {
       {/* Delivery Truck (Main Order) */}
       <motion.div 
         initial={{ left: "0%", top: "50%" }}
-        animate={{ left: "65%", top: "50%" }}
-        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+        animate={{ 
+          left: ["0%", "65%", "65%", "75%"], 
+          top: ["50%", "50%", "50%", "50%"] 
+        }}
+        transition={{ 
+          duration: 30, 
+          times: [0, 0.7, 0.8, 1], // Stays at 65% for a bit then moves to 75%
+          repeat: Infinity, 
+          ease: "linear" 
+        }}
         className="absolute -translate-x-1/2 -translate-y-1/2 z-20"
       >
         <div className="flex flex-col items-center">
@@ -84,7 +104,8 @@ export function TrackingMap({ address }: { address?: string }) {
       <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none">
         <div className="bg-white/90 backdrop-blur-sm p-3 rounded-2xl shadow-lg border border-white/50 space-y-0.5">
            <p className="text-[8px] font-black uppercase tracking-widest text-primary leading-none">Status em Tempo Real</p>
-           <p className="text-xs font-bold text-slate-800">Motorista em rota de entrega</p>
+           <p className="text-xs font-bold text-slate-800">Motorista em rota até as 22h</p>
+           <p className="text-[9px] text-slate-500 font-medium italic">Pedido pode chegar hoje</p>
         </div>
         <div className="bg-slate-900/10 backdrop-blur-sm px-2 py-1 rounded-lg">
            <p className="text-[8px] font-black uppercase text-slate-600 tracking-tighter italic">Simulação Enterprise v2.0</p>

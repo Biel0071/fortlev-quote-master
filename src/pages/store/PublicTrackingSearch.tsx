@@ -218,8 +218,8 @@ export default function PublicTrackingSearch() {
         'PA': 'Belém/PA',
       };
 
-      const destCity = result.order?.address || 'São Paulo';
-      const majorCity = `${destCity}`;
+      const destAddress = result.order?.address || 'São Paulo';
+      const majorCity = `${destAddress}`;
 
       const timeline = [...(result.timeline || [])];
       const sortedTimeline = timeline.sort((a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime());
@@ -442,6 +442,10 @@ export default function PublicTrackingSearch() {
                           <h3 className="font-black uppercase tracking-widest text-sm text-slate-800">Mapa de Entrega</h3>
                         </div>
                         <TrackingMap address={result.order?.address} />
+                        <div className="p-4 bg-slate-900 rounded-2xl text-white mt-2">
+                          <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Endereço de Entrega</p>
+                          <p className="text-sm font-bold truncate">{result.order?.address || 'Endereço não informado'}</p>
+                        </div>
                       </div>
                     )}
 

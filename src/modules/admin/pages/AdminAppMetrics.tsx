@@ -24,9 +24,17 @@ import {
   MapPin,
   Globe,
   Monitor,
+  Pencil,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   BarChart,
   Bar,
@@ -158,6 +166,9 @@ export default function AdminAppMetrics() {
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [apkToken, setApkToken] = useState<string | null>(null);
   const [expandedLinks, setExpandedLinks] = useState<Record<string, boolean>>({});
+  const [editingLink, setEditingLink] = useState<ShortLinkRow | null>(null);
+  const [editUrlInput, setEditUrlInput] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const professionalDownloadUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -620,6 +631,49 @@ export default function AdminAppMetrics() {
     }
   };
 
+  const handleUpdateLink = async () => {
+    if (!editingLink) return;
+
+    const newUrl = editUrlInput.trim();
+    if (!newUrl) {
+      toast.error("Informe a nova URL");
+      return;
+    }
+
+    try {
+      new URL(newUrl);
+    } catch {
+      toast.error("URL inválida");
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      const { error } = await cloud
+        .from("app_short_links")
+        .update({ original_url: newUrl })
+        .eq("id", editingLink.id);
+
+      if (error) throw error;
+
+      setShortLinks((prev) =>
+        prev.map((l) => (l.id === editingLink.id ? { ...l, original_url: newUrl } : l)),
+      );
+      setEditingLink(null);
+      setEditUrlInput("");
+      toast.success("Link atualizado com sucesso");
+    } catch (error: any) {
+      toast.error(`Erro ao atualizar link: ${error?.message ?? "falha desconhecida"}`);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const startEditing = (link: ShortLinkRow) => {
+    setEditingLink(link);
+    setEditUrlInput(link.original_url);
+  };
+
   const copyText = async (value: string, label: string) => {
     await navigator.clipboard.writeText(value);
     toast.success(`${label} copiado`);
@@ -904,6 +958,14 @@ export default function AdminAppMetrics() {
                           <Button 
                             size="sm" 
                             variant="outline" 
+                            onClick={() => startEditing(link)} 
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
                             onClick={() => handleDeleteShortLink(link.id)} 
                             className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                           >
@@ -981,6 +1043,38 @@ export default function AdminAppMetrics() {
           <p>• <strong>Sessões do App:</strong> Visitantes que chegaram ao site via aplicativo (utm_source=app).</p>
         </CardContent>
       </Card>
+
+      <Dialog open={!!editingLink} onOpenChange={(open) => !open && setEditingLink(null)}>
+        <DialogContent className="sm:max-w-lg rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Editar Link Curto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Slug (fixo)</Label>
+              <Input value={editingLink?.slug || ""} disabled className="bg-muted" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Nova URL de Destino</Label>
+              <Input 
+                value={editUrlInput} 
+                onChange={(e) => setEditUrlInput(e.target.value)}
+                placeholder="https://exemplo.com/nova-pagina"
+                disabled={savingEdit}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setEditingLink(null)} disabled={savingEdit} className="rounded-xl">
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdateLink} disabled={savingEdit} className="rounded-xl gap-2">
+              {savingEdit && <Loader2 className="h-4 w-4 animate-spin" />}
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

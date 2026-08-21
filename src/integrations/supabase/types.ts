@@ -2792,6 +2792,7 @@ export type Database = {
           active: boolean | null
           created_at: string | null
           id: string
+          logo_url: string | null
           name: string
           slug: string
           store_id: string
@@ -2803,6 +2804,7 @@ export type Database = {
           active?: boolean | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           name: string
           slug: string
           store_id: string
@@ -2814,6 +2816,7 @@ export type Database = {
           active?: boolean | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           name?: string
           slug?: string
           store_id?: string

@@ -1,0 +1,1 @@
+ALTER TABLE public.order_tracking_carriers ADD COLUMN IF NOT EXISTS logo_url TEXT;

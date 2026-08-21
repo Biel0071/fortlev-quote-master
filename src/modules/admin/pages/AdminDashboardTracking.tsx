@@ -554,11 +554,11 @@ export default function AdminDashboardTracking() {
                 <div className="flex items-center gap-2">
                   <Button variant="outline" onClick={async () => {
                     const defaultCarriers = [
-                      { name: "Correios", website: "https://www.correios.com.br", tracking_url_template: "https://rastreamento.correios.com.br/app/index.php?codigo={code}" },
-                      { name: "Jadlog", website: "https://www.jadlog.com.br", tracking_url_template: "https://www.jadlog.com.br/siteInstitucional/tracking.jad?tracking={code}" },
-                      { name: "Loggi", website: "https://www.loggi.com", tracking_url_template: "https://www.loggi.com/rastreio/{code}" },
-                      { name: "Total Express", website: "https://totalexpress.com.br", tracking_url_template: "https://tracking.totalexpress.com.br/prakashtracking.php?trck={code}" },
-                      { name: "Azul Cargo", website: "https://www.azulcargo.com.br", tracking_url_template: "https://www.azulcargo.com.br/Rastreio.aspx?n={code}" }
+                      { name: "Correios", website: "https://www.correios.com.br", tracking_url_template: "https://rastreamento.correios.com.br/app/index.php?codigo={code}", logo_url: "https://upload.wikimedia.org/wikipedia/pt/2/23/Correios_Brasil.png" },
+                      { name: "Jadlog", website: "https://www.jadlog.com.br", tracking_url_template: "https://www.jadlog.com.br/siteInstitucional/tracking.jad?tracking={code}", logo_url: "https://www.jadlog.com.br/images/logo-jadlog-novo.png" },
+                      { name: "Loggi", website: "https://www.loggi.com", tracking_url_template: "https://www.loggi.com/rastreio/{code}", logo_url: "https://www.loggi.com/static/images/logo-loggi.svg" },
+                      { name: "Total Express", website: "https://totalexpress.com.br", tracking_url_template: "https://tracking.totalexpress.com.br/prakashtracking.php?trck={code}", logo_url: "https://totalexpress.com.br/wp-content/uploads/2018/06/logo-total-express.png" },
+                      { name: "Azul Cargo", website: "https://www.azulcargo.com.br", tracking_url_template: "https://www.azulcargo.com.br/Rastreio.aspx?n={code}", logo_url: "https://www.azulcargo.com.br/images/logo.png" }
                     ];
 
                     try {

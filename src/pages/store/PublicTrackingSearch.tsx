@@ -50,7 +50,8 @@ export default function PublicTrackingSearch() {
           posted_at,
           estimated_delivery_at,
           delivered_at,
-          carrier:order_tracking_carriers(id, name), 
+          carrier:order_tracking_carriers(id, name, logo_url), 
+
 
           status:order_tracking_status(id, label, progress_percentage), 
           order:store_orders(
@@ -113,7 +114,8 @@ export default function PublicTrackingSearch() {
               posted_at,
               estimated_delivery_at,
               delivered_at,
-              carrier:order_tracking_carriers(id, name), 
+              carrier:order_tracking_carriers(id, name, logo_url), 
+
               status:order_tracking_status(id, label, progress_percentage), 
             order:store_orders(
               id,
@@ -490,13 +492,21 @@ export default function PublicTrackingSearch() {
                     {result.carrier && (
                       <div className="p-5 rounded-3xl bg-slate-50 border border-slate-100 space-y-4">
                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary">
-                               <Truck className="w-6 h-6" />
+                            <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary overflow-hidden">
+                               {result.carrier.logo_url ? (
+                                 <img src={result.carrier.logo_url} alt={result.carrier.name} className="w-10 h-10 object-contain" />
+                               ) : (
+                                 <Truck className="w-6 h-6" />
+                               )}
                             </div>
                             <div>
                                <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider leading-none mb-1">Transportadora</p>
                                <h4 className="font-black text-lg text-slate-800">{result.carrier.name}</h4>
                             </div>
+                         </div>
+                         <div className="bg-white/50 p-3 rounded-xl border border-slate-100 flex items-center gap-2">
+                           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                           <p className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">Pedido em carga da transportadora</p>
                          </div>
                          {result.carrier.website && (
                             <Button asChild variant="outline" className="w-full rounded-2xl border-2 font-black uppercase text-xs h-10 tracking-widest">

@@ -79,10 +79,10 @@ export default function AdminDashboardTracking() {
     start_date: format(new Date(), "yyyy-MM-dd"),
   });
   const [carrierForm, setCarrierForm] = useState({
-
     name: "",
     website: "",
     tracking_url_template: "",
+    logo_url: "",
   });
 
   const [stats, setStats] = useState({

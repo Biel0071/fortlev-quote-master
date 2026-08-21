@@ -26,6 +26,7 @@ interface Carrier {
   slug: string;
   website: string;
   tracking_url_template: string;
+  logo_url?: string;
   active: boolean;
 }
 

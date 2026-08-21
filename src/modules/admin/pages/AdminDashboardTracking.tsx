@@ -916,13 +916,23 @@ export default function AdminDashboardTracking() {
             <DialogDescription>Preencha os dados da transportadora parceira.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nome da Transportadora</Label>
-              <Input 
-                value={carrierForm.name} 
-                onChange={(e) => setCarrierForm({ ...carrierForm, name: e.target.value })}
-                placeholder="Ex: Correios, Loggi..."
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nome da Transportadora</Label>
+                <Input 
+                  value={carrierForm.name} 
+                  onChange={(e) => setCarrierForm({ ...carrierForm, name: e.target.value })}
+                  placeholder="Ex: Correios, Loggi..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Logo URL (PNG sem fundo)</Label>
+                <Input 
+                  value={carrierForm.logo_url} 
+                  onChange={(e) => setCarrierForm({ ...carrierForm, logo_url: e.target.value })}
+                  placeholder="https://exemplo.com/logo.png"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Site Oficial (URL)</Label>

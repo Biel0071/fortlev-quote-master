@@ -927,11 +927,16 @@ export default function AdminDashboardTracking() {
               </div>
               <div className="space-y-2">
                 <Label>Logo URL (PNG sem fundo)</Label>
-                <Input 
-                  value={carrierForm.logo_url} 
-                  onChange={(e) => setCarrierForm({ ...carrierForm, logo_url: e.target.value })}
-                  placeholder="https://exemplo.com/logo.png"
-                />
+                <div className="space-y-1">
+                  <Input 
+                    value={carrierForm.logo_url} 
+                    onChange={(e) => setCarrierForm({ ...carrierForm, logo_url: e.target.value })}
+                    placeholder="https://exemplo.com/logo.png"
+                  />
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    pode ser URL caregar e ver arquivo ou selecionar enviar arquivo do computador também
+                  </p>
+                </div>
               </div>
             </div>
             <div className="space-y-2">

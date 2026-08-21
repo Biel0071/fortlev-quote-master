@@ -580,7 +580,7 @@ export default function AdminDashboardTracking() {
                   </Button>
                   <Button onClick={() => {
                     setEditingCarrier(null);
-                    setCarrierForm({ name: "", website: "", tracking_url_template: "" });
+                    setCarrierForm({ name: "", website: "", tracking_url_template: "", logo_url: "" });
                     setCarrierDialogOpen(true);
                   }}>
                     <Plus className="w-4 h-4 mr-2" /> Adicionar
@@ -602,7 +602,10 @@ export default function AdminDashboardTracking() {
                 <TableBody>
                   {carriers.map((c) => (
                     <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell className="font-medium flex items-center gap-2">
+                        {c.logo_url && <img src={c.logo_url} alt="" className="w-6 h-6 object-contain" />}
+                        {c.name}
+                      </TableCell>
                       <TableCell>
                         {c.website ? (
                           <a href={c.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
@@ -623,7 +626,7 @@ export default function AdminDashboardTracking() {
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => {
                             setEditingCarrier(c);
-                            setCarrierForm({ name: c.name, website: c.website || "", tracking_url_template: c.tracking_url_template || "" });
+                            setCarrierForm({ name: c.name, website: c.website || "", tracking_url_template: c.tracking_url_template || "", logo_url: c.logo_url || "" });
                             setCarrierDialogOpen(true);
                           }} title="Editar">
                             <Edit2 className="w-4 h-4" />

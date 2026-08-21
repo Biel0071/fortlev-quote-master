@@ -26,6 +26,7 @@ interface Carrier {
   slug: string;
   website: string;
   tracking_url_template: string;
+  logo_url?: string;
   active: boolean;
 }
 
@@ -79,10 +80,10 @@ export default function AdminDashboardTracking() {
     start_date: format(new Date(), "yyyy-MM-dd"),
   });
   const [carrierForm, setCarrierForm] = useState({
-
     name: "",
     website: "",
     tracking_url_template: "",
+    logo_url: "",
   });
 
   const [stats, setStats] = useState({
@@ -553,11 +554,11 @@ export default function AdminDashboardTracking() {
                 <div className="flex items-center gap-2">
                   <Button variant="outline" onClick={async () => {
                     const defaultCarriers = [
-                      { name: "Correios", website: "https://www.correios.com.br", tracking_url_template: "https://rastreamento.correios.com.br/app/index.php?codigo={code}" },
-                      { name: "Jadlog", website: "https://www.jadlog.com.br", tracking_url_template: "https://www.jadlog.com.br/siteInstitucional/tracking.jad?tracking={code}" },
-                      { name: "Loggi", website: "https://www.loggi.com", tracking_url_template: "https://www.loggi.com/rastreio/{code}" },
-                      { name: "Total Express", website: "https://totalexpress.com.br", tracking_url_template: "https://tracking.totalexpress.com.br/prakashtracking.php?trck={code}" },
-                      { name: "Azul Cargo", website: "https://www.azulcargo.com.br", tracking_url_template: "https://www.azulcargo.com.br/Rastreio.aspx?n={code}" }
+                      { name: "Correios", website: "https://www.correios.com.br", tracking_url_template: "https://rastreamento.correios.com.br/app/index.php?codigo={code}", logo_url: "https://upload.wikimedia.org/wikipedia/pt/2/23/Correios_Brasil.png" },
+                      { name: "Jadlog", website: "https://www.jadlog.com.br", tracking_url_template: "https://www.jadlog.com.br/siteInstitucional/tracking.jad?tracking={code}", logo_url: "https://www.jadlog.com.br/images/logo-jadlog-novo.png" },
+                      { name: "Loggi", website: "https://www.loggi.com", tracking_url_template: "https://www.loggi.com/rastreio/{code}", logo_url: "https://www.loggi.com/static/images/logo-loggi.svg" },
+                      { name: "Total Express", website: "https://totalexpress.com.br", tracking_url_template: "https://tracking.totalexpress.com.br/prakashtracking.php?trck={code}", logo_url: "https://totalexpress.com.br/wp-content/uploads/2018/06/logo-total-express.png" },
+                      { name: "Azul Cargo", website: "https://www.azulcargo.com.br", tracking_url_template: "https://www.azulcargo.com.br/Rastreio.aspx?n={code}", logo_url: "https://www.azulcargo.com.br/images/logo.png" }
                     ];
 
                     try {
@@ -580,7 +581,7 @@ export default function AdminDashboardTracking() {
                   </Button>
                   <Button onClick={() => {
                     setEditingCarrier(null);
-                    setCarrierForm({ name: "", website: "", tracking_url_template: "" });
+                    setCarrierForm({ name: "", website: "", tracking_url_template: "", logo_url: "" });
                     setCarrierDialogOpen(true);
                   }}>
                     <Plus className="w-4 h-4 mr-2" /> Adicionar
@@ -602,7 +603,10 @@ export default function AdminDashboardTracking() {
                 <TableBody>
                   {carriers.map((c) => (
                     <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell className="font-medium flex items-center gap-2">
+                        {c.logo_url && <img src={c.logo_url} alt="" className="w-6 h-6 object-contain" />}
+                        {c.name}
+                      </TableCell>
                       <TableCell>
                         {c.website ? (
                           <a href={c.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
@@ -623,7 +627,7 @@ export default function AdminDashboardTracking() {
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => {
                             setEditingCarrier(c);
-                            setCarrierForm({ name: c.name, website: c.website || "", tracking_url_template: c.tracking_url_template || "" });
+                            setCarrierForm({ name: c.name, website: c.website || "", tracking_url_template: c.tracking_url_template || "", logo_url: c.logo_url || "" });
                             setCarrierDialogOpen(true);
                           }} title="Editar">
                             <Edit2 className="w-4 h-4" />
@@ -912,13 +916,23 @@ export default function AdminDashboardTracking() {
             <DialogDescription>Preencha os dados da transportadora parceira.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nome da Transportadora</Label>
-              <Input 
-                value={carrierForm.name} 
-                onChange={(e) => setCarrierForm({ ...carrierForm, name: e.target.value })}
-                placeholder="Ex: Correios, Loggi..."
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nome da Transportadora</Label>
+                <Input 
+                  value={carrierForm.name} 
+                  onChange={(e) => setCarrierForm({ ...carrierForm, name: e.target.value })}
+                  placeholder="Ex: Correios, Loggi..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Logo URL (PNG sem fundo)</Label>
+                <Input 
+                  value={carrierForm.logo_url} 
+                  onChange={(e) => setCarrierForm({ ...carrierForm, logo_url: e.target.value })}
+                  placeholder="https://exemplo.com/logo.png"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Site Oficial (URL)</Label>

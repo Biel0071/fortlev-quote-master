@@ -1210,17 +1210,53 @@ export default function AdminAppMetrics() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Slug (fixo)</Label>
-              <Input value={editingLink?.slug || ""} disabled className="bg-muted" />
+              <Label className="text-sm font-medium">Slug</Label>
+              <Input
+                value={editSlugInput}
+                onChange={(e) => setEditSlugInput(e.target.value)}
+                placeholder="baixar-app"
+                disabled={savingEdit}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                URL final: <code className="bg-muted px-1 rounded">{shortBaseUrl}/{sanitizeSlug(editSlugInput) || "slug"}</code>
+              </p>
             </div>
+
+            {apks.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Apontar para um APK</Label>
+                <select
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  value={editApkToken}
+                  onChange={(e) => {
+                    const token = e.target.value;
+                    setEditApkToken(token);
+                    if (token) setEditUrlInput(apkDownloadUrlFor(token));
+                  }}
+                  disabled={savingEdit}
+                >
+                  <option value="">URL personalizada (não é APK)</option>
+                  {apks.map((a) => (
+                    <option key={a.id} value={a.download_token}>
+                      {a.file_name}{a.version ? ` (v${a.version})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Nova URL de Destino</Label>
+              <Label className="text-sm font-medium">URL de Destino</Label>
               <Input 
                 value={editUrlInput} 
                 onChange={(e) => setEditUrlInput(e.target.value)}
                 placeholder="https://exemplo.com/nova-pagina"
                 disabled={savingEdit}
               />
+            </div>
+
+            <div className="rounded-xl bg-muted/40 p-3 text-[11px] text-muted-foreground">
+              <b className="text-foreground">{editingLink?.clicks ?? 0} cliques</b> registrados · cada acesso gera lead rastreado (IP, cidade, dispositivo) na Análise de Clientes.
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">

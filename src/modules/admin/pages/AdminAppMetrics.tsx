@@ -436,10 +436,41 @@ export default function AdminAppMetrics() {
 
           if (apkInsertError) throw apkInsertError;
           setApkToken(newToken);
+
+          const uploadSlug = sanitizeSlug(uploadSlugInput);
+          if (uploadSlug) {
+            const { data: linkRow, error: linkError } = await cloud
+              .from("app_short_links")
+              .insert({
+                store_id: activeStoreId,
+                slug: uploadSlug,
+                original_url: apkDownloadUrlFor(newToken),
+                created_via: "admin",
+                link_type: "apk",
+                campaign_origin: "apk_download",
+                metadata: { apk_token: newToken },
+                active: true,
+              })
+              .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
+              .single();
+
+            if (linkError) {
+              toast.error(
+                (linkError as { code?: string }).code === "23505"
+                  ? "APK enviado, mas o slug já existe"
+                  : `APK enviado, mas falhou o link curto: ${linkError.message}`,
+              );
+            } else if (linkRow) {
+              setShortLinks((prev) => [linkRow as ShortLinkRow, ...prev]);
+              setUploadSlugInput("");
+              toast.success(`Link curto criado: /r/${uploadSlug}`);
+            }
+          }
         }
       } else {
         publicUrl = URL.createObjectURL(file);
       }
+
 
       const meta: ApkMeta = {
         originalName: file.name,

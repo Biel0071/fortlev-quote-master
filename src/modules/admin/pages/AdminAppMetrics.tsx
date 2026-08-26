@@ -177,10 +177,14 @@ export default function AdminAppMetrics() {
   const [editApkToken, setEditApkToken] = useState<string>("");
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const professionalDownloadUrl = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    return apkToken ? `${window.location.origin}/api/apk/${encodeURIComponent(apkToken)}` : "";
-  }, [apkToken]);
+  const apkDownloadUrlFor = (token: string) => {
+    const base = import.meta.env.VITE_SUPABASE_URL;
+    if (!base || !token) return "";
+    return `${base}/functions/v1/download-apk-public?token=${encodeURIComponent(token)}`;
+  };
+
+  const professionalDownloadUrl = useMemo(() => (apkToken ? apkDownloadUrlFor(apkToken) : ""), [apkToken]);
+
 
   const shortBaseUrl = useMemo(() => {
     if (typeof window === "undefined") return "";

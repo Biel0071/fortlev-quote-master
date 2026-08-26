@@ -108,6 +108,8 @@ interface ApkRow {
   download_token: string;
   file_name: string;
   version: string | null;
+  active?: boolean;
+  created_at?: string;
 }
 
 function readLocalValue(key: string) {
@@ -165,9 +167,14 @@ export default function AdminAppMetrics() {
   const [creatingToken, setCreatingToken] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [apkToken, setApkToken] = useState<string | null>(null);
+  const [apks, setApks] = useState<ApkRow[]>([]);
+  const [apkSlugInput, setApkSlugInput] = useState("");
+  const [creatingApkLink, setCreatingApkLink] = useState(false);
   const [expandedLinks, setExpandedLinks] = useState<Record<string, boolean>>({});
   const [editingLink, setEditingLink] = useState<ShortLinkRow | null>(null);
   const [editUrlInput, setEditUrlInput] = useState("");
+  const [editSlugInput, setEditSlugInput] = useState("");
+  const [editApkToken, setEditApkToken] = useState<string>("");
   const [savingEdit, setSavingEdit] = useState(false);
 
   const professionalDownloadUrl = useMemo(() => {
@@ -250,7 +257,7 @@ export default function AdminAppMetrics() {
         activeStoreId
           ? cloud
               .from("app_short_links")
-              .select("id, slug, original_url, clicks, created_at, active")
+              .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
               .eq("store_id", activeStoreId)
               .order("created_at", { ascending: false })
               .limit(20)
@@ -266,13 +273,11 @@ export default function AdminAppMetrics() {
         activeStoreId
           ? cloud
               .from("apks")
-              .select("id, download_token, file_name, version")
+              .select("id, download_token, file_name, version, active, created_at")
               .eq("store_id", activeStoreId)
-              .eq("active", true)
               .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle()
-          : Promise.resolve({ data: null }),
+              .limit(20)
+          : Promise.resolve({ data: [] }),
       ]);
 
       const allBanner = bannerEvents ?? [];
@@ -344,7 +349,9 @@ export default function AdminAppMetrics() {
 
       setShortLinks((shortLinksRes.data as ShortLinkRow[] | null) ?? []);
       setShortenerTokens((tokenRes.data as ShortenerTokenRow[] | null) ?? []);
-      setApkToken((apkRes.data as ApkRow | null)?.download_token ?? null);
+      const apkList = ((apkRes as { data?: ApkRow[] | null }).data ?? []) as ApkRow[];
+      setApks(apkList);
+      setApkToken((apkList.find((a) => a.active) ?? apkList[0])?.download_token ?? null);
     } catch (error) {
       console.error("[AppMetrics] load error:", error);
       const localUrl = readLocalValue(APK_URL_STORAGE_KEY);
@@ -631,12 +638,67 @@ export default function AdminAppMetrics() {
     }
   };
 
+  const apkDownloadUrlFor = (token: string) =>
+    typeof window === "undefined" ? "" : `${window.location.origin}/api/apk/${encodeURIComponent(token)}`;
+
+  const handleCreateApkShortLink = async () => {
+    if (!activeStoreId) {
+      toast.error("Selecione uma loja antes de criar links curtos");
+      return;
+    }
+    if (!apkToken) {
+      toast.error("Envie um APK antes de gerar o link de download");
+      return;
+    }
+
+    setCreatingApkLink(true);
+    try {
+      const slug = sanitizeSlug(apkSlugInput) || randomSlug();
+      const { data, error } = await cloud
+        .from("app_short_links")
+        .insert({
+          store_id: activeStoreId,
+          slug,
+          original_url: apkDownloadUrlFor(apkToken),
+          created_via: "admin",
+          link_type: "apk",
+          campaign_origin: "apk_download",
+          metadata: { apk_token: apkToken },
+          active: true,
+        })
+        .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
+        .single();
+
+      if (error) {
+        if ((error as { code?: string }).code === "23505") {
+          toast.error("Slug já existe. Escolha outro.");
+          return;
+        }
+        throw error;
+      }
+
+      setShortLinks((prev) => [data as ShortLinkRow, ...prev]);
+      setApkSlugInput("");
+      toast.success("Link de download do APK criado");
+    } catch (error: any) {
+      toast.error(`Erro ao criar link: ${error?.message ?? "falha desconhecida"}`);
+    } finally {
+      setCreatingApkLink(false);
+    }
+  };
+
   const handleUpdateLink = async () => {
     if (!editingLink) return;
 
     const newUrl = editUrlInput.trim();
+    const newSlug = sanitizeSlug(editSlugInput);
+
     if (!newUrl) {
       toast.error("Informe a nova URL");
+      return;
+    }
+    if (!newSlug) {
+      toast.error("Informe um slug válido");
       return;
     }
 
@@ -647,20 +709,45 @@ export default function AdminAppMetrics() {
       return;
     }
 
+    const isApk = !!editApkToken;
+
     setSavingEdit(true);
     try {
       const { error } = await cloud
         .from("app_short_links")
-        .update({ original_url: newUrl })
+        .update({
+          original_url: newUrl,
+          slug: newSlug,
+          link_type: isApk ? "apk" : editingLink.link_type ?? "page",
+          metadata: isApk ? { apk_token: editApkToken } : editingLink.metadata ?? {},
+        })
         .eq("id", editingLink.id);
 
-      if (error) throw error;
+      if (error) {
+        if ((error as { code?: string }).code === "23505") {
+          toast.error("Slug já está em uso. Escolha outro.");
+          return;
+        }
+        throw error;
+      }
 
       setShortLinks((prev) =>
-        prev.map((l) => (l.id === editingLink.id ? { ...l, original_url: newUrl } : l)),
+        prev.map((l) =>
+          l.id === editingLink.id
+            ? {
+                ...l,
+                original_url: newUrl,
+                slug: newSlug,
+                link_type: isApk ? "apk" : l.link_type,
+                metadata: isApk ? { apk_token: editApkToken } : l.metadata,
+              }
+            : l,
+        ),
       );
       setEditingLink(null);
       setEditUrlInput("");
+      setEditSlugInput("");
+      setEditApkToken("");
       toast.success("Link atualizado com sucesso");
     } catch (error: any) {
       toast.error(`Erro ao atualizar link: ${error?.message ?? "falha desconhecida"}`);
@@ -672,6 +759,9 @@ export default function AdminAppMetrics() {
   const startEditing = (link: ShortLinkRow) => {
     setEditingLink(link);
     setEditUrlInput(link.original_url);
+    setEditSlugInput(link.slug);
+    const metaToken = typeof link.metadata?.apk_token === "string" ? (link.metadata.apk_token as string) : "";
+    setEditApkToken(link.link_type === "apk" ? metaToken || apkToken || "" : "");
   };
 
   const copyText = async (value: string, label: string) => {
@@ -813,11 +903,58 @@ export default function AdminAppMetrics() {
                         <Save className="h-3.5 w-3.5" /> Salvar no sistema
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Link direto: <code className="bg-muted px-1 rounded text-[10px]">{professionalDownloadUrl}</code>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Link direto: <code className="bg-muted px-1 rounded text-[10px]">{professionalDownloadUrl}</code>
+                      </p>
+                      <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => void copyText(professionalDownloadUrl, "Link direto")}>
+                        <Copy className="h-3 w-3" /> Copiar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {apks.length > 1 && (
+                  <div className="mt-3 space-y-1.5">
+                    <Label className="text-xs font-medium">APK usado no link direto</Label>
+                    <select
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                      value={apkToken ?? ""}
+                      onChange={(e) => setApkToken(e.target.value || null)}
+                    >
+                      {apks.map((a) => (
+                        <option key={a.id} value={a.download_token}>
+                          {a.file_name}{a.version ? ` (v${a.version})` : ""}{a.active ? " • ativo" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {professionalDownloadUrl && (
+                  <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+                    <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Link2 className="h-3.5 w-3.5 text-primary" /> Link curto do APK (domínio da loja)
+                    </p>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Input
+                        placeholder="slug: baixar-app"
+                        value={apkSlugInput}
+                        onChange={(e) => setApkSlugInput(e.target.value)}
+                        disabled={creatingApkLink}
+                        className="flex-1"
+                      />
+                      <Button onClick={handleCreateApkShortLink} disabled={creatingApkLink || !activeStoreId} className="gap-1.5">
+                        {creatingApkLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                        Gerar link de download
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Prévia: <code className="bg-muted px-1 rounded">{shortBaseUrl}/{sanitizeSlug(apkSlugInput) || "slug-automatico"}</code> — cada clique é rastreado (IP, cidade, dispositivo) e vira lead nos clientes da loja.
                     </p>
                   </div>
                 )}
+
                 <p className="mt-2 text-xs text-muted-foreground">
                   Este link é usado automaticamente no banner do app.
                 </p>
@@ -940,19 +1077,31 @@ export default function AdminAppMetrics() {
                   const shortUrl = `${shortBaseUrl}/${link.slug}`;
                   const isExpanded = !!expandedLinks[link.id];
                   return (
-                    <div key={link.id} className="rounded-xl border border-border p-3 text-xs space-y-2 bg-background/50">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <a href={shortUrl} target="_blank" rel="noreferrer" className="text-primary font-bold underline truncate block">
-                            {shortUrl}
-                          </a>
-                          <p className="text-muted-foreground truncate" title={link.original_url}>Destino: {link.original_url}</p>
+                    <div
+                      key={link.id}
+                      className={`rounded-2xl border p-3 text-xs space-y-2 transition-all hover:shadow-md ${
+                        link.link_type === "apk"
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-border bg-background/50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${link.link_type === "apk" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                            {link.link_type === "apk" ? <Smartphone className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+                          </div>
+                          <div className="flex flex-col gap-1 min-w-0">
+                            <a href={shortUrl} target="_blank" rel="noreferrer" className="text-primary font-bold underline truncate block text-sm">
+                              {shortUrl}
+                            </a>
+                            <p className="text-muted-foreground truncate" title={link.original_url}>Destino: {link.original_url}</p>
+                          </div>
                         </div>
                         <div className="flex gap-1 shrink-0">
-                          <Button size="sm" variant="ghost" onClick={() => void toggleLinkDetails(link.id)} className="h-8 w-8 p-0">
+                          <Button size="sm" variant="ghost" onClick={() => void toggleLinkDetails(link.id)} className="h-8 w-8 p-0" title="Ver métricas">
                             {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => void copyText(shortUrl, "Link curto")} className="h-8 w-8 p-0">
+                          <Button size="sm" variant="outline" onClick={() => void copyText(shortUrl, "Link curto")} className="h-8 w-8 p-0" title="Copiar link">
                             <Copy className="h-4 w-4" />
                           </Button>
                           <Button 
@@ -960,6 +1109,7 @@ export default function AdminAppMetrics() {
                             variant="outline" 
                             onClick={() => startEditing(link)} 
                             className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                            title="Editar slug, link e APK"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -968,21 +1118,30 @@ export default function AdminAppMetrics() {
                             variant="outline" 
                             onClick={() => handleDeleteShortLink(link.id)} 
                             className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                            title="Excluir link"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                        <div className="flex items-center gap-1"><MousePointerClick className="h-3 w-3" /> {link.clicks} cliques</div>
-                        <div className="flex items-center gap-1">Criado: {fmtDate(link.created_at)}</div>
-                        {link.link_type === 'apk' && (
-                          <div className="flex items-center gap-1 text-primary font-bold">
-                            <Smartphone className="h-3 w-3" /> Link de APK
-                          </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                          <MousePointerClick className="h-3 w-3" /> {link.clicks} cliques
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          /{link.slug}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          {fmtDate(link.created_at)}
+                        </span>
+                        {link.link_type === "apk" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
+                            <Download className="h-3 w-3" /> Download APK
+                          </span>
                         )}
                       </div>
+
 
                       {isExpanded && (
                         <div className="mt-3 pt-3 border-t border-border space-y-2 animate-in fade-in slide-in-from-top-1">
@@ -1051,17 +1210,53 @@ export default function AdminAppMetrics() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Slug (fixo)</Label>
-              <Input value={editingLink?.slug || ""} disabled className="bg-muted" />
+              <Label className="text-sm font-medium">Slug</Label>
+              <Input
+                value={editSlugInput}
+                onChange={(e) => setEditSlugInput(e.target.value)}
+                placeholder="baixar-app"
+                disabled={savingEdit}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                URL final: <code className="bg-muted px-1 rounded">{shortBaseUrl}/{sanitizeSlug(editSlugInput) || "slug"}</code>
+              </p>
             </div>
+
+            {apks.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Apontar para um APK</Label>
+                <select
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  value={editApkToken}
+                  onChange={(e) => {
+                    const token = e.target.value;
+                    setEditApkToken(token);
+                    if (token) setEditUrlInput(apkDownloadUrlFor(token));
+                  }}
+                  disabled={savingEdit}
+                >
+                  <option value="">URL personalizada (não é APK)</option>
+                  {apks.map((a) => (
+                    <option key={a.id} value={a.download_token}>
+                      {a.file_name}{a.version ? ` (v${a.version})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Nova URL de Destino</Label>
+              <Label className="text-sm font-medium">URL de Destino</Label>
               <Input 
                 value={editUrlInput} 
                 onChange={(e) => setEditUrlInput(e.target.value)}
                 placeholder="https://exemplo.com/nova-pagina"
                 disabled={savingEdit}
               />
+            </div>
+
+            <div className="rounded-xl bg-muted/40 p-3 text-[11px] text-muted-foreground">
+              <b className="text-foreground">{editingLink?.clicks ?? 0} cliques</b> registrados · cada acesso gera lead rastreado (IP, cidade, dispositivo) na Análise de Clientes.
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">

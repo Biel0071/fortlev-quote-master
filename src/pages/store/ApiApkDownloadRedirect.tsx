@@ -36,14 +36,17 @@ export default function ApiApkDownloadRedirect() {
       }
 
       try {
-        const endpoint = `${window.location.origin}/functions/v1/download-apk-public?token=${encodeURIComponent(token)}&session_id=${encodeURIComponent(sessionToken)}`;
+        const base = import.meta.env.VITE_SUPABASE_URL;
+        const endpoint = `${base}/functions/v1/download-apk-public?token=${encodeURIComponent(token)}&session_id=${encodeURIComponent(sessionToken)}`;
         const res = await fetch(endpoint);
 
-        if (!res.ok) {
+        const contentType = res.headers.get("content-type") || "";
+        if (!res.ok || contentType.includes("text/html")) {
           setMessage("Não foi possível baixar o APK");
           setTimeout(() => navigate("/", { replace: true }), 1400);
           return;
         }
+
 
         const blob = await res.blob();
         const contentDisposition = res.headers.get("content-disposition") || "";

@@ -169,6 +169,8 @@ export default function AdminAppMetrics() {
   const [apkToken, setApkToken] = useState<string | null>(null);
   const [apks, setApks] = useState<ApkRow[]>([]);
   const [apkSlugInput, setApkSlugInput] = useState("");
+  const [uploadSlugInput, setUploadSlugInput] = useState("");
+
   const [creatingApkLink, setCreatingApkLink] = useState(false);
   const [expandedLinks, setExpandedLinks] = useState<Record<string, boolean>>({});
   const [editingLink, setEditingLink] = useState<ShortLinkRow | null>(null);
@@ -177,10 +179,14 @@ export default function AdminAppMetrics() {
   const [editApkToken, setEditApkToken] = useState<string>("");
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const professionalDownloadUrl = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    return apkToken ? `${window.location.origin}/api/apk/${encodeURIComponent(apkToken)}` : "";
-  }, [apkToken]);
+  const apkDownloadUrlFor = (token: string) => {
+    const base = import.meta.env.VITE_SUPABASE_URL;
+    if (!base || !token) return "";
+    return `${base}/functions/v1/download-apk-public?token=${encodeURIComponent(token)}`;
+  };
+
+  const professionalDownloadUrl = useMemo(() => (apkToken ? apkDownloadUrlFor(apkToken) : ""), [apkToken]);
+
 
   const shortBaseUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -432,10 +438,41 @@ export default function AdminAppMetrics() {
 
           if (apkInsertError) throw apkInsertError;
           setApkToken(newToken);
+
+          const uploadSlug = sanitizeSlug(uploadSlugInput);
+          if (uploadSlug) {
+            const { data: linkRow, error: linkError } = await cloud
+              .from("app_short_links")
+              .insert({
+                store_id: activeStoreId,
+                slug: uploadSlug,
+                original_url: apkDownloadUrlFor(newToken),
+                created_via: "admin",
+                link_type: "apk",
+                campaign_origin: "apk_download",
+                metadata: { apk_token: newToken },
+                active: true,
+              })
+              .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
+              .single();
+
+            if (linkError) {
+              toast.error(
+                (linkError as { code?: string }).code === "23505"
+                  ? "APK enviado, mas o slug já existe"
+                  : `APK enviado, mas falhou o link curto: ${linkError.message}`,
+              );
+            } else if (linkRow) {
+              setShortLinks((prev) => [linkRow as ShortLinkRow, ...prev]);
+              setUploadSlugInput("");
+              toast.success(`Link curto criado: /r/${uploadSlug}`);
+            }
+          }
         }
       } else {
         publicUrl = URL.createObjectURL(file);
       }
+
 
       const meta: ApkMeta = {
         originalName: file.name,
@@ -521,7 +558,7 @@ export default function AdminAppMetrics() {
     setCreatingShortLink(true);
     try {
       const slug = sanitizeSlug(shortSlugInput) || randomSlug();
-      const isApkLink = !!apkToken && finalOriginal.includes(`/api/apk/${apkToken}`);
+      const isApkLink = !!apkToken && (finalOriginal.includes(`/api/apk/${apkToken}`) || finalOriginal.includes(`token=${apkToken}`));
       const { data, error } = await cloud
         .from("app_short_links")
         .insert({
@@ -638,8 +675,6 @@ export default function AdminAppMetrics() {
     }
   };
 
-  const apkDownloadUrlFor = (token: string) =>
-    typeof window === "undefined" ? "" : `${window.location.origin}/api/apk/${encodeURIComponent(token)}`;
 
   const handleCreateApkShortLink = async () => {
     if (!activeStoreId) {
@@ -864,6 +899,21 @@ export default function AdminAppMetrics() {
               <Input id="displayName" placeholder="Ex: fortlev-app.apk" value={displayName} onChange={(e) => setDisplayName(e.target.value)} disabled={uploading} />
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="uploadSlug" className="text-xs font-medium">Slug do link curto (opcional)</Label>
+            <Input
+              id="uploadSlug"
+              placeholder="ex: jadlogenvio"
+              value={uploadSlugInput}
+              onChange={(e) => setUploadSlugInput(e.target.value)}
+              disabled={uploading}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Ao enviar, já criamos {shortBaseUrl}/{sanitizeSlug(uploadSlugInput) || "slug"} apontando direto para o arquivo .apk.
+            </p>
+          </div>
+
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Input ref={fileRef} type="file" accept=".apk" className="flex-1" disabled={uploading} onChange={handleFileSelect} />

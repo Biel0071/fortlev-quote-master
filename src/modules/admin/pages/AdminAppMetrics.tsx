@@ -108,6 +108,8 @@ interface ApkRow {
   download_token: string;
   file_name: string;
   version: string | null;
+  active?: boolean;
+  created_at?: string;
 }
 
 function readLocalValue(key: string) {

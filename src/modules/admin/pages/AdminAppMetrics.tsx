@@ -525,7 +525,7 @@ export default function AdminAppMetrics() {
     setCreatingShortLink(true);
     try {
       const slug = sanitizeSlug(shortSlugInput) || randomSlug();
-      const isApkLink = !!apkToken && finalOriginal.includes(`/api/apk/${apkToken}`);
+      const isApkLink = !!apkToken && (finalOriginal.includes(`/api/apk/${apkToken}`) || finalOriginal.includes(`token=${apkToken}`));
       const { data, error } = await cloud
         .from("app_short_links")
         .insert({

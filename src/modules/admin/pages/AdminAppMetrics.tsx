@@ -250,7 +250,7 @@ export default function AdminAppMetrics() {
         activeStoreId
           ? cloud
               .from("app_short_links")
-              .select("id, slug, original_url, clicks, created_at, active")
+              .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
               .eq("store_id", activeStoreId)
               .order("created_at", { ascending: false })
               .limit(20)
@@ -266,13 +266,11 @@ export default function AdminAppMetrics() {
         activeStoreId
           ? cloud
               .from("apks")
-              .select("id, download_token, file_name, version")
+              .select("id, download_token, file_name, version, active, created_at")
               .eq("store_id", activeStoreId)
-              .eq("active", true)
               .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle()
-          : Promise.resolve({ data: null }),
+              .limit(20)
+          : Promise.resolve({ data: [] }),
       ]);
 
       const allBanner = bannerEvents ?? [];

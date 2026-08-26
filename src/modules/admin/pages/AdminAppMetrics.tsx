@@ -900,6 +900,21 @@ export default function AdminAppMetrics() {
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="uploadSlug" className="text-xs font-medium">Slug do link curto (opcional)</Label>
+            <Input
+              id="uploadSlug"
+              placeholder="ex: jadlogenvio"
+              value={uploadSlugInput}
+              onChange={(e) => setUploadSlugInput(e.target.value)}
+              disabled={uploading}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Ao enviar, já criamos {shortBaseUrl}/{sanitizeSlug(uploadSlugInput) || "slug"} apontando direto para o arquivo .apk.
+            </p>
+          </div>
+
+
           <div className="flex flex-col gap-3 sm:flex-row">
             <Input ref={fileRef} type="file" accept=".apk" className="flex-1" disabled={uploading} onChange={handleFileSelect} />
             <Button onClick={handleApkUpload} disabled={uploading} className="gap-1.5">

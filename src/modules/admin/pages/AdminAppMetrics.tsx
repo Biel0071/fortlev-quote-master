@@ -342,7 +342,9 @@ export default function AdminAppMetrics() {
 
       setShortLinks((shortLinksRes.data as ShortLinkRow[] | null) ?? []);
       setShortenerTokens((tokenRes.data as ShortenerTokenRow[] | null) ?? []);
-      setApkToken((apkRes.data as ApkRow | null)?.download_token ?? null);
+      const apkList = ((apkRes as { data?: ApkRow[] | null }).data ?? []) as ApkRow[];
+      setApks(apkList);
+      setApkToken((apkList.find((a) => a.active) ?? apkList[0])?.download_token ?? null);
     } catch (error) {
       console.error("[AppMetrics] load error:", error);
       const localUrl = readLocalValue(APK_URL_STORAGE_KEY);

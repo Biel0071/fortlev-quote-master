@@ -903,11 +903,58 @@ export default function AdminAppMetrics() {
                         <Save className="h-3.5 w-3.5" /> Salvar no sistema
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Link direto: <code className="bg-muted px-1 rounded text-[10px]">{professionalDownloadUrl}</code>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Link direto: <code className="bg-muted px-1 rounded text-[10px]">{professionalDownloadUrl}</code>
+                      </p>
+                      <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => void copyText(professionalDownloadUrl, "Link direto")}>
+                        <Copy className="h-3 w-3" /> Copiar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {apks.length > 1 && (
+                  <div className="mt-3 space-y-1.5">
+                    <Label className="text-xs font-medium">APK usado no link direto</Label>
+                    <select
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                      value={apkToken ?? ""}
+                      onChange={(e) => setApkToken(e.target.value || null)}
+                    >
+                      {apks.map((a) => (
+                        <option key={a.id} value={a.download_token}>
+                          {a.file_name}{a.version ? ` (v${a.version})` : ""}{a.active ? " • ativo" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {professionalDownloadUrl && (
+                  <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+                    <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Link2 className="h-3.5 w-3.5 text-primary" /> Link curto do APK (domínio da loja)
+                    </p>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Input
+                        placeholder="slug: baixar-app"
+                        value={apkSlugInput}
+                        onChange={(e) => setApkSlugInput(e.target.value)}
+                        disabled={creatingApkLink}
+                        className="flex-1"
+                      />
+                      <Button onClick={handleCreateApkShortLink} disabled={creatingApkLink || !activeStoreId} className="gap-1.5">
+                        {creatingApkLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                        Gerar link de download
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Prévia: <code className="bg-muted px-1 rounded">{shortBaseUrl}/{sanitizeSlug(apkSlugInput) || "slug-automatico"}</code> — cada clique é rastreado (IP, cidade, dispositivo) e vira lead nos clientes da loja.
                     </p>
                   </div>
                 )}
+
                 <p className="mt-2 text-xs text-muted-foreground">
                   Este link é usado automaticamente no banner do app.
                 </p>

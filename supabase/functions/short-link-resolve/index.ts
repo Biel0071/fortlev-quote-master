@@ -287,6 +287,37 @@ Deno.serve(async (req) => {
         user_agent: userAgent,
         status: "downloaded",
       });
+
+      // Cada download de APK vira um lead rastreado na Análise de Clientes
+      try {
+        const leadDoc = (ipHash ?? sessionToken).slice(0, 24);
+        const { data: existingLead } = await cloud
+          .from("crm_leads")
+          .select("id")
+          .eq("document", leadDoc)
+          .eq("source", "apk_link")
+          .maybeSingle();
+
+        const leadName = `Lead App • ${city ?? "Origem desconhecida"}${region ? `/${region}` : ""}`;
+        const leadNotes = `Download do APK via /r/${slug} (${device}/${browser}) em ${new Date().toISOString()}`;
+
+        if (existingLead?.id) {
+          await cloud
+            .from("crm_leads")
+            .update({ notes: leadNotes, status: "engaged", updated_at: new Date().toISOString() })
+            .eq("id", existingLead.id);
+        } else {
+          await cloud.from("crm_leads").insert({
+            name: leadName,
+            document: leadDoc,
+            source: "apk_link",
+            status: "new",
+            notes: leadNotes,
+          });
+        }
+      } catch (leadError) {
+        console.error("[short-link-resolve] lead", leadError);
+      }
     }
 
     return new Response(

@@ -1077,19 +1077,31 @@ export default function AdminAppMetrics() {
                   const shortUrl = `${shortBaseUrl}/${link.slug}`;
                   const isExpanded = !!expandedLinks[link.id];
                   return (
-                    <div key={link.id} className="rounded-xl border border-border p-3 text-xs space-y-2 bg-background/50">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <a href={shortUrl} target="_blank" rel="noreferrer" className="text-primary font-bold underline truncate block">
-                            {shortUrl}
-                          </a>
-                          <p className="text-muted-foreground truncate" title={link.original_url}>Destino: {link.original_url}</p>
+                    <div
+                      key={link.id}
+                      className={`rounded-2xl border p-3 text-xs space-y-2 transition-all hover:shadow-md ${
+                        link.link_type === "apk"
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-border bg-background/50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${link.link_type === "apk" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                            {link.link_type === "apk" ? <Smartphone className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+                          </div>
+                          <div className="flex flex-col gap-1 min-w-0">
+                            <a href={shortUrl} target="_blank" rel="noreferrer" className="text-primary font-bold underline truncate block text-sm">
+                              {shortUrl}
+                            </a>
+                            <p className="text-muted-foreground truncate" title={link.original_url}>Destino: {link.original_url}</p>
+                          </div>
                         </div>
                         <div className="flex gap-1 shrink-0">
-                          <Button size="sm" variant="ghost" onClick={() => void toggleLinkDetails(link.id)} className="h-8 w-8 p-0">
+                          <Button size="sm" variant="ghost" onClick={() => void toggleLinkDetails(link.id)} className="h-8 w-8 p-0" title="Ver métricas">
                             {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => void copyText(shortUrl, "Link curto")} className="h-8 w-8 p-0">
+                          <Button size="sm" variant="outline" onClick={() => void copyText(shortUrl, "Link curto")} className="h-8 w-8 p-0" title="Copiar link">
                             <Copy className="h-4 w-4" />
                           </Button>
                           <Button 
@@ -1097,6 +1109,7 @@ export default function AdminAppMetrics() {
                             variant="outline" 
                             onClick={() => startEditing(link)} 
                             className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                            title="Editar slug, link e APK"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -1105,21 +1118,30 @@ export default function AdminAppMetrics() {
                             variant="outline" 
                             onClick={() => handleDeleteShortLink(link.id)} 
                             className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                            title="Excluir link"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                        <div className="flex items-center gap-1"><MousePointerClick className="h-3 w-3" /> {link.clicks} cliques</div>
-                        <div className="flex items-center gap-1">Criado: {fmtDate(link.created_at)}</div>
-                        {link.link_type === 'apk' && (
-                          <div className="flex items-center gap-1 text-primary font-bold">
-                            <Smartphone className="h-3 w-3" /> Link de APK
-                          </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                          <MousePointerClick className="h-3 w-3" /> {link.clicks} cliques
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          /{link.slug}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          {fmtDate(link.created_at)}
+                        </span>
+                        {link.link_type === "apk" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
+                            <Download className="h-3 w-3" /> Download APK
+                          </span>
                         )}
                       </div>
+
 
                       {isExpanded && (
                         <div className="mt-3 pt-3 border-t border-border space-y-2 animate-in fade-in slide-in-from-top-1">

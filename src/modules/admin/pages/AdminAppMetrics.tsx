@@ -638,12 +638,67 @@ export default function AdminAppMetrics() {
     }
   };
 
+  const apkDownloadUrlFor = (token: string) =>
+    typeof window === "undefined" ? "" : `${window.location.origin}/api/apk/${encodeURIComponent(token)}`;
+
+  const handleCreateApkShortLink = async () => {
+    if (!activeStoreId) {
+      toast.error("Selecione uma loja antes de criar links curtos");
+      return;
+    }
+    if (!apkToken) {
+      toast.error("Envie um APK antes de gerar o link de download");
+      return;
+    }
+
+    setCreatingApkLink(true);
+    try {
+      const slug = sanitizeSlug(apkSlugInput) || randomSlug();
+      const { data, error } = await cloud
+        .from("app_short_links")
+        .insert({
+          store_id: activeStoreId,
+          slug,
+          original_url: apkDownloadUrlFor(apkToken),
+          created_via: "admin",
+          link_type: "apk",
+          campaign_origin: "apk_download",
+          metadata: { apk_token: apkToken },
+          active: true,
+        })
+        .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
+        .single();
+
+      if (error) {
+        if ((error as { code?: string }).code === "23505") {
+          toast.error("Slug já existe. Escolha outro.");
+          return;
+        }
+        throw error;
+      }
+
+      setShortLinks((prev) => [data as ShortLinkRow, ...prev]);
+      setApkSlugInput("");
+      toast.success("Link de download do APK criado");
+    } catch (error: any) {
+      toast.error(`Erro ao criar link: ${error?.message ?? "falha desconhecida"}`);
+    } finally {
+      setCreatingApkLink(false);
+    }
+  };
+
   const handleUpdateLink = async () => {
     if (!editingLink) return;
 
     const newUrl = editUrlInput.trim();
+    const newSlug = sanitizeSlug(editSlugInput);
+
     if (!newUrl) {
       toast.error("Informe a nova URL");
+      return;
+    }
+    if (!newSlug) {
+      toast.error("Informe um slug válido");
       return;
     }
 
@@ -654,20 +709,45 @@ export default function AdminAppMetrics() {
       return;
     }
 
+    const isApk = !!editApkToken;
+
     setSavingEdit(true);
     try {
       const { error } = await cloud
         .from("app_short_links")
-        .update({ original_url: newUrl })
+        .update({
+          original_url: newUrl,
+          slug: newSlug,
+          link_type: isApk ? "apk" : editingLink.link_type ?? "page",
+          metadata: isApk ? { apk_token: editApkToken } : editingLink.metadata ?? {},
+        })
         .eq("id", editingLink.id);
 
-      if (error) throw error;
+      if (error) {
+        if ((error as { code?: string }).code === "23505") {
+          toast.error("Slug já está em uso. Escolha outro.");
+          return;
+        }
+        throw error;
+      }
 
       setShortLinks((prev) =>
-        prev.map((l) => (l.id === editingLink.id ? { ...l, original_url: newUrl } : l)),
+        prev.map((l) =>
+          l.id === editingLink.id
+            ? {
+                ...l,
+                original_url: newUrl,
+                slug: newSlug,
+                link_type: isApk ? "apk" : l.link_type,
+                metadata: isApk ? { apk_token: editApkToken } : l.metadata,
+              }
+            : l,
+        ),
       );
       setEditingLink(null);
       setEditUrlInput("");
+      setEditSlugInput("");
+      setEditApkToken("");
       toast.success("Link atualizado com sucesso");
     } catch (error: any) {
       toast.error(`Erro ao atualizar link: ${error?.message ?? "falha desconhecida"}`);
@@ -679,6 +759,9 @@ export default function AdminAppMetrics() {
   const startEditing = (link: ShortLinkRow) => {
     setEditingLink(link);
     setEditUrlInput(link.original_url);
+    setEditSlugInput(link.slug);
+    const metaToken = typeof link.metadata?.apk_token === "string" ? (link.metadata.apk_token as string) : "";
+    setEditApkToken(link.link_type === "apk" ? metaToken || apkToken || "" : "");
   };
 
   const copyText = async (value: string, label: string) => {

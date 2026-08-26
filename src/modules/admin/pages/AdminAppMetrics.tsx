@@ -167,9 +167,14 @@ export default function AdminAppMetrics() {
   const [creatingToken, setCreatingToken] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [apkToken, setApkToken] = useState<string | null>(null);
+  const [apks, setApks] = useState<ApkRow[]>([]);
+  const [apkSlugInput, setApkSlugInput] = useState("");
+  const [creatingApkLink, setCreatingApkLink] = useState(false);
   const [expandedLinks, setExpandedLinks] = useState<Record<string, boolean>>({});
   const [editingLink, setEditingLink] = useState<ShortLinkRow | null>(null);
   const [editUrlInput, setEditUrlInput] = useState("");
+  const [editSlugInput, setEditSlugInput] = useState("");
+  const [editApkToken, setEditApkToken] = useState<string>("");
   const [savingEdit, setSavingEdit] = useState(false);
 
   const professionalDownloadUrl = useMemo(() => {

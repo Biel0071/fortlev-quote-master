@@ -169,6 +169,8 @@ export default function AdminAppMetrics() {
   const [apkToken, setApkToken] = useState<string | null>(null);
   const [apks, setApks] = useState<ApkRow[]>([]);
   const [apkSlugInput, setApkSlugInput] = useState("");
+  const [uploadSlugInput, setUploadSlugInput] = useState("");
+
   const [creatingApkLink, setCreatingApkLink] = useState(false);
   const [expandedLinks, setExpandedLinks] = useState<Record<string, boolean>>({});
   const [editingLink, setEditingLink] = useState<ShortLinkRow | null>(null);

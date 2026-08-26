@@ -642,8 +642,6 @@ export default function AdminAppMetrics() {
     }
   };
 
-  const apkDownloadUrlFor = (token: string) =>
-    typeof window === "undefined" ? "" : `${window.location.origin}/api/apk/${encodeURIComponent(token)}`;
 
   const handleCreateApkShortLink = async () => {
     if (!activeStoreId) {

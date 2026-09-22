@@ -469,6 +469,58 @@ export default function AdminQuotationTokens() {
           </Table>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Token</DialogTitle>
+            <DialogDescription>Altere o nome do atendente, o prazo de validade e o limite de acessos.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome do atendente / token</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Ex: Representante João" />
+            </div>
+            <div className="space-y-2">
+              <Label>Validade (prazo)</Label>
+              <Input type="datetime-local" value={editExpiresAt} onChange={(e) => setEditExpiresAt(e.target.value)} />
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[7, 15, 30].map((d) => (
+                  <Button
+                    key={d}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const nd = new Date(Date.now() + d * 24 * 60 * 60 * 1000);
+                      const pad = (n: number) => String(n).padStart(2, "0");
+                      setEditExpiresAt(`${nd.getFullYear()}-${pad(nd.getMonth() + 1)}-${pad(nd.getDate())}T${pad(nd.getHours())}:${pad(nd.getMinutes())}`);
+                    }}
+                  >
+                    +{d}d
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Limite de acessos (vazio = ilimitado)</Label>
+              <Input value={editMaxUses} onChange={(e) => setEditMaxUses(e.target.value)} inputMode="numeric" placeholder="Ex: 100" />
+            </div>
+            {editToken && (
+              <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground space-y-1">
+                <div>IP travado: {editToken.locked_ip ?? editToken.last_ip ?? "ainda não detectado"}</div>
+                <div>Acessos registrados: {editToken.uses_count ?? 0}</div>
+                <div>Dispositivo: {editToken.device_hash ? "travado" : "livre"}</div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+            <Button onClick={saveEdit} disabled={editing}>
+              {editing ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>) : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

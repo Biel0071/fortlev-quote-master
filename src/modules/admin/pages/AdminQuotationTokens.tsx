@@ -109,6 +109,11 @@ export default function AdminQuotationTokens() {
         .select("slug")
         .eq("id", activeStoreId)
         .maybeSingle(),
+      cloud
+        .from("store_domains")
+        .select("domain,is_primary,verified")
+        .eq("store_id", activeStoreId)
+        .eq("verified", true),
     ]);
 
     if (tokenErr) {

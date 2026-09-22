@@ -211,9 +211,7 @@ export default function AdminQuotationTokens() {
       toast({ title: "Token completo indisponível", variant: "destructive" });
       return;
     }
-    const safeSlug = activeStoreSlug || "loja";
-    const link = `${window.location.origin}/orcamento/${encodeURIComponent(safeSlug)}/${encodeURIComponent(token.token)}`;
-    await navigator.clipboard.writeText(link);
+    await navigator.clipboard.writeText(buildTokenLink(token.token));
     toast({ title: "Link copiado" });
   };
 

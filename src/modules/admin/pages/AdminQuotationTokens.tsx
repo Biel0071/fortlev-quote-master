@@ -77,6 +77,13 @@ export default function AdminQuotationTokens() {
   const [lastCreatedLink, setLastCreatedLink] = useState<string | null>(null);
   const [lastCreatedToken, setLastCreatedToken] = useState<string | null>(null);
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editToken, setEditToken] = useState<TokenRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editExpiresAt, setEditExpiresAt] = useState("");
+  const [editMaxUses, setEditMaxUses] = useState("");
+
   const tokenMetrics = useMemo(() => {
     const grouped = new Map<string, { accesses: number; created: number; last: string | null }>();
     for (const t of tokens) grouped.set(t.id, { accesses: 0, created: 0, last: t.last_access_at });
@@ -204,6 +211,40 @@ export default function AdminQuotationTokens() {
       return;
     }
     toast({ title: "Token resetado" });
+    await loadData();
+  };
+
+  const openEdit = (token: TokenRow) => {
+    setEditToken(token);
+    setEditName(token.name ?? "");
+    const d = new Date(token.expires_at);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setEditExpiresAt(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    setEditMaxUses(token.max_uses ? String(token.max_uses) : "");
+    setEditOpen(true);
+  };
+
+  const saveEdit = async () => {
+    if (!editToken) return;
+    if (editName.trim().length < 2) {
+      toast({ title: "Nome inválido", variant: "destructive" });
+      return;
+    }
+    setEditing(true);
+    const { error } = await cloud.rpc("update_quotation_access_token", {
+      _token_id: editToken.id,
+      _name: editName.trim(),
+      _expires_at: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
+      _max_uses: editMaxUses.trim() ? Number(editMaxUses) : null,
+      _clear_max_uses: !editMaxUses.trim(),
+    });
+    setEditing(false);
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Token atualizado" });
+    setEditOpen(false);
     await loadData();
   };
 

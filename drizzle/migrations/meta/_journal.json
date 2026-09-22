@@ -22,6 +22,13 @@
       "when": 1790081480546,
       "tag": "0002_token_logs_actions_expand",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790086176023,
+      "tag": "0003_quotation_token_link_and_edit",
+      "breakpoints": true
     }
   ]
 }

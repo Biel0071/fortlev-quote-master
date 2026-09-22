@@ -57,20 +57,26 @@ export default function PublicQuotationAccess() {
         localStorage.setItem("device_hash", deviceHash);
       }
 
-      const { data, error } = await cloud.rpc("validate_public_quotation_token", {
-        _raw_token: token,
-        _store_slug: slug || null,
-        _device_hash: deviceHash,
-        _ip: null,
-        _access_scope: null,
-        _user_agent: navigator.userAgent,
+      const { data, error } = await cloud.functions.invoke("quotation-token-validate", {
+        body: {
+          token,
+          slug: slug || null,
+          device_hash: deviceHash,
+        },
       });
 
-      if (error || !data || data.length === 0) {
+      const payload = data as { access?: ValidationResult; error?: string } | null;
+
+      if (error || !payload?.access) {
         setValid(null);
-        setErrorMessage(error?.message || "Acesso inválido ou expirado");
+        const ctx = (error as any)?.context;
+        let detail = payload?.error || "";
+        if (!detail && ctx && typeof ctx.json === "function") {
+          detail = (await ctx.json().catch(() => null))?.error ?? "";
+        }
+        setErrorMessage(detail || "Acesso inválido ou expirado");
       } else {
-        const current = data[0] as ValidationResult;
+        const current = payload.access;
         setValid(current);
         document.cookie = `${TOKEN_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=31536000; SameSite=Lax`;
         localStorage.setItem(

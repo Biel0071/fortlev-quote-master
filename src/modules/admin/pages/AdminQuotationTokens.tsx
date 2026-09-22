@@ -60,6 +60,13 @@ export default function AdminQuotationTokens() {
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [activeStoreSlug, setActiveStoreSlug] = useState<string | null>(null);
+  const [officialBaseUrl, setOfficialBaseUrl] = useState<string>("");
+
+  const buildTokenLink = (rawToken: string) => {
+    const base = officialBaseUrl || window.location.origin;
+    const safeSlug = activeStoreSlug || "loja";
+    return `${base}/orcamento/${encodeURIComponent(safeSlug)}/${encodeURIComponent(rawToken)}`;
+  };
 
   const [name, setName] = useState("");
   const [scope, setScope] = useState<"fortlev" | "construction" | "both">("both");

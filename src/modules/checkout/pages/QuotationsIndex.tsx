@@ -230,7 +230,7 @@ const QuotationsContent = () => {
     if (!validateForm()) return;
     const q = createQuotationObject();
     await downloadPNG(q);
-    if (editingQuotationId) updateQuotation(editingQuotationId, q); else saveQuotation(q);
+    persistQuotation(q);
     toast({ title: 'PNG gerado!', description: `Orçamento ${q.number} salvo` });
     resetForm();
   };
@@ -239,7 +239,7 @@ const QuotationsContent = () => {
     if (!validateForm()) return;
     const q = createQuotationObject();
     await downloadNFePDF(q);
-    if (editingQuotationId) updateQuotation(editingQuotationId, q); else saveQuotation(q);
+    persistQuotation(q);
     toast({ title: 'DANFE gerado!', description: `Orçamento ${q.number} salvo` });
     resetForm();
   };
@@ -268,7 +268,7 @@ const QuotationsContent = () => {
   const handlePreviewDownloadPNG = async () => {
     if (!previewQuotation) return;
     await downloadPNG(previewQuotation);
-    if (editingQuotationId) updateQuotation(editingQuotationId, previewQuotation); else saveQuotation(previewQuotation);
+    persistQuotation(previewQuotation);
     resetForm();
     setPreviewOpen(false);
   };

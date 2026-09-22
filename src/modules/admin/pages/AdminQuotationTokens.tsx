@@ -92,7 +92,7 @@ export default function AdminQuotationTokens() {
   const loadData = async () => {
     if (!activeStoreId) return;
     setLoading(true);
-    const [{ data: tokenRows, error: tokenErr }, { data: logRows }, { data: storeRow }] = await Promise.all([
+    const [{ data: tokenRows, error: tokenErr }, { data: logRows }, { data: storeRow }, { data: domainRows }] = await Promise.all([
       cloud
         .from("quotation_access_tokens")
         .select("id,store_id,name,token_preview,token,status,access_scope,expires_at,created_at,last_access_at,last_ip,device_hash,uses_count,max_uses")

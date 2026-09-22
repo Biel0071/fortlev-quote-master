@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Eye, ShieldPlus, Ban, Lock, RotateCcw, Link2, Loader2 } from "lucide-react";
+import { Copy, Eye, ShieldPlus, Ban, Lock, RotateCcw, Link2, Loader2, Pencil } from "lucide-react";
 import { cloud } from "@/lib/cloud";
 import { useStore } from "@/contexts/StoreContext";
 import { toast } from "@/hooks/use-toast";
@@ -300,6 +300,7 @@ export default function AdminQuotationTokens() {
                   <TableHead>Criado em</TableHead>
                   <TableHead>Último uso</TableHead>
                   <TableHead>Total acessos</TableHead>
+                  <TableHead>Orçamentos</TableHead>
                   <TableHead>IP</TableHead>
                   <TableHead>Dispositivo</TableHead>
                   <TableHead>Ações</TableHead>
@@ -327,8 +328,9 @@ export default function AdminQuotationTokens() {
                       <TableCell>{formatDate(t.expires_at)}</TableCell>
                       <TableCell>{formatDate(t.created_at)}</TableCell>
                       <TableCell>{formatDate(metric?.last ?? t.last_access_at)}</TableCell>
-                      <TableCell>{metric?.accesses ?? t.uses_count}</TableCell>
-                      <TableCell>{t.last_ip ?? "—"}</TableCell>
+                      <TableCell>{Math.max(metric?.accesses ?? 0, t.uses_count ?? 0)}</TableCell>
+                      <TableCell>{metric?.created ?? 0}</TableCell>
+                      <TableCell>{t.locked_ip ?? t.last_ip ?? "—"}</TableCell>
                       <TableCell>{t.device_hash ? `${t.device_hash.slice(0, 10)}...` : "—"}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
@@ -337,6 +339,9 @@ export default function AdminQuotationTokens() {
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => copyTokenLink(t)} title="Copiar link completo">
                             <Link2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => openEdit(t)} title="Editar token">
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => openLogs(t)}>
                             <Eye className="h-4 w-4" />

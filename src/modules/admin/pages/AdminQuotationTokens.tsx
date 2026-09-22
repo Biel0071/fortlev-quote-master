@@ -123,6 +123,11 @@ export default function AdminQuotationTokens() {
     setTokens((tokenRows as TokenRow[]) ?? []);
     setLogs((logRows as TokenLog[]) ?? []);
     setActiveStoreSlug((storeRow as { slug?: string } | null)?.slug ?? null);
+
+    const domains = (domainRows as { domain: string; is_primary: boolean }[] | null) ?? [];
+    const realDomains = domains.filter((d) => !d.domain.endsWith(".lovable.app") && !d.domain.startsWith("www."));
+    const chosen = realDomains.find((d) => d.is_primary) ?? realDomains[0] ?? domains.find((d) => d.is_primary) ?? domains[0];
+    setOfficialBaseUrl(chosen ? `https://${chosen.domain}` : "");
     setLoading(false);
   };
 

@@ -4156,6 +4156,7 @@ export type Database = {
           last_access_at: string | null
           last_ip: string | null
           last_user_agent: string | null
+          locked_ip: string | null
           max_requests_per_hour: number
           max_uses: number | null
           name: string
@@ -4183,6 +4184,7 @@ export type Database = {
           last_access_at?: string | null
           last_ip?: string | null
           last_user_agent?: string | null
+          locked_ip?: string | null
           max_requests_per_hour?: number
           max_uses?: number | null
           name: string
@@ -4210,6 +4212,7 @@ export type Database = {
           last_access_at?: string | null
           last_ip?: string | null
           last_user_agent?: string | null
+          locked_ip?: string | null
           max_requests_per_hour?: number
           max_uses?: number | null
           name?: string
@@ -6962,6 +6965,15 @@ export type Database = {
           subtotal: number
           total: number
         }[]
+      }
+      enforce_token_ip_lock: {
+        Args: {
+          _ip: string
+          _is_first?: boolean
+          _token_id: string
+          _user_agent?: string
+        }
+        Returns: boolean
       }
       get_admin_role: { Args: { _user_id: string }; Returns: string }
       get_products_for_ai_generation: {

@@ -163,12 +163,58 @@ const QuotationsContent = () => {
     return true;
   };
 
-  const saveAndExecute = (quotation: Quotation, action: () => void) => {
-    if (editingQuotationId) {
-      updateQuotation(editingQuotationId, quotation);
-    } else {
-      saveQuotation(quotation);
+  const getTokenContext = () => {
+    if (!publicToken) return null;
+    const raw = localStorage.getItem('public_quotation_token_ctx');
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as { token?: string; tokenId?: string; storeId?: string };
+      if (!parsed?.tokenId || !parsed?.storeId) return null;
+      if (parsed?.token && parsed.token !== publicToken) return null;
+      return parsed;
+    } catch {
+      return null;
     }
+  };
+
+  const withTokenMeta = (quotation: Quotation) => {
+    const ctx = getTokenContext();
+    if (!ctx) return quotation;
+    return {
+      ...quotation,
+      created_via_token: true,
+      source_token_id: ctx.tokenId,
+      store_id: ctx.storeId,
+    } as Quotation;
+  };
+
+  const logTokenQuotation = (quotation: Quotation) => {
+    const ctx = getTokenContext();
+    if (!ctx || !publicToken) return;
+    supabase.rpc('log_token_action', {
+      _raw_token: publicToken,
+      _store_id: ctx.storeId,
+      _action: 'created_quotation',
+      _quotation_type: 'fortlev',
+      _quotation_id: quotation.id,
+      _ip: null,
+      _user_agent: navigator.userAgent,
+      _source: 'public',
+    });
+  };
+
+  const persistQuotation = (quotation: Quotation) => {
+    const withMeta = withTokenMeta(quotation);
+    if (editingQuotationId) {
+      updateQuotation(editingQuotationId, withMeta);
+    } else {
+      saveQuotation(withMeta);
+      logTokenQuotation(withMeta);
+    }
+  };
+
+  const saveAndExecute = (quotation: Quotation, action: () => void) => {
+    persistQuotation(quotation);
     action();
     // resetForm(); // Do NOT reset automatically after action to avoid accidental loss if action fails or user wants more actions
   };

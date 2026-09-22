@@ -162,8 +162,7 @@ export default function AdminQuotationTokens() {
       return;
     }
 
-    const safeSlug = activeStoreSlug || "loja";
-    const link = `${window.location.origin}/orcamento/${encodeURIComponent(safeSlug)}/${encodeURIComponent(raw)}`;
+    const link = buildTokenLink(raw);
     setLastCreatedLink(link);
     setLastCreatedToken(raw);
     toast({ title: "Token criado", description: "Copie o token ou o link completo" });

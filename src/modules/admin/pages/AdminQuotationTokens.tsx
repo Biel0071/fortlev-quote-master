@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Eye, ShieldPlus, Ban, Lock, RotateCcw, Link2, Loader2 } from "lucide-react";
+import { Copy, Eye, ShieldPlus, Ban, Lock, RotateCcw, Link2, Loader2, Pencil } from "lucide-react";
 import { cloud } from "@/lib/cloud";
 import { useStore } from "@/contexts/StoreContext";
 import { toast } from "@/hooks/use-toast";
@@ -23,6 +23,7 @@ type TokenRow = {
   created_at: string;
   last_access_at: string | null;
   last_ip: string | null;
+  locked_ip: string | null;
   device_hash: string | null;
   uses_count: number;
   max_uses: number | null;
@@ -76,13 +77,20 @@ export default function AdminQuotationTokens() {
   const [lastCreatedLink, setLastCreatedLink] = useState<string | null>(null);
   const [lastCreatedToken, setLastCreatedToken] = useState<string | null>(null);
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editToken, setEditToken] = useState<TokenRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editExpiresAt, setEditExpiresAt] = useState("");
+  const [editMaxUses, setEditMaxUses] = useState("");
+
   const tokenMetrics = useMemo(() => {
     const grouped = new Map<string, { accesses: number; created: number; last: string | null }>();
     for (const t of tokens) grouped.set(t.id, { accesses: 0, created: 0, last: t.last_access_at });
     for (const l of logs) {
       const row = grouped.get((l as any).token_id ?? "");
       if (!row) continue;
-      if (l.action === "access") row.accesses += 1;
+      if (["access", "acesso_inicial", "reacesso"].includes(l.action)) row.accesses += 1;
       if (l.action === "created_quotation") row.created += 1;
       if (!row.last || new Date(l.created_at).getTime() > new Date(row.last).getTime()) row.last = l.created_at;
     }
@@ -95,7 +103,7 @@ export default function AdminQuotationTokens() {
     const [{ data: tokenRows, error: tokenErr }, { data: logRows }, { data: storeRow }, { data: domainRows }] = await Promise.all([
       cloud
         .from("quotation_access_tokens")
-        .select("id,store_id,name,token_preview,token,status,access_scope,expires_at,created_at,last_access_at,last_ip,device_hash,uses_count,max_uses")
+        .select("id,store_id,name,token_preview,token,status,access_scope,expires_at,created_at,last_access_at,last_ip,locked_ip,device_hash,uses_count,max_uses")
         .eq("store_id", activeStoreId)
         .order("created_at", { ascending: false }),
       cloud
@@ -206,6 +214,40 @@ export default function AdminQuotationTokens() {
     await loadData();
   };
 
+  const openEdit = (token: TokenRow) => {
+    setEditToken(token);
+    setEditName(token.name ?? "");
+    const d = new Date(token.expires_at);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setEditExpiresAt(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    setEditMaxUses(token.max_uses ? String(token.max_uses) : "");
+    setEditOpen(true);
+  };
+
+  const saveEdit = async () => {
+    if (!editToken) return;
+    if (editName.trim().length < 2) {
+      toast({ title: "Nome inválido", variant: "destructive" });
+      return;
+    }
+    setEditing(true);
+    const { error } = await cloud.rpc("update_quotation_access_token", {
+      _token_id: editToken.id,
+      _name: editName.trim(),
+      _expires_at: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
+      _max_uses: editMaxUses.trim() ? Number(editMaxUses) : null,
+      _clear_max_uses: !editMaxUses.trim(),
+    });
+    setEditing(false);
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Token atualizado" });
+    setEditOpen(false);
+    await loadData();
+  };
+
   const copyTokenLink = async (token: TokenRow) => {
     if (!token.token) {
       toast({ title: "Token completo indisponível", variant: "destructive" });
@@ -258,6 +300,7 @@ export default function AdminQuotationTokens() {
                   <TableHead>Criado em</TableHead>
                   <TableHead>Último uso</TableHead>
                   <TableHead>Total acessos</TableHead>
+                  <TableHead>Orçamentos</TableHead>
                   <TableHead>IP</TableHead>
                   <TableHead>Dispositivo</TableHead>
                   <TableHead>Ações</TableHead>
@@ -285,8 +328,9 @@ export default function AdminQuotationTokens() {
                       <TableCell>{formatDate(t.expires_at)}</TableCell>
                       <TableCell>{formatDate(t.created_at)}</TableCell>
                       <TableCell>{formatDate(metric?.last ?? t.last_access_at)}</TableCell>
-                      <TableCell>{metric?.accesses ?? t.uses_count}</TableCell>
-                      <TableCell>{t.last_ip ?? "—"}</TableCell>
+                      <TableCell>{Math.max(metric?.accesses ?? 0, t.uses_count ?? 0)}</TableCell>
+                      <TableCell>{metric?.created ?? 0}</TableCell>
+                      <TableCell>{t.locked_ip ?? t.last_ip ?? "—"}</TableCell>
                       <TableCell>{t.device_hash ? `${t.device_hash.slice(0, 10)}...` : "—"}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
@@ -295,6 +339,9 @@ export default function AdminQuotationTokens() {
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => copyTokenLink(t)} title="Copiar link completo">
                             <Link2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => openEdit(t)} title="Editar token">
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => openLogs(t)}>
                             <Eye className="h-4 w-4" />
@@ -420,6 +467,58 @@ export default function AdminQuotationTokens() {
               ))}
             </TableBody>
           </Table>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Token</DialogTitle>
+            <DialogDescription>Altere o nome do atendente, o prazo de validade e o limite de acessos.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome do atendente / token</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Ex: Representante João" />
+            </div>
+            <div className="space-y-2">
+              <Label>Validade (prazo)</Label>
+              <Input type="datetime-local" value={editExpiresAt} onChange={(e) => setEditExpiresAt(e.target.value)} />
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[7, 15, 30].map((d) => (
+                  <Button
+                    key={d}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const nd = new Date(Date.now() + d * 24 * 60 * 60 * 1000);
+                      const pad = (n: number) => String(n).padStart(2, "0");
+                      setEditExpiresAt(`${nd.getFullYear()}-${pad(nd.getMonth() + 1)}-${pad(nd.getDate())}T${pad(nd.getHours())}:${pad(nd.getMinutes())}`);
+                    }}
+                  >
+                    +{d}d
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Limite de acessos (vazio = ilimitado)</Label>
+              <Input value={editMaxUses} onChange={(e) => setEditMaxUses(e.target.value)} inputMode="numeric" placeholder="Ex: 100" />
+            </div>
+            {editToken && (
+              <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground space-y-1">
+                <div>IP travado: {editToken.locked_ip ?? editToken.last_ip ?? "ainda não detectado"}</div>
+                <div>Acessos registrados: {editToken.uses_count ?? 0}</div>
+                <div>Dispositivo: {editToken.device_hash ? "travado" : "livre"}</div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+            <Button onClick={saveEdit} disabled={editing}>
+              {editing ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>) : "Salvar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -1298,7 +1298,9 @@ export type Database = {
           show_client_data: boolean
           source_token_id: string | null
           status: string
+          store_id: string | null
           subtotal: number
+          token_name: string | null
           total: number
           updated_at: string
           validity: string
@@ -1333,7 +1335,9 @@ export type Database = {
           show_client_data?: boolean
           source_token_id?: string | null
           status?: string
+          store_id?: string | null
           subtotal?: number
+          token_name?: string | null
           total?: number
           updated_at?: string
           validity?: string
@@ -1368,7 +1372,9 @@ export type Database = {
           show_client_data?: boolean
           source_token_id?: string | null
           status?: string
+          store_id?: string | null
           subtotal?: number
+          token_name?: string | null
           total?: number
           updated_at?: string
           validity?: string
@@ -1986,8 +1992,10 @@ export type Database = {
           show_client_data: boolean
           source_token_id: string | null
           status: string
+          store_id: string | null
           subtotal: number
           taxes_json: Json | null
+          token_name: string | null
           total: number
           updated_at: string
           validity: string
@@ -2023,8 +2031,10 @@ export type Database = {
           show_client_data?: boolean
           source_token_id?: string | null
           status?: string
+          store_id?: string | null
           subtotal?: number
           taxes_json?: Json | null
+          token_name?: string | null
           total?: number
           updated_at?: string
           validity?: string
@@ -2060,8 +2070,10 @@ export type Database = {
           show_client_data?: boolean
           source_token_id?: string | null
           status?: string
+          store_id?: string | null
           subtotal?: number
           taxes_json?: Json | null
+          token_name?: string | null
           total?: number
           updated_at?: string
           validity?: string
@@ -7025,6 +7037,16 @@ export type Database = {
       }
       seed_order_tracking_status: {
         Args: { target_store_id: string }
+        Returns: undefined
+      }
+      update_quotation_access_token: {
+        Args: {
+          _clear_max_uses?: boolean
+          _expires_at?: string
+          _max_uses?: number
+          _name?: string
+          _token_id: string
+        }
         Returns: undefined
       }
       upsert_checkout_session: {

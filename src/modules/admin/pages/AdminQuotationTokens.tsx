@@ -23,6 +23,7 @@ type TokenRow = {
   created_at: string;
   last_access_at: string | null;
   last_ip: string | null;
+  locked_ip: string | null;
   device_hash: string | null;
   uses_count: number;
   max_uses: number | null;
@@ -82,7 +83,7 @@ export default function AdminQuotationTokens() {
     for (const l of logs) {
       const row = grouped.get((l as any).token_id ?? "");
       if (!row) continue;
-      if (l.action === "access") row.accesses += 1;
+      if (["access", "acesso_inicial", "reacesso"].includes(l.action)) row.accesses += 1;
       if (l.action === "created_quotation") row.created += 1;
       if (!row.last || new Date(l.created_at).getTime() > new Date(row.last).getTime()) row.last = l.created_at;
     }
@@ -95,7 +96,7 @@ export default function AdminQuotationTokens() {
     const [{ data: tokenRows, error: tokenErr }, { data: logRows }, { data: storeRow }, { data: domainRows }] = await Promise.all([
       cloud
         .from("quotation_access_tokens")
-        .select("id,store_id,name,token_preview,token,status,access_scope,expires_at,created_at,last_access_at,last_ip,device_hash,uses_count,max_uses")
+        .select("id,store_id,name,token_preview,token,status,access_scope,expires_at,created_at,last_access_at,last_ip,locked_ip,device_hash,uses_count,max_uses")
         .eq("store_id", activeStoreId)
         .order("created_at", { ascending: false }),
       cloud

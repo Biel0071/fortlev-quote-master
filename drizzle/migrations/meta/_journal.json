@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790081263164,
+      "tag": "0000_token_ip_lock",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790081460814,
+      "tag": "0001_fix_token_validate_ambiguous_v2",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790081480546,
+      "tag": "0002_token_logs_actions_expand",
+      "breakpoints": true
+    }
+  ]
+}

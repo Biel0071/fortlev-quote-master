@@ -60,6 +60,13 @@ export default function AdminQuotationTokens() {
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [activeStoreSlug, setActiveStoreSlug] = useState<string | null>(null);
+  const [officialBaseUrl, setOfficialBaseUrl] = useState<string>("");
+
+  const buildTokenLink = (rawToken: string) => {
+    const base = officialBaseUrl || window.location.origin;
+    const safeSlug = activeStoreSlug || "loja";
+    return `${base}/orcamento/${encodeURIComponent(safeSlug)}/${encodeURIComponent(rawToken)}`;
+  };
 
   const [name, setName] = useState("");
   const [scope, setScope] = useState<"fortlev" | "construction" | "both">("both");
@@ -85,7 +92,7 @@ export default function AdminQuotationTokens() {
   const loadData = async () => {
     if (!activeStoreId) return;
     setLoading(true);
-    const [{ data: tokenRows, error: tokenErr }, { data: logRows }, { data: storeRow }] = await Promise.all([
+    const [{ data: tokenRows, error: tokenErr }, { data: logRows }, { data: storeRow }, { data: domainRows }] = await Promise.all([
       cloud
         .from("quotation_access_tokens")
         .select("id,store_id,name,token_preview,token,status,access_scope,expires_at,created_at,last_access_at,last_ip,device_hash,uses_count,max_uses")
@@ -102,6 +109,11 @@ export default function AdminQuotationTokens() {
         .select("slug")
         .eq("id", activeStoreId)
         .maybeSingle(),
+      cloud
+        .from("store_domains")
+        .select("domain,is_primary,verified")
+        .eq("store_id", activeStoreId)
+        .eq("verified", true),
     ]);
 
     if (tokenErr) {
@@ -111,6 +123,11 @@ export default function AdminQuotationTokens() {
     setTokens((tokenRows as TokenRow[]) ?? []);
     setLogs((logRows as TokenLog[]) ?? []);
     setActiveStoreSlug((storeRow as { slug?: string } | null)?.slug ?? null);
+
+    const domains = (domainRows as { domain: string; is_primary: boolean }[] | null) ?? [];
+    const realDomains = domains.filter((d) => !d.domain.endsWith(".lovable.app") && !d.domain.startsWith("www."));
+    const chosen = realDomains.find((d) => d.is_primary) ?? realDomains[0] ?? domains.find((d) => d.is_primary) ?? domains[0];
+    setOfficialBaseUrl(chosen ? `https://${chosen.domain}` : "");
     setLoading(false);
   };
 
@@ -145,8 +162,7 @@ export default function AdminQuotationTokens() {
       return;
     }
 
-    const safeSlug = activeStoreSlug || "loja";
-    const link = `${window.location.origin}/orcamento/${encodeURIComponent(safeSlug)}/${encodeURIComponent(raw)}`;
+    const link = buildTokenLink(raw);
     setLastCreatedLink(link);
     setLastCreatedToken(raw);
     toast({ title: "Token criado", description: "Copie o token ou o link completo" });
@@ -195,9 +211,7 @@ export default function AdminQuotationTokens() {
       toast({ title: "Token completo indisponível", variant: "destructive" });
       return;
     }
-    const safeSlug = activeStoreSlug || "loja";
-    const link = `${window.location.origin}/orcamento/${encodeURIComponent(safeSlug)}/${encodeURIComponent(token.token)}`;
-    await navigator.clipboard.writeText(link);
+    await navigator.clipboard.writeText(buildTokenLink(token.token));
     toast({ title: "Link copiado" });
   };
 

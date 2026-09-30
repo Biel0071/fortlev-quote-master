@@ -1,35 +1,34 @@
-# Plan - Enterprise Tracking, Maps & Notifications
+# Canos, varas e conexões + criação de itens melhorada
 
-Implement a visual route map for delivery tracking and a unified notification & cookie management system for the store.
+## 1. Itens pedidos (preço fixo informado)
+Adicionar ao catálogo de Construção (categoria Hidráulica):
+- Vara de Cano 100mm — R$ 52,60 (barra)
+- Vara de Cano 50mm — R$ 35,22 (barra)
+- Joelho 100mm — R$ 8,50 (peça)
 
-## User Review Required
+## 2. Lista completa de canos, varas e conexões (preço médio de mercado -20%)
+Usar preço médio de mercado (Tigre/Amanco/Krona, 2026) de cada medida e aplicar 20% de desconto. Medidas:
+- Cano/Vara esgoto (6m): 40, 50, 75, 100, 150 mm
+- Cano soldável água fria (6m): 20, 25, 32, 40, 50, 60 mm
+- Cano CPVC água quente (3m): 15, 22, 28 mm
+- Conexões esgoto: joelho 90°/45°, tê, junção, luva, cap, redução (40–100 mm)
+- Conexões soldáveis: joelho, tê, luva, adaptador, registro esfera (20–50 mm)
+- Cola PVC 175g e 850g, fita veda-rosca
 
-> [!IMPORTANT]
-> The map will be a high-fidelity simulation showing a live route to the customer's address. The notification system will integrate with cookie consent to allow opting in for both delivery updates and store-specific alerts.
+Exemplo de cálculo: mercado R$ 75,00 → catálogo R$ 60,00. Itens já existentes com a mesma medida serão atualizados em vez de duplicados.
 
-## Proposed Changes
+## 3. Publicar na loja
+Inserir os mesmos itens no catálogo online de Construção (para aparecerem em todos os aparelhos) e como produtos ativos da loja materialdecontrucao.online.
 
-### Storefront (Public)
+## 4. Melhorar "Adicionar item novo"
+- Preenchimento automático de categoria e unidade ao digitar o nome (ex.: "Joelho 100" → Hidráulica / Peça).
+- Campo "Medida" (mm, polegadas, metros) incorporado ao nome.
+- Campo "Preço de mercado" com opção "aplicar desconto %" (padrão 20%) que calcula o preço final.
+- Aviso de item parecido já existente antes de criar.
+- Opção "Publicar também na loja" (cria produto ativo na loja atual com nome, preço e unidade).
+- Criar vários tamanhos de uma vez (ex.: 40, 50, 75, 100 mm com preços por linha).
 
-#### [PublicTrackingSearch.tsx](src/pages/store/PublicTrackingSearch.tsx)
-- Implement a `TrackingMap` component that appears when tracking progress is >= 90% (Entrega/Entregue).
-- The map will show a "Vehicle in Route" animation with the customer's package and other simulated orders in the vicinity.
-- Add an "Enable Notifications" button specifically for order updates.
-
-#### [AppHeader.tsx](src/components/store/AppHeader.tsx) or a new Global Component
-- Implement a `CookieNotificationBanner` that appears for new users.
-- This banner will allow users to "Accept All" or "Customize" (Cookies + System Notifications).
-- Include an option to subscribe to "Store Specific Notifications" (alerts for this specific store).
-
-### Administrative (Admin)
-
-#### [OrderTrackingDialog.tsx](src/modules/admin/components/OrderTrackingDialog.tsx)
-- Ensure the status transitions correctly trigger the "In Route" map on the public side.
-
-### Infrastructure
-- Add a local storage based "Consent Manager" to persist notification and cookie preferences.
-
-## Technical Details
-- Map: Pure CSS/SVG animation for high performance and "Enterprise" feel.
-- Notifications: Simulated service worker registration UI (or simple Browser Notification API prompt) with a fallback to persistent UI alerts.
-- Persistence: `localStorage` keys for `store_notification_consent` and `cookie_consent`.
+## Detalhes técnicos
+- `src/modules/catalog/data/constructionProducts.ts`: novos itens hidráulica.
+- Inserção em `construction_catalog_products` e `store_products` (store_id da loja Material) via ferramenta de dados.
+- `AddCustomConstructionProductDialog.tsx`: usa `detectCategory/detectUnit` de `productIntelligence.ts`, busca de similares, modo multi-medidas, checkbox publicar em `store_products`.

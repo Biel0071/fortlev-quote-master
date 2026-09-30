@@ -1,4 +1,5 @@
 import { ConstructionProduct, ConstructionCategory, categoryLabels } from '@/types/construction';
+import { hydraulicProducts } from './hydraulicProducts';
 
 // Produtos extraídos da planilha de materiais de construção
 export const constructionProducts: ConstructionProduct[] = [
@@ -143,6 +144,7 @@ export const constructionProducts: ConstructionProduct[] = [
   { id: 'prolongador-chamine-20cm', name: 'Prolongador De Chaminé Churrasqueira - 20cm', unit: 'un', basePrice: 25.00, category: 'churrasqueiras' },
   { id: 'prolongador-calda-30cm', name: 'Prolongador Calda Churrasqueira - 30cm', unit: 'un', basePrice: 25.00, category: 'churrasqueiras' },
   { id: 'chapeu-concreto', name: 'Chapéu De Concreto Chinês 41x41x6cm', unit: 'un', basePrice: 45.33, category: 'churrasqueiras' },
+  ...hydraulicProducts,
 ];
 
 // Agrupar produtos por categoria

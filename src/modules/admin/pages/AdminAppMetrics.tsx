@@ -1096,7 +1096,7 @@ export default function AdminAppMetrics() {
 
                 {/* Seção Tela GP (Google Play Clone) */}
                 <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">🏪</span>
                       <div>
@@ -1107,38 +1107,108 @@ export default function AdminAppMetrics() {
                           </span>
                         </h4>
                         <p className="text-xs text-muted-foreground">
-                          Landing page idêntica ao Google Play com botão de progresso 0-100% que dispara o APK.
+                          Landing page idêntica ao Google Play (1:1 com ícone Jadlog oficial) com progresso que dispara o APK.
                         </p>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open("/downloads/jadlog", "_blank")}
-                      className="gap-1.5 text-xs border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
-                    >
-                      <Globe className="h-3.5 w-3.5" /> Ver Tela GP
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => nav(routes.adminPath("/google-play-studio"))}
+                        className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        <Pencil className="h-3.5 w-3.5" /> Editar no Studio
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open("/downloads/jadlog", "_blank")}
+                        className="gap-1.5 text-xs border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                      >
+                        <Globe className="h-3.5 w-3.5" /> Ver Tela GP
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-emerald-200/50 dark:border-emerald-800/30">
-                    <div className="flex-1 min-w-[240px]">
-                      <Label className="text-[11px] font-semibold text-muted-foreground">Link da Tela GP para Campanhas:</Label>
-                      <div className="flex items-center gap-2 mt-1">
+                  {/* Gerador de Link Curto com Slug customizado para a Tela GP */}
+                  <div className="pt-2 border-t border-emerald-200/50 dark:border-emerald-800/30 space-y-2">
+                    <Label className="text-[11px] font-semibold text-muted-foreground">Link da Tela GP para Campanhas:</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        readOnly
+                        value={`${window.location.origin}/downloads/jadlog`}
+                        className="h-8 text-xs bg-background/80 font-mono"
+                      />
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-8 gap-1 px-3 text-xs"
+                        onClick={() => void copyText(`${window.location.origin}/downloads/jadlog`, "Link da Tela GP")}
+                      >
+                        <Copy className="h-3 w-3" /> Copiar
+                      </Button>
+                    </div>
+
+                    <div className="mt-2 p-2.5 rounded-lg bg-background/60 border border-emerald-500/20 space-y-2">
+                      <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                        <Link2 className="h-3.5 w-3.5 text-emerald-600" /> Criar Link Curto com Slug para a Tela GP:
+                      </Label>
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Input
-                          readOnly
-                          value={`${window.location.origin}/downloads/jadlog`}
-                          className="h-8 text-xs bg-background/80 font-mono"
+                          placeholder="Ex: jadlog, app-oficial, rastreio-jadlog"
+                          value={apkSlugInput}
+                          onChange={(e) => setApkSlugInput(e.target.value)}
+                          className="h-8 text-xs flex-1"
                         />
                         <Button
                           size="sm"
-                          variant="secondary"
-                          className="h-8 gap-1 px-3 text-xs"
-                          onClick={() => void copyText(`${window.location.origin}/downloads/jadlog`, "Link da Tela GP")}
+                          disabled={creatingApkLink || !apkSlugInput.trim()}
+                          onClick={async () => {
+                            const slug = sanitizeSlug(apkSlugInput);
+                            if (!slug) return;
+                            setCreatingApkLink(true);
+                            try {
+                              const targetUrl = `${window.location.origin}/downloads/index.html?s=60b2c9a7aa1bf9f4`;
+                              const { data, error } = await cloud
+                                .from("app_short_links")
+                                .insert({
+                                  store_id: activeStoreId,
+                                  slug,
+                                  original_url: targetUrl,
+                                  created_via: "admin",
+                                  link_type: "page",
+                                  metadata: { type: "tela_gp" },
+                                  active: true,
+                                })
+                                .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
+                                .single();
+
+                              if (error) {
+                                if ((error as any).code === "23505") {
+                                  toast.error("Este slug já existe! Digite outro.");
+                                } else {
+                                  toast.error(`Erro: ${error.message}`);
+                                }
+                                return;
+                              }
+                              if (data) {
+                                setShortLinks((prev) => [data as ShortLinkRow, ...prev]);
+                                setApkSlugInput("");
+                                toast.success(`Link da Tela GP criado: ${shortBaseUrl}/${slug}`);
+                              }
+                            } finally {
+                              setCreatingApkLink(false);
+                            }
+                          }}
+                          className="h-8 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                         >
-                          <Copy className="h-3 w-3" /> Copiar
+                          <Link2 className="h-3 w-3" /> Gerar Link com Slug
                         </Button>
                       </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Prévia: <code className="bg-muted px-1 rounded">{shortBaseUrl}/{sanitizeSlug(apkSlugInput) || "seu-slug"}</code> ➔ Direciona para a Tela GP oficial.
+                      </p>
                     </div>
                   </div>
                 </div>

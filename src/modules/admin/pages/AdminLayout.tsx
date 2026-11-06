@@ -36,6 +36,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -47,11 +50,18 @@ import { useStore } from "@/contexts/StoreContext";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useStorePermissions } from "@/hooks/useStorePermissions";
 
+type SidebarSubItem = {
+  title: string;
+  url: string;
+  page?: string;
+};
+
 type SidebarItem = {
   title: string;
   url: string;
   icon: any;
   page: string;
+  subItems?: SidebarSubItem[];
 };
 
 type SidebarSection = {
@@ -98,8 +108,16 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { title: "Análise de Clientes", url: "/clientes", icon: Users, page: "clientes" },
       { title: "Funil de Conversão", url: "/funil", icon: Target, page: "funil" },
       { title: "Mapa de Cliques", url: "/mapa-cliques", icon: MousePointerClick, page: "mapa-cliques" },
-      { title: "Métricas do App", url: "/app-metricas", icon: Smartphone, page: "app-metricas" },
-      { title: "Google Play Studio", url: "/google-play-studio", icon: Sparkles, page: "google-play-studio" },
+      {
+        title: "APK STUDIO",
+        url: "/google-play-studio",
+        icon: Smartphone,
+        page: "google-play-studio",
+        subItems: [
+          { title: "Editor da Tela GP", url: "/google-play-studio", page: "google-play-studio" },
+          { title: "Métricas & Slugs", url: "/app-metricas", page: "app-metricas" },
+        ],
+      },
       { title: "Insights IA", url: "/insights-ia", icon: Brain, page: "insights-ia" },
       { title: "Análise e Relatórios IA", url: "/inteligencia-ia", icon: Sparkles, page: "inteligencia-ia" },
     ],
@@ -160,7 +178,12 @@ const AdminSidebar = memo(function AdminSidebar() {
                 <SidebarMenu>
                   {visibleItems.map((item) => {
                     const itemUrl = routes.adminPath(item.url);
-                    const isActive = location.pathname === itemUrl || location.pathname.startsWith(itemUrl + "/");
+                    const hasSubItems = !collapsed && item.subItems && item.subItems.length > 0;
+                    const isAnySubActive = item.subItems?.some(
+                      (sub) => location.pathname === routes.adminPath(sub.url) || location.pathname.startsWith(routes.adminPath(sub.url) + "/")
+                    );
+                    const isActive = isAnySubActive || location.pathname === itemUrl || location.pathname.startsWith(itemUrl + "/");
+
                     return (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton asChild>
@@ -181,6 +204,32 @@ const AdminSidebar = memo(function AdminSidebar() {
                             )}
                           </NavLink>
                         </SidebarMenuButton>
+
+                        {/* Submenu de dois cliques / expansão para APK STUDIO */}
+                        {hasSubItems && (
+                          <SidebarMenuSub className="ml-5 my-1 border-l-2 border-sidebar-border/60 pl-2 space-y-0.5">
+                            {item.subItems!.map((sub) => {
+                              const subUrl = routes.adminPath(sub.url);
+                              const isSubActive = location.pathname === subUrl || location.pathname.startsWith(subUrl + "/");
+                              return (
+                                <SidebarMenuSubItem key={sub.title}>
+                                  <SidebarMenuSubButton asChild>
+                                    <NavLink
+                                      to={subUrl}
+                                      className={`text-xs px-2.5 py-1.5 rounded-md transition-all block ${
+                                        isSubActive
+                                          ? "text-primary font-bold bg-primary/10 shadow-xs"
+                                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                      }`}
+                                    >
+                                      {sub.title}
+                                    </NavLink>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              );
+                            })}
+                          </SidebarMenuSub>
+                        )}
                       </SidebarMenuItem>
                     );
                   })}

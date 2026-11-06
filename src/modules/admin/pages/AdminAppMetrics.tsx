@@ -1080,7 +1080,9 @@ export default function AdminAppMetrics() {
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="mb-3 font-semibold text-foreground">📦 APK instalado</h3>
+            <h3 className="mb-3 font-semibold text-foreground flex items-center gap-2">
+              <Smartphone className="h-4 w-4 text-primary" /> APK instalado
+            </h3>
 
             {apkUrl || apkMeta ? (
               <>
@@ -1098,7 +1100,9 @@ export default function AdminAppMetrics() {
                 <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">🏪</span>
+                      <div className="w-8 h-8 rounded-lg bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                        <Smartphone className="w-4 h-4 text-emerald-600" />
+                      </div>
                       <div>
                         <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
                           <span>Tela GP (Google Play Clone Oficial)</span>
@@ -1325,7 +1329,9 @@ export default function AdminAppMetrics() {
           <div className="rounded-xl border border-border bg-card p-4 space-y-3">
             <p className="text-[10px] text-muted-foreground/30 italic">Direcione o usuário para a URL da página correspondente ao link IDPReview. Utilize um encurtador de links que permita a inclusão de um slug ou a geração de um link criptografado. Ao clicar no link, o download do arquivo deve iniciar automaticamente. O arquivo deve ser enviado para o servidor de download e o processo de resolução do link deve ser concluído em um tempo máximo de 3 a 5 segundos.</p>
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-semibold text-foreground">🔑 Token para script de geração</h3>
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-primary" /> Token para script de geração
+              </h3>
               <Button variant="outline" size="sm" onClick={handleGenerateToken} disabled={creatingToken || !activeStoreId} className="gap-1.5">
                 {creatingToken ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
                 Gerar token
@@ -1388,7 +1394,9 @@ export default function AdminAppMetrics() {
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-            <h3 className="font-semibold text-foreground">🔗 Links curtos recentes</h3>
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-primary" /> Links curtos recentes
+            </h3>
             {shortLinks.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum link curto criado ainda.</p>
             ) : (

@@ -16,9 +16,12 @@ import { OrderTrackingDialog } from "../components/OrderTrackingDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import PublicTrackingSearch from "@/pages/store/PublicTrackingSearch";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Gauge, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { CarrierBrandLogo, OFFICIAL_CARRIERS, resolveOfficialCarrier } from "@/components/store/tracking/CarrierBrandLogo";
+import { TrackingCustomerCard } from "@/components/store/tracking/TrackingCustomerCard";
 
 interface Carrier {
   id: string;
@@ -66,6 +69,14 @@ export default function AdminDashboardTracking() {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewStep, setPreviewStep] = useState(0);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [previewCarrierSlug, setPreviewCarrierSlug] = useState<string>("jadlog");
+  const [previewProgress, setPreviewProgress] = useState<number>(50);
+  const [previewStatusLabel, setPreviewStatusLabel] = useState<string>("COLETADO");
+  const [previewTrackingCode, setPreviewTrackingCode] = useState<string>("RT74307932BR");
+  const [previewOrderId, setPreviewOrderId] = useState<string>("83b0dd1b");
+  const [previewTotal, setPreviewTotal] = useState<string>("849.00");
+  const [previewCustomer, setPreviewCustomer] = useState<string>("Gabriel Silva");
+  const [previewAddress, setPreviewAddress] = useState<string>("Belo Horizonte / MG");
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [matchingClients, setMatchingClients] = useState<any[]>([]);
@@ -553,31 +564,32 @@ export default function AdminDashboardTracking() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" onClick={async () => {
-                    const defaultCarriers = [
-                      { name: "Correios", website: "https://www.correios.com.br", tracking_url_template: "https://rastreamento.correios.com.br/app/index.php?codigo={code}", logo_url: "https://upload.wikimedia.org/wikipedia/pt/2/23/Correios_Brasil.png" },
-                      { name: "Jadlog", website: "https://www.jadlog.com.br", tracking_url_template: "https://www.jadlog.com.br/siteInstitucional/tracking.jad?tracking={code}", logo_url: "https://www.jadlog.com.br/images/logo-jadlog-novo.png" },
-                      { name: "Loggi", website: "https://www.loggi.com", tracking_url_template: "https://www.loggi.com/rastreio/{code}", logo_url: "https://www.loggi.com/static/images/logo-loggi.svg" },
-                      { name: "Total Express", website: "https://totalexpress.com.br", tracking_url_template: "https://tracking.totalexpress.com.br/prakashtracking.php?trck={code}", logo_url: "https://totalexpress.com.br/wp-content/uploads/2018/06/logo-total-express.png" },
-                      { name: "Azul Cargo", website: "https://www.azulcargo.com.br", tracking_url_template: "https://www.azulcargo.com.br/Rastreio.aspx?n={code}", logo_url: "https://www.azulcargo.com.br/images/logo.png" }
-                    ];
-
                     try {
-                      for (const carrier of defaultCarriers) {
-                        const slug = carrier.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "-");
-                        await cloud.from("order_tracking_carriers").insert({
-                          ...carrier,
-                          slug,
+                      for (const official of OFFICIAL_CARRIERS) {
+                        const existing = carriers.find(c => c.slug === official.slug);
+                        const payload = {
+                          name: official.name,
+                          slug: official.slug,
+                          website: official.website,
+                          tracking_url_template: official.trackingUrlTemplate,
+                          logo_url: official.svgDataUri,
                           store_id: activeStoreId,
                           active: true
-                        });
+                        };
+                        if (existing) {
+                          await cloud.from("order_tracking_carriers").update(payload).eq("id", existing.id);
+                        } else {
+                          await cloud.from("order_tracking_carriers").insert(payload);
+                        }
                       }
-                      toast({ title: "Sucesso", description: "Transportadoras padrão adicionadas." });
+                      toast({ title: "Sucesso", description: "12 transportadoras com logos oficiais configuradas." });
                       loadData();
                     } catch (err: any) {
                       toast({ title: "Erro ao gerar padrão", description: err.message, variant: "destructive" });
                     }
                   }}>
-                    Gerar Transportadoras Padrão
+                    <ShieldCheck className="w-4 h-4 mr-1.5 text-emerald-600" />
+                    Gerar Transportadoras Oficiais (Logos HD)
                   </Button>
                   <Button onClick={() => {
                     setEditingCarrier(null);
@@ -603,9 +615,14 @@ export default function AdminDashboardTracking() {
                 <TableBody>
                   {carriers.map((c) => (
                     <TableRow key={c.id}>
-                      <TableCell className="font-medium flex items-center gap-2">
-                        {c.logo_url && <img src={c.logo_url} alt="" className="w-6 h-6 object-contain" />}
-                        {c.name}
+                      <TableCell className="font-medium flex items-center gap-3">
+                        <CarrierBrandLogo name={c.name} logoUrl={c.logo_url} size="sm" />
+                        <div>
+                          <div className="font-bold">{c.name}</div>
+                          {resolveOfficialCarrier(c.name) && (
+                            <div className="text-[10px] text-muted-foreground">{resolveOfficialCarrier(c.name)?.modality}</div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {c.website ? (
@@ -650,261 +667,304 @@ export default function AdminDashboardTracking() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="preview" className="space-y-4">
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between border-b pb-4">
-              <div>
-                <h3 className="text-lg font-bold">Simulador de Experiência do Cliente</h3>
-                <p className="text-xs text-muted-foreground">Visualize como as etapas e prazos aparecem para o usuário final.</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex bg-muted p-1 rounded-lg">
-                  <Button 
-                    variant={previewMode === "desktop" ? "secondary" : "ghost"} 
-                    size="sm" 
-                    onClick={() => setPreviewMode("desktop")}
-                    className="gap-2"
-                  >
-                    <Monitor className="w-4 h-4" /> Desktop
-                  </Button>
-                  <Button 
-                    variant={previewMode === "mobile" ? "secondary" : "ghost"} 
-                    size="sm" 
-                    onClick={() => setPreviewMode("mobile")}
-                    className="gap-2"
-                  >
-                    <Smartphone className="w-4 h-4" /> Mobile
-                  </Button>
-                </div>
-                
-                <div className="h-6 w-px bg-border" />
-                
+        <TabsContent value="preview" className="space-y-6">
+          {/* Barra de Controles do Simulador */}
+          <Card className="rounded-3xl border border-slate-200/90 shadow-md bg-white">
+            <CardHeader className="p-5 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">Etapa do Fluxo:</span>
-                  <div className="flex bg-muted p-1 rounded-lg">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base font-black uppercase tracking-tight">
+                      Simulador e Preview de Telas em Tempo Real
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Altere a transportadora oficial, a % de envio e o status para ver a tela do cliente.
+                    </CardDescription>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex bg-slate-100 p-1 rounded-xl">
                     <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8"
-                      disabled={previewStep === 0}
-                      onClick={() => setPreviewStep(prev => prev - 1)}
+                      variant={previewMode === "desktop" ? "default" : "ghost"} 
+                      size="sm" 
+                      onClick={() => setPreviewMode("desktop")}
+                      className="gap-1.5 h-8 text-xs font-bold rounded-lg"
                     >
-                      <ChevronLeft className="w-4 h-4" />
+                      <Monitor className="w-3.5 h-3.5" /> Desktop
                     </Button>
-                    <div className="px-3 flex items-center justify-center min-w-[140px] text-xs font-bold uppercase tracking-wider">
-                      {previewStep === 0 ? "Pesquisa" : 
-                       previewStep === 1 ? "Em Trânsito" : "Entregue"}
-                    </div>
                     <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8"
-                      disabled={previewStep === 2}
-                      onClick={() => setPreviewStep(prev => prev + 1)}
+                      variant={previewMode === "mobile" ? "default" : "ghost"} 
+                      size="sm" 
+                      onClick={() => setPreviewMode("mobile")}
+                      className="gap-1.5 h-8 text-xs font-bold rounded-lg"
                     >
-                      <ChevronRight className="w-4 h-4" />
+                      <Smartphone className="w-3.5 h-3.5" /> Mobile (iPhone)
                     </Button>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="h-8 text-xs font-black uppercase rounded-xl border-primary/20 text-primary"
+                  >
+                    <a href={`/rastreio?q=${previewTrackingCode}`} target="_blank" rel="noreferrer">
+                      <ExternalLink className="w-3.5 h-3.5 mr-1" /> Abrir no /rastreio
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-5 pt-0 space-y-4">
+              {/* Controles: Transportadora Oficial, Status, % de Envio */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                {/* 1. Transportadora Oficial */}
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    Transportadora Oficial
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={previewCarrierSlug}
+                      onChange={(e) => setPreviewCarrierSlug(e.target.value)}
+                    >
+                      {OFFICIAL_CARRIERS.map((c) => (
+                        <option key={c.slug} value={c.slug}>
+                          {c.name} ({c.modality})
+                        </option>
+                      ))}
+                    </select>
+                    <CarrierBrandLogo name={previewCarrierSlug} size="sm" />
+                  </div>
+                </div>
+
+                {/* 2. Status e Etapa */}
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    Etapa / Status Rápido
+                  </Label>
+                  <select
+                    className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={previewStatusLabel}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPreviewStatusLabel(val);
+                      if (val === "COLETADO") setPreviewProgress(50);
+                      else if (val === "SAIU PARA ENTREGA") setPreviewProgress(85);
+                      else if (val === "ENTREGUE") setPreviewProgress(100);
+                      else if (val === "EM SEPARAÇÃO") setPreviewProgress(15);
+                      else setPreviewProgress(65);
+                    }}
+                  >
+                    <option value="COLETADO">COLETADO (50% de envio)</option>
+                    <option value="EM TRANSPORTE">EM TRANSPORTE (65% de envio)</option>
+                    <option value="SAIU PARA ENTREGA">SAIU PARA ENTREGA (85% de envio)</option>
+                    <option value="ENTREGUE">ENTREGUE (100% de envio)</option>
+                    <option value="EM SEPARAÇÃO">EM SEPARAÇÃO (15% de envio)</option>
+                  </select>
+                </div>
+
+                {/* 3. Slider de % de Envio */}
+                <div className="space-y-1.5 sm:col-span-2">
+                  <div className="flex items-center justify-between text-xs font-black uppercase text-slate-600">
+                    <span className="flex items-center gap-1.5">
+                      <Gauge className="w-4 h-4 text-primary" /> % de Envio em Tempo Real:
+                    </span>
+                    <span className="font-mono text-primary font-black text-sm bg-primary/10 px-2.5 py-0.5 rounded-full">
+                      {previewProgress}% Concluído
+                    </span>
+                  </div>
+                  <Slider
+                    value={[previewProgress]}
+                    onValueChange={(val) => setPreviewProgress(val[0])}
+                    min={5}
+                    max={100}
+                    step={1}
+                    className="py-1 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase">
+                    <span>Loja (10%)</span>
+                    <span>CD (35%)</span>
+                    <span>Trânsito (65%)</span>
+                    <span>Entrega (85%)</span>
+                    <span>Entregue (100%)</span>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex justify-center bg-slate-100/50 rounded-3xl p-4 md:p-10 min-h-[600px] border-2 border-dashed border-slate-200">
-              {previewMode === "mobile" ? (
-                <div className="relative mx-auto border-[8px] border-slate-800 rounded-[3rem] h-[852px] w-[392px] shadow-2xl bg-white overflow-hidden">
-                  <div className="absolute top-0 inset-x-0 h-6 bg-slate-800 flex items-center justify-center z-50">
-                    <div className="w-20 h-4 bg-slate-900 rounded-full" />
-                  </div>
-                  <ScrollArea className="h-full w-full pt-6">
-                    <div className="p-4 admin-preview-mode px-2">
-                      {previewStep === 0 && <PublicTrackingSearch />}
-                      {previewStep === 1 && (
-                        <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500 space-y-4">
-                           <div className="bg-primary p-6 text-white rounded-3xl relative overflow-hidden shadow-xl">
-                              <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
-                              <div className="relative z-10">
-                                <h2 className="text-xl font-black uppercase mb-1">Em Transporte</h2>
-                                <p className="opacity-80 text-[10px] font-bold">Pedido #83271 • Código BR123456789</p>
-                                <div className="mt-8 space-y-4">
-                                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-60">
-                                      <span>Progresso Logístico</span>
-                                      <span className="bg-white/20 px-2 py-0.5 rounded-full">65% Concluído</span>
-                                    </div>
-                                    <div className="h-3 bg-white/20 rounded-full overflow-hidden p-0.5">
-                                       <div className="h-full bg-white rounded-full transition-all duration-1000 w-[65%] shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
-                                    </div>
-                                </div>
-                              </div>
-                           </div>
-                           
-                           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-8">
-                              <div className="flex items-center gap-2 mb-2">
-                                 <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                    <Clock className="w-4 h-4" />
-                                 </div>
-                                 <h3 className="font-black uppercase tracking-widest text-xs text-slate-800">Linha do Tempo e Datas das Etapas</h3>
-                              </div>
-
-                              <div className="relative pl-6 space-y-10 before:absolute before:left-6 before:top-2 before:bottom-2 before:w-1 before:bg-slate-100">
-                                 {[
-                                   { title: "Em Transporte", date: "Hoje, 14:30", city: "BELO HORIZONTE/MG", icon: Truck, active: true, desc: "Objeto encaminhado para a unidade de distribuição." },
-                                   { title: "Coletado pela Transportadora", date: "Ontem, 09:15", city: "SAO PAULO/SP", icon: CheckCircle2, active: false, desc: "A transportadora coletou o pedido na nossa unidade." },
-                                   { title: "Pedido Criado", date: "05/08/2026, 10:00", city: "LOJA", icon: Package, active: false, desc: "Seu pedido foi recebido e está em processamento." }
-                                 ].map((step, i) => (
-                                   <div key={i} className="relative pl-10">
-                                     <div className={`absolute left-[-6px] top-1.5 w-4 h-4 rounded-full border-4 border-white shadow-sm flex items-center justify-center ${step.active ? 'bg-primary scale-125' : 'bg-slate-300'}`}>
-                                       {step.active && <step.icon className="w-1.5 h-1.5 text-white" />}
-                                     </div>
-                                     <div className="flex flex-col gap-1">
-                                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                                         <span className={`font-black uppercase tracking-tight text-sm ${step.active ? 'text-primary' : 'text-slate-700'}`}>{step.title}</span>
-                                         <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
-                                           {step.date}
-                                         </span>
-                                       </div>
-                                       <p className="text-xs text-slate-500 font-medium leading-relaxed">{step.desc}</p>
-                                       {step.city && (
-                                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 mt-1">
-                                           <MapPin className="w-3.5 h-3.5 text-primary" /> {step.city}
-                                         </div>
-                                       )}
-                                     </div>
-                                   </div>
-                                 ))}
-                              </div>
-                           </div>
-                        </div>
-                      )}
-                      {previewStep === 2 && (
-                        <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500 space-y-4">
-                            <div className="bg-green-600 p-6 text-white rounded-3xl flex items-center justify-between relative overflow-hidden shadow-xl">
-                              <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
-                              <div className="relative z-10">
-                                 <h2 className="text-xl font-black uppercase mb-1">Entregue</h2>
-                                 <p className="opacity-80 text-[10px] font-bold">O objeto foi entregue ao destinatário</p>
-                              </div>
-                              <CheckCircle2 className="w-12 h-12 opacity-30 relative z-10" />
-                            </div>
-                           <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-                              <div className="flex flex-col items-center text-center py-10 space-y-6">
-                                 <div className="w-24 h-24 rounded-full bg-green-50 flex items-center justify-center text-green-600 relative">
-                                    <div className="absolute inset-0 rounded-full bg-green-600/10 animate-ping opacity-20" />
-                                    <CheckCircle2 className="w-12 h-12" />
-                                  </div>
-                                 <div className="space-y-2">
-                                   <h3 className="text-2xl font-black uppercase text-slate-800 leading-none">Entrega Realizada</h3>
-                                   <p className="text-sm text-slate-500 max-w-xs font-medium">Seu pedido foi entregue com sucesso no endereço cadastrado em 12/08/2026 às 16:42.</p>
-                                 </div>
-                                 <Button className="h-12 rounded-2xl font-black uppercase tracking-widest px-10 shadow-lg shadow-green-500/20">Ver Detalhes da Compra</Button>
-                              </div>
-                           </div>
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
+              {/* Botões Rápidos de Fluxo */}
+              <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-500">Visualizar Fluxo:</span>
+                  <Button
+                    size="sm"
+                    variant={previewStep === 0 ? "default" : "outline"}
+                    className="h-7 text-[11px] rounded-lg font-bold"
+                    onClick={() => setPreviewStep(0)}
+                  >
+                    1. Tela de Busca
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={previewStep === 1 ? "default" : "outline"}
+                    className="h-7 text-[11px] rounded-lg font-bold"
+                    onClick={() => {
+                      setPreviewStep(1);
+                      setPreviewStatusLabel("COLETADO");
+                      setPreviewProgress(50);
+                    }}
+                  >
+                    2. Coletado / Em Trânsito (50%)
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={previewStep === 2 ? "default" : "outline"}
+                    className="h-7 text-[11px] rounded-lg font-bold"
+                    onClick={() => {
+                      setPreviewStep(2);
+                      setPreviewStatusLabel("ENTREGUE");
+                      setPreviewProgress(100);
+                    }}
+                  >
+                    3. Entregue (100%)
+                  </Button>
                 </div>
-              ) : (
-                <div className="w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-[700px]">
-                  <div className="h-12 bg-slate-50 border-b border-slate-200 flex items-center px-4 gap-2">
-                    <div className="flex gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-slate-200" />
-                      <div className="w-3 h-3 rounded-full bg-slate-200" />
-                      <div className="w-3 h-3 rounded-full bg-slate-200" />
-                    </div>
-                    <div className="mx-auto w-1/2 h-6 bg-white border border-slate-200 rounded-md text-[10px] flex items-center px-3 text-slate-400 font-mono">
-                      https://fortlev-quote-wiz.lovable.app/rastreio
-                    </div>
-                  </div>
-                  <ScrollArea className="flex-1 p-8">
-                    <div className="max-w-5xl mx-auto admin-preview-mode">
-                      {previewStep === 0 && <PublicTrackingSearch />}
-                      {previewStep === 1 && (
-                        <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500 space-y-4">
-                           <div className="bg-primary p-8 text-white rounded-3xl relative overflow-hidden shadow-xl">
-                              <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
-                              <div className="relative z-10">
-                                <h2 className="text-3xl font-black uppercase mb-1">Em Transporte</h2>
-                                <p className="opacity-80 text-sm font-bold">Pedido #83271 • Código BR123456789</p>
-                                <div className="mt-8 space-y-4">
-                                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-60">
-                                      <span>Progresso Logístico</span>
-                                      <span className="bg-white/20 px-2 py-0.5 rounded-full">65% Concluído</span>
-                                    </div>
-                                    <div className="h-3 bg-white/20 rounded-full overflow-hidden p-0.5">
-                                       <div className="h-full bg-white rounded-full transition-all duration-1000 w-[65%] shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
-                                    </div>
-                                </div>
-                              </div>
-                           </div>
-                           
-                           <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-8">
-                              <div className="flex items-center gap-2 mb-2">
-                                 <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                    <Clock className="w-4 h-4" />
-                                 </div>
-                                 <h3 className="font-black uppercase tracking-widest text-xs text-slate-800">Linha do Tempo</h3>
-                              </div>
 
-                              <div className="relative pl-6 space-y-10 before:absolute before:left-6 before:top-2 before:bottom-2 before:w-1 before:bg-slate-100">
-                                 {[
-                                   { title: "Em Transporte", date: "Hoje, 14:30", city: "BELO HORIZONTE/MG", icon: Truck, active: true, desc: "Objeto encaminhado para a unidade de distribuição." },
-                                   { title: "Coletado pela Transportadora", date: "Ontem, 09:15", city: "SAO PAULO/SP", icon: CheckCircle2, active: false, desc: "A transportadora coletou o pedido na nossa unidade." },
-                                   { title: "Pedido Criado", date: "05/08/2026, 10:00", city: "LOJA", icon: Package, active: false, desc: "Seu pedido foi recebido e está em processamento." }
-                                 ].map((step, i) => (
-                                   <div key={i} className="relative pl-10">
-                                     <div className={`absolute left-[-6px] top-1.5 w-4 h-4 rounded-full border-4 border-white shadow-sm flex items-center justify-center ${step.active ? 'bg-primary scale-125' : 'bg-slate-300'}`}>
-                                       {step.active && <step.icon className="w-1.5 h-1.5 text-white" />}
-                                     </div>
-                                     <div className="flex flex-col gap-1">
-                                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                                         <span className={`font-black uppercase tracking-tight text-sm ${step.active ? 'text-primary' : 'text-slate-700'}`}>{step.title}</span>
-                                         <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
-                                           {step.date}
-                                         </span>
-                                       </div>
-                                       <p className="text-xs text-slate-500 font-medium leading-relaxed">{step.desc}</p>
-                                       {step.city && (
-                                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 mt-1">
-                                           <MapPin className="w-3.5 h-3.5 text-primary" /> {step.city}
-                                         </div>
-                                       )}
-                                     </div>
-                                   </div>
-                                 ))}
-                              </div>
-                           </div>
-                        </div>
-                      )}
-                      {previewStep === 2 && (
-                        <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500 space-y-4">
-                            <div className="bg-green-600 p-8 text-white rounded-3xl flex items-center justify-between relative overflow-hidden shadow-xl">
-                              <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
-                              <div className="relative z-10">
-                                 <h2 className="text-3xl font-black uppercase mb-1">Entregue</h2>
-                                 <p className="opacity-80 text-sm font-bold">O objeto foi entregue ao destinatário</p>
-                              </div>
-                              <CheckCircle2 className="w-16 h-16 opacity-30 relative z-10" />
-                            </div>
-                           <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-                              <div className="flex flex-col items-center text-center py-10 space-y-6">
-                                 <div className="w-24 h-24 rounded-full bg-green-50 flex items-center justify-center text-green-600 relative">
-                                    <div className="absolute inset-0 rounded-full bg-green-600/10 animate-ping opacity-20" />
-                                    <CheckCircle2 className="w-12 h-12" />
-                                  </div>
-                                 <div className="space-y-2">
-                                   <h3 className="text-2xl font-black uppercase text-slate-800 leading-none">Entrega Realizada</h3>
-                                   <p className="text-sm text-slate-500 max-w-xs font-medium">Seu pedido foi entregue com sucesso no endereço cadastrado em 12/08/2026 às 16:42.</p>
-                                 </div>
-                                 <Button className="h-12 rounded-2xl font-black uppercase tracking-widest px-10 shadow-lg shadow-green-500/20">Ver Detalhes da Compra</Button>
-                              </div>
-                           </div>
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
+                <div className="text-[11px] text-slate-400 font-bold">
+                  Código: <span className="font-mono text-slate-700">{previewTrackingCode}</span> • Pedido #{previewOrderId}
                 </div>
-              )}
-            </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Área de Visualização Fiel da Tela */}
+          <div className="flex justify-center bg-slate-100/70 rounded-3xl p-3 md:p-8 min-h-[650px] border-2 border-dashed border-slate-200">
+            {previewMode === "mobile" ? (
+              <div className="relative mx-auto border-[10px] border-slate-900 rounded-[3.2rem] h-[850px] w-[390px] shadow-2xl bg-white overflow-hidden ring-1 ring-slate-900/10">
+                {/* Dynamic Island / Notch */}
+                <div className="absolute top-0 inset-x-0 h-7 bg-slate-900 flex items-center justify-center z-50">
+                  <div className="w-24 h-4 bg-black rounded-full flex items-center justify-end pr-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-slate-900/80 border border-slate-800" />
+                  </div>
+                </div>
+
+                <ScrollArea className="h-full w-full pt-8 pb-6">
+                  <div className="p-3 admin-preview-mode">
+                    {previewStep === 0 ? (
+                      <PublicTrackingSearch />
+                    ) : (
+                      <TrackingCustomerCard
+                        trackingCode={previewTrackingCode}
+                        orderId={previewOrderId}
+                        statusLabel={previewStatusLabel}
+                        progress={previewProgress}
+                        estimatedDeliveryAt="2026-11-10T10:00:00.000Z"
+                        carrier={{
+                          name: resolveOfficialCarrier(previewCarrierSlug)?.name || "Jadlog",
+                          logo_url: resolveOfficialCarrier(previewCarrierSlug)?.svgDataUri,
+                          website: resolveOfficialCarrier(previewCarrierSlug)?.website,
+                          tracking_url_template: resolveOfficialCarrier(previewCarrierSlug)?.trackingUrlTemplate,
+                        }}
+                        timeline={[
+                          {
+                            title: previewStatusLabel,
+                            description:
+                              previewProgress >= 100
+                                ? "O objeto foi entregue com sucesso no endereço cadastrado."
+                                : "O objeto foi entregue à transportadora e está em processamento.",
+                            location_city: "Centro de Distribuição",
+                            location_state: "SP",
+                            event_at: new Date().toISOString(),
+                          },
+                          {
+                            title: "PEDIDO RECEBIDO",
+                            description: "Nota fiscal emitida e volumes liberados para a transportadora.",
+                            location_city: "Unidade Central",
+                            event_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+                          },
+                        ]}
+                        items={[
+                          { product_name: "Caixa d'Água 1000L Fortlev", quantity: 1, line_total: 279.9 },
+                          { product_name: "Vara de Cano Esgoto 100mm (6m)", quantity: 2, line_total: 105.2 },
+                        ]}
+                        orderTotal={parseFloat(previewTotal) || 849.0}
+                        customerName={previewCustomer}
+                        address={previewAddress}
+                        compact={true}
+                      />
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            ) : (
+              <div className="w-full max-w-5xl bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden flex flex-col min-h-[650px]">
+                {/* Barra do Navegador Desktop */}
+                <div className="h-11 bg-slate-50 border-b border-slate-200 flex items-center px-4 gap-3">
+                  <div className="flex gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-red-400/80" />
+                    <div className="w-3 h-3 rounded-full bg-amber-400/80" />
+                    <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
+                  </div>
+                  <div className="mx-auto w-1/2 h-7 bg-white border border-slate-200 rounded-lg text-xs flex items-center px-3 text-slate-500 font-mono shadow-inner">
+                    https://fortlev-quote-master.local/rastreio?q={previewTrackingCode}
+                  </div>
+                </div>
+
+                <ScrollArea className="flex-1 p-6 md:p-8">
+                  <div className="max-w-4xl mx-auto admin-preview-mode">
+                    {previewStep === 0 ? (
+                      <PublicTrackingSearch />
+                    ) : (
+                      <TrackingCustomerCard
+                        trackingCode={previewTrackingCode}
+                        orderId={previewOrderId}
+                        statusLabel={previewStatusLabel}
+                        progress={previewProgress}
+                        estimatedDeliveryAt="2026-11-10T10:00:00.000Z"
+                        carrier={{
+                          name: resolveOfficialCarrier(previewCarrierSlug)?.name || "Jadlog",
+                          logo_url: resolveOfficialCarrier(previewCarrierSlug)?.svgDataUri,
+                          website: resolveOfficialCarrier(previewCarrierSlug)?.website,
+                          tracking_url_template: resolveOfficialCarrier(previewCarrierSlug)?.trackingUrlTemplate,
+                        }}
+                        timeline={[
+                          {
+                            title: previewStatusLabel,
+                            description:
+                              previewProgress >= 100
+                                ? "O objeto foi entregue com sucesso ao destinatário no endereço cadastrado."
+                                : "O objeto foi entregue à transportadora e está em processamento.",
+                            location_city: "Centro de Distribuição",
+                            location_state: "SP",
+                            event_at: new Date().toISOString(),
+                          },
+                          {
+                            title: "PEDIDO CONFIRMADO",
+                            description: "Nota fiscal emitida e separação física finalizada.",
+                            location_city: "Unidade Central",
+                            event_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+                          },
+                        ]}
+                        items={[
+                          { product_name: "Caixa d'Água 1000L Fortlev", quantity: 1, line_total: 279.9 },
+                          { product_name: "Vara de Cano Esgoto 100mm (6m)", quantity: 2, line_total: 105.2 },
+                        ]}
+                        orderTotal={parseFloat(previewTotal) || 849.0}
+                        customerName={previewCustomer}
+                        address={previewAddress}
+                        compact={false}
+                      />
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>

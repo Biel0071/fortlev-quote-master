@@ -43,6 +43,8 @@ export function StoreMobileBottomNav({
       <div className="mx-auto flex h-[60px] max-w-lg items-center justify-around px-2">
         {items.map((item) => {
           const Icon = item.icon;
+          const isOfferItem = item.label === "Ofertas";
+
           return (
             <button
               key={item.label}
@@ -51,19 +53,32 @@ export function StoreMobileBottomNav({
               className={cn(
                 "relative flex flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-1.5 text-[11px] font-medium transition-colors min-w-[60px]",
                 item.active
-                  ? "text-primary"
+                  ? isOfferItem
+                    ? "text-orange-600 font-semibold"
+                    : "text-primary"
+                  : isOfferItem
+                  ? "text-orange-600 font-semibold"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
               <div className="relative">
-                <Icon className="h-5 w-5" />
+                <Icon
+                  className={cn(
+                    "h-5 w-5",
+                    isOfferItem
+                      ? "text-orange-500 animate-flame-blink"
+                      : "",
+                  )}
+                />
                 {(item as any).badge > 0 && (
                   <span className="absolute -right-2.5 -top-1.5 min-w-[18px] rounded-full bg-primary px-1 py-0.5 text-[9px] font-bold text-primary-foreground text-center leading-none">
                     {(item as any).badge}
                   </span>
                 )}
               </div>
-              <span>{item.label}</span>
+              <span className={cn(isOfferItem && "text-orange-600 font-semibold")}>
+                {item.label}
+              </span>
             </button>
           );
         })}

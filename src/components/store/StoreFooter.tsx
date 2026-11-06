@@ -117,7 +117,17 @@ export function StoreFooter({
                 </Link>
               ))
             ) : (
-              <div className="text-sm text-muted-foreground">Em breve</div>
+              <>
+                <Link to="/loja" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                  Catálogo Completo
+                </Link>
+                <Link to="/ofertas" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                  Ofertas e Promoções
+                </Link>
+                <Link to="/orcamentos" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                  Solicitar Orçamento
+                </Link>
+              </>
             )}
 
             {extraPublishedLinks.map((p) => (
@@ -147,7 +157,17 @@ export function StoreFooter({
                 </Link>
               ))
             ) : (
-              <div className="text-sm text-muted-foreground">Em breve</div>
+              <>
+                <Link to="/rastreio" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                  Rastrear Pedido
+                </Link>
+                <Link to="/pedidos" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                  Meus Pedidos
+                </Link>
+                <Link to="/conta" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                  Minha Conta
+                </Link>
+              </>
             )}
           </div>
         </div>

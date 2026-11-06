@@ -28,7 +28,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useHomeContent } from "@/hooks/useHomeContent";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useStoreContact } from "@/hooks/useStoreContact";
-import storeLogoFallback from "@/assets/store-logo-house.png.asset.json";
+import storeLogoPure from "@/assets/store-logo-pure.png";
 import { useTenant } from "@/providers/TenantProvider";
 import { publicImageUrl } from "@/utils/storage";
 
@@ -42,20 +42,6 @@ import ferramentasIcon from "@/assets/category-icons/ferramentas.png";
 import madeiraIcon from "@/assets/category-icons/madeira.png";
 import pinturaIcon from "@/assets/category-icons/pintura.png";
 import vergalhaoIcon from "@/assets/category-icons/vergalhao.png";
-
-function HouseLogoFallback({ brandLabel }: { brandLabel: string }) {
-  return (
-    <svg className="logo" viewBox="0 0 96 80" role="img" aria-label={`${brandLabel || "Loja"} - logo`}>
-      <path d="M10 39 48 8l38 31" fill="none" stroke="hsl(var(--accent))" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M20 38h56v34H20z" fill="hsl(var(--accent))" />
-      <path d="M29 42h38v18H29z" fill="hsl(var(--background))" />
-      <path d="M33 21h30v17H33z" fill="hsl(var(--primary))" />
-      <path d="M31 30h34" stroke="hsl(var(--background))" strokeWidth="3" />
-      <path d="M48 22v16" stroke="hsl(var(--background))" strokeWidth="3" />
-      <path d="M40 72V55h16v17" fill="hsl(var(--primary))" />
-    </svg>
-  );
-}
 
 function resolveCategoryPng(name: string, slug?: string) {
   const key = `${slug ?? ""} ${name ?? ""}`.trim().toLowerCase();
@@ -117,8 +103,15 @@ export function StoreTopbar({
     nav(term ? `/loja?q=${encodeURIComponent(term)}` : "/loja");
   };
 
-  const brandLabel = footerStoreName || footer?.store_name || tenantStore?.name || "";
-  const brandLogo = publicImageUrl("banner-images", footer?.logo_path) || storeLogoFallback.url;
+  const brandLabel =
+    footerStoreName ||
+    footer?.store_name ||
+    tenantStore?.name ||
+    "Fortlev";
+
+  const officialFallbackLogo = storeLogoPure;
+  const brandLogo =
+    publicImageUrl("banner-images", footer?.logo_path) || officialFallbackLogo;
 
   useEffect(() => {
     setLogoFailed(false);
@@ -145,19 +138,15 @@ export function StoreTopbar({
         <div className="mx-auto max-w-6xl px-3 pt-0 pb-2 sm:px-6 sm:pt-0 sm:pb-3">
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-center py-2">
-              <Link to="/" className="flex items-center justify-center" aria-label={brandLabel}>
-                {brandLogo && !logoFailed ? (
-                  <img
-                    src={brandLogo}
-                    alt={`${brandLabel} - logo`}
-                    className="h-10 sm:h-12 w-auto object-contain"
-                    loading="eager"
-                    onLoad={() => window.dispatchEvent(new Event("resize"))}
-                    onError={() => setLogoFailed(true)}
-                  />
-                ) : (
-                  <HouseLogoFallback brandLabel={brandLabel} />
-                )}
+              <Link to="/" className="flex items-center justify-center group" aria-label="Página Inicial">
+                <img
+                  src={logoFailed ? officialFallbackLogo : brandLogo}
+                  alt="Logo"
+                  className="h-10 sm:h-12 w-auto max-h-12 object-contain transition-transform group-hover:scale-105"
+                  loading="eager"
+                  onLoad={() => window.dispatchEvent(new Event("resize"))}
+                  onError={() => setLogoFailed(true)}
+                />
               </Link>
             </div>
 

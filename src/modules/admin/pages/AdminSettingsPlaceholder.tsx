@@ -1,22 +1,20 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Navigate } from "react-router-dom";
 import { useStore } from "@/contexts/StoreContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Copy, KeyRound, Plus, Trash2, Webhook, History, Calendar } from "lucide-react";
+import { Copy, KeyRound, Plus, Trash2, Webhook, History, Calendar, Save, Store, Globe } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function AdminSettingsFrete() {
-  return (
-    <Card className="rounded-2xl">
-      <CardHeader><CardTitle>Frete</CardTitle></CardHeader>
-      <CardContent className="text-sm text-muted-foreground">Configurações de frete em breve.</CardContent>
-    </Card>
-  );
+  const { routes } = useStore();
+  return <Navigate to={routes.adminPath("/configuracoes/frete")} replace />;
 }
 
 export function AdminSettingsPagamentos() {
@@ -25,11 +23,272 @@ export function AdminSettingsPagamentos() {
 }
 
 export function AdminSettingsIdentidade() {
+  const { activeStoreId, label } = useStore();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [footerId, setFooterId] = useState<string | null>(null);
+  const [seoId, setSeoId] = useState<string | null>(null);
+
+  const [identity, setIdentity] = useState({
+    store_name: "",
+    logo_path: "",
+    whatsapp: "",
+    address: "",
+    hours: "",
+    extra_note: "",
+    instagram_url: "",
+    facebook_url: "",
+  });
+
+  const [seo, setSeo] = useState({
+    meta_title: "",
+    meta_description: "",
+    og_image_path: "",
+  });
+
+  useEffect(() => {
+    if (!activeStoreId) return;
+    let mounted = true;
+    setLoading(true);
+
+    Promise.all([
+      supabase
+        .from("home_footer")
+        .select("id, store_name, logo_path, whatsapp, address, hours, extra_note, instagram_url, facebook_url")
+        .eq("store_id", activeStoreId)
+        .eq("key", "main")
+        .maybeSingle(),
+      supabase
+        .from("home_seo")
+        .select("id, meta_title, meta_description, og_image_path")
+        .eq("store_id", activeStoreId)
+        .eq("key", "store_home")
+        .maybeSingle(),
+    ]).then(([fRes, sRes]) => {
+      if (!mounted) return;
+      const f = fRes.data as any;
+      if (f) {
+        setFooterId(f.id);
+        setIdentity({
+          store_name: f.store_name ?? label ?? "",
+          logo_path: f.logo_path ?? "",
+          whatsapp: f.whatsapp ?? "",
+          address: f.address ?? "",
+          hours: f.hours ?? "",
+          extra_note: f.extra_note ?? "",
+          instagram_url: f.instagram_url ?? "",
+          facebook_url: f.facebook_url ?? "",
+        });
+      } else {
+        setFooterId(null);
+        setIdentity((prev) => ({ ...prev, store_name: label ?? "" }));
+      }
+
+      const s = sRes.data as any;
+      if (s) {
+        setSeoId(s.id);
+        setSeo({
+          meta_title: s.meta_title ?? "",
+          meta_description: s.meta_description ?? "",
+          og_image_path: s.og_image_path ?? "",
+        });
+      } else {
+        setSeoId(null);
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [activeStoreId, label]);
+
+  async function handleSave() {
+    if (!activeStoreId) return;
+    setSaving(true);
+    try {
+      const footerPayload: any = {
+        store_id: activeStoreId,
+        key: "main",
+        active: true,
+        store_name: identity.store_name.trim() || null,
+        logo_path: identity.logo_path.trim() || null,
+        whatsapp: identity.whatsapp.trim() || null,
+        address: identity.address.trim() || null,
+        hours: identity.hours.trim() || null,
+        extra_note: identity.extra_note.trim() || null,
+        instagram_url: identity.instagram_url.trim() || null,
+        facebook_url: identity.facebook_url.trim() || null,
+      };
+
+      const footerOp = footerId
+        ? supabase.from("home_footer").update(footerPayload).eq("id", footerId)
+        : supabase.from("home_footer").insert(footerPayload).select("id").single();
+
+      const seoPayload: any = {
+        store_id: activeStoreId,
+        key: "store_home",
+        active: true,
+        meta_title: seo.meta_title.trim() || null,
+        meta_description: seo.meta_description.trim() || null,
+        og_image_path: seo.og_image_path.trim() || null,
+      };
+
+      const seoOp = seoId
+        ? supabase.from("home_seo").update(seoPayload).eq("id", seoId)
+        : supabase.from("home_seo").insert(seoPayload).select("id").single();
+
+      const [fOut, sOut] = await Promise.all([footerOp, seoOp]);
+      if (fOut.error) throw fOut.error;
+      if (sOut.error) throw sOut.error;
+      if (!footerId && (fOut.data as any)?.id) setFooterId((fOut.data as any).id);
+      if (!seoId && (sOut.data as any)?.id) setSeoId((sOut.data as any).id);
+
+      toast({ title: "Identidade salva", description: "Dados institucionais e SEO da loja atualizados." });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e?.message ?? "Falha inesperada", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <Card className="rounded-2xl">
-      <CardHeader><CardTitle>Identidade da Loja</CardTitle></CardHeader>
-      <CardContent className="text-sm text-muted-foreground">Personalização da identidade em breve.</CardContent>
-    </Card>
+    <div className="space-y-6">
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Store className="h-5 w-5 text-primary" />
+            Identidade Institucional da Loja
+          </CardTitle>
+          <CardDescription>
+            Configure nome de exibição, logotipo, contatos, redes sociais e rodapé da vitrine.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loading ? (
+            <div className="text-sm text-muted-foreground py-4">Carregando dados da loja...</div>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Nome de Exibição da Loja</Label>
+                  <Input
+                    value={identity.store_name}
+                    onChange={(e) => setIdentity({ ...identity, store_name: e.target.value })}
+                    placeholder="Ex: MF Atacadista Materiais"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>WhatsApp de Atendimento</Label>
+                  <Input
+                    value={identity.whatsapp}
+                    onChange={(e) => setIdentity({ ...identity, whatsapp: e.target.value })}
+                    placeholder="Ex: 5511999999999"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>URL do Logotipo</Label>
+                  <Input
+                    value={identity.logo_path}
+                    onChange={(e) => setIdentity({ ...identity, logo_path: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Horário de Atendimento</Label>
+                  <Input
+                    value={identity.hours}
+                    onChange={(e) => setIdentity({ ...identity, hours: e.target.value })}
+                    placeholder="Seg a Sex das 8h às 18h"
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Endereço Comercial</Label>
+                  <Input
+                    value={identity.address}
+                    onChange={(e) => setIdentity({ ...identity, address: e.target.value })}
+                    placeholder="Rua, Número, Bairro, Cidade - UF"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Instagram (URL)</Label>
+                  <Input
+                    value={identity.instagram_url}
+                    onChange={(e) => setIdentity({ ...identity, instagram_url: e.target.value })}
+                    placeholder="https://instagram.com/sualoja"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Facebook (URL)</Label>
+                  <Input
+                    value={identity.facebook_url}
+                    onChange={(e) => setIdentity({ ...identity, facebook_url: e.target.value })}
+                    placeholder="https://facebook.com/sualoja"
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Observação / Aviso de Rodapé</Label>
+                  <Textarea
+                    value={identity.extra_note}
+                    onChange={(e) => setIdentity({ ...identity, extra_note: e.target.value })}
+                    placeholder="Informações de CNPJ, frete ou condições comerciais..."
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-primary" />
+            SEO & Compartilhamento (Open Graph)
+          </CardTitle>
+          <CardDescription>
+            Defina o título e descrição padrão para buscadores (Google) e prévia no WhatsApp.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Título SEO (Meta Title)</Label>
+              <Input
+                value={seo.meta_title}
+                onChange={(e) => setSeo({ ...seo, meta_title: e.target.value })}
+                placeholder="Ex: Materiais de Construção com Entrega Rápida"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Imagem de Prévia (OG Image URL)</Label>
+              <Input
+                value={seo.og_image_path}
+                onChange={(e) => setSeo({ ...seo, og_image_path: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Descrição SEO (Meta Description)</Label>
+              <Textarea
+                value={seo.meta_description}
+                onChange={(e) => setSeo({ ...seo, meta_description: e.target.value })}
+                placeholder="Resumo da loja exibido nos resultados de busca e links compartilhados..."
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button onClick={handleSave} disabled={saving || loading}>
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? "Salvando..." : "Salvar Identidade e SEO"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

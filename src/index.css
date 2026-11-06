@@ -325,3 +325,17 @@ html, body {
     bottom: 30px;
   }
 }
+
+/* Animação de piscar limpa exclusiva para o ícone de fogo */
+@keyframes flameBlink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.animate-flame-blink {
+  animation: flameBlink 1s ease-in-out infinite;
+}

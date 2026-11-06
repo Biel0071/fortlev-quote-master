@@ -21,6 +21,14 @@ export function CookieConsentBanner() {
   const tracker = useVisitorTracker();
   const [configOpen, setConfigOpen] = useState(false);
 
+  // Não exibir popup de cookies nas telas administrativas ou na landing de downloads
+  if (
+    typeof window !== "undefined" &&
+    (window.location.pathname.startsWith("/admin") || window.location.pathname.startsWith("/downloads"))
+  ) {
+    return null;
+  }
+
   const accept = async (source: "user" | "auto") => {
     tracker.accept();
     await logConsent(tracker.sessionToken, "accepted");

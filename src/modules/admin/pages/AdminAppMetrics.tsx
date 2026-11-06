@@ -179,6 +179,25 @@ export default function AdminAppMetrics() {
   const [editApkToken, setEditApkToken] = useState<string>("");
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // Modo Métricas Simuladas / Fake (padrão true para demonstração)
+  const [simulatedMetrics, setSimulatedMetrics] = useState<boolean>(() => {
+    const val = localStorage.getItem("admin_app_metrics_simulated");
+    return val === null ? true : val === "true";
+  });
+  const [simClicks, setSimClicks] = useState<number>(() => {
+    const v = localStorage.getItem("admin_app_sim_clicks");
+    return v ? Number(v) : 184;
+  });
+  const [simDownloads, setSimDownloads] = useState<number>(() => {
+    const v = localStorage.getItem("admin_app_sim_downloads");
+    return v ? Number(v) : 138;
+  });
+  const [simSessions, setSimSessions] = useState<number>(() => {
+    const v = localStorage.getItem("admin_app_sim_sessions");
+    return v ? Number(v) : 312;
+  });
+  const [editingSimModal, setEditingSimModal] = useState(false);
+
   const apkDownloadUrlFor = (token: string) => {
     const base = import.meta.env.VITE_SUPABASE_URL;
     if (!base || !token) return "";
@@ -374,7 +393,7 @@ export default function AdminAppMetrics() {
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [activeStoreId]);
 
   const handleFileSelect = () => {
     const file = fileRef.current?.files?.[0];
@@ -804,20 +823,90 @@ export default function AdminAppMetrics() {
     toast.success(`${label} copiado`);
   };
 
-  const conversionRate = bannerClicks > 0 ? ((appDownloadClicks / bannerClicks) * 100).toFixed(1) : "0";
+  const effectiveBannerClicks = simulatedMetrics ? simClicks : bannerClicks;
+  const effectiveAppDownloadClicks = simulatedMetrics ? simDownloads : appDownloadClicks;
+  const effectiveAppSessions = simulatedMetrics ? simSessions : appSessions;
+  const conversionRate = effectiveBannerClicks > 0
+    ? ((effectiveAppDownloadClicks / effectiveBannerClicks) * 100).toFixed(1)
+    : "0";
+
+  const effectiveDailyClicks = useMemo(() => {
+    if (!simulatedMetrics) return dailyClicks;
+    const now = new Date();
+    const days: { date: string; clicks: number }[] = [];
+    const weights = [0.12, 0.14, 0.11, 0.16, 0.18, 0.21, 0.15];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dayLabel = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+      const proportion = weights[6 - i] || 0.14;
+      const count = Math.max(1, Math.round(effectiveBannerClicks * proportion));
+      days.push({ date: dayLabel, clicks: count });
+    }
+    return days;
+  }, [simulatedMetrics, dailyClicks, effectiveBannerClicks]);
+
+  const toggleSimulated = (checked: boolean) => {
+    setSimulatedMetrics(checked);
+    localStorage.setItem("admin_app_metrics_simulated", checked ? "true" : "false");
+    toast.success(checked ? "Métricas simuladas ativadas" : "Métricas reais ativadas");
+  };
+
+  const handleSaveSimMetrics = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem("admin_app_sim_clicks", String(simClicks));
+    localStorage.setItem("admin_app_sim_downloads", String(simDownloads));
+    localStorage.setItem("admin_app_sim_sessions", String(simSessions));
+    setEditingSimModal(false);
+    toast.success("Valores simulados salvos!");
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6 sm:px-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <Smartphone className="h-6 w-6 text-primary" /> Métricas do Aplicativo
           </h1>
           <p className="text-sm text-muted-foreground">Downloads, cliques e sessões do app</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading} className="gap-1.5">
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
-        </Button>
+        <div className="flex items-center flex-wrap gap-2">
+          {/* Toggle de Métricas Simuladas / Fake */}
+          <div className="flex items-center gap-2 bg-muted/60 border border-border/80 px-3 py-1.5 rounded-xl">
+            <Checkbox
+              id="simulatedMetricsToggle"
+              checked={simulatedMetrics}
+              onCheckedChange={(c) => toggleSimulated(!!c)}
+            />
+            <Label
+              htmlFor="simulatedMetricsToggle"
+              className="text-xs font-semibold cursor-pointer select-none flex items-center gap-1.5"
+            >
+              <span>Métricas Simuladas</span>
+              {simulatedMetrics && (
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+                  Ativas
+                </span>
+              )}
+            </Label>
+            {simulatedMetrics && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditingSimModal(true)}
+                className="h-6 px-1.5 text-xs text-primary hover:text-primary/80 gap-1"
+                title="Editar valores das métricas fake"
+              >
+                <Pencil className="h-3 w-3" />
+                <span className="text-[11px] underline">Editar</span>
+              </Button>
+            )}
+          </div>
+
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading} className="gap-1.5">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -825,13 +914,13 @@ export default function AdminAppMetrics() {
           {
             icon: <MousePointerClick className="h-4 w-4" />,
             label: "Cliques no Banner",
-            value: bannerClicks,
+            value: effectiveBannerClicks,
             color: "text-foreground",
           },
           {
             icon: <Download className="h-4 w-4" />,
             label: "Downloads (cliques)",
-            value: appDownloadClicks,
+            value: effectiveAppDownloadClicks,
             color: "text-primary",
           },
           {
@@ -843,7 +932,7 @@ export default function AdminAppMetrics() {
           {
             icon: <Smartphone className="h-4 w-4" />,
             label: "Sessões do App",
-            value: appSessions,
+            value: effectiveAppSessions,
             color: "text-foreground",
           },
         ].map((card, index) => (
@@ -853,7 +942,9 @@ export default function AdminAppMetrics() {
                 {card.icon}
                 {card.label}
               </div>
-              <div className={`text-3xl font-bold ${card.color}`}>{loading ? "—" : card.value}</div>
+              <div className={`text-3xl font-bold ${card.color}`}>
+                {simulatedMetrics ? card.value : (loading ? "—" : card.value)}
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -866,11 +957,11 @@ export default function AdminAppMetrics() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {dailyClicks.length === 0 ? (
+          {effectiveDailyClicks.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Sem dados</p>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={dailyClicks}>
+              <BarChart data={effectiveDailyClicks}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
@@ -881,6 +972,66 @@ export default function AdminAppMetrics() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal para Editar Métricas Fake / Simuladas */}
+      <Dialog open={editingSimModal} onOpenChange={setEditingSimModal}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Pencil className="h-4 w-4 text-primary" /> Configurar Métricas Fake / Simuladas
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveSimMetrics} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="simClicksInput" className="text-xs font-semibold">
+                Cliques no Banner
+              </Label>
+              <Input
+                id="simClicksInput"
+                type="number"
+                min="0"
+                value={simClicks}
+                onChange={(e) => setSimClicks(Number(e.target.value))}
+                className="h-10 rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="simDownloadsInput" className="text-xs font-semibold">
+                Downloads (cliques)
+              </Label>
+              <Input
+                id="simDownloadsInput"
+                type="number"
+                min="0"
+                value={simDownloads}
+                onChange={(e) => setSimDownloads(Number(e.target.value))}
+                className="h-10 rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="simSessionsInput" className="text-xs font-semibold">
+                Sessões do App
+              </Label>
+              <Input
+                id="simSessionsInput"
+                type="number"
+                min="0"
+                value={simSessions}
+                onChange={(e) => setSimSessions(Number(e.target.value))}
+                className="h-10 rounded-xl"
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setEditingSimModal(false)} className="rounded-xl">
+                Cancelar
+              </Button>
+              <Button type="submit" className="rounded-xl gap-1.5">
+                <Save className="h-4 w-4" /> Salvar Métricas
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Card className="rounded-2xl border-2 border-dashed border-primary/20">
         <CardHeader>
@@ -942,6 +1093,55 @@ export default function AdminAppMetrics() {
                     <div><b>Enviado:</b> {fmtDate(apkMeta.uploadedAt)}</div>
                   </div>
                 )}
+
+                {/* Seção Tela GP (Google Play Clone) */}
+                <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🏪</span>
+                      <div>
+                        <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                          <span>Tela GP (Google Play Clone Oficial)</span>
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+                            Ativa
+                          </span>
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          Landing page idêntica ao Google Play com botão de progresso 0-100% que dispara o APK.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open("/downloads/jadlog", "_blank")}
+                      className="gap-1.5 text-xs border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                    >
+                      <Globe className="h-3.5 w-3.5" /> Ver Tela GP
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-emerald-200/50 dark:border-emerald-800/30">
+                    <div className="flex-1 min-w-[240px]">
+                      <Label className="text-[11px] font-semibold text-muted-foreground">Link da Tela GP para Campanhas:</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          readOnly
+                          value={`${window.location.origin}/downloads/jadlog`}
+                          className="h-8 text-xs bg-background/80 font-mono"
+                        />
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 gap-1 px-3 text-xs"
+                          onClick={() => void copyText(`${window.location.origin}/downloads/jadlog`, "Link da Tela GP")}
+                        >
+                          <Copy className="h-3 w-3" /> Copiar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 {apkUrl && professionalDownloadUrl && (
                   <div className="mt-3 flex flex-col gap-2">

@@ -1,35 +1,104 @@
 import React, { useState, useEffect } from "react";
 import { cloud } from "@/lib/cloud";
 import { AppHeader } from "@/components/store/AppHeader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Package, Truck, CheckCircle2, MapPin, Calendar, Clock, ArrowLeft, Box, ShieldCheck, CreditCard, Info, Smartphone, Bell, BellRing, Navigation2 } from "lucide-react";
+import {
+  Search,
+  Package,
+  Truck,
+  Clock,
+  Info,
+  BellRing,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useSearchParams, Link } from "react-router-dom";
-import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useSearchParams } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
-import { formatCurrency } from "@/utils/formatters";
-import { Badge } from "@/components/ui/badge";
 import { FloatingChatButton } from "@/components/store/FloatingChatButton";
-import { TrackingMap } from "@/components/store/tracking/TrackingMap";
-import { ConsentBanner } from "@/components/store/consent/ConsentBanner";
 import { useConsent } from "@/hooks/store/useConsent";
+import { TrackingCustomerCard } from "@/components/store/tracking/TrackingCustomerCard";
 
-export default function PublicTrackingSearch() {
+export interface PublicTrackingSearchProps {
+  initialPreviewData?: any;
+}
+
+export default function PublicTrackingSearch({ initialPreviewData }: PublicTrackingSearchProps = {}) {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState(searchParams.get("q") || "");
   const [cpf, setCpf] = useState("");
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<any>(initialPreviewData || null);
   const [activeInfo, setActiveInfo] = useState<{ title: string; desc: string } | null>(null);
   const [simulatedTimeline, setSimulatedTimeline] = useState<any[]>([]);
   const [simulatedProgress, setSimulatedProgress] = useState<number>(0);
   const [isSimulating, setIsSimulating] = useState(false);
   const { consent, saveConsent } = useConsent();
-  const [showNotificationEnroll, setShowNotificationEnroll] = useState(false);
+
+  useEffect(() => {
+    if (initialPreviewData) {
+      setResult(initialPreviewData);
+    }
+  }, [initialPreviewData]);
+
+  const enrichOrderItemsAndTotal = async (trackingObj: any, timelineRows: any[], orderItems: any[]) => {
+    const meta = (trackingObj?.metadata as any) || {};
+    let items = orderItems && orderItems.length > 0 ? orderItems : meta.custom_items || [];
+    let total = Number(trackingObj?.order?.total || meta.custom_total || 0);
+
+    const customerCpf = (trackingObj?.order?.customer_cpf || "").replace(/\D/g, "");
+    if ((items.length === 0 || total <= 0) && customerCpf) {
+      try {
+        const [fRes, cRes] = await Promise.all([
+          cloud
+            .from("fortlev_quotations")
+            .select("total, items_json")
+            .filter("customer_json->>document", "eq", customerCpf)
+            .order("created_at", { ascending: false })
+            .limit(1),
+          cloud
+            .from("construction_quotations")
+            .select("total, items_json")
+            .filter("customer_json->>document", "eq", customerCpf)
+            .order("created_at", { ascending: false })
+            .limit(1),
+        ]);
+        const quote: any = (fRes.data && fRes.data[0]) || (cRes.data && cRes.data[0]);
+        if (quote) {
+          if (total <= 0 && Number(quote.total) > 0) total = Number(quote.total);
+          if (items.length === 0 && Array.isArray(quote.items_json)) {
+            items = quote.items_json.map((qItem: any) => ({
+              product_name: qItem.name || qItem.productName || qItem.description || "Material",
+              quantity: Number(qItem.quantity || 1),
+              unit_price: Number(qItem.unitPrice || qItem.price || 0),
+              line_total: Number(qItem.total || (qItem.unitPrice || 0) * (qItem.quantity || 1)),
+            }));
+          }
+        }
+      } catch {
+        // Fallback silently if public RLS restricts quotations
+      }
+    }
+
+    return {
+      ...trackingObj,
+      timeline: timelineRows || [],
+      order: {
+        ...trackingObj.order,
+        total,
+        items,
+      },
+    };
+  };
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -40,8 +109,7 @@ export default function PublicTrackingSearch() {
     try {
       const cleanCode = code.trim().toUpperCase();
       const cleanCpf = cpf.replace(/\D/g, "");
-      
-      // Separate lookups to avoid 400 errors from complex joins in the public context
+
       const { data: tracking, error: trackingError } = await cloud
         .from("order_tracking_main")
         .select(`
@@ -50,15 +118,15 @@ export default function PublicTrackingSearch() {
           posted_at,
           estimated_delivery_at,
           delivered_at,
-          carrier:order_tracking_carriers(id, name, logo_url), 
-
-
-          status:order_tracking_status(id, label, progress_percentage), 
+          metadata,
+          carrier:order_tracking_carriers(id, name, logo_url, website, tracking_url_template),
+          status:order_tracking_status(id, label, progress_percentage),
           order:store_orders(
             id,
             status,
             total,
             customer_name,
+            customer_cpf,
             address
           )
         `)
@@ -67,42 +135,31 @@ export default function PublicTrackingSearch() {
 
       if (trackingError) throw trackingError;
 
-      if (trackingError) throw trackingError;
-
       if (tracking) {
-        // Fetch timeline separately to avoid complex join issues
-        const { data: timeline } = await cloud
-          .from("order_tracking_timeline")
-          .select("*")
-          .eq("tracking_id", tracking.id)
-          .order("event_at", { ascending: false });
+        const [{ data: timeline }, { data: items }] = await Promise.all([
+          cloud
+            .from("order_tracking_timeline")
+            .select("*")
+            .eq("tracking_id", tracking.id)
+            .order("event_at", { ascending: false }),
+          cloud
+            .from("store_order_items")
+            .select("*")
+            .eq("order_id", (tracking.order as any)?.id),
+        ]);
 
-        // Fetch items separately
-        const { data: items } = await cloud
-          .from("store_order_items")
-          .select("*")
-          .eq("order_id", tracking.order?.id);
-
-        const resultData = {
-          ...tracking,
-          timeline: timeline || [],
-          order: {
-            ...tracking.order,
-            items: items || []
-          }
-        };
-        setResult(resultData);
+        const enriched = await enrichOrderItemsAndTotal(tracking, timeline || [], items || []);
+        setResult(enriched);
         setLoading(false);
         return;
       }
 
-      // If code search fails, try CPF search
       if (cleanCpf) {
         const { data: orders, error: orderError } = await cloud
           .from("store_orders")
           .select("id")
           .eq("customer_cpf", cleanCpf);
-        
+
         if (orderError) throw orderError;
 
         if (orders && orders.length > 0) {
@@ -114,45 +171,40 @@ export default function PublicTrackingSearch() {
               posted_at,
               estimated_delivery_at,
               delivered_at,
-              carrier:order_tracking_carriers(id, name, logo_url), 
-
-              status:order_tracking_status(id, label, progress_percentage), 
-            order:store_orders(
-              id,
-              status,
-              total,
-              customer_name,
-              address
-            )
+              metadata,
+              carrier:order_tracking_carriers(id, name, logo_url, website, tracking_url_template),
+              status:order_tracking_status(id, label, progress_percentage),
+              order:store_orders(
+                id,
+                status,
+                total,
+                customer_name,
+                customer_cpf,
+                address
+              )
             `)
-            .in("order_id", orders.map(o => o.id))
-            .order('created_at', { ascending: false })
+            .in("order_id", orders.map((o) => o.id))
+            .order("created_at", { ascending: false })
             .limit(1);
 
           if (cpfError) throw cpfError;
-          
-          const tracking = cpfTracking && cpfTracking.length > 0 ? cpfTracking[0] : null;
 
-          if (tracking) {
-            const { data: timeline } = await cloud
-              .from("order_tracking_timeline")
-              .select("*")
-              .eq("tracking_id", tracking.id)
-              .order("event_at", { ascending: false });
+          const found = cpfTracking && cpfTracking.length > 0 ? cpfTracking[0] : null;
+          if (found) {
+            const [{ data: timeline }, { data: items }] = await Promise.all([
+              cloud
+                .from("order_tracking_timeline")
+                .select("*")
+                .eq("tracking_id", found.id)
+                .order("event_at", { ascending: false }),
+              cloud
+                .from("store_order_items")
+                .select("*")
+                .eq("order_id", (found.order as any)?.id),
+            ]);
 
-            const { data: items } = await cloud
-              .from("store_order_items")
-              .select("*")
-              .eq("order_id", tracking.order?.id);
-
-            setResult({
-              ...tracking,
-              timeline: timeline || [],
-              order: {
-                ...tracking.order,
-                items: items || []
-              }
-            });
+            const enriched = await enrichOrderItemsAndTotal(found, timeline || [], items || []);
+            setResult(enriched);
             setLoading(false);
             return;
           }
@@ -160,417 +212,255 @@ export default function PublicTrackingSearch() {
       }
 
       setResult({ notFound: true });
-      toast({ title: "Não encontrado", description: "Nenhum pedido encontrado para os dados informados.", variant: "destructive" });
+      toast({
+        title: "Não encontrado",
+        description: "Nenhum pedido encontrado para os dados informados.",
+        variant: "destructive",
+      });
     } catch (error: any) {
       console.error("DEBUG: Error in handleSearch:", error);
-      toast({ title: "Erro na consulta", description: "Ocorreu um erro ao buscar seu rastreio.", variant: "destructive" });
+      toast({
+        title: "Erro na consulta",
+        description: "Ocorreu um erro ao buscar seu rastreio.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (searchParams.get("q")) {
-      handleSearch();
+    if (searchParams.get("q") && !initialPreviewData) {
+      void handleSearch();
     }
   }, []);
 
   useEffect(() => {
     if (!result || result.notFound) return;
 
-    // Reset simulation states
-    setSimulatedTimeline(result.timeline || []);
-    setSimulatedProgress(result.status?.progress_percentage || 10);
-    
-    const statusLabel = result.status?.label?.toLowerCase() || "";
-    const isOngoing = statusLabel.includes("transporte") || statusLabel.includes("trânsito") || statusLabel.includes("postado") || statusLabel.includes("coletado");
-    
-    if (isOngoing && (result.status?.progress_percentage || 0) < 100) {
+    const meta = (result.metadata as any) || {};
+    const customPct = typeof meta.custom_progress === "number" ? meta.custom_progress : null;
+    const baseProgress = customPct ?? result.status?.progress_percentage ?? 25;
+
+    const sortedTimeline = [...(result.timeline || [])].sort(
+      (a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime()
+    );
+    setSimulatedTimeline(sortedTimeline);
+    setSimulatedProgress(baseProgress);
+
+    const statusLabel = (result.status?.label || "").toLowerCase();
+    const isOngoing =
+      statusLabel.includes("transporte") ||
+      statusLabel.includes("trânsito") ||
+      statusLabel.includes("postado") ||
+      statusLabel.includes("coletado");
+
+    if (isOngoing && baseProgress < 100 && customPct === null) {
       setIsSimulating(true);
-      
-      // Simulation Logic: Add events to make it look "live"
       const now = new Date();
-      const postedAt = new Date(result.posted_at || result.created_at);
-      const estimatedAt = new Date(result.estimated_delivery_at);
-      
-      const timeDiff = estimatedAt.getTime() - postedAt.getTime();
-      const elapsed = now.getTime() - postedAt.getTime();
-      const progressRatio = Math.min(0.9, elapsed / timeDiff); // Max 90% in simulation
-      
-      const newProgress = Math.max(result.status?.progress_percentage || 10, Math.floor(progressRatio * 100));
+      const postedAt = new Date(result.posted_at || result.created_at || Date.now());
+      const estimatedAt = result.estimated_delivery_at
+        ? new Date(result.estimated_delivery_at)
+        : new Date(postedAt.getTime() + 7 * 86400000);
+
+      const timeDiff = Math.max(86400000, estimatedAt.getTime() - postedAt.getTime());
+      const elapsed = Math.max(0, now.getTime() - postedAt.getTime());
+      const progressRatio = Math.min(0.9, elapsed / timeDiff);
+      const newProgress = Math.max(baseProgress, Math.floor(progressRatio * 100));
       setSimulatedProgress(newProgress);
-
-      // Major cities mapping for "Distribution Centers"
-      const cityMap: Record<string, string> = {
-        'MG': 'Belo Horizonte/MG',
-        'SP': 'Guarulhos/SP',
-        'RJ': 'Rio de Janeiro/RJ',
-        'PR': 'Curitiba/PR',
-        'SC': 'Joinville/SC',
-        'RS': 'Porto Alegre/RS',
-        'BA': 'Salvador/BA',
-        'CE': 'Fortaleza/CE',
-        'DF': 'Brasília/DF',
-        'PE': 'Recife/PE',
-        'ES': 'Vitória/ES',
-        'GO': 'Goiânia/GO',
-        'MT': 'Cuiabá/MT',
-        'MS': 'Campo Grande/MS',
-        'AM': 'Manaus/AM',
-        'PA': 'Belém/PA',
-      };
-
-      const destAddress = result.order?.address || 'São Paulo';
-      const majorCity = `${destAddress}`;
-
-      const timeline = [...(result.timeline || [])];
-      const sortedTimeline = timeline.sort((a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime());
-      const lastEvent = sortedTimeline[0];
-      
-      // If last event was more than 12 hours ago and we are in transit, add a simulated step
-      const lastEventTime = new Date(lastEvent?.event_at || postedAt).getTime();
-      const hoursSinceLast = (now.getTime() - lastEventTime) / (1000 * 60 * 60);
-
-      if (hoursSinceLast > 12 && newProgress >= 30 && newProgress < 90) {
-        const simulatedEvent = {
-          id: 'sim-1',
-          title: "Objeto chegou no Centro de Distribuição",
-          description: `O objeto chegou à unidade de tratamento em ${majorCity} e segue para a próxima etapa de entrega.`,
-          location_city: majorCity.split('/')[0],
-          location_state: majorCity.split('/')[1],
-          event_at: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-          is_simulated: true
-        };
-        setSimulatedTimeline([simulatedEvent, ...sortedTimeline]);
-      } else {
-        setSimulatedTimeline(sortedTimeline);
-      }
-
-      // Interval to "refresh" data from DB every 45s (real update)
-      const interval = setInterval(() => {
-        handleSearch();
-      }, 45000);
-
-      return () => clearInterval(interval);
     } else {
       setIsSimulating(false);
-      setSimulatedTimeline((result.timeline || []).sort((a: any, b: any) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime()));
     }
   }, [result]);
 
-
+  const effectiveProgress =
+    typeof result?.metadata?.custom_progress === "number"
+      ? result.metadata.custom_progress
+      : isSimulating
+      ? simulatedProgress
+      : result?.status?.progress_percentage || 25;
 
   return (
-    <div className="min-h-screen bg-background pb-24 md:pb-12 tracking-search-page">
-      <AppHeader cartCount={0} />
-      <StoreMobileChrome cartCount={0} />
-      <FloatingChatButton />
+    <div className="min-h-screen bg-background pb-24 md:pb-12 tracking-search-page flex flex-col">
+      {!initialPreviewData && <AppHeader cartCount={0} />}
+      {!initialPreviewData && <StoreMobileChrome cartCount={0} />}
+      {!initialPreviewData && <FloatingChatButton />}
 
-      
-      <main className="max-w-4xl mx-auto px-4 pb-8 sm:py-12 space-y-8">
-        <div className="flex flex-col items-center text-center space-y-4">
-          <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary">
-            <Truck className="w-8 h-8" />
+      <div className={`flex-1 flex flex-col justify-center items-center w-full px-4 ${result && !result.notFound ? "py-6 sm:py-8" : "py-8 sm:py-16 my-auto"}`}>
+        <main className={`w-full mx-auto space-y-6 sm:space-y-8 ${result && !result.notFound ? "max-w-4xl" : "max-w-xl"}`}>
+          <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+              <Truck className="w-7 h-7 sm:w-8 sm:h-8" />
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-4xl font-black tracking-tight uppercase">
+                Rastreio de Pedidos
+              </h1>
+              <p className="text-muted-foreground max-w-md mx-auto text-xs sm:text-base">
+                Acompanhe o status, a transportadora oficial e a porcentagem de envio em tempo real.
+              </p>
+            </div>
           </div>
-          <div className="space-y-1">
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">Rastreio de Pedidos</h1>
-            <p className="text-muted-foreground max-w-md mx-auto">Acompanhe o status da sua entrega em tempo real.</p>
-          </div>
-        </div>
 
-        <Card className="border-2 border-primary/5 shadow-xl rounded-3xl overflow-hidden">
-          <CardContent className="p-6 sm:p-8">
-            <form onSubmit={handleSearch} className="space-y-6">
-              <div className="space-y-4">
+          <Card className="border-2 border-primary/5 shadow-xl rounded-3xl overflow-hidden bg-card">
+            <CardContent className="p-6 sm:p-8 space-y-6">
+              <form onSubmit={handleSearch} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="search" className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1">
-                    Código de Rastreio, Pedido ou CPF
+                  <Label
+                    htmlFor="search"
+                    className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground ml-1"
+                  >
+                    Código de Rastreio, Pedido ou CPF/CNPJ
                   </Label>
                   <div className="relative">
                     <Package className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                    <Input 
-                      id="search" 
-                      value={code} 
-                      onChange={e => {
+                    <Input
+                      id="search"
+                      value={code}
+                      onChange={(e) => {
                         const val = e.target.value;
                         setCode(val);
-                        // Auto-detect CPF to sync fields if needed, but here we unify the logic
                         const cleanVal = val.replace(/\D/g, "");
                         if (cleanVal.length === 11 || cleanVal.length === 14) {
                           setCpf(cleanVal);
                         } else {
                           setCpf("");
                         }
-                      }} 
-                      placeholder="Digite seu código ou CPF" 
+                      }}
+                      placeholder="Ex: RT74307932BR ou 000.000.000-00"
                       className="h-12 sm:h-14 pl-12 rounded-2xl border-2 border-slate-100 focus:border-primary transition-all font-bold text-slate-700 text-sm sm:text-base"
                     />
                   </div>
                 </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-12 sm:h-14 text-[13px] sm:text-base font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all px-2"
+                  disabled={loading || !code}
+                >
+                  {loading ? (
+                    <Clock className="animate-spin mr-2 w-4 h-4 sm:w-5 sm:h-5" />
+                  ) : (
+                    <Search className="mr-2 w-4 h-4 sm:w-5 sm:h-5" />
+                  )}
+                  <span className="truncate">Consultar Status de Entrega</span>
+                </Button>
+              </form>
+
+              {/* Faixa de Homologação e Confiança Centralizada */}
+              <div className="pt-4 border-t border-slate-100 flex flex-col items-center justify-center text-center gap-2.5">
+                <span className="text-xs sm:text-sm font-bold text-slate-700 tracking-tight">
+                  Trabalhamos com as melhores transportadoras do mercado!
+                </span>
+                <div className="inline-flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200/90 px-4 py-1.5 rounded-full shadow-xs">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+                  <span>RASTREIO HOMOLOGADO</span>
+                </div>
               </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full h-12 sm:h-14 text-[13px] sm:text-base font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all px-2" 
-                disabled={loading || !code}
-              >
-                {loading ? <Clock className="animate-spin mr-2 w-4 h-4 sm:w-5 sm:h-5" /> : <Search className="mr-2 w-4 h-4 sm:w-5 sm:h-5" />}
-                <span className="truncate">Consultar Status de Entrega</span>
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
         {result && !result.notFound ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {isSimulating && (
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3 animate-pulse">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">
-                  Atualização Automática Ativa: Acompanhando em tempo real...
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
+                <p className="text-[11px] font-bold text-blue-800 uppercase tracking-wider">
+                  Telemetria Logística Ativa: Sincronizando posição com a transportadora...
                 </p>
               </div>
             )}
 
-            {/* Notification Enrollment Card */}
-            {(simulatedProgress >= 60 || (result.status?.progress_percentage || 0) >= 60) && (!consent?.notifications) && (
+            {effectiveProgress >= 60 && !consent?.notifications && (
               <Card className="bg-slate-900 text-white rounded-3xl overflow-hidden shadow-xl border-none">
-                 <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-primary">
-                          <BellRing className="w-6 h-6 text-white animate-bounce" />
-                       </div>
-                       <div>
-                          <h4 className="font-black uppercase tracking-tight text-lg">Ativar Alertas de Entrega?</h4>
-                          <p className="text-white/60 text-sm">Receba notificações em tempo real sobre cada etapa da sua encomenda.</p>
-                       </div>
+                <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-primary">
+                      <BellRing className="w-6 h-6 text-white animate-bounce" />
                     </div>
-                    <Button 
-                      onClick={() => {
-                        saveConsent({ notifications: true });
-                        toast({ title: "Notificações Ativadas", description: "Você receberá atualizações sobre seu pedido." });
-                      }}
-                      className="bg-white text-slate-900 hover:bg-white/90 rounded-2xl h-12 px-8 font-black uppercase tracking-widest shrink-0"
-                    >
-                       Ativar Agora
-                    </Button>
-                 </CardContent>
+                    <div>
+                      <h4 className="font-black uppercase tracking-tight text-lg">
+                        Ativar Alertas de Entrega?
+                      </h4>
+                      <p className="text-white/60 text-sm">
+                        Receba notificações em tempo real sobre cada avanço da sua encomenda.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      saveConsent({ notifications: true });
+                      toast({
+                        title: "Notificações Ativadas",
+                        description: "Você receberá atualizações sobre seu pedido.",
+                      });
+                    }}
+                    className="bg-white text-slate-900 hover:bg-white/90 rounded-2xl h-12 px-8 font-black uppercase tracking-widest shrink-0"
+                  >
+                    Ativar Agora
+                  </Button>
+                </CardContent>
               </Card>
             )}
 
-            {/* Main Result Card */}
-            <Card className="overflow-hidden border-2 border-primary/10 shadow-2xl rounded-3xl">
-              <div className="bg-primary p-6 sm:p-8 text-primary-foreground relative overflow-hidden">
-                {/* Background Pattern */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl pointer-events-none" />
-
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase font-black tracking-[0.2em] opacity-80">Status do seu pedido</p>
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-3xl font-black uppercase">{result.status?.label || 'Em processamento'}</h2>
-                      <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                    </div>
-                    <p className="text-sm font-medium opacity-90">Pedido #{result.order?.id?.slice(0, 8)} • Código {result.tracking_code}</p>
-                  </div>
-                  <div className="flex flex-col items-start md:items-end gap-2 relative z-10">
-                    {result.estimated_delivery_at && (
-                      <div className="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 shadow-lg">
-                         <div className="flex items-center gap-2 mb-1">
-                           <Calendar className="w-3.5 h-3.5 opacity-70" />
-                           <p className="text-[10px] uppercase font-black tracking-wider opacity-70 leading-none">Previsão de Entrega</p>
-                         </div>
-                         <p className="text-xl font-black">{new Date(result.estimated_delivery_at).toLocaleDateString()}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Stepper Modernizado */}
-                 <div className="mt-10 relative z-10">
-                    <div className="flex justify-between items-end mb-4">
-                       <div className="space-y-1">
-                         <span className="text-[10px] font-black uppercase tracking-widest opacity-60 block">Progresso Logístico</span>
-                         <div className="text-xs font-black bg-white/20 px-3 py-1 rounded-full inline-block border border-white/10 backdrop-blur-sm">
-                           {isSimulating ? simulatedProgress : (result.status?.progress_percentage || 10)}% Concluído
-                         </div>
-                       </div>
-                       <Box className="w-8 h-8 opacity-20" />
-                    </div>
-
-                    <div className="relative h-5 bg-black/20 rounded-full overflow-hidden p-1 shadow-inner border border-white/5">
-                       <div 
-                         className="h-full bg-gradient-to-r from-white/80 to-white rounded-full transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(255,255,255,0.6)] relative"
-                         style={{ width: `${isSimulating ? simulatedProgress : (result.status?.progress_percentage || 10)}%` }}
-                       >
-                         <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:20px_20px] animate-[progress-bar-stripes_1s_linear_infinite]" />
-                       </div>
-                    </div>
-
-                    <div className="flex justify-between mt-4 px-1">
-                       {[
-                         { label: 'Loja', icon: <Package className="w-3 h-3" />, active: (result.status?.progress_percentage || 0) >= 10 },
-                         { label: 'CD', icon: <MapPin className="w-3 h-3" />, active: (result.status?.progress_percentage || 0) >= 30 },
-                         { label: 'Trânsito', icon: <Truck className="w-3 h-3" />, active: (result.status?.progress_percentage || 0) >= 60 },
-                         { label: 'Entrega', icon: <Smartphone className="w-3 h-3" />, active: (result.status?.progress_percentage || 0) >= 90 },
-                         { label: 'Entregue', icon: <CheckCircle2 className="w-3 h-3" />, active: (result.status?.progress_percentage || 0) >= 100 }
-                       ].map((step, idx) => (
-                         <div key={idx} className="flex flex-col items-center gap-2 flex-1 relative">
-                           <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-500 border backdrop-blur-md ${
-                             step.active ? 'bg-white text-primary border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-110' : 'bg-white/5 text-white/40 border-white/10'
-                           }`}>
-                             {step.icon}
-                           </div>
-                           <span className={`text-[9px] font-black uppercase tracking-tighter transition-all leading-none text-center max-w-[50px] ${step.active ? 'opacity-100' : 'opacity-40'}`}>
-                             {step.label}
-                           </span>
-                         </div>
-                       ))}
-                    </div>
-                 </div>
-              </div>
-
-              <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-5 gap-10">
-                 {/* Map and Timeline */}
-                 <div className="lg:col-span-3 space-y-8">
-                    {/* Visual Route Map - Only when in delivery phase */}
-                    {(simulatedProgress >= 90 || (result.status?.progress_percentage || 0) >= 90) && (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                             <Navigation2 className="w-4 h-4 fill-primary" />
-                          </div>
-                          <h3 className="font-black uppercase tracking-widest text-sm text-slate-800">Mapa de Entrega</h3>
-                        </div>
-                        <TrackingMap address={result.order?.address} />
-                        <div className="p-4 bg-slate-900 rounded-2xl text-white mt-2">
-                          <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Endereço de Entrega</p>
-                          <p className="text-sm font-bold truncate">{result.order?.address || 'Endereço não informado'}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between mb-2">
-                       <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                             <Clock className="w-4 h-4" />
-                          </div>
-                          <h3 className="font-black uppercase tracking-widest text-sm text-slate-800">Linha do Tempo</h3>
-                       </div>
-                       <Badge variant="outline" className={`text-[10px] font-black uppercase border-primary/20 text-primary ${isSimulating ? 'animate-pulse bg-primary/5' : ''}`}>
-                         {isSimulating ? 'Monitoramento Ativo' : 'Tempo Real'}
-                       </Badge>
-                    </div>
-
-                    <div className="relative pl-6 space-y-10 before:absolute before:left-6 before:top-2 before:bottom-2 before:w-1 before:bg-slate-100">
-                      {simulatedTimeline.map((event: any, idx: number) => (
-                        <div key={event.id} className="relative pl-10">
-                          <div className={`absolute left-[-6px] top-1.5 w-4 h-4 rounded-full border-4 border-white shadow-sm ${idx === 0 ? 'bg-primary scale-125' : 'bg-slate-300'}`} />
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                              <span className={`font-black uppercase tracking-tight text-base ${idx === 0 ? 'text-primary' : 'text-slate-700'}`}>{event.title}</span>
-                              <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
-                                {new Date(event.event_at).toLocaleString()}
-                              </span>
-                            </div>
-                            {event.description && <p className="text-sm text-slate-500 font-medium leading-relaxed">{event.description}</p>}
-                            {(event.location_city || event.location_state) && (
-                              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 mt-1">
-                                <MapPin className="w-3.5 h-3.5 text-primary" />
-                                {event.location_city}{event.location_city && event.location_state ? ', ' : ''}{event.location_state}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                 </div>
-
-                 {/* Sidebar Info */}
-                 <div className="lg:col-span-2 space-y-6">
-                    {result.carrier && (
-                      <div className="p-5 rounded-3xl bg-slate-50 border border-slate-100 space-y-4">
-                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary overflow-hidden">
-                               {result.carrier.logo_url ? (
-                                 <img src={result.carrier.logo_url} alt={result.carrier.name} className="w-10 h-10 object-contain" />
-                               ) : (
-                                 <Truck className="w-6 h-6" />
-                               )}
-                            </div>
-                            <div>
-                               <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider leading-none mb-1">Transportadora</p>
-                               <h4 className="font-black text-lg text-slate-800">{result.carrier.name}</h4>
-                            </div>
-                         </div>
-                         <div className="bg-white/50 p-3 rounded-xl border border-slate-100 flex items-center gap-2">
-                           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                           <p className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">Pedido em carga da transportadora</p>
-                         </div>
-                         {result.carrier.website && (
-                            <Button asChild variant="outline" className="w-full rounded-2xl border-2 font-black uppercase text-xs h-10 tracking-widest">
-                               <a href={result.carrier.website} target="_blank" rel="noreferrer">Acessar Site Oficial</a>
-                            </Button>
-                         )}
-                      </div>
-                    )}
-
-                    <div className="p-5 rounded-3xl border-2 border-slate-50 space-y-4">
-                       <h4 className="font-black uppercase tracking-wider text-xs text-slate-400">Produtos do pedido</h4>
-                       <div className="space-y-3">
-                          {(result.order?.items || []).map((item: any, i: number) => (
-                             <div key={i} className="flex items-center justify-between gap-4 text-sm">
-                                <span className="font-bold text-slate-700 line-clamp-1">{item.product_name}</span>
-                                <span className="font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg">x{item.quantity}</span>
-                             </div>
-                          ))}
-                       </div>
-                    </div>
-
-                    <Card className="rounded-3xl border-none bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-xl">
-                       <CardContent className="p-6 flex items-center justify-between gap-4">
-                          <div className="space-y-1">
-                             <p className="text-[10px] uppercase font-black tracking-widest opacity-60">Valor Total</p>
-                             <p className="text-2xl font-black">{formatCurrency(Number(result.order?.total || 0))}</p>
-                          </div>
-                          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
-                             <CreditCard className="w-6 h-6 opacity-80" />
-                          </div>
-                       </CardContent>
-                    </Card>
-                 </div>
-              </div>
-            </Card>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
-               <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                  <ShieldCheck className="w-4 h-4 text-green-500" /> Sistema de rastreamento auditado e seguro
-               </div>
-               <span className="hidden sm:inline text-slate-200">•</span>
-               <button onClick={() => { setResult(null); setCode(""); setCpf(""); }} className="text-xs font-black uppercase tracking-widest text-primary hover:underline">
-                  Realizar Nova Consulta
-               </button>
-            </div>
+            <TrackingCustomerCard
+              trackingCode={result.tracking_code}
+              orderId={result.order?.id}
+              statusLabel={result.status?.label || "Coletado"}
+              progress={effectiveProgress}
+              estimatedDeliveryAt={result.estimated_delivery_at}
+              postedAt={result.posted_at}
+              deliveredAt={result.delivered_at}
+              carrier={result.carrier}
+              timeline={simulatedTimeline}
+              items={result.order?.items || []}
+              orderTotal={result.order?.total}
+              customerName={result.order?.customer_name}
+              address={result.order?.address}
+              isSimulating={isSimulating}
+              onResetSearch={() => {
+                setResult(null);
+                setCode("");
+                setCpf("");
+              }}
+            />
           </div>
-        ) : result?.notFound && (
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-6 animate-in fade-in zoom-in duration-300">
-            <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-              <Search className="w-10 h-10" />
+        ) : (
+          result?.notFound && (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-6 animate-in fade-in zoom-in duration-300">
+              <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                <Search className="w-10 h-10" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-black text-slate-800 uppercase">Não encontrado</h2>
+                <p className="text-muted-foreground max-w-sm">
+                  Não foi encontrado rastreio para o pedido com os dados informados.
+                </p>
+              </div>
+              <Button
+                asChild
+                className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-green-500/20 bg-green-600 hover:bg-green-700"
+              >
+                <a
+                  href="https://wa.me/553175193626?text=Olá, não consegui rastrear minha entrega"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Falar no WhatsApp
+                </a>
+              </Button>
+              <button
+                onClick={() => {
+                  setResult(null);
+                  setCode("");
+                  setCpf("");
+                }}
+                className="text-xs font-black uppercase tracking-widest text-primary hover:underline"
+              >
+                Tentar Novamente
+              </button>
             </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black text-slate-800 uppercase">Não encontrado</h2>
-              <p className="text-muted-foreground max-w-sm">Não foi encontrado rastreio para o pedido com os dados informados.</p>
-            </div>
-            <Button asChild className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-green-500/20 bg-green-600 hover:bg-green-700">
-              <a href="https://wa.me/553175193626?text=Olá, não consegui rastrear minha entrega" target="_blank" rel="noreferrer">
-                Falar no WhatsApp
-              </a>
-            </Button>
-            <button onClick={() => { setResult(null); setCode(""); setCpf(""); }} className="text-xs font-black uppercase tracking-widest text-primary hover:underline">
-              Tentar Novamente
-            </button>
-          </div>
+          )
         )}
 
         <Dialog open={!!activeInfo} onOpenChange={(open) => !open && setActiveInfo(null)}>
@@ -586,13 +476,16 @@ export default function PublicTrackingSearch() {
                 {activeInfo?.desc}
               </DialogDescription>
             </DialogHeader>
-            <Button onClick={() => setActiveInfo(null)} className="w-full rounded-2xl h-12 font-black uppercase tracking-widest mt-4">
+            <Button
+              onClick={() => setActiveInfo(null)}
+              className="w-full rounded-2xl h-12 font-black uppercase tracking-widest mt-4"
+            >
               Entendi
             </Button>
           </DialogContent>
         </Dialog>
       </main>
+      </div>
     </div>
-
   );
 }

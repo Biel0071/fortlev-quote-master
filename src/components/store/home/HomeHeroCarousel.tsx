@@ -12,8 +12,8 @@ export function HomeHeroCarousel({
   if (loading && banners.length === 0) {
     return (
       <section className="px-4 sm:px-6">
-        <div className="w-full overflow-hidden rounded-3xl border border-border bg-card">
-          <Skeleton className="h-[220px] sm:h-[260px] lg:h-[400px] w-full" />
+        <div className="w-full overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 bg-muted/30">
+          <Skeleton className="aspect-[16/7] sm:aspect-[1200/380] md:aspect-[1200/350] lg:aspect-[1200/320] w-full" />
         </div>
       </section>
     );

@@ -20,6 +20,8 @@ const ContainersView = lazy(() => import("@/components/admin/master/platform/Con
 const AlertsCenter = lazy(() => import("@/components/admin/master/platform/AlertsCenter"));
 const BackupsCenter = lazy(() => import("@/components/admin/master/platform/BackupsCenter"));
 const MonitoringDashboard = lazy(() => import("@/components/admin/master/platform/MonitoringDashboard"));
+const AdminAdvancedAnalytics = lazy(() => import("@/modules/admin/pages/AdminAdvancedAnalytics"));
+const AdminQuotationModels = lazy(() => import("@/modules/admin/pages/AdminQuotationModels"));
 
 function MasterPlaceholder({ title }: { title: string }) {
   return (
@@ -110,7 +112,7 @@ const MasterAdmin = () => {
               <Route path="plans" element={<SaaSPlansManager />} />
               <Route path="finance" element={<FinanceManager />} />
               <Route path="blueprints" element={<BlueprintsManager />} />
-              <Route path="templates" element={<MasterPlaceholder title="Templates" />} />
+              <Route path="templates" element={<AdminQuotationModels />} />
               <Route path="modules" element={<ModulesManager />} />
               <Route path="ia" element={<MasterAICentral />} />
               <Route path="whitelabel" element={<WhiteLabelSettings />} />
@@ -122,7 +124,7 @@ const MasterAdmin = () => {
               <Route path="monitoring" element={<MonitoringDashboard />} />
               <Route path="alerts" element={<AlertsCenter />} />
               <Route path="backups" element={<BackupsCenter />} />
-              <Route path="analytics" element={<MasterPlaceholder title="Analytics Master" />} />
+              <Route path="analytics" element={<AdminAdvancedAnalytics />} />
               <Route path="logs" element={<MasterLogs />} />
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/admin/master" replace />} />

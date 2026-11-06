@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Play Store Studio & Editor</title>
+  <link rel="icon" type="image/png" href="assets/sniper_app_icon.png">
+  <!-- Google Fonts: Google Sans / Roboto / Material Symbols -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="studio-layout">
+
+  <!-- ================= TOP STUDIO TOOLBAR ================= -->
+  <header class="studio-topbar">
+    <div class="studio-brand">
+      <div class="studio-logo-badge">
+        <svg viewBox="0 0 40 40" width="22" height="22">
+          <path d="M7 5.5C7 4.4 8.2 3.7 9.1 4.3L28.5 15.6L22.2 20.8L7 6.4V5.5Z" fill="#32A071"/>
+          <path d="M7 34.5V6.4L22.2 20.8L7 34.5Z" fill="#00A0DC"/>
+          <path d="M7 34.5C7 35.6 8.2 36.3 9.1 35.7L28.5 24.4L22.2 20.8L7 34.5Z" fill="#E42528"/>
+          <path d="M28.5 15.6L34.2 18.9C35.5 19.6 35.5 21.4 34.2 22.1L28.5 25.4L21.7 20.5L28.5 15.6Z" fill="#FFCC00"/>
+        </svg>
+      </div>
+      <div class="studio-title-block">
+        <span class="studio-title">Google Play <strong>Studio & Editor</strong></span>
+        <span class="studio-badge-live">AO VIVO</span>
+      </div>
+    </div>
+
+    <!-- Presets Selector & Save Slot -->
+    <div class="studio-presets">
+      <label for="presetSelect" class="preset-label">Modelo:</label>
+      <select id="presetSelect" class="studio-select">
+        <option value="sniper3d">Sniper 3D (Original)</option>
+        <option value="jadlog">Jadlog envio (Referência)</option>
+        <option value="freefire">Free Fire MAX</option>
+        <option value="minecraft">Minecraft</option>
+        <option value="custom">Novo Jogo (Em Branco)</option>
+      </select>
+      <button class="studio-btn studio-btn-sm" id="saveProjectBtn" title="Salvar projeto atual na lista de modelos">
+        <span class="material-symbols-outlined">bookmark_add</span>
+        <span>Salvar</span>
+      </button>
+      <div class="history-controls">
+        <button class="icon-studio-btn" id="undoBtn" title="Desfazer (Ctrl+Z)" disabled>
+          <span class="material-symbols-outlined">undo</span>
+        </button>
+        <button class="icon-studio-btn" id="redoBtn" title="Refazer (Ctrl+Y)" disabled>
+          <span class="material-symbols-outlined">redo</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Viewport Display Modes -->
+    <div class="studio-viewport-controls">
+      <button class="vp-btn active" id="vpDesktopBtn" title="Modo Desktop 100%">
+        <span class="material-symbols-outlined">desktop_windows</span>
+        <span>Desktop Fluido</span>
+      </button>
+      <button class="vp-btn" id="vpReferenceBtn" title="Modo Referência 632px (Proporção do Print)">
+        <span class="material-symbols-outlined">tablet_mac</span>
+        <span>Referência (632px)</span>
+      </button>
+      <button class="vp-btn" id="vpMobileBtn" title="Modo Celular (390px)">
+        <span class="material-symbols-outlined">smartphone</span>
+        <span>Mobile (390px)</span>
+      </button>
+      <button class="vp-btn" id="toggleAdminBtn" title="Alternar Painel Editor Lateral">
+        <span class="material-symbols-outlined" id="toggleAdminIcon">dock_to_right</span>
+        <span id="toggleAdminText">Ocultar Editor</span>
+      </button>
+    </div>
+
+    <!-- Actions: Export Standalone HTML / Export JSON / Import / Reset -->
+    <div class="studio-actions">
+      <button class="studio-btn" id="resetBtn" title="Restaurar padrão original">
+        <span class="material-symbols-outlined">restart_alt</span>
+        <span>Restaurar</span>
+      </button>
+      <button class="studio-btn" id="exportBtn" title="Exportar dados do App em JSON">
+        <span class="material-symbols-outlined">data_object</span>
+        <span>JSON</span>
+      </button>
+      <label class="studio-btn studio-btn-file" title="Importar arquivo JSON salvo">
+        <span class="material-symbols-outlined">upload</span>
+        <span>Importar</span>
+        <input type="file" id="importJsonInput" accept=".json" style="display:none;">
+      </label>
+      <button class="studio-btn studio-btn-primary" id="exportHtmlBtn" title="Baixar Página HTML Pronta para Publicação (Sem Editor)">
+        <span class="material-symbols-outlined">rocket_launch</span>
+        <span>Exportar HTML Pronto</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= MAIN WORKSPACE (SPLIT VIEW) ================= -->
+  <div class="studio-workspace" id="studioWorkspace">
+
+    <!-- ================= ADMIN SIDEBAR EDITOR ================= -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="admin-sidebar-header">
+        <div class="admin-sidebar-title">
+          <span class="material-symbols-outlined">tune</span>
+          <h2>Editor de Informações do Jogo</h2>
+        </div>
+        <p class="admin-sidebar-hint">Modifique abaixo ou <strong>clique em qualquer item na loja ao lado</strong> para editar instantaneamente.</p>
+        
+        <!-- Google Play Link Sync Magic Box -->
+        <div class="sync-play-box" style="margin-top: 10px; padding: 10px; background: rgba(1, 135, 95, 0.12); border: 1px solid rgba(1, 135, 95, 0.35); border-radius: 8px;">
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: #6dd58c; margin-bottom: 6px;">
+            <span class="material-symbols-outlined" style="font-size: 16px;">sync_saved_locally</span>
+            <span>Sincronização 99% via Link do Google Play</span>
+          </label>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="inputGooglePlayUrl" class="form-control form-control-sm" placeholder="Cole o link do Google Play aqui..." style="font-size: 11px; flex: 1;">
+            <button type="button" class="studio-btn studio-btn-primary" id="btnSyncGooglePlay" style="padding: 4px 10px; font-size: 11px; white-space: nowrap; height: auto;">
+              <span class="material-symbols-outlined" style="font-size: 15px;">cloud_download</span>
+              <span>Sincronizar</span>
+            </button>
+          </div>
+          <small style="display: block; font-size: 10px; color: #9aa0a6; margin-top: 4px;">Puxa título, desenvolvedor, ícone, banner, nota, downloads, screenshots e resenhas automaticamente!</small>
+        </div>
+
+        <!-- Quick Section Visibility Toggles -->
+        <div class="section-toggles-bar">
+          <span class="toggles-bar-label">Seções Visíveis na Página:</span>
+          <div class="toggles-chips">
+            <label class="toggle-chip"><input type="checkbox" id="toggleEventsSec" checked><span>Eventos</span></label>
+            <label class="toggle-chip"><input type="checkbox" id="toggleFeaturedSec" checked><span>Destaques</span></label>
+            <label class="toggle-chip"><input type="checkbox" id="toggleWhatsNewSec" checked><span>Novidades</span></label>
+            <label class="toggle-chip"><input type="checkbox" id="toggleDataSafetySec" checked><span>Segurança</span></label>
+            <label class="toggle-chip"><input type="checkbox" id="toggleReviewsSec" checked><span>Avaliações</span></label>
+            <label class="toggle-chip"><input type="checkbox" id="toggleReqSec" checked><span>Requisitos</span></label>
+            <label class="toggle-chip"><input type="checkbox" id="toggleRelatedAppsSec" checked><span>Outros Apps</span></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-accordion">
+
+        <!-- 1. Informações Básicas do App -->
+        <details class="admin-section" open>
+          <summary class="admin-section-summary">
+            <span class="material-symbols-outlined sec-icon">apps</span>
+            <span>1. Informações Principais</span>
+            <span class="material-symbols-outlined chevron">expand_more</span>
+          </summary>
+          <div class="admin-section-content">
+            
+            <div class="form-group">
+              <label for="inputAppTitle">Título do Jogo / App</label>
+              <input type="text" id="inputAppTitle" class="form-control" placeholder="Ex: Sniper 3D: Jogos de tiro">
+            </div>
+
+            <div class="form-group">
+              <label for="inputDeveloper">Desenvolvedor / Estúdio</label>
+              <input type="text" id="inputDeveloper" class="form-control" placeholder="Ex: Wildlife Studios">
+            </div>
+
+            <div class="form-group">
+              <label for="inputSubtitle">Subtítulo / Informações de Anúncios</label>
+              <input type="text" id="inputSubtitle" class="form-control" placeholder="Ex: Contém anúncios · Compras no app">
+            </div>
+
+            <!-- Logo / Ícone do App -->
+            <div class="form-group">
+              <label>Ícone / Logo do App</label>
+              <div class="image-uploader-box">
+                <div class="image-preview-thumb">
+                  <img id="adminIconPreview" src="assets/sniper_app_icon.png" alt="Preview Ícone">
+                </div>
+                <div class="image-upload-controls">
+                  <label class="btn-file-upload">
+                    <span class="material-symbols-outlined">add_photo_alternate</span>
+                    <span>Enviar Logo do PC</span>
+                    <input type="file" id="uploadLogoInput" accept="image/*" style="display:none;">
+                  </label>
+                  <input type="text" id="inputLogoUrl" class="form-control form-control-sm" placeholder="Ou cole a URL da imagem...">
+                </div>
+              </div>
+            </div>
+
+            <!-- Avaliação e Downloads -->
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="inputRating">Nota (★)</label>
+                <input type="text" id="inputRating" class="form-control" placeholder="4,7">
+              </div>
+              <div class="form-group">
+                <label for="inputReviews">Total de Avaliações</label>
+                <input type="text" id="inputReviews" class="form-control" placeholder="18,4 mi avaliações">
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="inputDownloads">Nº de Downloads</label>
+                <input type="text" id="inputDownloads" class="form-control" placeholder="500 mi+">
+              </div>
+              <div class="form-group">
+                <label for="inputDownloadsLabel">Rótulo</label>
+                <input type="text" id="inputDownloadsLabel" class="form-control" placeholder="downloads">
+              </div>
+            </div>
+
+          </div>
+        </details>
+
+        <!-- 2. Banner Principal & Ações -->
+        <details class="admin-section" open>
+          <summary class="admin-section-summary">
+            <span class="material-symbols-outlined sec-icon">image</span>
+            <span>2. Banner Principal & Botões</span>
+            <span class="material-symbols-outlined chevron">expand_more</span>
+          </summary>
+          <div class="admin-section-content">
+            
+            <div class="form-group">
+              <label>Arte de Fundo do Banner (Key Art / Cena do Jogo)</label>
+              <div class="image-uploader-box">
+                <div class="image-preview-thumb hero-thumb">
+                  <img id="adminHeroPreview" src="assets/hero_key_art.png" alt="Preview Hero">
+                </div>
+                <div class="image-upload-controls">
+                  <label class="btn-file-upload">
+                    <span class="material-symbols-outlined">upload_file</span>
+                    <span>Trocar Arte do Banner</span>
+                    <input type="file" id="uploadHeroInput" accept="image/*" style="display:none;">
+                  </label>
+                  <input type="text" id="inputHeroUrl" class="form-control form-control-sm" placeholder="Ou cole a URL da imagem...">
+                </div>
+              </div>
+            </div>
+
+            <!-- Banner Style & Full Background Customizer -->
+            <div class="form-group" style="padding: 10px; background: rgba(255, 255, 255, 0.04); border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.08);">
+              <label style="font-size: 11px; font-weight: 600; color: #8ab4f8; margin-bottom: 6px; display: block;">Estilo & Ajuste do Fundo do Banner:</label>
+              <div class="form-grid-2">
+                <div>
+                  <label for="inputBannerMode" style="font-size: 10.5px;">Modo do Banner</label>
+                  <select id="inputBannerMode" class="form-control form-control-sm">
+                    <option value="right_art">Arte à Direita com Degradê (Original Play)</option>
+                    <option value="full_cover">Fundo Completo (Cover 100%)</option>
+                    <option value="solid_color">Cor Sólida / Gradiente</option>
+                    <option value="none">Ocultar Banner de Fundo</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="inputBannerColor" style="font-size: 10.5px;">Cor / Gradiente de Fundo</label>
+                  <input type="text" id="inputBannerColor" class="form-control form-control-sm" placeholder="#0b131e ou linear-gradient...">
+                </div>
+              </div>
+              <div style="margin-top: 6px;">
+                <label for="inputBannerOpacity" style="font-size: 10.5px;">Opacidade da Imagem (0 a 100%)</label>
+                <input type="range" id="inputBannerOpacity" min="0" max="100" value="100" style="width: 100%; cursor: pointer;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="inputInstallBtn">Texto do Botão Principal</label>
+              <input type="text" id="inputInstallBtn" class="form-control" placeholder="Instalar ou Instalar no Windows">
+            </div>
+
+            <div class="form-group">
+              <label for="inputInstallUrl">Link de Download do APK / Arquivo</label>
+              <input type="text" id="inputInstallUrl" class="form-control" placeholder="URL do APK para download automático...">
+            </div>
+
+            <div class="form-group">
+              <label class="toggle-chip" style="margin-top: 4px; display: inline-flex; cursor: pointer;">
+                <input type="checkbox" id="inputAutoStartDownload">
+                <span style="font-weight: 600; color: #6dd58c;">⚡ Iniciar Download Automaticamente ao Carregar a Página</span>
+              </label>
+              <small style="display: block; color: #9aa0a6; font-size: 11px; margin-top: 4px;">Se ativado, ao carregar a página o botão já começa a encher a barra, gira o ícone e faz o download do APK ao finalizar!</small>
+            </div>
+
+            <div class="form-group">
+              <label for="inputArrowText">Texto da Seta de Instalação</label>
+              <input type="text" id="inputArrowText" class="form-control" placeholder="clique em abrir para Instalar o app">
+            </div>
+
+            <div class="form-group">
+              <label for="inputInstallMode">Comportamento do Clique em Instalar</label>
+              <select id="inputInstallMode" class="form-control">
+                <option value="direct_flow">Fluxo de Conversão Real (Snake Loader + Progresso + Seta ↑ + Download)</option>
+                <option value="modal">Abrir Modal de Instalação Google Play Games PC</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="inputInstallOtherBtn">Texto do Botão Secundário</label>
+              <input type="text" id="inputInstallOtherBtn" class="form-control" placeholder="Instalar em outros locais">
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="inputTrailerBtn">Texto Botão Trailer</label>
+                <input type="text" id="inputTrailerBtn" class="form-control" placeholder="Trailer">
+              </div>
+              <div class="form-group">
+                <label for="inputTrailerYoutube">YouTube ID do Trailer</label>
+                <input type="text" id="inputTrailerYoutube" class="form-control" placeholder="5F_fNlGqj0o">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="inputDisclaimer">Aviso Legal / Termos</label>
+              <textarea id="inputDisclaimer" class="form-control form-textarea-sm" rows="3"></textarea>
+            </div>
+
+          </div>
+        </details>
+
+        <!-- 3. Galeria de Screenshots -->
+        <details class="admin-section">
+          <summary class="admin-section-summary">
+            <span class="material-symbols-outlined sec-icon">photo_library</span>
+            <span>3. Galeria de Screenshots</span>
+            <span class="material-symbols-outlined chevron">expand_more</span>
+          </summary>
+          <div class="admin-section-content">
+            <p class="section-desc">Gerencie e reordene as capturas de tela exibidas no carrossel (formato 16:9):</p>
+            <div class="screenshots-manager" id="screenshotsManager">
+              <!-- Dynamically populated screenshot cards with reorder & delete buttons -->
+            </div>
+            <label class="btn-file-upload add-screenshot-btn">
+              <span class="material-symbols-outlined">add_photo_alternate</span>
+              <span>+ Adicionar Nova Captura de Tela</span>
+              <input type="file" id="uploadNewScreenshotInput" accept="image/*" style="display:none;">
+            </label>
+          </div>
+        </details>
+
+        <!-- 4. Sobre este Jogo & Tags -->
+        <details class="admin-section">
+          <summary class="admin-section-summary">
+            <span class="material-symbols-outlined sec-icon">description</span>
+            <span>4. Sobre este Jogo & Tags</span>
+            <span class="material-symbols-outlined chevron">expand_more</span>
+          </summary>
+          <div class="admin-section-content">
+            
+            <div class="form-group">
+              <label for="inputAboutText">Descrição do Jogo</label>
+              <textarea id="inputAboutText" class="form-control" rows="5"></textarea>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="inputUpdatedAt">Atualizado em</label>
+                <input type="text" id="inputUpdatedAt" class="form-control" placeholder="29 de set. de 2026">
+              </div>
+              <div class="form-group">
+                <label for="inputPlatforms">Disponível em</label>
+                <input type="text" id="inputPlatforms" class="form-control" placeholder="Android, Windows*">
+              </div>
+            </div>
+
+            <!-- Category Tags Manager -->
+            <div class="form-group">
+              <label>Categorias / Tags (Pills)</label>
+              <div class="tag-input-row">
+                <input type="text" id="newTagInput" class="form-control" placeholder="Nova categoria...">
+                <button type="button" class="btn-add-tag" id="addTagBtn">+ Adicionar</button>
+              </div>
+              <div class="tags-badge-list" id="adminTagsList">
+                <!-- Dynamically populated tags with delete X -->
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="inputIntelNote">Nota de Rodapé</label>
+              <input type="text" id="inputIntelNote" class="form-control" placeholder="*Com a tecnologia Intel®">
+            </div>
+
+          </div>
+        </details>
+
+        <!-- 5. Eventos e Ofertas / Matérias em Destaque -->
+        <details class="admin-section">
+          <summary class="admin-section-summary">
+            <span class="material-symbols-outlined sec-icon">campaign</span>
+            <span>5. Eventos & Destaques</span>
+            <span class="material-symbols-outlined chevron">expand_more</span>
+          </summary>
+          <div class="admin-section-content">
+            
+            <h4 class="sub-heading">Card de Eventos e Ofertas</h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="inputEventBadge">Selo do Evento</label>
+                <input type="text" id="inputEventBadge" class="form-control" placeholder="Termina em 10/29">
+              </div>
+              <div class="form-group">
+                <label for="inputEventTitle">Título do Evento</label>
+                <input type="text" id="inputEventTitle" class="form-control" placeholder="Horizonte Eterno">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inputEventTheme">Cor de Fundo do Card de Evento</label>
+              <select id="inputEventTheme" class="form-control">
+                <option value="slate">Azul Slate (Original)</option>
+                <option value="emerald">Verde Esmeralda</option>
+                <option value="crimson">Vermelho Carmesim</option>
+                <option value="purple">Roxo Galáxia</option>
+                <option value="carbon">Carbono Escuro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Ilustração do Evento</label>
+              <div class="image-uploader-box">
+                <div class="image-preview-thumb banner-thumb">
+                  <img id="adminEventPreview" src="assets/event_art_clean.png" alt="Preview Evento">
+                </div>
+                <div class="image-upload-controls">
+                  <label class="btn-file-upload">
+                    <span class="material-symbols-outlined">upload_file</span>
+                    <span>Enviar Arte do Evento</span>
+                    <input type="file" id="uploadEventInput" accept="image/*" style="display:none;">
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <h4 class="sub-heading" style="margin-top: 16px;">Card de Matérias em Destaque</h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="inputFeatureBadge">Selo de Destaque</label>
+                <input type="text" id="inputFeatureBadge" class="form-control" placeholder="Data especial">
+              </div>
+              <div class="form-group">
+                <label for="inputFeatureTitle">Título do Destaque</label>
+                <input type="text" id="inputFeatureTitle" class="form-control" placeholder="Celebração de Aniversário Sniper 3D">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inputFeatureDesc">Descrição do Destaque</label>
+              <input type="text" id="inputFeatureDesc" class="form-control" placeholder="Participe de desafios exclusivos...">
+            </div>
+            <div class="form-group">
+              <label for="inputFeatureTheme">Cor de Fundo do Card de Destaque</label>
+              <select id="inputFeatureTheme" class="form-control">
+                <option value="gold">Amarelo Dourado (Original)</option>
+                <option value="sunset">Laranja Pôr do Sol</option>
+                <option value="cyber">Roxo Neon</option>
+                <option value="ocean">Azul Oceano</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Ilustração de Destaque</label>
+              <div class="image-uploader-box">
+                <div class="image-preview-thumb banner-thumb">
+                  <img id="adminFeaturePreview" src="assets/featured_art_clean.png" alt="Preview Destaque">
+                </div>
+                <div class="image-upload-controls">
+                  <label class="btn-file-upload">
+                    <span class="material-symbols-outlined">upload_file</span>
+                    <span>Enviar Arte de Destaque</span>
+                    <input type="file" id="uploadFeatureInput" accept="image/*" style="display:none;">
+                  </label>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </details>
+
+        <!-- 6. O que há de novo & Segurança dos Dados -->
+        <details class="admin-section">
+          <summary class="admin-section-summary">
+            <span class="material-symbols-outlined sec-icon">verified_user</span>
+            <span>6. Novidades & Segurança dos Dados</span>
+            <span class="material-symbols-outlined chevron">expand_more</span>
+          </summary>
+          <div class="admin-section-content">
+            <h4 class="sub-heading">O que há de novo</h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="inputAppVersion">Versão do Jogo</label>
+                <input type="text" id="inputAppVersion" class="form-control" placeholder="4.29.0">
+              </div>
+              <div class="form-group">
+                <label for="inputAppSize">Tamanho do Download</label>
+                <input type="text" id="inputAppSize" class="form-control" placeholder="185 MB">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inputWhatsNewText">Notas da Atualização</label>
+              <textarea id="inputWhatsNewText" class="form-control" rows="3"></textarea>
+            </div>
+
+            <h4 class="sub-heading" style="margin-top: 16px;">Segurança dos Dados</h4>
+            <div class="form-group">
+              <label for="inputDataSafetyIntro">Resumo de Segurança</label>
+              <textarea id="inputDataSafetyIntro" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="inputDataSafetyShare">Compartilhamento com Terceiros</label>
+              <input type="text" id="inputDataSafetyShare" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="inputDataSafetyCollect">Coleta de Dados</label>
+              <input type="text" id="inputDataSafetyCollect" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="inputDataSafetyEncrypt">Criptografia</label>
+              <input type="text" id="inputDataSafetyEncrypt" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="inputDataSafetyDelete">Exclusão de Dados</label>
+              <input type="text" id="inputDataSafetyDelete" class="form-control">
+            </div>
+          </div>
+        </details>
+
+        <!-- 7. Classificações e Resenhas -->
+        <details class="admin-section">
+          <summary class="admin-section-summary">
+            <span class="material-symbols-outlined sec-icon">reviews</span>
+            <span>7. Classificações & Resenhas</span>
+            <span class="material-symbols-outlined chevron">expand_more</span>
+          </summary>
+          <div class="admin-section-content">
+            <h4 class="sub-heading">Distribuição das Barras (0 a 100%)</h4>
+            <div class="histogram-inputs-grid">
+              <div class="form-group"><label for="inputBar5">5★ (%)</label><input type="number" id="inputBar5" class="form-control" min="0" max="100"></div>
+              <div class="form-group"><label for="inputBar4">4★ (%)</label><input type="number" id="inputBar4" class="form-control" min="0" max="100"></div>
+              <div class="form-group"><label for="inputBar3">3★ (%)</label><input type="number" id="inputBar3" class="form-control" min="0" max="100"></div>
+              <div class="form-group"><label for="inputBar2">2★ (%)</label><input type="number" id="inputBar2" class="form-control" min="0" max="100"></div>
+              <div class="form-group"><label for="inputBar1">1★ (%)</label><input type="number" id="inputBar1" class="form-control" min="0" max="100"></div>
+            </div>
+
+            <h4 class="sub-heading" style="margin-top: 14px;">Resenha em Destaque #1</h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="inputRev1Name">Autor</label>
+                <input type="text" id="inputRev1Name" class="form-control">
+              </div>
+              <div class="form-group">
+                <label for="inputRev1Date">Data</label>
+                <input type="text" id="inputRev1Date" class="form-control">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inputRev1Text">Comentário</label>
+              <textarea id="inputRev1Text" class="form-control" rows="2"></textarea>
+            </div>
+
+            <h4 class="sub-heading" style="margin-top: 14px;">Resenha em Destaque #2</h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="inputRev2Name">Autor</label>
+                <input type="text" id="inputRev2Name" class="form-control">
+              </div>
+              <div class="form-group">
+                <label for="inputRev2Date">Data</label>
+                <input type="text" id="inputRev2Date" class="form-control">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inputRev2Text">Comentário</label>
+              <textarea id="inputRev2Text" class="form-control" rows="2"></textarea>
+            </div>
+
+            <h4 class="sub-heading" style="margin-top: 14px;">Resenha em Destaque #3</h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="inputRev3Name">Autor</label>
+                <input type="text" id="inputRev3Name" class="form-control">
+              </div>
+              <div class="form-group">
+                <label for="inputRev3Date">Data</label>
+                <input type="text" id="inputRev3Date" class="form-control">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inputRev3Text">Comentário</label>
+              <textarea id="inputRev3Text" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+        </details>
+
+        <!-- 8. Barra Lateral (Classificação, Jogar no PC, Requisitos) -->
+        <details class="admin-section">
+          <summary class="admin-section-summary">
+            <span class="material-symbols-outlined sec-icon">sports_esports</span>
+            <span>8. Barra Lateral & Requisitos</span>
+            <span class="material-symbols-outlined chevron">expand_more</span>
+          </summary>
+          <div class="admin-section-content">
+            
+            <h4 class="sub-heading">Classificação Indicativa</h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="inputRatingBadge">Idade</label>
+                <input type="text" id="inputRatingBadge" class="form-control" placeholder="18">
+              </div>
+              <div class="form-group">
+                <label for="inputRatingTitle">Título</label>
+                <input type="text" id="inputRatingTitle" class="form-control" placeholder="Classificação 18 anos">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inputRatingDesc">Motivo da Classificação</label>
+              <input type="text" id="inputRatingDesc" class="form-control" placeholder="Violência Extrema">
+            </div>
+
+            <h4 class="sub-heading" style="margin-top: 16px;">Card "Jogar no PC"</h4>
+            <div class="form-group">
+              <label for="inputPcTitle">Título do Card</label>
+              <input type="text" id="inputPcTitle" class="form-control" placeholder="Jogar no PC">
+            </div>
+            <div class="form-group">
+              <label for="inputPcSubtitle">Subtítulo</label>
+              <input type="text" id="inputPcSubtitle" class="form-control" placeholder="Acesse este jogo no seu PC Windows...">
+            </div>
+
+            <h4 class="sub-heading" style="margin-top: 16px;">Requisitos Mínimos</h4>
+            <div class="form-group">
+              <label for="inputReqOs">Sistema Operacional (SO)</label>
+              <input type="text" id="inputReqOs" class="form-control" placeholder="Windows 10 (v2004)">
+            </div>
+            <div class="form-group">
+              <label for="inputReqStorage">Armazenamento</label>
+              <input type="text" id="inputReqStorage" class="form-control" placeholder="SSD com 10 GB de espaço disponível">
+            </div>
+            <div class="form-group">
+              <label for="inputReqGpu">Placa de Vídeo (GPU)</label>
+              <input type="text" id="inputReqGpu" class="form-control" placeholder="GPU Intel® UHD Graphics 630 ou comparável">
+            </div>
+            <div class="form-group">
+              <label for="inputReqCpu">Processador (CPU)</label>
+              <input type="text" id="inputReqCpu" class="form-control" placeholder="4 núcleos físicos de CPU">
+            </div>
+
+            <h4 class="sub-heading" style="margin-top: 16px;">Apps Semelhantes (Outros Apps na Lateral)</h4>
+            <p class="section-desc" style="margin-bottom: 8px;">Puxados automaticamente ao sincronizar o link ou configure manualmente:</p>
+            <div id="adminRelatedAppsManager">
+              <!-- Gerenciamento de apps relacionados -->
+            </div>
+            <button type="button" class="btn-file-upload add-screenshot-btn" id="btnAddRelatedApp" style="width: 100%; justify-content: center; cursor: pointer; border: 1px dashed rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); margin-top: 6px;">
+              <span class="material-symbols-outlined">add_box</span>
+              <span>+ Adicionar App Semelhante</span>
+            </button>
+
+          </div>
+        </details>
+
+      </div>
+    </aside>
+
+    <!-- ================= LIVE PREVIEW AREA ================= -->
+    <main class="preview-area" id="previewArea">
+      <div class="preview-viewport-wrapper mode-desktop" id="previewViewport">
+
+        <!-- ================= GOOGLE PLAY STORE PAGE ================= -->
+        <div class="play-page-container" id="playPage">
+          
+          <!-- OVERLAY DE DOWNLOAD & SETA INDICADORA (PADRÃO MEUDOWNLOAD.STORE) -->
+          <div id="pageOverlay" class="page-overlay"></div>
+          <div id="openArrowIndicator" class="open-arrow-indicator">
+            <span class="blinking-arrow">↑</span>
+            <div class="arrow-text" id="displayArrowText">clique em abrir<br>para Instalar o app</div>
+          </div>
+          
+          <!-- TOP HEADER BAR -->
+          <header class="play-header">
+            <div class="header-container">
+              <div class="header-left">
+                <a href="#" class="play-logo" title="Google Play">
+                  <svg class="play-logo-icon" viewBox="0 0 40 40" width="30" height="30">
+                    <path d="M7 5.5C7 4.4 8.2 3.7 9.1 4.3L28.5 15.6L22.2 20.8L7 6.4V5.5Z" fill="#32A071"/>
+                    <path d="M7 34.5V6.4L22.2 20.8L7 34.5Z" fill="#00A0DC"/>
+                    <path d="M7 34.5C7 35.6 8.2 36.3 9.1 35.7L28.5 24.4L22.2 20.8L7 34.5Z" fill="#E42528"/>
+                    <path d="M28.5 15.6L34.2 18.9C35.5 19.6 35.5 21.4 34.2 22.1L28.5 25.4L21.7 20.5L28.5 15.6Z" fill="#FFCC00"/>
+                  </svg>
+                  <span class="play-logo-text">Google Play</span>
+                </a>
+
+                <nav class="nav-links">
+                  <a href="#" class="nav-item">Jogos</a>
+                  <a href="#" class="nav-item active">Apps</a>
+                  <a href="#" class="nav-item">Livros</a>
+                  <a href="#" class="nav-item">Crianças</a>
+                  <a href="#" class="nav-item">Vales-presente</a>
+                </nav>
+              </div>
+
+              <div class="header-right">
+                <div class="search-box-wrapper">
+                  <button class="icon-button" id="searchBtn" title="Pesquisar">
+                    <span class="material-symbols-outlined">search</span>
+                  </button>
+                  <div class="search-dropdown" id="searchDropdown">
+                    <input type="text" id="searchInput" placeholder="Pesquisar apps e jogos..." autocomplete="off">
+                    <div class="search-quick-tags">
+                      <span class="quick-tag" id="quickTag1">Sniper 3D</span>
+                      <span class="quick-tag">Jogos de tiro</span>
+                      <span class="quick-tag">Google Play Games PC</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button class="icon-button" title="Ajuda">
+                  <span class="material-symbols-outlined">help_outline</span>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <!-- HERO BANNER SECTION (Never Distorted / Perfect Right Key Art) -->
+          <section class="hero-section" id="heroSection">
+            <div class="hero-bg-container">
+              <div class="hero-art-wrapper">
+                <img src="assets/hero_key_art.png" alt="Key Art" class="hero-key-art-img" id="heroKeyArtImg">
+                <div class="hero-art-gradient-overlay"></div>
+              </div>
+            </div>
+
+            <div class="hero-container">
+              <div class="hero-content">
+                <h1 class="hero-title" id="displayAppTitle" data-edit-target="inputAppTitle">Sniper 3D: &nbsp;Jogos de tiro</h1>
+                <div class="hero-developer-row">
+                  <a href="#" class="developer-link" id="displayDeveloper" data-edit-target="inputDeveloper">Wildlife Studios</a>
+                </div>
+                <div class="hero-meta-subtitle" id="displaySubtitle" data-edit-target="inputSubtitle">
+                  Contém anúncios · Compras no app
+                </div>
+
+                <!-- Stats Row -->
+                <div class="hero-stats-row">
+                  <div class="app-icon-container icon-loader-wrapper" id="iconLoaderContainer" data-edit-target="inputLogoUrl">
+                    <svg class="icon-loader-svg" viewBox="0 0 100 100">
+                      <circle class="icon-loader-circle-bg" cx="50" cy="50" r="46"></circle>
+                      <circle class="icon-loader-circle-progress" id="iconProgressCircle" cx="50" cy="50" r="46" stroke-dasharray="289" stroke-dashoffset="289"></circle>
+                    </svg>
+                    <img src="assets/sniper_app_icon.png" alt="Logo do App" class="app-icon-img" id="displayAppIcon">
+                  </div>
+
+                  <div class="stat-item rating-stat" data-edit-target="inputRating">
+                    <div class="stat-top">
+                      <span class="stat-val" id="displayRatingVal">4,7</span>
+                      <span class="material-symbols-outlined star-icon filled-star">star</span>
+                    </div>
+                    <div class="stat-bottom" id="displayRatingCount">18,4 mi avaliações</div>
+                  </div>
+
+                  <div class="stat-divider"></div>
+
+                  <div class="stat-item downloads-stat" data-edit-target="inputDownloads">
+                    <div class="stat-top">
+                      <span class="stat-val" id="displayDownloadsVal">500 mi+</span>
+                    </div>
+                    <div class="stat-bottom" id="displayDownloadsLabel">downloads</div>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="hero-actions-row">
+                  <a id="downloadTrigger" href="#" style="text-decoration:none;">
+                    <button class="btn btn-primary play-btn-install" id="installBtn" data-edit-target="inputInstallBtn" aria-label="Instalar">
+                      <div class="btn-download-wrapper">
+                        <div class="btn-progress-fill" id="progressFillMain"></div>
+                        <div class="btn-loader" id="btnLoaderMain"></div>
+                        <span id="displayInstallBtn">Instalar no Windows</span>
+                      </div>
+                    </button>
+                  </a>
+                  <button class="btn btn-secondary" id="installOtherBtn" data-edit-target="inputInstallOtherBtn">
+                    <span id="displayInstallOtherBtn">Instalar em outros locais</span>
+                  </button>
+                  <button class="btn-icon" id="shareBtn" title="Compartilhar">
+                    <span class="material-symbols-outlined">share</span>
+                  </button>
+                  <button class="btn-icon" id="wishlistBtn" title="Adicionar à lista de desejos">
+                    <span class="material-symbols-outlined">bookmark_border</span>
+                  </button>
+                </div>
+
+                <!-- Disclaimer -->
+                <div class="hero-disclaimer" id="displayDisclaimer" data-edit-target="inputDisclaimer">
+                  É necessário ter o Google Play Games no PC para instalar este jogo no Windows. Ao fazer o
+                  download do app e do jogo, você concorda com os
+                  <a href="#" class="disclaimer-link">Termos de Serviço do Google <span class="material-symbols-outlined ext-icon">open_in_new</span></a> e do
+                  <a href="#" class="disclaimer-link">Google Play<span class="material-symbols-outlined ext-icon">open_in_new</span></a>.
+                  <a href="#" class="disclaimer-link">Saiba mais.<span class="material-symbols-outlined ext-icon">open_in_new</span></a>
+                </div>
+              </div>
+
+              <!-- Trailer Button -->
+              <button class="hero-trailer-btn" id="trailerBtn" data-edit-target="inputTrailerBtn">
+                <span class="play-triangle">▶</span>
+                <span id="displayTrailerBtn">Trailer</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- MAIN BODY TWO-COLUMN GRID -->
+          <main class="page-body">
+            <div class="body-container">
+              
+              <!-- LEFT COLUMN -->
+              <div class="content-column">
+                
+                <!-- Screenshots Carousel -->
+                <section class="screenshots-section">
+                  <div class="carousel-wrapper">
+                    <div class="carousel-track" id="carouselTrack">
+                      <!-- Dynamically rendered 16:9 screenshot cards -->
+                    </div>
+
+                    <button class="carousel-nav-btn next-btn" id="carouselNextBtn" title="Próximo">
+                      <span class="material-symbols-outlined">chevron_right</span>
+                    </button>
+                    <button class="carousel-nav-btn prev-btn" id="carouselPrevBtn" title="Anterior">
+                      <span class="material-symbols-outlined">chevron_left</span>
+                    </button>
+                  </div>
+                </section>
+
+                <!-- Sobre este jogo -->
+                <section class="about-section">
+                  <div class="section-header-row">
+                    <h2 class="section-title">Sobre este jogo</h2>
+                    <button class="section-arrow-btn" id="aboutModalBtn" title="Ver detalhes completos">
+                      <span class="material-symbols-outlined">arrow_forward</span>
+                    </button>
+                  </div>
+
+                  <div class="about-text-content" data-edit-target="inputAboutText">
+                    <p class="about-paragraph" id="displayAboutText">
+                      Prepare-se para liberar a melhor experiência Sniper 3D com o jogo de tiro mais emocionante e cheio de ação de todos os tempos! Sniper 3d é o jogo definitivo de armas grátis que coloca você na pele de um assassino mortal. Mergulhe em missões off-line de alta intensidade e mostre suas habilidades de tiro nesta aventura de atirador cheio de adrenalina. Você é o melhor atirador? Prove isso no Sniper 3d!
+                    </p>
+                    <div class="about-more-dots" id="moreDots">...</div>
+                  </div>
+
+                  <!-- Metadata Grid -->
+                  <div class="about-meta-grid">
+                    <div class="meta-col" data-edit-target="inputUpdatedAt">
+                      <div class="meta-label">Atualizado em</div>
+                      <div class="meta-val" id="displayUpdatedAt">29 de set. de 2026</div>
+                    </div>
+                    <div class="meta-col" data-edit-target="inputPlatforms">
+                      <div class="meta-label">Disponível em</div>
+                      <div class="meta-val" id="displayPlatforms">Android, <a href="#" class="meta-link">Windows*</a></div>
+                    </div>
+                  </div>
+
+                  <!-- Tags (Pills) -->
+                  <div class="pill-tags-container" id="displayTagsContainer">
+                    <!-- Dynamically populated tags -->
+                  </div>
+
+                  <div class="intel-footnote" id="displayIntelNote" data-edit-target="inputIntelNote">
+                    *Com a tecnologia Intel®
+                  </div>
+                </section>
+
+                <!-- Eventos e ofertas (Never Distorted: Vector Card + Crisp Illustration) -->
+                <section class="events-section" id="eventsSection">
+                  <h2 class="section-title">Eventos e ofertas</h2>
+                  <div class="event-card-container theme-slate" id="eventCard" data-edit-target="inputEventTitle">
+                    <div class="event-card-left">
+                      <span class="event-badge" id="displayEventBadge">Termina em 10/29</span>
+                      <h3 class="event-card-title" id="displayEventTitle">Horizonte Eterno</h3>
+                    </div>
+                    <div class="event-card-right">
+                      <img src="assets/event_art_clean.png" alt="Evento" class="event-art-img" id="displayEventBanner">
+                    </div>
+                  </div>
+                </section>
+
+                <!-- Matérias em destaque (Never Distorted: Vector Card + Crisp Illustration) -->
+                <section class="featured-section" id="featuredSection">
+                  <h2 class="section-title">Matérias em destaque</h2>
+                  <div class="featured-card-container theme-gold" id="featuredCard" data-edit-target="inputFeatureTitle">
+                    <div class="featured-card-left">
+                      <span class="featured-badge" id="displayFeatureBadge">Data especial</span>
+                      <h3 class="featured-card-title" id="displayFeatureTitle">Celebração de Aniversário Sniper 3D</h3>
+                      <p class="featured-card-desc" id="displayFeatureDesc">Participe de desafios exclusivos da comunidade e desbloqueie armamentos lendários limitados.</p>
+                    </div>
+                    <div class="featured-card-right">
+                      <img src="assets/featured_art_clean.png" alt="Destaque" class="featured-art-img" id="displayFeatureBanner">
+                    </div>
+                  </div>
+                </section>
+
+                <!-- O que há de novo -->
+                <section class="whats-new-section" id="whatsNewSection" data-edit-target="inputWhatsNewText">
+                  <div class="section-header-row">
+                    <h2 class="section-title">O que há de novo</h2>
+                    <span class="version-pill" id="displayVersionPill">Versão 4.29.0</span>
+                  </div>
+                  <p class="about-paragraph" id="displayWhatsNewText">
+                    • Novo evento sazonal Horizonte Eterno com rifles exclusivos e recompensas em dobro.<br>
+                    • Otimização de desempenho para 120 FPS no Google Play Games para PC.<br>
+                    • Correções de estabilidade e melhorias no pareamento da Arena JxJ.
+                  </p>
+                </section>
+
+                <!-- Segurança dos dados -->
+                <section class="data-safety-section" id="dataSafetySection" data-edit-target="inputDataSafetyIntro">
+                  <div class="section-header-row">
+                    <h2 class="section-title">Segurança dos dados</h2>
+                    <button class="section-arrow-btn" id="dataSafetyArrowBtn" title="Ver detalhes de segurança">
+                      <span class="material-symbols-outlined">arrow_forward</span>
+                    </button>
+                  </div>
+                  <p class="about-paragraph data-safety-intro" id="displayDataSafetyIntro">
+                    Sua segurança começa com o entendimento de como os desenvolvedores coletam e compartilham seus dados. As práticas de segurança e privacidade de dados podem variar de acordo com o uso, a região e a idade. O desenvolvedor forneceu as informações a seguir, que podem ser atualizadas ao longo do tempo.
+                  </p>
+                  <div class="data-safety-card">
+                    <div class="ds-item">
+                      <span class="material-symbols-outlined ds-icon">share</span>
+                      <div class="ds-text" id="displayDataSafetyShare">Este app pode compartilhar estes tipos de dados com terceiros: Localização aproximada e IDs do dispositivo ou outros</div>
+                    </div>
+                    <div class="ds-item">
+                      <span class="material-symbols-outlined ds-icon">cloud_upload</span>
+                      <div class="ds-text" id="displayDataSafetyCollect">Este app pode coletar estes tipos de dados: Informações pessoais, Informações financeiras e mais 4</div>
+                    </div>
+                    <div class="ds-item">
+                      <span class="material-symbols-outlined ds-icon">lock</span>
+                      <div class="ds-text" id="displayDataSafetyEncrypt">Os dados são criptografados em trânsito</div>
+                    </div>
+                    <div class="ds-item">
+                      <span class="material-symbols-outlined ds-icon">delete</span>
+                      <div class="ds-text" id="displayDataSafetyDelete">Você pode solicitar a exclusão dos dados</div>
+                    </div>
+                    <a href="#" class="ds-details-link" id="dataSafetyDetailsLink">Ver detalhes</a>
+                  </div>
+                </section>
+
+                <!-- Classificações e resenhas -->
+                <section class="ratings-reviews-section" id="reviewsSection" data-edit-target="inputBar5">
+                  <div class="section-header-row">
+                    <h2 class="section-title">Classificações e resenhas</h2>
+                    <span class="verified-reviews-note">As notas e avaliações são verificadas <span class="material-symbols-outlined info-mini">info</span></span>
+                  </div>
+
+                  <div class="ratings-overview-grid">
+                    <div class="ratings-big-score-col">
+                      <div class="big-score-num" id="displayBigRating">4,7</div>
+                      <div class="big-score-stars" id="displayBigStars">
+                        <span class="material-symbols-outlined filled-star">star</span>
+                        <span class="material-symbols-outlined filled-star">star</span>
+                        <span class="material-symbols-outlined filled-star">star</span>
+                        <span class="material-symbols-outlined filled-star">star</span>
+                        <span class="material-symbols-outlined filled-star">star_half</span>
+                      </div>
+                      <div class="big-score-count" id="displayBigReviewsCount">18,4 mi avaliações</div>
+                    </div>
+
+                    <div class="ratings-bars-col">
+                      <div class="rating-bar-row">
+                        <span class="bar-label">5</span>
+                        <div class="bar-track"><div class="bar-fill" id="barFill5" style="width: 78%;"></div></div>
+                      </div>
+                      <div class="rating-bar-row">
+                        <span class="bar-label">4</span>
+                        <div class="bar-track"><div class="bar-fill" id="barFill4" style="width: 12%;"></div></div>
+                      </div>
+                      <div class="rating-bar-row">
+                        <span class="bar-label">3</span>
+                        <div class="bar-track"><div class="bar-fill" id="barFill3" style="width: 4%;"></div></div>
+                      </div>
+                      <div class="rating-bar-row">
+                        <span class="bar-label">2</span>
+                        <div class="bar-track"><div class="bar-fill" id="barFill2" style="width: 2%;"></div></div>
+                      </div>
+                      <div class="rating-bar-row">
+                        <span class="bar-label">1</span>
+                        <div class="bar-track"><div class="bar-fill" id="barFill1" style="width: 4%;"></div></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Lista de Resenhas de Usuários -->
+                  <div class="reviews-list" id="displayReviewsList">
+                    <!-- Dynamically populated user review cards -->
+                  </div>
+                </section>
+
+              </div>
+
+              <!-- RIGHT COLUMN (Sidebar) -->
+              <aside class="sidebar-column">
+                
+                <!-- Classificação 18 anos -->
+                <div class="sidebar-card rating-card" data-edit-target="inputRatingBadge">
+                  <div class="rating-badge-18" id="displayRatingBadge">18</div>
+                  <div class="rating-info">
+                    <h3 class="rating-title" id="displayRatingTitle">Classificação 18 anos</h3>
+                    <p class="rating-sub" id="displayRatingDesc">Violência Extrema</p>
+                    <a href="#" class="rating-link">Saiba mais</a>
+                  </div>
+                </div>
+
+                <!-- Jogar no PC -->
+                <div class="sidebar-card play-pc-card" data-edit-target="inputPcTitle">
+                  <div class="play-pc-header">
+                    <div class="play-pc-icon-wrap">
+                      <svg viewBox="0 0 24 24" width="24" height="24" fill="none">
+                        <path d="M4.5 7.5C4.5 5.84 5.84 4.5 7.5 4.5H16.5C18.16 4.5 19.5 5.84 19.5 7.5V16.5C19.5 18.16 18.16 19.5 16.5 19.5H7.5C5.84 19.5 4.5 18.16 4.5 16.5V7.5Z" fill="#00A173" fill-opacity="0.15"/>
+                        <path d="M7 11.5L9.5 9V14L7 11.5Z" fill="#00A173"/>
+                        <path d="M14.5 11.5L12 14V9L14.5 11.5Z" fill="#00A173"/>
+                        <path d="M11.5 7L14 9.5H9L11.5 7Z" fill="#00A173"/>
+                        <path d="M11.5 16L9 13.5H14L11.5 16Z" fill="#00A173"/>
+                      </svg>
+                    </div>
+                    <h3 class="play-pc-title" id="displayPcTitle">Jogar no PC</h3>
+                  </div>
+
+                  <p class="play-pc-subtitle" id="displayPcSubtitle">
+                    Acesse este jogo no seu PC Windows com o Google Play Games
+                  </p>
+                  <a href="#" class="play-pc-link">Saiba mais</a>
+
+                  <div class="play-pc-divider"></div>
+
+                  <ul class="play-pc-features">
+                    <li class="feature-item">
+                      <span class="material-symbols-outlined feature-icon">verified_user</span>
+                      <span class="feature-text">Experiência oficial do Google</span>
+                    </li>
+                    <li class="feature-item">
+                      <span class="material-symbols-outlined feature-icon">desktop_windows</span>
+                      <span class="feature-text">Tela maior</span>
+                    </li>
+                    <li class="feature-item">
+                      <span class="material-symbols-outlined feature-icon">trending_up</span>
+                      <span class="feature-text">Avance de nível com controles aprimorados</span>
+                    </li>
+                    <li class="feature-item">
+                      <span class="material-symbols-outlined feature-icon">sync</span>
+                      <span class="feature-text">Sincronização perfeita entre dispositivos*</span>
+                    </li>
+                    <li class="feature-item">
+                      <span class="material-symbols-outlined feature-icon">redeem</span>
+                      <span class="feature-text">Ganhe Pontos do Google Play Points</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <!-- Requisitos mínimos -->
+                <div class="sidebar-card requirements-card" id="requirementsCard" data-edit-target="inputReqOs">
+                  <h3 class="req-title">Requisitos mínimos</h3>
+                  <ul class="req-list">
+                    <li><strong>SO:</strong> <span id="displayReqOs">Windows 10 (v2004)</span></li>
+                    <li><strong>Armazenamento:</strong> <span id="displayReqStorage">SSD com 10 GB de espaço de armazenamento disponível</span></li>
+                    <li><strong>Placa de vídeo:</strong> <span id="displayReqGpu">GPU Intel® UHD Graphics 630 ou comparável</span></li>
+                    <li><strong>Processador:</strong> <span id="displayReqCpu">4 núcleos físicos de CPU (alguns jogos exigem uma CPU Intel)</span></li>
+                  </ul>
+                </div>
+
+                <!-- Apps Semelhantes / Outros Apps Laterais (Padrão Oficial Google Play) -->
+                <div class="sidebar-card related-apps-card" id="relatedAppsCard">
+                  <div class="related-apps-header">
+                    <h3 class="related-apps-title">Apps semelhantes</h3>
+                    <button class="section-arrow-btn" title="Ver mais apps semelhantes">
+                      <span class="material-symbols-outlined">arrow_forward</span>
+                    </button>
+                  </div>
+                  <div class="related-apps-list" id="displayRelatedAppsList">
+                    <!-- Cards de outros apps renderizados dinamicamente -->
+                  </div>
+                </div>
+
+              </aside>
+
+            </div>
+          </main>
+
+          <!-- RODAPÉ OFICIAL GOOGLE PLAY -->
+          <footer class="play-footer" id="playFooter">
+            <div class="footer-container">
+              <div class="footer-columns">
+                <div class="footer-col">
+                  <h4>Google Play</h4>
+                  <a href="#">Play Pass</a>
+                  <a href="#">Play Points</a>
+                  <a href="#">Vales-presente</a>
+                  <a href="#">Resgatar</a>
+                  <a href="#">Política de reembolso</a>
+                </div>
+                <div class="footer-col">
+                  <h4>Crianças e família</h4>
+                  <a href="#">Guia para a família</a>
+                  <a href="#">Compartilhamento em família</a>
+                </div>
+              </div>
+              <div class="footer-bottom">
+                <div class="footer-legal-links">
+                  <a href="#">Termos de Serviço</a>
+                  <a href="#">Privacidade</a>
+                  <a href="#">Sobre o Google Play</a>
+                  <a href="#">Desenvolvedores</a>
+                  <a href="#">Google Store</a>
+                  <span>Todos os preços incluem Tributo.</span>
+                </div>
+                <div class="footer-locale">
+                  <span>Brasil (Português)</span>
+                </div>
+              </div>
+            </div>
+          </footer>
+
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ================= MODALS & OVERLAYS ================= -->
+
+  <!-- 1. Trailer Video Modal -->
+  <div class="modal-backdrop" id="trailerModal">
+    <div class="modal-container trailer-modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="trailerModalTitle">Trailer Oficial</h3>
+        <button class="modal-close-btn" id="closeTrailerBtn">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="video-container">
+        <iframe 
+          id="trailerIframe"
+          src="https://www.youtube-nocookie.com/embed/5F_fNlGqj0o?enablejsapi=1&autoplay=0" 
+          title="Trailer" 
+          frameborder="0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+          allowfullscreen>
+        </iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Install on Windows Modal -->
+  <div class="modal-backdrop" id="installModal">
+    <div class="modal-container install-modal-box">
+      <div class="modal-header">
+        <div class="install-header-left">
+          <img src="assets/sniper_app_icon.png" alt="Logo" class="install-modal-icon" id="installModalIcon">
+          <div>
+            <h3 class="modal-title" id="installModalTitle">Sniper 3D: Jogos de tiro</h3>
+            <p class="install-modal-sub" id="installModalSub">Wildlife Studios · 185 MB</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="closeInstallBtn">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      
+      <div class="install-body">
+        <div class="install-status-box" id="installStatusBox">
+          <p id="installStatusText">Pronto para instalar no Windows via Google Play Games.</p>
+          <div class="install-progress-bar-bg" id="progressBarBg" style="display:none;">
+            <div class="install-progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+        <div class="install-device-selector">
+          <span class="material-symbols-outlined">desktop_windows</span>
+          <span>Instalar no seu PC com Windows 10/11</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelInstallBtn">Cancelar</button>
+        <button class="btn btn-primary" id="confirmInstallBtn">Instalar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. "Sobre este jogo" Detail Modal -->
+  <div class="modal-backdrop" id="aboutModal">
+    <div class="modal-container about-modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Sobre este jogo</h3>
+        <button class="modal-close-btn" id="closeAboutBtn">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="about-modal-scrollable">
+        <h4 id="aboutModalAppHeading">Ação e detalhes do jogo</h4>
+        <p id="aboutModalFullDesc">
+          Prepare-se para liberar a melhor experiência Sniper 3D com o jogo de tiro mais emocionante e cheio de ação de todos os tempos!
+        </p>
+        <h4>Recursos Principais:</h4>
+        <ul>
+          <li><strong>Jogabilidade Imersiva:</strong> Controles responsivos projetados para teclado e mouse no PC ou touchscreen em dispositivos móveis.</li>
+          <li><strong>Variedade de Armas e Itens:</strong> Desbloqueie e aprimore dezenas de equipamentos personalizáveis.</li>
+          <li><strong>Modo Campanha e Multijogador:</strong> Complete missões solo em todo o mundo ou dispute torneios online.</li>
+        </ul>
+
+        <h4>Informações do Jogo:</h4>
+        <table class="game-info-table">
+          <tr>
+            <td>Versão</td>
+            <td>4.29.0</td>
+          </tr>
+          <tr>
+            <td>Atualizado em</td>
+            <td id="aboutModalUpdated">29 de set. de 2026</td>
+          </tr>
+          <tr>
+            <td>Requer Sistema</td>
+            <td>Windows 10 ou Android 7.0+</td>
+          </tr>
+          <tr>
+            <td>Classificação de conteúdo</td>
+            <td id="aboutModalRating">Classificação 18 anos</td>
+          </tr>
+          <tr>
+            <td>Desenvolvedor</td>
+            <td id="aboutModalDev">Wildlife Studios</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Screenshot Lightbox -->
+  <div class="lightbox-backdrop" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+    <button class="lightbox-nav-btn prev" id="lightboxPrev">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </button>
+    <div class="lightbox-content">
+      <img src="" alt="Screenshot" id="lightboxImg">
+    </div>
+    <button class="lightbox-nav-btn next" id="lightboxNext">
+      <span class="material-symbols-outlined">chevron_right</span>
+    </button>
+  </div>
+
+  <!-- Toast Notification Feedback -->
+  <div class="toast-notification" id="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

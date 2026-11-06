@@ -16,6 +16,7 @@ const AdminPages = lazy(() => import("@/modules/admin/pages/AdminPages"));
 const AdminCustomers = lazy(() => import("@/modules/admin/pages/AdminCustomers"));
 const AdminCoupons = lazy(() => import("@/modules/admin/pages/AdminCoupons"));
 const AdminBanners = lazy(() => import("@/modules/admin/pages/AdminBanners"));
+const AdminOffers = lazy(() => import("@/modules/admin/pages/AdminOffers"));
 const AdminSettings = lazy(() => import("@/modules/admin/pages/AdminSettings"));
 const AdminSettingsLayout = lazy(() => import("@/modules/admin/pages/AdminSettingsLayout"));
 const AdminUsersAccess = lazy(() => import("@/modules/admin/pages/AdminUsersAccess"));
@@ -43,6 +44,7 @@ const AdminIntelligenceUnified = lazy(() => import("@/modules/admin/pages/AdminI
 const AdminConversionFunnel = lazy(() => import("@/modules/admin/pages/AdminConversionFunnel"));
 const AdminClickMap = lazy(() => import("@/modules/admin/pages/AdminClickMap"));
 const AdminAppMetrics = lazy(() => import("@/modules/admin/pages/AdminAppMetrics"));
+const AdminGooglePlayStudio = lazy(() => import("@/modules/admin/pages/AdminGooglePlayStudio"));
 const AdminAiInsights = lazy(() => import("@/modules/admin/pages/AdminAiInsights"));
 const AdminPaymentsGateways = lazy(() => import("@/modules/admin/pages/payments/AdminPaymentsGateways"));
 const AdminPaymentsGatewayAdd = lazy(() => import("@/modules/admin/pages/payments/AdminPaymentsGatewayAdd"));
@@ -109,6 +111,7 @@ export default function AdminApp() {
           <Route path="funil" element={<AdminConversionFunnel />} />
           <Route path="mapa-cliques" element={<AdminClickMap />} />
           <Route path="app-metricas" element={<AdminAppMetrics />} />
+          <Route path="google-play-studio" element={<AdminGooglePlayStudio />} />
           <Route path="insights-ia" element={<AdminAiInsights />} />
           <Route path="categorias" element={<AdminCategoriesList />} />
           <Route path="categorias/nova" element={<AdminCategoryForm />} />
@@ -152,7 +155,7 @@ export default function AdminApp() {
           <Route path="cupons" element={<Navigate to={routes.adminPath("/configuracoes/cupons")} replace />} />
           <Route path="frete" element={<Navigate to={routes.adminPath("/configuracoes/frete")} replace />} />
           <Route path="payments/*" element={<Navigate to={routes.adminPath("/configuracoes/pagamentos/gateways")} replace />} />
-          <Route path="ofertas" element={<div className="p-6 text-muted-foreground">Em breve: ofertas</div>} />
+          <Route path="ofertas" element={<AdminOffers />} />
           <Route path="*" element={<Navigate to={routes.adminPath("/dashboard")} replace />} />
         </Route>
       </Routes>

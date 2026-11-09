@@ -90,6 +90,11 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         let storeId: string | undefined;
         let tenantId: string | undefined;
 
+        // Timeout de proteção de 1.5s para evitar congelamento caso o Supabase não responda
+        const timeoutId = setTimeout(() => {
+          if (alive) setIsLoading(false);
+        }, 1500);
+
         // 1. Resolve Store and Tenant by Route Params (Master Impersonation)
         // Check for /admin/store/:storeId
         const adminStoreMatch = pathname.match(/\/admin\/store\/([^\/]+)/);

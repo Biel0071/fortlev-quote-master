@@ -141,7 +141,14 @@ const AdminSidebar = memo(function AdminSidebar() {
   const location = useLocation();
 
   // Em ambiente local ou quando ainda não há regras estritas de papéis, mantém os itens sempre acessíveis
-  const isLocalDev = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname.includes("127.0.0.1"));
+  const isDevOrPreview = typeof window !== "undefined" && (
+    window.location.hostname === "localhost" ||
+    window.location.hostname.includes("127.0.0.1") ||
+    window.location.hostname.includes("lovableproject.com") ||
+    window.location.hostname.includes("lovable.app") ||
+    window.location.hostname.includes("lovable.dev") ||
+    window.location.hostname.includes("trycloudflare.com")
+  );
 
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
@@ -163,7 +170,7 @@ const AdminSidebar = memo(function AdminSidebar() {
         {/* Grouped menu sections */}
         {SIDEBAR_SECTIONS.map((section) => {
           const visibleItems = section.items.filter((item) =>
-            isLocalDev || ((item.page === "avaliacoes" || canViewPage(item.page)) && isPageAllowed(item.page))
+            isDevOrPreview || ((item.page === "avaliacoes" || canViewPage(item.page)) && isPageAllowed(item.page))
           );
           if (!visibleItems.length) return null;
 
@@ -257,11 +264,18 @@ export default function AdminLayout() {
     !location.pathname.startsWith("/admin/store/") &&
     !location.pathname.startsWith("/admin/master");
 
-  const isLocalDev = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname.includes("127.0.0.1"));
+  const isDevOrPreview = typeof window !== "undefined" && (
+    window.location.hostname === "localhost" ||
+    window.location.hostname.includes("127.0.0.1") ||
+    window.location.hostname.includes("lovableproject.com") ||
+    window.location.hostname.includes("lovable.app") ||
+    window.location.hostname.includes("lovable.dev") ||
+    window.location.hostname.includes("trycloudflare.com")
+  );
   const canRender = !sessionLoading && !adminLoading;
-  if (!canRender && !isLocalDev) return <FullScreenLoader label="Carregando admin..." />;
-  if (!user && !isLocalDev) return <Navigate to="/auth/login" replace />;
-  if (!isAdmin && !isLocalDev) {
+  if (!canRender && !isDevOrPreview) return <FullScreenLoader label="Carregando admin..." />;
+  if (!user && !isDevOrPreview) return <Navigate to="/auth/login" replace />;
+  if (!isAdmin && !isDevOrPreview) {
     return (
       <div className="p-6 space-y-3">
         <p className="text-destructive">Acesso negado.</p>
@@ -280,12 +294,12 @@ export default function AdminLayout() {
     return <Navigate to={`${routes.adminPath(suffix)}${location.search}`} replace />;
   }
 
-  if (isLegacyAdminPage && storesLoading && !isLocalDev) {
+  if (isLegacyAdminPage && storesLoading && !isDevOrPreview) {
     return <FullScreenLoader label="Carregando loja..." />;
   }
 
   if (isStoreScopedPage && (storesLoading || !activeStoreId)) {
-    if (storesLoading && !isLocalDev) return <FullScreenLoader label="Carregando loja..." />;
+    if (storesLoading && !isDevOrPreview) return <FullScreenLoader label="Carregando loja..." />;
     if (!storesLoading && !activeStoreId) {
       return (
         <div className="min-h-screen bg-background p-6 space-y-4">

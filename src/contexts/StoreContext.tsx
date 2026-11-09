@@ -38,18 +38,45 @@ const STORE_LABEL: Record<string, string> = {
   construcao: "Construção (Orçamentos)",
 };
 
+export const DEFAULT_FALLBACK_STORES: StoreDbRow[] = [
+  {
+    id: "f5e69cd7-e-b465-4024-9b99-d388262b08fa",
+    name: "Materiais de Construção",
+    slug: "materiais",
+    domain: "materialdecontrucao.online",
+    active: true,
+    store_domains: [{ domain: "materialdecontrucao.online", verified: true }],
+  },
+  {
+    id: "fortlev-store-id-default",
+    name: "Home Completa Fortlev",
+    slug: "fortlev",
+    domain: "fortlev.lovable.app",
+    active: true,
+    store_domains: [{ domain: "fortlev.lovable.app", verified: true }],
+  },
+  {
+    id: "construcao-store-id-default",
+    name: "Construção (Orçamentos)",
+    slug: "construcao",
+    domain: "construcao.lovable.app",
+    active: true,
+    store_domains: [{ domain: "construcao.lovable.app", verified: true }],
+  },
+];
+
 const STORES_CACHE_KEY = "lovable:stores:v2";
 const STORES_CACHE_TTL = 5 * 60 * 1000;
 
 function loadCachedStores(): StoreDbRow[] | null {
   try {
     const raw = sessionStorage.getItem(STORES_CACHE_KEY);
-    if (!raw) return null;
+    if (!raw) return DEFAULT_FALLBACK_STORES;
     const parsed = JSON.parse(raw) as { at: number; data: StoreDbRow[] };
-    if (!parsed?.data || Date.now() - parsed.at > STORES_CACHE_TTL) return null;
-    return parsed.data;
+    if (!parsed?.data || Date.now() - parsed.at > STORES_CACHE_TTL) return DEFAULT_FALLBACK_STORES;
+    return parsed.data.length > 0 ? parsed.data : DEFAULT_FALLBACK_STORES;
   } catch {
-    return null;
+    return DEFAULT_FALLBACK_STORES;
   }
 }
 
@@ -98,20 +125,31 @@ export function StoreProvider({ children }: StoreProviderProps) {
   // Load stores from DB once (and refresh cache silently)
   useEffect(() => {
     let cancelled = false;
+    const timer = setTimeout(() => {
+      if (!cancelled) {
+        setStoresLoading(false);
+      }
+    }, 1500);
+
     cloud
       .from("stores")
       .select("id, name, slug, domain, active, store_domains(domain, verified)")
       .order("name")
       .then(({ data }) => {
-        if (cancelled || !data) return;
+        if (cancelled || !data || data.length === 0) return;
         setDbStores(data as StoreDbRow[]);
         saveCachedStores(data as StoreDbRow[]);
       })
+      .catch((err) => {
+        console.warn("Could not fetch remote stores, using fallback:", err);
+      })
       .finally(() => {
+        clearTimeout(timer);
         if (!cancelled) setStoresLoading(false);
       });
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, []);
 

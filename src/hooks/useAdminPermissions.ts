@@ -37,7 +37,12 @@ export function useAdminPermissions() {
 
     setLoading(true);
     try {
-      const { data: isMasterAdmin } = await cloud.rpc("is_master_admin");
+      // Timeout de resiliência para não travar permissões se rede/Supabase falhar
+      const checkPromise = cloud.rpc("is_master_admin");
+      const timeoutPromise = new Promise<{ data: any; error: any }>((resolve) =>
+        setTimeout(() => resolve({ data: false, error: new Error("timeout") }), 2000)
+      );
+      const { data: isMasterAdmin } = await Promise.race([checkPromise, timeoutPromise]);
 
       if (isMasterAdmin) {
         setRole("master");

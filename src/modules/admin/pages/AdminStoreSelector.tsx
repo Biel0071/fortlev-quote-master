@@ -51,7 +51,7 @@ import {
   Play,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { AppStore } from "@/contexts/StoreContext";
+import { type AppStore, DEFAULT_FALLBACK_STORES } from "@/contexts/StoreContext";
 
 type StoreRow = {
   id: string;
@@ -94,9 +94,17 @@ export default function AdminStoreSelector() {
   const { user } = useSession();
   const { isMaster, storeAccess, loading: permLoading } = useAdminPermissions();
   const { setStore, setActiveStoreId } = useStore();
-  const [stores, setStores] = useState<StoreRow[]>([]);
-  const [summaries, setSummaries] = useState<StoreSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [stores, setStores] = useState<StoreRow[]>(DEFAULT_FALLBACK_STORES as unknown as StoreRow[]);
+  const [summaries, setSummaries] = useState<StoreSummary[]>(
+    (DEFAULT_FALLBACK_STORES as unknown as StoreRow[]).map((s) => ({
+      store: s,
+      orderCount: 0,
+      productCount: 0,
+      domains: [],
+      planName: "Plano Base",
+    }))
+  );
+  const [loading, setLoading] = useState(false);
 
   // Dialogs
   const [createOpen, setCreateOpen] = useState(false);
@@ -138,58 +146,96 @@ export default function AdminStoreSelector() {
 
   const loadStores = async () => {
     setLoading(true);
-    const query = cloud
-      .from("stores")
-      .select("id, name, slug, active, domain, favicon_path, plan_id, segment, suspended")
-      .order("name");
+    try {
+      const query = cloud
+        .from("stores")
+        .select("id, name, slug, active, domain, favicon_path, plan_id, segment, suspended")
+        .order("name");
 
-    if (!isMaster) {
-      query.eq("active", true);
+      if (!isMaster) {
+        query.eq("active", true);
+      }
+
+      // Timeout de resiliência de 2s para evitar travar se a rede/Supabase oscilar
+      const fetchPromise = Promise.all([
+        query,
+        cloud.from("store_plans").select("id, name, slug, modules").order("sort_order"),
+      ]);
+
+      const timeoutPromise = new Promise<{ data: any; dataPlans: any }>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout carregando lojas")), 2000)
+      );
+
+      const [{ data }, { data: plansData }] = await Promise.race([
+        fetchPromise,
+        timeoutPromise as any,
+      ]);
+
+      const allPlans = (plansData as PlanRow[]) ?? [];
+      setPlans(allPlans);
+
+      let available = (data as StoreRow[]) ?? [];
+
+      if (available.length === 0 && DEFAULT_FALLBACK_STORES.length > 0) {
+        available = DEFAULT_FALLBACK_STORES as unknown as StoreRow[];
+      }
+
+      if (!isMaster && storeAccess.length > 0) {
+        const allowedIds = new Set(storeAccess.map((s) => s.store_id));
+        available = available.filter((s) => allowedIds.has(s.id));
+      }
+
+      setStores(available);
+
+      const storeIds = available.map((s) => s.id);
+      let allDomains: StoreDomain[] = [];
+      let orderCount = 0;
+      let productCount = 0;
+
+      try {
+        const [{ data: domains }, { count: oc }, { count: pc }] = await Promise.all([
+          cloud
+            .from("store_domains")
+            .select("id, store_id, domain, is_primary, verified")
+            .in("store_id", storeIds.length > 0 ? storeIds : ["__none__"]),
+          cloud.from("store_orders").select("*", { count: "exact", head: true }),
+          cloud.from("store_products").select("*", { count: "exact", head: true }).eq("active", true),
+        ]);
+        allDomains = (domains as StoreDomain[]) ?? [];
+        orderCount = oc ?? 0;
+        productCount = pc ?? 0;
+      } catch {
+        // Ignora falhas de estatísticas secundárias
+      }
+
+      const sums: StoreSummary[] = available.map((store) => {
+        const plan = allPlans.find((p) => p.id === store.plan_id);
+        return {
+          store,
+          orderCount: store.slug === "construcao" ? orderCount : 0,
+          productCount: store.slug === "construcao" ? productCount : 0,
+          domains: allDomains.filter((d) => d.store_id === store.id),
+          planName: plan?.name ?? "Plano Base",
+        };
+      });
+
+      setSummaries(sums);
+    } catch (err) {
+      console.warn("Fallback de lojas ativado no AdminStoreSelector:", err);
+      const fallbackStores = DEFAULT_FALLBACK_STORES as unknown as StoreRow[];
+      setStores(fallbackStores);
+      setSummaries(
+        fallbackStores.map((store) => ({
+          store,
+          orderCount: 0,
+          productCount: 0,
+          domains: [],
+          planName: "Plano Base",
+        }))
+      );
+    } finally {
+      setLoading(false);
     }
-
-    const [{ data }, { data: plansData }] = await Promise.all([
-      query,
-      cloud.from("store_plans").select("id, name, slug, modules").order("sort_order"),
-    ]);
-
-    const allPlans = (plansData as PlanRow[]) ?? [];
-    setPlans(allPlans);
-
-    let available = (data as StoreRow[]) ?? [];
-
-    if (!isMaster && storeAccess.length > 0) {
-      const allowedIds = new Set(storeAccess.map((s) => s.store_id));
-      available = available.filter((s) => allowedIds.has(s.id));
-    }
-
-    setStores(available);
-
-    const storeIds = available.map((s) => s.id);
-    const { data: domains } = await cloud
-      .from("store_domains")
-      .select("id, store_id, domain, is_primary, verified")
-      .in("store_id", storeIds.length > 0 ? storeIds : ["__none__"]);
-
-    const allDomains = (domains as StoreDomain[]) ?? [];
-
-    const [{ count: orderCount }, { count: productCount }] = await Promise.all([
-      cloud.from("store_orders").select("*", { count: "exact", head: true }),
-      cloud.from("store_products").select("*", { count: "exact", head: true }).eq("active", true),
-    ]);
-
-    const sums: StoreSummary[] = available.map((store) => {
-      const plan = allPlans.find((p) => p.id === store.plan_id);
-      return {
-        store,
-        orderCount: store.slug === "construcao" ? (orderCount ?? 0) : 0,
-        productCount: store.slug === "construcao" ? (productCount ?? 0) : 0,
-        domains: allDomains.filter((d) => d.store_id === store.id),
-        planName: plan?.name ?? "Sem plano",
-      };
-    });
-
-    setSummaries(sums);
-    setLoading(false);
   };
 
   const enterStore = (storeRow: StoreRow) => {
@@ -359,7 +405,8 @@ export default function AdminStoreSelector() {
     setSavingPerm(false);
   };
 
-  if (loading || permLoading) {
+  // Exibe tela de carregamento somente se não tiver nenhuma loja em memória
+  if ((loading || permLoading) && stores.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-sm text-muted-foreground animate-pulse">Carregando lojas...</div>

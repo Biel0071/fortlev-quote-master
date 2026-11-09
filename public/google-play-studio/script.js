@@ -55,6 +55,68 @@ document.addEventListener('DOMContentLoaded', () => {
       arrowText: "clique em abrir<br>para Instalar o app",
       installMode: "direct_flow"
     },
+    jadlog_mobile_clean: {
+      appTitle: "my JADLOG",
+      developer: "Google Commerce Ltd",
+      subtitle: "Contém anúncios · Compras no app",
+      appIconUrl: "/jadlog-icon.jpg",
+      ratingVal: "4.8",
+      ratingCount: "350 Avaliações",
+      downloadsVal: "1M+",
+      downloadsLabel: "downloads",
+      heroBgUrl: "",
+      installBtn: "Instalar",
+      installOtherBtn: "Compartilhar",
+      installUrl: "/my_JADLOG.apk",
+      arrowText: "clique em abrir<br>para Instalar o app",
+      installMode: "direct_flow",
+      autoStartDownload: false,
+      trailerBtn: "",
+      trailerYoutube: "",
+      disclaimer: "Ao fazer o download do app, você concorda com os Termos de Serviço do Google e do Google Play.",
+      aboutText: "O my JADLOG te oferece diversos serviços:\n\n● Saiba onde estão todas as suas encomendas: cadastre-se e verifique na hora o status de todas as suas encomendas\n\n● Acesso às informações sobre suas encomendas, rastreamento em tempo real e localização.\n\n● Não estará em casa? Você pode optar por alterar a data de entrega ou escolher um ponto Pickup para recebê-la.",
+      updatedAt: "10 de out. de 2026",
+      platforms: "Android",
+      tags: ["Produtividade", "Rastreamento", "Entregas"],
+      intelNote: "*Compatível com seu dispositivo móvel",
+      eventBadge: "",
+      eventTitle: "",
+      eventBannerUrl: "",
+      featureBadge: "",
+      featureTitle: "",
+      featureBannerUrl: "",
+      ratingBadge: "L",
+      ratingTitle: "Classificação Livre",
+      ratingDesc: "Livre para todos os públicos",
+      pcTitle: "Disponível no Smartphone",
+      pcSubtitle: "Seu dispositivo",
+      reqOs: "Android 8.0+",
+      reqStorage: "45 MB",
+      reqGpu: "",
+      reqCpu: "",
+      screenshots: [
+        "/downloads/jadlog/promo1.jpg",
+        "/downloads/jadlog/promo2.jpg"
+      ],
+      bar5: "85",
+      bar4: "10",
+      bar3: "3",
+      bar2: "1",
+      bar1: "1",
+      rev1Name: "Maria Silva",
+      rev1Date: "10/07/2026",
+      rev1Stars: 5,
+      rev1Text: "Aplicativo excelente! Funcionou perfeitamente no meu celular. Recomendo para todos.",
+      rev2Name: "João Oliveira",
+      rev2Date: "05/07/2026",
+      rev2Stars: 5,
+      rev2Text: "Muito bom! Instalei sem nenhum problema. Interface limpa e intuitiva.",
+      rev3Name: "Ana Costa",
+      rev3Date: "01/07/2026",
+      rev3Stars: 5,
+      rev3Text: "Perfeito, atendeu todas as minhas necessidades. Nota 10!",
+      relatedApps: []
+    },
     jadlog: {
       appTitle: "myJadlog",
       developer: "Geopost SA",
@@ -281,8 +343,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // State object
-  let state = loadPersistedState() || JSON.parse(JSON.stringify(PRESETS.sniper3d));
+  // State object - Padrão Jadlog Oficial Mobile (1:1 com a Imagem 3)
+  let state = loadPersistedState() || JSON.parse(JSON.stringify(PRESETS.jadlog_mobile_clean || PRESETS.sniper3d));
 
   function loadPersistedState() {
     try {

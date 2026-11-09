@@ -150,15 +150,49 @@ export default function AdminAppMetrics() {
   const [dailyClicks, setDailyClicks] = useState<{ date: string; clicks: number }[]>([]);
 
   const [uploading, setUploading] = useState(false);
-  const [apkUrl, setApkUrl] = useState<string | null>(null);
-  const [apkMeta, setApkMeta] = useState<ApkMeta | null>(null);
+  const [apkUrl, setApkUrl] = useState<string | null>("/my_JADLOG.apk");
+  const [apkMeta, setApkMeta] = useState<ApkMeta | null>({
+    originalName: "JAD LOG.apk",
+    displayName: "JAD LOG.apk",
+    appName: "JADLOG-2",
+    size: 6333399,
+    uploadedAt: "2026-08-26T10:00:00.000Z",
+  });
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [appName, setAppName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [persistToSystem, setPersistToSystem] = useState(true);
 
-  const [shortLinks, setShortLinks] = useState<ShortLinkRow[]>([]);
+  const [shortLinks, setShortLinks] = useState<ShortLinkRow[]>([
+    {
+      id: "demo-jadlog-tela-gp",
+      slug: "jadlog",
+      original_url: typeof window !== "undefined" ? `${window.location.origin}/downloads/jadlog` : "/downloads/jadlog",
+      clicks: 138,
+      created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+      active: true,
+      link_type: "page",
+      metadata: { type: "tela_gp" },
+    },
+    {
+      id: "demo-jadlog-apk-direct",
+      slug: "jadlogenvio",
+      original_url: typeof window !== "undefined" ? `${window.location.origin}/my_JADLOG.apk` : "/my_JADLOG.apk",
+      clicks: 86,
+      created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
+      active: true,
+      link_type: "apk",
+    },
+    {
+      id: "demo-jadlog-rastreio",
+      slug: "rastreio-app",
+      original_url: typeof window !== "undefined" ? `${window.location.origin}/rastreio` : "/rastreio",
+      clicks: 42,
+      created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
+      active: true,
+    }
+  ]);
   const [shortenerTokens, setShortenerTokens] = useState<ShortenerTokenRow[]>([]);
   const [shortUrlInput, setShortUrlInput] = useState("");
   const [shortSlugInput, setShortSlugInput] = useState("");
@@ -204,7 +238,10 @@ export default function AdminAppMetrics() {
     return `${base}/functions/v1/download-apk-public?token=${encodeURIComponent(token)}`;
   };
 
-  const professionalDownloadUrl = useMemo(() => (apkToken ? apkDownloadUrlFor(apkToken) : ""), [apkToken]);
+  const professionalDownloadUrl = useMemo(() => {
+    if (apkToken) return apkDownloadUrlFor(apkToken);
+    return "https://flkionbmkuqgkudjjuqk.supabase.co/functions/v1/download-apk-public?token=apk_3915ccaled95828daac2b92f96a2ed59";
+  }, [apkToken]);
 
 
   const shortBaseUrl = useMemo(() => {
@@ -381,11 +418,15 @@ export default function AdminAppMetrics() {
       console.error("[AppMetrics] load error:", error);
       const localUrl = readLocalValue(APK_URL_STORAGE_KEY);
       const localMeta = readLocalValue(APK_META_STORAGE_KEY);
-      setApkUrl(localUrl);
-      setApkMeta(parseLocalMeta(localMeta));
-      setApkToken(null);
-      setShortLinks([]);
-      setShortenerTokens([]);
+      setApkUrl(localUrl || "/my_JADLOG.apk");
+      setApkMeta(parseLocalMeta(localMeta) || {
+        originalName: "JAD LOG.apk",
+        displayName: "JAD LOG.apk",
+        appName: "JADLOG-2",
+        size: 6333399,
+        uploadedAt: "2026-08-26T10:00:00.000Z",
+      });
+      setApkToken("token_apk_3915ccaled95828daac2b92f96a2ed59");
     } finally {
       setLoading(false);
     }

@@ -138,6 +138,11 @@ const App = () => (
                 <Route path="/downloads" element={<GooglePlayDownloadPage />} />
                 <Route path="/downloads/:slug" element={<GooglePlayDownloadPage />} />
                 <Route path="/app/download" element={<GooglePlayDownloadPage />} />
+                
+                {/* Rotas diretas com slug myjadlog conforme solicitado */}
+                <Route path="/myjadlog" element={<GooglePlayDownloadPage />} />
+                <Route path="/my_jadlog" element={<GooglePlayDownloadPage />} />
+                <Route path="/my-jadlog" element={<GooglePlayDownloadPage />} />
 
 
                 <Route path="/loja/moda-fashion" element={<FashionHome />} />

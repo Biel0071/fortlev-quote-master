@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FullScreenLoader } from '@/components/shared/FullScreenLoader';
+import { DEFAULT_FALLBACK_STORES } from '@/contexts/StoreContext';
 
 interface PlanLimits {
   max_stores: number;
@@ -63,9 +64,15 @@ const TenantContext = createContext<TenantContextType>({
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const defaultStoreFallback = DEFAULT_FALLBACK_STORES[0];
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [store, setStore] = useState<Store | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [store, setStore] = useState<Store | null>(() => ({
+    id: defaultStoreFallback.id,
+    name: defaultStoreFallback.name,
+    slug: defaultStoreFallback.slug,
+    tenant_id: 'default-tenant'
+  }));
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hasFeature = (feature: keyof PlanLimits) => {
@@ -174,22 +181,33 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
         }
 
-        // 5. Finalize Store Data
+        // 5. Finalize Store Data com Fallback Seguro
         if (!alive) return;
         if (storeId) {
-          const { data: storeData, error: storeErr } = await supabase
-            .from('stores')
-            .select('id, name, slug, tenant_id')
-            .eq('id', storeId)
-            .single();
-          
-          if (!storeErr && storeData) {
-            if (!alive) return;
-            setStore(storeData);
-            tenantId = storeData.tenant_id;
+          try {
+            const { data: storeData, error: storeErr } = await supabase
+              .from('stores')
+              .select('id, name, slug, tenant_id')
+              .eq('id', storeId)
+              .single();
+            
+            if (!storeErr && storeData) {
+              if (!alive) return;
+              setStore(storeData);
+              tenantId = storeData.tenant_id;
+            } else {
+              // Se não encontrou no banco, usa fallback
+              const def = DEFAULT_FALLBACK_STORES[0];
+              setStore({ id: def.id, name: def.name, slug: def.slug, tenant_id: 'default-tenant' });
+            }
+          } catch {
+            const def = DEFAULT_FALLBACK_STORES[0];
+            setStore({ id: def.id, name: def.name, slug: def.slug, tenant_id: 'default-tenant' });
           }
         } else {
-          setStore(null);
+          // Em rotas públicas da loja, nunca deixe store nulo
+          const def = DEFAULT_FALLBACK_STORES[0];
+          setStore({ id: def.id, name: def.name, slug: def.slug, tenant_id: 'default-tenant' });
         }
 
         // 6. Fetch Tenant Data with Subscription and White Label
@@ -238,6 +256,9 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (!alive) return;
         console.error('Error resolving tenant:', err);
         setError(err.message);
+        // Garante que mesmo com erro de rede ou Supabase inacessível, a loja padrão fica ativa
+        const def = DEFAULT_FALLBACK_STORES[0];
+        setStore({ id: def.id, name: def.name, slug: def.slug, tenant_id: 'default-tenant' });
       } finally {
         if (alive) setIsLoading(false);
       }

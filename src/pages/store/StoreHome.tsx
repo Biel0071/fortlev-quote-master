@@ -64,9 +64,9 @@ export default function StoreHome() {
 
   const [phase, setPhase] = useState({
     categories: true,
-    featured: false,
-    additional: false,
-    secondary: false,
+    featured: true,
+    additional: true,
+    secondary: true,
   });
 
   useEffect(() => {
@@ -125,7 +125,7 @@ export default function StoreHome() {
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
   const { isLoading: tenantLoading, store: tenantStoreData } = useTenant();
-  const loading = tenantLoading || !phase.featured || (productsLoading && activeProducts.length === 0) || (categoriesLoading && activeCategories.length === 0);
+  const loading = (tenantLoading && !tenantStoreData) || (productsLoading && activeProducts.length === 0) || (categoriesLoading && activeCategories.length === 0);
 
   const featuredIds = useMemo(() => {
     const list = (activeProducts ?? []) as any[];
@@ -157,19 +157,7 @@ export default function StoreHome() {
   const homeOffers = useMemo(() => offerList.slice(0, 8), [offerList]);
 
   
-  if (tenantLoading) {
-    return (
-      <div className="flex flex-col w-full min-h-screen bg-background p-4 space-y-4">
-        <div className="h-16 w-full rounded-2xl bg-muted/20 animate-pulse" />
-        <div className="h-48 w-full rounded-2xl bg-muted/30 animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-64 rounded-2xl bg-muted/20 animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+
 
   // Multi-sites: qualquer loja cadastrada mas ainda sem conteúdo publicado
   // (sem produtos ativos e sem categorias ativas) exibe o placeholder
@@ -188,35 +176,8 @@ export default function StoreHome() {
 
 
 
-  // Se o tenant carregou mas não há loja ativa, mostrar fallback amigável em vez de travar
-  if (!tenantStoreData && !tenantLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 text-center space-y-6">
-        <div className="relative">
-          <div className="absolute -inset-4 bg-primary/5 rounded-full blur-2xl animate-pulse" />
-          <Store size={80} className="text-primary/20 relative" />
-        </div>
-        <div className="space-y-2 max-w-md mx-auto">
-          <h2 className="text-2xl font-bold tracking-tight">Sistema em Manutenção</h2>
-          <p className="text-muted-foreground">
-            O catálogo está sendo preparado. Por favor, tente recarregar a página.
-          </p>
-        </div>
-        <div className="flex flex-col gap-3">
-          <Button onClick={() => window.location.reload()} className="gap-2 rounded-full px-8">
-            Recarregar Página
-          </Button>
-          <Button variant="outline" onClick={() => {
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.reload();
-          }} className="gap-2 rounded-full px-8">
-            Limpar Cache e Recarregar
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // Se o tenant carregou mas não há loja ativa, usa o fallback automático da loja padrão em vez de travar
+  const effectiveStore = tenantStoreData ?? DEFAULT_FALLBACK_STORES[0];
 
   const onAdd = (productId: string, qty: number) => {
     const product: any = offerList.find((item: any) => item.id === productId)

@@ -13,7 +13,7 @@ import "@/styles/budget-template.css";
 import { FloatingChatButton } from "@/components/store/FloatingChatButton";
 import NotFound from "@/pages/NotFound";
 
-const StoreHome = lazy(() => import("@/pages/store/StoreHome"));
+import StoreHome from "@/pages/store/StoreHome";
 const StoreCatalog = lazy(() => import("@/pages/store/StoreCatalog"));
 const OffersPage = lazy(() => import("@/pages/store/OffersPage"));
 const ProductPage = lazy(() => import("@/pages/store/ProductPage"));

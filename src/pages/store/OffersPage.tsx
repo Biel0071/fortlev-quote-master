@@ -85,7 +85,7 @@ export default function OffersPage() {
           </span>
         </div>
 
-        {loading ? (
+        {loading && offerProducts.length === 0 ? (
           <div className="space-y-4">
             <Skeleton className="h-64 w-full rounded-2xl" />
             <div className="grid grid-cols-2 gap-3">

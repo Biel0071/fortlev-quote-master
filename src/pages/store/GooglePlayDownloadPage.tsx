@@ -16,7 +16,7 @@ export default function GooglePlayDownloadPage() {
 
     const font2 = document.createElement("link");
     font2.rel = "stylesheet";
-    font2.href = "https://fonts.googleapis.com/css2?family=Google+Material+Icons&display=swap";
+    font2.href = "https://fonts.googleapis.com/icon?family=Material+Icons";
     document.head.appendChild(font2);
 
     const cssLink = document.createElement("link");
@@ -124,7 +124,7 @@ export default function GooglePlayDownloadPage() {
 
           <div className="flex items-center gap-3">
             <button className="w-9 h-9 rounded-full flex items-center justify-center text-gray-700 hover:bg-gray-100 transition" aria-label="Pesquisar">
-              <i className="google-material-icons notranslate text-xl" aria-hidden="true">search</i>
+              <i className="material-icons google-material-icons notranslate text-xl" aria-hidden="true">search</i>
             </button>
           </div>
         </div>
@@ -217,14 +217,14 @@ export default function GooglePlayDownloadPage() {
             onClick={handleShare}
             className="flex items-center gap-2 text-sm text-[#01875f] font-medium hover:opacity-80 transition py-1 px-3"
           >
-            <i className="google-material-icons notranslate text-lg" aria-hidden="true">share</i>
+            <i className="material-icons google-material-icons notranslate text-lg" aria-hidden="true">share</i>
             <span>Compartilhar</span>
           </button>
         </div>
 
         {/* Indicador de compatibilidade */}
         <div className="flex items-center gap-2.5 text-xs text-gray-600 mt-4 px-1">
-          <i className="google-material-icons notranslate text-base text-gray-500" aria-hidden="true">devices</i>
+          <i className="material-icons google-material-icons notranslate text-base text-gray-500" aria-hidden="true">devices</i>
           <span>Seu dispositivo</span>
         </div>
 
@@ -232,7 +232,7 @@ export default function GooglePlayDownloadPage() {
         <section className="mt-7 pt-5 border-t border-gray-100">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-base font-bold text-gray-900">Segurança dos dados</h2>
-            <i className="google-material-icons notranslate text-[#01875f] text-sm cursor-pointer" aria-hidden="true">arrow_forward</i>
+            <i className="material-icons google-material-icons notranslate text-[#01875f] text-sm cursor-pointer" aria-hidden="true">arrow_forward</i>
           </div>
           <p className="text-[11px] text-gray-600 leading-relaxed mb-4">
             Sua segurança começa quando você entende como os desenvolvedores coletam e compartilham seus dados. As práticas de segurança e privacidade de dados podem variar de acordo com o uso, a região e a idade. O desenvolvedor forneceu as informações a seguir, que podem ser atualizadas ao longo do tempo.
@@ -240,7 +240,7 @@ export default function GooglePlayDownloadPage() {
 
           <div className="border border-gray-200/90 rounded-2xl p-4 space-y-4 text-xs text-gray-700 bg-white">
             <div className="flex items-start gap-3">
-              <i className="google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">share</i>
+              <i className="material-icons google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">share</i>
               <div className="flex-1">
                 <p className="font-medium text-gray-900 text-xs">Este app pode compartilhar estes tipos de dados com terceiros</p>
                 <p className="text-gray-500 text-[11px] mt-0.5">Local, Informações pessoais e mais 4</p>
@@ -248,7 +248,7 @@ export default function GooglePlayDownloadPage() {
             </div>
 
             <div className="flex items-start gap-3">
-              <i className="google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">cloud_upload</i>
+              <i className="material-icons google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">cloud_upload</i>
               <div className="flex-1">
                 <p className="font-medium text-gray-900 text-xs">Este app pode coletar estes tipos de dados</p>
                 <p className="text-gray-500 text-[11px] mt-0.5">Local, Informações pessoais e mais 6</p>
@@ -256,14 +256,14 @@ export default function GooglePlayDownloadPage() {
             </div>
 
             <div className="flex items-start gap-3">
-              <i className="google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">lock</i>
+              <i className="material-icons google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">lock</i>
               <div className="flex-1">
                 <p className="font-medium text-gray-900 text-xs">Os dados são criptografados em trânsito</p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <i className="google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">delete</i>
+              <i className="material-icons google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">delete</i>
               <div className="flex-1">
                 <p className="font-medium text-gray-900 text-xs">Você pode solicitar a exclusão dos dados</p>
               </div>
@@ -275,11 +275,11 @@ export default function GooglePlayDownloadPage() {
         <section className="mt-8 pt-5 border-t border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-bold text-gray-900">Notas e avaliações</h2>
-            <i className="google-material-icons notranslate text-[#01875f] text-sm cursor-pointer" aria-hidden="true">arrow_forward</i>
+            <i className="material-icons google-material-icons notranslate text-[#01875f] text-sm cursor-pointer" aria-hidden="true">arrow_forward</i>
           </div>
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs font-semibold mb-4 border border-emerald-200/60">
-            <i className="google-material-icons notranslate text-sm" aria-hidden="true">phone_android</i>
+            <i className="material-icons google-material-icons notranslate text-sm" aria-hidden="true">phone_android</i>
             <span>Telefone</span>
           </div>
 

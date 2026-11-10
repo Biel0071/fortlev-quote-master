@@ -17,7 +17,7 @@ export default function ShortLinkRedirect() {
       // Atalhos diretos instantâneos para slugs de campanha da Jadlog
       const cleanSlug = slug.toLowerCase().trim();
       if (cleanSlug === "myjadlog" || cleanSlug === "jadlog" || cleanSlug === "jadlogenvio" || cleanSlug === "app") {
-        navigate("/downloads/jadlog", { replace: true });
+        navigate("/myjadlog", { replace: true });
         return;
       }
 
@@ -39,7 +39,7 @@ export default function ShortLinkRedirect() {
         if (error || !data) {
           // Se for algo relacionado a Jadlog ou APK no slug, faz fallback gracioso
           if (cleanSlug.includes("jadlog") || cleanSlug.includes("apk") || cleanSlug.includes("download")) {
-            navigate("/downloads/jadlog", { replace: true });
+            navigate("/myjadlog", { replace: true });
             return;
           }
           setMessage("Não foi possível resolver este link");

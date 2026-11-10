@@ -275,6 +275,13 @@ export default function ProductPage() {
       ?? null;
   }, [activeProducts, fallbackNameSlug, productId, rawSlug]);
 
+  console.log("=== ProductPage Debug ===" + JSON.stringify({
+    slug,
+    loading,
+    activeCount: activeProducts.length,
+    found: product ? product.name : null,
+  }));
+
   const images = useMemo(() => {
     const list = (product as any)?.images ?? [];
     if (!Array.isArray(list)) return [];
@@ -376,7 +383,7 @@ export default function ProductPage() {
           </Link>
         </Button>
 
-        {loading ? (
+        {loading && !product ? (
           <div className="text-muted-foreground text-sm">Carregando...</div>
         ) : !product ? (
           <div className="text-muted-foreground text-sm">Produto não encontrado.</div>

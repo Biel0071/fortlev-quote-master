@@ -1,7 +1,6 @@
 import { publicImageUrl } from "@/utils/storage";
 import { resolveCategoryPng } from "@/utils/categoryIcons";
-import fortlevLogo from "@/assets/fortlev-logo.png";
-import festivalCaixasMobile from "@/assets/banners/festival-caixas-mobile.png";
+import fortlevCaixaSvg from "@/assets/caixa-dagua-fortlev.svg";
 import areiaIcon from "@/assets/category-icons/areia.png";
 import blocosIcon from "@/assets/category-icons/blocos.png";
 import cimentoIcon from "@/assets/category-icons/cimento.png";
@@ -40,12 +39,9 @@ export function getValidProductImagePath(
 export function resolveProductFallbackImage(name?: string | null, category?: string | null): string {
   const text = `${name ?? ""} ${category ?? ""}`.toLowerCase();
 
-  // Fortlev e caixas d'água
-  if (/(caixa.*(água|agua|fortlev|kmr|3000|1000|2000|5000)|reservat)/.test(text)) {
-    return festivalCaixasMobile;
-  }
-  if (/(fortlev)/.test(text)) {
-    return fortlevLogo;
+  // Fortlev e caixas d'água (representação limpa de caixa d'água Fortlev em vetor SVG)
+  if (/(caixa.*(água|agua|fortlev|kmr|3000|1000|2000|5000)|reservat|fortlev)/.test(text)) {
+    return fortlevCaixaSvg;
   }
 
   // Cimento, argamassa e rejunte

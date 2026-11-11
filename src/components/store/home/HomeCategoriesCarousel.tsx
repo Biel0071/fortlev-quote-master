@@ -62,15 +62,15 @@ function CategoryAvatar({
   return (
     <div
       className={cn(
-        "h-[72px] w-[72px] sm:h-[80px] sm:w-[80px]",
+        "h-[76px] w-[76px] sm:h-[84px] sm:w-[84px]",
         "rounded-full",
-        "border border-primary/20",
+        "border border-primary/25",
         "bg-white dark:bg-card",
-        "grid place-items-center p-2.5",
+        "grid place-items-center p-2",
         "shadow-sm ring-1 ring-inset ring-primary/10",
         "overflow-hidden",
         "transition-all duration-200",
-        "group-hover:shadow-md group-hover:ring-primary/30 group-hover:scale-105",
+        "group-hover:shadow-md group-hover:ring-primary/40 group-hover:scale-105",
       )}
       aria-hidden="true"
     >
@@ -78,7 +78,7 @@ function CategoryAvatar({
         <img
           src={img}
           alt={`Categoria ${name}`}
-          className="h-full w-full object-contain filter drop-shadow-xs"
+          className="h-full w-full rounded-full object-contain filter drop-shadow-xs"
           loading="lazy"
           draggable={false}
           onError={() => setImgOk(false)}
@@ -278,7 +278,9 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
                         }}
                       >
                         <CategoryAvatar name={c.name} img={img} Icon={Icon} />
-                        <div className="mt-3 flex min-h-[2.6em] items-start justify-center text-[13px] sm:text-[14px] font-semibold leading-tight tracking-tight text-foreground line-clamp-2 px-1">{c.name}</div>
+                        <div className="mt-2.5 flex h-10 items-center justify-center text-center text-xs sm:text-[13px] font-semibold leading-tight tracking-tight text-foreground line-clamp-2 px-1">
+                          {c.name}
+                        </div>
                       </Link>
                     );
                   })}

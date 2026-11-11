@@ -25,9 +25,9 @@ export function HomeMainCategoriesGrid({ categories }: { categories: StoreCatego
             aria-label={`Ver produtos de ${c.name}`}
           >
             <div className="p-5 flex flex-col items-center text-center gap-4">
-              <div className="h-20 w-20 rounded-full overflow-hidden border border-border bg-muted/20">
+              <div className="h-20 w-20 rounded-full overflow-hidden border border-border bg-white p-1.5 shadow-xs">
                 {img ? (
-                  <img src={img} alt={`Categoria ${c.name}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                  <img src={img} alt={`Categoria ${c.name}`} className="h-full w-full rounded-full object-contain" loading="lazy" decoding="async" />
                 ) : (
                   <div className="h-full w-full fortlev-gradient opacity-80" />
                 )}

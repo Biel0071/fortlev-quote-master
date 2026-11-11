@@ -9,7 +9,7 @@ import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
-import { useHomeContent } from "@/hooks/useHomeContent";
+import { useHomeContent, DEFAULT_FALLBACK_BANNER } from "@/hooks/useHomeContent";
 import { useTenant } from "@/providers/TenantProvider";
 import { HomeHeroCarousel } from "@/components/store/home/HomeHeroCarousel";
 import { CartDrawer } from "@/components/store/CartDrawer";
@@ -243,7 +243,10 @@ export default function StoreHome() {
       ) : (
         <>
           <div className="w-full overflow-hidden">
-            <HomeHeroCarousel banners={home.banners} loading={home.loading} />
+            <HomeHeroCarousel
+              banners={home.banners.length > 0 ? home.banners : [DEFAULT_FALLBACK_BANNER]}
+              loading={home.loading && home.banners.length === 0}
+            />
           </div>
 
           {/* Removed Tracking Callout section as requested */}

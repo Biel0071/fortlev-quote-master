@@ -21,6 +21,7 @@ import {
 import type { StoreCategory } from "@/hooks/useStoreCategories";
 import { cn } from "@/lib/utils";
 import { publicImageUrl } from "@/utils/storage";
+import { resolveCategoryPng } from "@/utils/categoryIcons";
 
 function pickIcon(name: string) {
   const key = (name ?? "").trim().toLowerCase();
@@ -63,13 +64,13 @@ function CategoryAvatar({
       className={cn(
         "h-[72px] w-[72px] sm:h-[80px] sm:w-[80px]",
         "rounded-full",
-        "border border-primary/15",
-        "bg-gradient-to-br from-primary/10 via-primary/5 to-accent/10",
-        "grid place-items-center",
-        "shadow-sm ring-1 ring-inset ring-primary/5",
+        "border border-primary/20",
+        "bg-white dark:bg-card",
+        "grid place-items-center p-2.5",
+        "shadow-sm ring-1 ring-inset ring-primary/10",
         "overflow-hidden",
         "transition-all duration-200",
-        "group-hover:shadow-md group-hover:ring-primary/20 group-hover:from-primary/15 group-hover:to-accent/20",
+        "group-hover:shadow-md group-hover:ring-primary/30 group-hover:scale-105",
       )}
       aria-hidden="true"
     >
@@ -77,7 +78,7 @@ function CategoryAvatar({
         <img
           src={img}
           alt={`Categoria ${name}`}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain filter drop-shadow-xs"
           loading="lazy"
           draggable={false}
           onError={() => setImgOk(false)}
@@ -252,7 +253,9 @@ export const HomeCategoriesCarousel = React.forwardRef<HTMLDivElement, Props>(
                 <div className="flex w-max gap-3" style={{ transform: `translateX(${manualShift}px)` }}>
                   {loopedCategories.map((c, index) => {
                     const Icon = pickIcon(c.name);
-                    const img = publicImageUrl("category-images", c.image_path ?? null);
+                    const remoteImg = c.image_path ? publicImageUrl("category-images", c.image_path) : null;
+                    const localPng = resolveCategoryPng(c.name, c.slug);
+                    const img = remoteImg || localPng || "";
 
                     return (
                       <Link

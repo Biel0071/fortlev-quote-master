@@ -133,7 +133,10 @@ export function StoreProductCard({
     return `ou 10x de ${formatCurrency(x)} sem juros`;
   }, [effectivePrice]);
 
-  const imageSrc = getProductImageUrl(product?.images);
+  const imageSrc = getProductImageUrl(product?.images, undefined, {
+    name: product?.name,
+    category: product?.category,
+  });
 
   const openProduct = () => {
     if (isMock) return;

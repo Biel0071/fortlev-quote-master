@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
 import { useTenant } from "@/providers/TenantProvider";
 import { getSmartCache, runApiMicrotask, setSmartCache } from "@/utils/smartCache";
+import festivalCaixasDesktop from "@/assets/banners/festival-caixas-desktop.png";
+import festivalCaixasMobile from "@/assets/banners/festival-caixas-mobile.png";
 
 export type HomeBanner = {
   id: string;
@@ -106,6 +108,22 @@ type HomeContentCache = {
 const HOME_CONTENT_CACHE_BASE_KEY = "home_content:v1";
 const HOME_CONTENT_CACHE_TTL_MS = 1000 * 60 * 3;
 
+export const DEFAULT_FALLBACK_BANNER: HomeBanner = {
+  id: "banner-default-festival",
+  title: "Festival de Caixas d'Água Fortlev",
+  subtitle: "As melhores ofertas em reservatórios e caixas d'água",
+  button_label: "Aproveitar Ofertas",
+  link_url: "/ofertas",
+  link: "/ofertas",
+  image_path: festivalCaixasDesktop,
+  image_desktop_path: festivalCaixasDesktop,
+  image_mobile_path: festivalCaixasMobile,
+  sort_order: 1,
+  position: 1,
+  active: true,
+  is_active: true,
+};
+
 type UseHomeContentOptions = {
   enabled?: boolean;
 };
@@ -116,7 +134,7 @@ export function useHomeContent(options?: UseHomeContentOptions) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [banners, setBanners] = useState<HomeBanner[]>([]);
+  const [banners, setBanners] = useState<HomeBanner[]>([DEFAULT_FALLBACK_BANNER]);
   const [benefits, setBenefits] = useState<HomeBenefit[]>([]);
   const [policies, setPolicies] = useState<HomePolicy[]>([]);
   const [sections, setSections] = useState<HomeSection[]>([]);
@@ -151,7 +169,8 @@ export function useHomeContent(options?: UseHomeContentOptions) {
         if (res.error) console.error(`[useHomeContent] Query ${i} failed:`, res.error);
       });
 
-      const normalizedBanners = ((b.data ?? []) as any[]).map((row) => {
+      const rawBanners = (b.data ?? []) as any[];
+      const normalizedBanners = (rawBanners.length > 0 ? rawBanners : [DEFAULT_FALLBACK_BANNER]).map((row) => {
         const imagePath = row.image_path || row.image_desktop_path || row.image_mobile_path;
         return {
           ...row,
@@ -190,6 +209,7 @@ export function useHomeContent(options?: UseHomeContentOptions) {
     } catch (error) {
       console.error("[useHomeContent] Error loading home content:", error);
       const message = error instanceof Error ? error.message : "Falha ao carregar conteúdo da Home";
+      setBanners([DEFAULT_FALLBACK_BANNER]);
       setError(message);
     } finally {
       setLoading(false);

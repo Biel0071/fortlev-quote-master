@@ -33,31 +33,7 @@ import { useTenant } from "@/providers/TenantProvider";
 import { publicImageUrl } from "@/utils/storage";
 
 import { cn } from "@/lib/utils";
-import areiaIcon from "@/assets/category-icons/areia.png";
-import blocosIcon from "@/assets/category-icons/blocos.png";
-import churrasqueiraIcon from "@/assets/category-icons/churrasqueira.png";
-import cimentoIcon from "@/assets/category-icons/cimento.png";
-import eletricaIcon from "@/assets/category-icons/eletrica.png";
-import ferramentasIcon from "@/assets/category-icons/ferramentas.png";
-import madeiraIcon from "@/assets/category-icons/madeira.png";
-import pinturaIcon from "@/assets/category-icons/pintura.png";
-import vergalhaoIcon from "@/assets/category-icons/vergalhao.png";
-
-function resolveCategoryPng(name: string, slug?: string) {
-  const key = `${slug ?? ""} ${name ?? ""}`.trim().toLowerCase();
-
-  if (/(ferragem|vergalh|arma)/.test(key)) return vergalhaoIcon;
-  if (/(cimento|argamassa|rejunte|massa|laje)/.test(key)) return cimentoIcon;
-  if (/(bloco|tijolo|alvenaria|basic|material)/.test(key)) return blocosIcon;
-  if (/(madeira|telhado|forro|porta|janela)/.test(key)) return madeiraIcon;
-  if (/(elétrica|eletrica|fio|cabo|tomada|interruptor)/.test(key)) return eletricaIcon;
-  if (/(ferramenta|obra|martelo|broca|serra|equip)/.test(key)) return ferramentasIcon;
-  if (/(pintura|tinta|verniz|textura)/.test(key)) return pinturaIcon;
-  if (/(churrasqueira|gourmet)/.test(key)) return churrasqueiraIcon;
-  if (/(areia|brita|pedra|agregado|piso|porcelanato|revest)/.test(key)) return areiaIcon;
-
-  return null;
-}
+import { resolveCategoryPng } from "@/utils/categoryIcons";
 
 export function StoreTopbar({
   cartCount,

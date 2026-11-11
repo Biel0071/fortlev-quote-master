@@ -11,7 +11,7 @@ import { useHomeContent } from "@/hooks/useHomeContent";
 import { useStorePages } from "@/hooks/useStorePages";
 import { formatCurrency } from "@/utils/formatters";
 import { publicImageUrl } from "@/utils/storage";
-import { getProductImageUrl } from "@/utils/productImage";
+import { getProductImageUrl, resolveProductFallbackImage } from "@/utils/productImage";
 import { generateStandardProductDescription } from "@/utils/productDescription";
 import { trackClickEvent } from "@/utils/clickTracking";
 import { cn } from "@/lib/utils";
@@ -297,7 +297,9 @@ export default function ProductPage() {
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [activeMedia, setActiveMedia] = useState<MediaItem | null>(null);
   const [qty, setQty] = useState(1);
-  const fallbackProductImage = "/placeholder.svg";
+  const fallbackProductImage = useMemo(() => {
+    return resolveProductFallbackImage(product?.name, (product as any)?.category);
+  }, [product?.name, (product as any)?.category]);
 
   useEffect(() => {
     let cancelled = false;

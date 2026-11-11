@@ -9,7 +9,7 @@ export function normalizeStorageObjectPath(bucket: string, path?: string | null)
 
   const trimmed = path.trim();
   if (!trimmed) return "";
-  if (trimmed.startsWith("blob:")) return "";
+  if (trimmed.startsWith("blob:") || trimmed.startsWith("data:") || trimmed.startsWith("/")) return trimmed;
 
   const publicMarker = `/storage/v1/object/public/${bucket}/`;
   const markerIndex = trimmed.indexOf(publicMarker);
@@ -33,7 +33,13 @@ export function normalizeStorageObjectPath(bucket: string, path?: string | null)
 export function publicImageUrl(bucket: string, path?: string | null) {
   const normalized = normalizeStorageObjectPath(bucket, path);
   if (!normalized) return "";
-  if (normalized.startsWith("http://") || normalized.startsWith("https://") || normalized.startsWith("blob:")) {
+  if (
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://") ||
+    normalized.startsWith("blob:") ||
+    normalized.startsWith("data:") ||
+    normalized.startsWith("/")
+  ) {
     return normalized;
   }
   return cloud.storage.from(bucket).getPublicUrl(normalized).data.publicUrl;

@@ -16,7 +16,10 @@ type Props = {
 
 export function OfferProductCard({ product, prices, onAdd }: Props) {
   const nav = useNavigate();
-  const imageSrc = getProductImageUrl(product?.images);
+  const imageSrc = getProductImageUrl(product?.images, undefined, {
+    name: product?.name,
+    category: product?.category,
+  });
   const unitLabel = product.unit && product.unit !== "un" ? `/${product.unit}` : "";
   const rating = useProductRatingSummary(product.id);
   const isMock = Boolean(product?.isMock);

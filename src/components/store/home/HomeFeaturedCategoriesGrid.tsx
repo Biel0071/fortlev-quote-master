@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { StoreCategory } from "@/hooks/useStoreCategories";
 import { publicImageUrl } from "@/utils/storage";
+import { resolveCategoryPng } from "@/utils/categoryIcons";
 import { cn } from "@/lib/utils";
 
 export function HomeFeaturedCategoriesGrid({ categories }: { categories: StoreCategory[] }) {
@@ -16,7 +17,9 @@ export function HomeFeaturedCategoriesGrid({ categories }: { categories: StoreCa
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((c) => {
-          const img = publicImageUrl("category-images", c.image_path ?? null);
+          const remoteImg = c.image_path ? publicImageUrl("category-images", c.image_path) : null;
+          const localImg = resolveCategoryPng(c.name, c.slug);
+          const img = remoteImg || localImg;
           return (
             <Link
               key={c.id}

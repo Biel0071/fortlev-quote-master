@@ -55,10 +55,15 @@ export function BannerSlider({ banners }: { banners: BannerSliderItem[] }) {
       <div ref={emblaRef} className="w-full overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 bg-muted/30 shadow-xs">
         <div className="flex">
           {slides.map((banner, index) => {
-            const desktopUrls = getBannerImageUrls(banner.image_desktop_path);
-            const mobileUrls = getBannerImageUrls(banner.image_mobile_path);
-            const desktopUrl = desktopUrls.primary || desktopUrls.legacy;
-            const mobileUrl = mobileUrls.primary || mobileUrls.legacy;
+            const rawDesktop = banner.image_desktop_path;
+            const rawMobile = banner.image_mobile_path;
+            const isLocalDesktop = rawDesktop?.startsWith("/") || rawDesktop?.startsWith("data:") || rawDesktop?.startsWith("blob:");
+            const isLocalMobile = rawMobile?.startsWith("/") || rawMobile?.startsWith("data:") || rawMobile?.startsWith("blob:");
+
+            const desktopUrls = isLocalDesktop ? { primary: rawDesktop!, legacy: rawDesktop! } : getBannerImageUrls(rawDesktop);
+            const mobileUrls = isLocalMobile ? { primary: rawMobile!, legacy: rawMobile! } : getBannerImageUrls(rawMobile);
+            const desktopUrl = isLocalDesktop ? rawDesktop! : (desktopUrls.primary || desktopUrls.legacy);
+            const mobileUrl = isLocalMobile ? rawMobile! : (mobileUrls.primary || mobileUrls.legacy);
             const destination = banner.link_url?.trim() || null;
 
             const primarySrc = desktopUrl || mobileUrl || "/placeholder.svg";

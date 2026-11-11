@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Backups: dados pessoais/binarios nunca vao para o repo publico
+backups/database/
+backups/auth/
+backups/storage/
+backups/metadata/
+.env.local
+

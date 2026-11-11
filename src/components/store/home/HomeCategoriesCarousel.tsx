@@ -64,13 +64,11 @@ function CategoryAvatar({
       className={cn(
         "h-[76px] w-[76px] sm:h-[84px] sm:w-[84px]",
         "rounded-full",
-        "border border-primary/25",
-        "bg-white dark:bg-card",
-        "grid place-items-center p-2",
-        "shadow-sm ring-1 ring-inset ring-primary/10",
+        "bg-transparent",
+        "grid place-items-center",
         "overflow-hidden",
-        "transition-all duration-200",
-        "group-hover:shadow-md group-hover:ring-primary/40 group-hover:scale-105",
+        "transition-transform duration-200",
+        "group-hover:scale-105",
       )}
       aria-hidden="true"
     >
@@ -78,7 +76,7 @@ function CategoryAvatar({
         <img
           src={img}
           alt={`Categoria ${name}`}
-          className="h-full w-full rounded-full object-contain filter drop-shadow-xs"
+          className="h-full w-full rounded-full object-cover scale-[1.22]"
           loading="lazy"
           draggable={false}
           onError={() => setImgOk(false)}

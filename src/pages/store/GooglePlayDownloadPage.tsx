@@ -17,14 +17,15 @@ import {
   Star,
   Trash2,
   Truck,
+  X,
 } from "lucide-react";
 import storeLogoPure from "@/assets/store-logo-pure.png";
 import festivalCaixasDesktop from "@/assets/banners/festival-caixas-desktop.png";
 import { GooglePlayTriangleIcon } from "@/components/store/TrustAndAppBadges";
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { cloud } from "@/lib/cloud";
-import { useTenant } from "@/providers/TenantProvider";
-import { isDatabaseStoreId } from "@/utils/storeId";
+import { encodeEncryptedLink } from "@/utils/encryptedLinks";
+import { collectAndTrackEvent } from "@/modules/tracking/trackingService";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -88,7 +89,6 @@ const REVIEWS = [
 ];
 
 export default function GooglePlayDownloadPage() {
-  const { store } = useTenant();
   const contact = useStoreContact();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [configuredApkUrl, setConfiguredApkUrl] = useState<string | null>(null);
@@ -114,16 +114,12 @@ export default function GooglePlayDownloadPage() {
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
   }, []);
 
-  const storeId = store?.id ?? null;
-
   useEffect(() => {
-    if (!isDatabaseStoreId(storeId)) return;
     let alive = true;
     cloud
       .from("app_config")
       .select("value")
-      .eq("store_id", storeId!)
-      .eq("key", "apk_url")
+      .eq("key", "app_download_url")
       .maybeSingle()
       .then(({ data }) => {
         if (!alive) return;
@@ -135,10 +131,28 @@ export default function GooglePlayDownloadPage() {
     return () => {
       alive = false;
     };
-  }, [storeId]);
+  }, []);
 
   const handleInstallClick = () => {
     if (downloadProgress !== null && !isCompleted) return;
+    try {
+      localStorage.setItem("material_online_app_mode", "1");
+      const token =
+        localStorage.getItem("tracking_session_token_v1") ||
+        sessionStorage.getItem("tracking_session_token_temp_v1") ||
+        "";
+      if (token) {
+        void collectAndTrackEvent({
+          sessionToken: token,
+          consentGiven: true,
+          event: {
+            type: "download_apk",
+            path: "/google-play",
+            metadata: { channel: "app", label: "material_online_install", encrypted: true },
+          },
+        });
+      }
+    } catch { /* ignore storage/tracking errors */ }
     setDownloadProgress(0);
     let progress = 0;
     const interval = window.setInterval(async () => {
@@ -207,7 +221,7 @@ export default function GooglePlayDownloadPage() {
 
           <div className="flex items-center gap-2">
             <Link
-              to="/"
+              to={encodeEncryptedLink("/", { source: "/google-play", label: "gp_back_home", channel: "app" })}
               className="inline-flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] hover:bg-[#f1f3f4] transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
@@ -328,7 +342,7 @@ export default function GooglePlayDownloadPage() {
               </button>
 
               <Link
-                to="/"
+                to={encodeEncryptedLink("/", { source: "/google-play", label: "gp_open_store", channel: "app" })}
                 className="inline-flex h-11 items-center justify-center rounded-lg border border-white/25 px-5 text-sm font-medium text-white hover:bg-white/10 transition-colors"
               >
                 Abrir loja online
@@ -575,10 +589,16 @@ export default function GooglePlayDownloadPage() {
               <span className="font-medium text-[#202124]">Google Play · Material Online</span>
               <span>Privacidade</span>
               <span>Termos de Serviço</span>
-              <Link to="/rastreio" className="text-[#01875f] font-medium hover:underline">
+              <Link
+                to={encodeEncryptedLink("/rastreio", { source: "/google-play", label: "gp_footer_tracking", channel: "app" })}
+                className="text-[#01875f] font-medium hover:underline"
+              >
                 Rastrear Pedido
               </Link>
-              <Link to="/" className="text-[#01875f] font-medium hover:underline">
+              <Link
+                to={encodeEncryptedLink("/", { source: "/google-play", label: "gp_footer_home", channel: "app" })}
+                className="text-[#01875f] font-medium hover:underline"
+              >
                 Ir para a loja
               </Link>
             </div>
@@ -590,13 +610,24 @@ export default function GooglePlayDownloadPage() {
       {/* Modal pós-instalação */}
       {showInstalledModal ? (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Aplicativo Material Online preparado"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           onClick={() => setShowInstalledModal(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl space-y-4"
+            className="relative w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              type="button"
+              onClick={() => setShowInstalledModal(false)}
+              aria-label="Fechar"
+              className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800 cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
             <img
               src={storeLogoPure}
               alt="Logo Material Online"
@@ -619,7 +650,8 @@ export default function GooglePlayDownloadPage() {
                 <span>Confirmar no WhatsApp (10% OFF)</span>
               </a>
               <Link
-                to="/"
+                to={encodeEncryptedLink("/", { source: "/google-play", label: "gp_modal_open_store", channel: "app" })}
+                onClick={() => setShowInstalledModal(false)}
                 className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 text-sm font-medium text-[#202124] hover:bg-gray-50"
               >
                 Abrir loja Material Online

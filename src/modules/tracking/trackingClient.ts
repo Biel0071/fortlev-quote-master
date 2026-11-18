@@ -18,7 +18,9 @@ export type EventType =
   | "whatsapp_click"
   | "category_click"
   | "link_click"
-  | "download_apk";
+  | "download_apk"
+  | "dwell_heartbeat"
+  | "app_install";
 
 export type TrackEventInput = {
   type: EventType;
@@ -110,6 +112,42 @@ export async function trackVisitorEvent({
   } catch (err) {
     console.warn("[tracking] event failed:", err);
     return { skipped: true, reason: "error" };
+  }
+}
+
+export async function resolveEncryptedLinkRpc(params: {
+  slug: string;
+  sessionToken?: string;
+  targetUrl?: string;
+  label?: string;
+  channel?: "site" | "app";
+  utmSource?: string;
+  utmCampaign?: string;
+  referrer?: string;
+}) {
+  try {
+    const { data, error } = await cloud.rpc("rpc_resolve_short_link", {
+      p_slug: params.slug,
+      p_session_token: params.sessionToken || null,
+      p_utm_source: params.utmSource || null,
+      p_utm_campaign: params.utmCampaign || null,
+      p_referrer: params.referrer || (typeof document !== "undefined" ? document.referrer || null : null),
+      p_target_url: params.targetUrl || null,
+      p_label: params.label || null,
+      p_channel: params.channel || "site",
+    });
+    if (error) return { ok: false as const, error: error.message };
+    return (data ?? { ok: false }) as {
+      ok?: boolean;
+      destination_url?: string;
+      session_token?: string;
+      is_bot?: boolean;
+      ip_masked?: string;
+      purchase_probability?: number;
+      lead_quality?: string;
+    };
+  } catch {
+    return { ok: false as const };
   }
 }
 

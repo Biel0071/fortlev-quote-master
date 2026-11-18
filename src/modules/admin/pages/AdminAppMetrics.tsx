@@ -25,6 +25,8 @@ import {
   Globe,
   Monitor,
   Pencil,
+  Clock,
+  ShieldCheck,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -116,6 +118,9 @@ export default function AdminAppMetrics() {
   const [bannerClicks, setBannerClicks] = useState(0);
   const [appDownloadClicks, setAppDownloadClicks] = useState(0);
   const [appSessions, setAppSessions] = useState(0);
+  const [avgAppTimeSec, setAvgAppTimeSec] = useState(0);
+  const [avgAppPropensity, setAvgAppPropensity] = useState(0);
+  const [encryptedLinkClicksTotal, setEncryptedLinkClicksTotal] = useState(0);
   const [dailyClicks, setDailyClicks] = useState<{ date: string; clicks: number }[]>([]);
   const [metricsError, setMetricsError] = useState(false);
 
@@ -220,18 +225,25 @@ export default function AdminAppMetrics() {
 
     try {
       const [
-        { data: bannerEvents, error: bannerEventsError },
-        { data: trackingAppClicks, error: trackingEventsError },
-        { data: sessions, error: sessionsError },
+        { data: trackingAppEvents, error: trackingEventsError },
+        { data: trackingSessionsRows, error: sessionsError },
         { data: configRow, error: configError },
         { data: metaRow, error: metaError },
         shortLinksRes,
         tokenRes,
         apkRes,
       ] = await Promise.all([
-        cloud.from("visitor_events").select("id, metadata, created_at").eq("type", "banner_click").limit(1000),
-        cloud.from("tracking_events").select("id, metadata, created_at").eq("type", "banner_click").limit(500),
-        cloud.from("visitor_sessions").select("id, referrer, utm_source").limit(500),
+        cloud
+          .from("tracking_events")
+          .select("id, type, path, metadata, created_at")
+          .in("type", ["link_click", "download_apk", "app_banner_click", "banner_click", "app_install"])
+          .order("created_at", { ascending: false })
+          .limit(1000),
+        cloud
+          .from("tracking_sessions")
+          .select("id, channel, app_time_seconds, site_time_seconds, encrypted_clicks, purchase_probability, is_bot")
+          .order("last_seen_at", { ascending: false })
+          .limit(500),
         cloud.from("app_config").select("value").eq("key", "app_download_url").maybeSingle(),
         cloud.from("app_config").select("value").eq("key", "app_apk_meta").maybeSingle(),
         activeStoreId
@@ -239,8 +251,8 @@ export default function AdminAppMetrics() {
               .from("app_short_links")
               .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
               .eq("store_id", activeStoreId)
-              .order("created_at", { ascending: false })
-              .limit(20)
+              .order("clicks", { ascending: false })
+              .limit(40)
           : Promise.resolve({ data: [] }),
         activeStoreId
           ? cloud
@@ -260,27 +272,58 @@ export default function AdminAppMetrics() {
           : Promise.resolve({ data: [] }),
       ]);
 
-      if (bannerEventsError || trackingEventsError || sessionsError) {
+      if (trackingEventsError || sessionsError) {
         throw new Error("Falha ao carregar métricas reais do banco de dados");
       }
 
-      const allBanner = bannerEvents ?? [];
-      const appBanner = allBanner.filter(
-        (event: any) =>
-          event.metadata?.click_type === "app_download_click" || event.metadata?.banner_type === "app",
+      const appEvList = (trackingAppEvents ?? []) as Array<{
+        id: string;
+        type: string;
+        path: string | null;
+        metadata: Record<string, unknown> | null;
+        created_at: string;
+      }>;
+      const bannerList = appEvList.filter(
+        (ev) =>
+          ev.type === "app_banner_click" ||
+          ev.metadata?.label === "top_app_banner" ||
+          ev.metadata?.label === "footer_google_play" ||
+          ev.metadata?.click_type === "app_download_click",
       );
-
-      setBannerClicks(appBanner.length);
-
-      const extraAppClicks = (trackingAppClicks ?? []).filter(
-        (event: any) => event.metadata?.click_type === "app_download_click",
+      const installList = appEvList.filter(
+        (ev) =>
+          ev.type === "download_apk" ||
+          ev.type === "app_install" ||
+          (ev.type === "link_click" && String(ev.path || "").startsWith("/google-play")),
       );
-      setAppDownloadClicks(appBanner.length + extraAppClicks.length);
+      const encList = appEvList.filter((ev) => ev.type === "link_click");
 
-      const fromApp = (sessions ?? []).filter(
-        (session: any) => session.utm_source === "app" || (session.referrer || "").includes("app"),
+      setBannerClicks(bannerList.length);
+      setAppDownloadClicks(installList.length);
+
+      const humanSessions = ((trackingSessionsRows ?? []) as Array<{
+        is_bot?: boolean | null;
+        channel?: string | null;
+        app_time_seconds?: number | null;
+        purchase_probability?: number | null;
+      }>).filter((s) => !s.is_bot);
+      const onlyApp = humanSessions.filter(
+        (s) => s.channel === "app" || s.channel === "site+app" || Number(s.app_time_seconds || 0) > 0,
       );
-      setAppSessions(fromApp.length);
+      setAppSessions(onlyApp.length);
+
+      const totalAppSec = onlyApp.reduce((acc, s) => acc + Number(s.app_time_seconds || 0), 0);
+      setAvgAppTimeSec(onlyApp.length > 0 ? Math.round(totalAppSec / onlyApp.length) : 0);
+
+      const avgProb =
+        onlyApp.length > 0
+          ? Math.round(onlyApp.reduce((acc, s) => acc + Number(s.purchase_probability || 0), 0) / onlyApp.length)
+          : 0;
+      setAvgAppPropensity(avgProb);
+
+      const shortLinksList = (shortLinksRes.data as ShortLinkRow[] | null) ?? [];
+      const sumShortClicks = shortLinksList.reduce((acc, row) => acc + Number(row.clicks || 0), 0);
+      setEncryptedLinkClicksTotal(Math.max(encList.length, sumShortClicks));
 
       const now = new Date();
       const dailyMap: Record<string, number> = {};
@@ -290,7 +333,7 @@ export default function AdminAppMetrics() {
         dailyMap[date.toISOString().split("T")[0]] = 0;
       }
 
-      [...appBanner, ...extraAppClicks].forEach((event: any) => {
+      [...bannerList, ...encList].forEach((event) => {
         const day = event.created_at?.split("T")[0];
         if (day && dailyMap[day] !== undefined) {
           dailyMap[day] += 1;
@@ -325,7 +368,7 @@ export default function AdminAppMetrics() {
         setApkMeta(null);
       }
 
-      setShortLinks((shortLinksRes.data as ShortLinkRow[] | null) ?? []);
+      setShortLinks(shortLinksList);
       setShortenerTokens((tokenRes.data as ShortenerTokenRow[] | null) ?? []);
       const apkList = ((apkRes as { data?: ApkRow[] | null }).data ?? []) as ApkRow[];
       setApks(apkList);
@@ -336,6 +379,9 @@ export default function AdminAppMetrics() {
       setBannerClicks(0);
       setAppDownloadClicks(0);
       setAppSessions(0);
+      setAvgAppTimeSec(0);
+      setAvgAppPropensity(0);
+      setEncryptedLinkClicksTotal(0);
       setDailyClicks([]);
       setApkUrl(null);
       setApkMeta(null);
@@ -790,31 +836,43 @@ export default function AdminAppMetrics() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {[
           {
+            icon: <Smartphone className="h-4 w-4" />,
+            label: "Sessões no App",
+            value: appSessions,
+            color: "text-foreground",
+          },
+          {
+            icon: <Clock className="h-4 w-4" />,
+            label: "Tempo Médio App",
+            value: avgAppTimeSec >= 60 ? `${Math.floor(avgAppTimeSec / 60)}m ${avgAppTimeSec % 60}s` : `${avgAppTimeSec}s`,
+            color: "text-emerald-600",
+          },
+          {
+            icon: <Link2 className="h-4 w-4" />,
+            label: "Links Criptografados",
+            value: encryptedLinkClicksTotal,
+            color: "text-sky-600",
+          },
+          {
+            icon: <ShieldCheck className="h-4 w-4" />,
+            label: "Propensão App",
+            value: `${avgAppPropensity}%`,
+            color: "text-primary",
+          },
+          {
             icon: <MousePointerClick className="h-4 w-4" />,
-            label: "Cliques no Banner",
+            label: "Cliques Banner App",
             value: bannerClicks,
             color: "text-foreground",
           },
           {
             icon: <Download className="h-4 w-4" />,
-            label: "Downloads (cliques)",
+            label: "Instalações / GP",
             value: appDownloadClicks,
             color: "text-primary",
-          },
-          {
-            icon: <TrendingUp className="h-4 w-4" />,
-            label: "Taxa Conversão",
-            value: `${bannerClicks > 0 ? ((appDownloadClicks / bannerClicks) * 100).toFixed(1) : "0.0"}%`,
-            color: "text-primary",
-          },
-          {
-            icon: <Smartphone className="h-4 w-4" />,
-            label: "Sessões do App",
-            value: appSessions,
-            color: "text-foreground",
           },
         ].map((card, index) => (
           <Card key={index} className="rounded-2xl">

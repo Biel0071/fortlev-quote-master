@@ -25,6 +25,12 @@ const OFFICIAL_EVENT_TYPES = new Set<string>([
   "category_click",
   "link_click",
   "download_apk",
+  "dwell_heartbeat",
+  "app_install",
+  "app_banner_click",
+  "app_popup_open",
+  "app_popup_confirm_whatsapp",
+  "app_download_continue",
 ]);
 
 export function normalizeCollectedEvent(event: TrackingCollectorEvent): TrackEventInput {
@@ -33,7 +39,9 @@ export function normalizeCollectedEvent(event: TrackingCollectorEvent): TrackEve
   }
 
   if (event.type === "offer_click") {
-    const normalized = String((event.metadata as any)?.normalized_type ?? "").trim();
+    const normalized = String(
+      (event.metadata as Record<string, unknown> | undefined)?.normalized_type ?? "",
+    ).trim();
     if (OFFICIAL_EVENT_TYPES.has(normalized)) {
       return {
         type: normalized as TrackEventInput["type"],

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { encodeEncryptedLink } from "@/utils/encryptedLinks";
 
 /**
  * Ícone vetorial oficial multicolorido do triângulo do Google Play.
@@ -37,9 +38,14 @@ export function GooglePlayStoreBadge({
   to?: string;
   className?: string;
 }) {
+  const encryptedHref = encodeEncryptedLink(to, {
+    label: "footer_google_play",
+    channel: "site",
+  });
+
   return (
     <Link
-      to={to}
+      to={encryptedHref}
       className={cn(
         "inline-flex items-center gap-3 rounded-xl border border-white/25 bg-black px-4 py-2 text-white shadow-sm transition-all hover:bg-neutral-900 hover:border-white/50 active:scale-[0.99]",
         className,

@@ -52,6 +52,8 @@ export function CookieConsentBanner() {
     pathname.startsWith("/admin") ||
     pathname.startsWith("/downloads") ||
     pathname.startsWith("/r/") ||
+    pathname === "/google-play" ||
+    pathname === "/app/download" ||
     pathname === "/myjadlog" ||
     pathname === "/my_jadlog" ||
     pathname === "/my-jadlog";

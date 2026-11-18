@@ -4,6 +4,7 @@ import { useStoreContact } from "@/hooks/useStoreContact";
 import { AppDownloadConfirmDialog } from "./AppDownloadConfirmDialog";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
+import { encodeEncryptedLink } from "@/utils/encryptedLinks";
 
 const DISMISS_KEY = "APP_BANNER_DISMISSED_AT";
 const DOWNLOAD_CLICKED_KEY = "app_download_clicked";
@@ -62,7 +63,13 @@ export function AppDownloadBanner() {
   const handleBannerClick = () => {
     markDownloadClicked();
     trackAppEvent("app_banner_click");
-    navigate("/google-play");
+    navigate(
+      encodeEncryptedLink("/google-play", {
+        source: location.pathname,
+        label: "top_app_banner",
+        channel: "site",
+      }),
+    );
   };
 
   const markDownloadClicked = () => {

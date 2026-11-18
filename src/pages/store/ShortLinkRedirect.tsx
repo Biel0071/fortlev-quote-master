@@ -1,82 +1,127 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { cloud } from "@/lib/cloud";
+import { decodeEncryptedToken } from "@/utils/encryptedLinks";
+import { resolveEncryptedLinkRpc } from "@/modules/tracking/trackingClient";
+
+const SESSION_KEY = "tracking_session_token_v1";
+const TEMP_SESSION_KEY = "tracking_session_token_temp_v1";
+
+function getOrCreateSessionToken() {
+  try {
+    const existing = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(TEMP_SESSION_KEY);
+    if (existing) return existing;
+    const created =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem(SESSION_KEY, created);
+    return created;
+  } catch {
+    return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  }
+}
 
 export default function ShortLinkRedirect() {
   const { slug = "" } = useParams();
   const navigate = useNavigate();
-  const [message, setMessage] = useState("Resolvendo link...");
+  const [message, setMessage] = useState("Redirecionando...");
 
   useEffect(() => {
+    let cancelled = false;
+
     const resolve = async () => {
       if (!slug) {
         setMessage("Link inválido");
-        return;
-      }
-
-      // Atalhos diretos instantâneos para slugs de campanha da Jadlog
-      const cleanSlug = slug.toLowerCase().trim();
-      if (cleanSlug === "myjadlog" || cleanSlug === "jadlog" || cleanSlug === "jadlogenvio" || cleanSlug === "app") {
-        navigate("/myjadlog", { replace: true });
+        navigate("/", { replace: true });
         return;
       }
 
       const url = new URL(window.location.href);
-      const sessionToken = localStorage.getItem("tracking_session_token_v1") || sessionStorage.getItem("tracking_session_token_temp_v1") || "";
+      const utmSource = url.searchParams.get("utm_source") ?? undefined;
+      const utmCampaign = url.searchParams.get("utm_campaign") ?? undefined;
+      const sessionToken = getOrCreateSessionToken();
+      const decoded = decodeEncryptedToken(slug);
 
-      try {
-        const { data, error } = await cloud.functions.invoke("short-link-resolve", {
-          body: {
-            slug,
-            session_token: sessionToken,
-            utm_source: url.searchParams.get("utm_source") ?? undefined,
-            utm_campaign: url.searchParams.get("utm_campaign") ?? undefined,
-            referrer: document.referrer || undefined,
-            path: window.location.pathname + window.location.search + window.location.hash,
-          },
+      if (decoded) {
+        // Dispara registro criptografado + anti-bot + IP hash no PostgreSQL em paralelo sem bloquear o clique
+        void resolveEncryptedLinkRpc({
+          slug,
+          sessionToken,
+          targetUrl: decoded.targetUrl,
+          label: decoded.label,
+          channel: decoded.channel,
+          utmSource,
+          utmCampaign,
+          referrer: document.referrer || decoded.source,
         });
 
-        if (error || !data) {
-          // Se for algo relacionado a Jadlog ou APK no slug, faz fallback gracioso
-          if (cleanSlug.includes("jadlog") || cleanSlug.includes("apk") || cleanSlug.includes("download")) {
-            navigate("/myjadlog", { replace: true });
-            return;
-          }
-          setMessage("Não foi possível resolver este link");
-          setTimeout(() => navigate("/", { replace: true }), 1400);
-          return;
+        if (/^\/(google-play|downloads|app\/|myjadlog)/i.test(decoded.targetUrl)) {
+          try {
+            localStorage.setItem("material_online_app_mode", "1");
+          } catch { /* ignore storage errors */ }
         }
 
-        const destination = (data as { destination_url?: string; session_token?: string } | null)?.destination_url;
-        const resolvedSessionToken = (data as { destination_url?: string; session_token?: string } | null)?.session_token;
-
-        if (resolvedSessionToken) {
-          localStorage.setItem("tracking_session_token_v1", resolvedSessionToken);
+        if (decoded.targetUrl.startsWith("/")) {
+          navigate(decoded.targetUrl, { replace: true });
+        } else {
+          window.location.replace(decoded.targetUrl);
         }
-
-        if (!destination) {
-          if (cleanSlug.includes("jadlog") || cleanSlug.includes("apk")) {
-            navigate("/downloads/jadlog", { replace: true });
-            return;
-          }
-          setMessage("Destino não encontrado");
-          setTimeout(() => navigate("/", { replace: true }), 1400);
-          return;
-        }
-
-        window.location.href = destination;
-      } catch (e) {
-        if (cleanSlug.includes("jadlog") || cleanSlug.includes("apk")) {
-          navigate("/downloads/jadlog", { replace: true });
-          return;
-        }
-        setMessage("Redirecionando...");
-        setTimeout(() => navigate("/", { replace: true }), 1000);
+        return;
       }
+
+      const cleanSlug = slug.toLowerCase().trim();
+      const rpcRes = await resolveEncryptedLinkRpc({
+        slug: cleanSlug,
+        sessionToken,
+        utmSource,
+        utmCampaign,
+        referrer: document.referrer || undefined,
+      });
+
+      if (cancelled) return;
+
+      if (rpcRes.session_token) {
+        try {
+          localStorage.setItem(SESSION_KEY, rpcRes.session_token);
+        } catch { /* ignore storage errors */ }
+      }
+
+      const destination = rpcRes.ok && rpcRes.destination_url ? rpcRes.destination_url : "";
+      if (destination) {
+        if (destination.startsWith("/")) {
+          navigate(destination, { replace: true });
+        } else {
+          window.location.replace(destination);
+        }
+        return;
+      }
+
+      // Atalhos de campanha diretos sem registro prévio no banco
+      if (
+        cleanSlug === "google-play" ||
+        cleanSlug === "app" ||
+        cleanSlug === "material-online" ||
+        cleanSlug.includes("apk") ||
+        cleanSlug.includes("download") ||
+        cleanSlug.includes("jadlog")
+      ) {
+        navigate("/google-play", { replace: true });
+        return;
+      }
+
+      setMessage("Redirecionando para a loja...");
+      navigate("/", { replace: true });
     };
 
     void resolve();
+    return () => {
+      cancelled = true;
+    };
   }, [slug, navigate]);
 
-  return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">{message}</div>;
+  return (
+    <div className="min-h-screen grid place-items-center bg-background text-sm text-muted-foreground">
+      {message}
+    </div>
+  );
 }

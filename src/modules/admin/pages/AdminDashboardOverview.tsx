@@ -1,29 +1,39 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { formatCurrency } from "@/utils/formatters";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { computeLeadPropensity, leadQualityLabel } from "@/modules/tracking/scoreEngine";
 import {
   Activity,
+  ArrowUpRight,
   CheckCircle2,
   Clock,
   CreditCard,
   DollarSign,
   Eye,
   Flame,
+  Link2,
   Monitor,
   RefreshCw,
+  ShieldCheck,
   ShoppingCart,
   Smartphone,
   Target,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -86,12 +96,44 @@ function isWithinPeriod(iso: string | null | undefined, startMs: number | null, 
 
 type TrackingSession = {
   id: string;
+  session_token: string | null;
   score: number | null;
   temperature: string | null;
+  purchase_probability: number | null;
+  lead_quality: string | null;
+  channel: string | null;
+  total_time_seconds: number | null;
+  site_time_seconds: number | null;
+  app_time_seconds: number | null;
+  total_pages: number | null;
+  total_clicks: number | null;
+  encrypted_clicks: number | null;
+  product_views: number | null;
+  cart_actions: number | null;
+  return_visits: number | null;
+  scroll_depth: number | null;
+  is_bot: boolean | null;
+  ip_hash: string | null;
+  ip_masked: string | null;
   device: string | null;
   first_seen_at: string | null;
   last_seen_at: string | null;
 };
+
+function fmtSeconds(sec: number) {
+  const s = Math.max(0, Math.round(sec));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return rem > 0 ? `${m}m ${rem}s` : `${m}m`;
+}
+
+function leadBadgeVariantClass(quality: string) {
+  if (quality === "pronto_compra") return "bg-emerald-500/15 text-emerald-700 border-emerald-300";
+  if (quality === "quente") return "bg-red-500/10 text-red-700 border-red-200";
+  if (quality === "morno") return "bg-amber-500/10 text-amber-700 border-amber-200";
+  return "bg-blue-500/10 text-blue-700 border-blue-200";
+}
 
 type TrackingEvent = {
   type: string;
@@ -104,7 +146,8 @@ type ContactLeadRow = {
 };
 
 export default function AdminDashboardOverview() {
-  const { activeStoreId, storesError, reloadStores } = useStore();
+  const navigate = useNavigate();
+  const { activeStoreId, storesError, reloadStores, routes } = useStore();
   const [period, setPeriod] = useState<PeriodKey>("all");
   const [loading, setLoading] = useState(true);
   const [rawSessions, setRawSessions] = useState<TrackingSession[]>([]);
@@ -126,7 +169,9 @@ export default function AdminDashboardOverview() {
     try {
       const sessionsQuery = cloud
         .from("tracking_sessions")
-        .select("id, score, temperature, device, first_seen_at, last_seen_at")
+        .select(
+          "id, session_token, score, temperature, purchase_probability, lead_quality, channel, total_time_seconds, site_time_seconds, app_time_seconds, total_pages, total_clicks, encrypted_clicks, product_views, cart_actions, return_visits, scroll_depth, is_bot, ip_hash, ip_masked, device, first_seen_at, last_seen_at",
+        )
         .or(`store_id.eq.${activeStoreId},store_id.is.null`)
         .order("last_seen_at", { ascending: false })
         .limit(2000)
@@ -196,9 +241,11 @@ export default function AdminDashboardOverview() {
   const bounds = useMemo(() => computePeriodBounds(period), [period]);
 
   const filtered = useMemo(() => {
-    const sessions = rawSessions.filter((s) =>
+    const allPeriodSessions = rawSessions.filter((s) =>
       isWithinPeriod(s.last_seen_at || s.first_seen_at, bounds.startMs, bounds.endMs)
     );
+    const botCount = allPeriodSessions.filter((s) => Boolean(s.is_bot)).length;
+    const sessions = allPeriodSessions.filter((s) => !s.is_bot);
     const events = rawEvents.filter((e) =>
       isWithinPeriod(e.created_at, bounds.startMs, bounds.endMs)
     );
@@ -221,9 +268,90 @@ export default function AdminDashboardOverview() {
       else desktop++;
     });
 
-    const hotSessions = sessions.filter(
-      (s) => s.temperature === "quente" || (s.score ?? 0) >= 70
-    ).length;
+    // Multi-factor purchase propensity by dwell time (Site + App) & lead ranking
+    const bucketOrder = ["0-15s", "15-60s", "1-3m", "3-5m", "5m+"] as const;
+    const bucketAcc: Record<string, { sumProb: number; count: number; siteSum: number; appSum: number }> = {
+      "0-15s": { sumProb: 0, count: 0, siteSum: 0, appSum: 0 },
+      "15-60s": { sumProb: 0, count: 0, siteSum: 0, appSum: 0 },
+      "1-3m": { sumProb: 0, count: 0, siteSum: 0, appSum: 0 },
+      "3-5m": { sumProb: 0, count: 0, siteSum: 0, appSum: 0 },
+      "5m+": { sumProb: 0, count: 0, siteSum: 0, appSum: 0 },
+    };
+
+    let siteTimeTotal = 0;
+    let appTimeTotal = 0;
+    let encryptedClicksTotal = 0;
+    let readyToBuyCount = 0;
+    let appSessionCount = 0;
+
+    const scoredLeads = sessions.map((s) => {
+      const siteSec = s.site_time_seconds ?? s.total_time_seconds ?? 0;
+      const appSec = s.app_time_seconds ?? 0;
+      const calc = computeLeadPropensity({
+        siteTimeSeconds: siteSec,
+        appTimeSeconds: appSec,
+        totalPages: s.total_pages ?? 0,
+        encryptedClicks: s.encrypted_clicks ?? 0,
+        scrollDepth: s.scroll_depth ?? 0,
+        productViews: s.product_views ?? 0,
+        cartActions: s.cart_actions ?? 0,
+        returnVisits: s.return_visits ?? 1,
+        isBot: false,
+      });
+      const probability = Math.max(s.purchase_probability ?? 0, calc.probability);
+      const quality =
+        probability >= 85
+          ? "pronto_compra"
+          : probability >= 65
+            ? "quente"
+            : probability >= 35
+              ? "morno"
+              : "frio";
+
+      siteTimeTotal += siteSec;
+      appTimeTotal += appSec;
+      encryptedClicksTotal += s.encrypted_clicks ?? 0;
+      if (probability >= 85) readyToBuyCount += 1;
+      if (appSec > 0 || s.channel === "app" || s.channel === "site+app") appSessionCount += 1;
+
+      const b = bucketAcc[calc.dwellBucket];
+      if (b) {
+        b.sumProb += probability;
+        b.count += 1;
+        b.siteSum += siteSec;
+        b.appSum += appSec;
+      }
+
+      return {
+        id: s.id,
+        tokenShort: (s.session_token || s.id).slice(0, 8),
+        ipMasked: s.ip_masked || "—",
+        channel: s.channel === "site+app" ? "Site + App" : s.channel === "app" || appSec > 0 ? "App" : "Site",
+        totalSeconds: siteSec + appSec,
+        encryptedClicks: s.encrypted_clicks ?? 0,
+        returnVisits: s.return_visits ?? 1,
+        probability,
+        quality,
+      };
+    });
+
+    const dwellTrendSeries = bucketOrder.map((bucket) => {
+      const b = bucketAcc[bucket];
+      return {
+        bucket,
+        propensao: b.count > 0 ? Math.round(b.sumProb / b.count) : 0,
+        sessoes: b.count,
+      };
+    });
+
+    const topLeads = [...scoredLeads]
+      .sort((a, b) => b.probability - a.probability || b.totalSeconds - a.totalSeconds)
+      .slice(0, 8);
+
+    const avgSiteTimeSec = sessions.length > 0 ? Math.round(siteTimeTotal / sessions.length) : 0;
+    const avgAppTimeSec = appSessionCount > 0 ? Math.round(appTimeTotal / appSessionCount) : 0;
+
+    const hotSessions = scoredLeads.filter((l) => l.probability >= 65).length;
     const totalLeads = hotSessions + contacts.length;
     const addToCart = (counts["add_to_cart"] || 0) + (counts["add_cart"] || 0);
     const conversions = (counts["request_quote"] || 0) + (counts["purchase"] || 0);
@@ -296,6 +424,13 @@ export default function AdminDashboardOverview() {
       chartSeries,
       funnel,
       periodOrders,
+      botCount,
+      avgSiteTimeSec,
+      avgAppTimeSec,
+      encryptedClicksTotal: encryptedClicksTotal + (counts["link_click"] || 0),
+      readyToBuyCount,
+      dwellTrendSeries,
+      topLeads,
     };
   }, [rawSessions, rawEvents, rawContacts, orders, bounds, period]);
 
@@ -578,6 +713,134 @@ export default function AdminDashboardOverview() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Algoritmo de Tendência de Compra por Tempo (Site + App) & Qualidade de Leads */}
+      <Card className="rounded-2xl min-w-0 overflow-hidden border-primary/20">
+        <CardHeader className="pb-3 px-4 pt-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="text-xs sm:text-sm font-bold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary shrink-0" />
+              Tendência de Compra por Tempo & Qualidade de Leads (Site + App)
+            </CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="gap-1 text-[11px] bg-emerald-500/10 text-emerald-700 border-emerald-300">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Anti-Bot Ativo · {filtered.botCount} filtrados
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(routes.adminPath("/clientes"))}
+                className="h-7 text-[11px] gap-1"
+              >
+                Ver leads <ArrowUpRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-1 space-y-5 min-w-0">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {[
+              {
+                label: "Tempo Médio (Site)",
+                value: fmtSeconds(filtered.avgSiteTimeSec),
+                icon: Monitor,
+                cls: "text-primary",
+              },
+              {
+                label: "Tempo Médio (App)",
+                value: fmtSeconds(filtered.avgAppTimeSec),
+                icon: Smartphone,
+                cls: "text-emerald-600",
+              },
+              {
+                label: "Links Criptografados",
+                value: String(filtered.encryptedClicksTotal),
+                icon: Link2,
+                cls: "text-sky-600",
+              },
+              {
+                label: "Prontos p/ Compra (≥85%)",
+                value: String(filtered.readyToBuyCount),
+                icon: Flame,
+                cls: "text-red-600",
+              },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-border bg-muted/30 p-3 min-w-0">
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium truncate">
+                  <item.icon className={`h-3.5 w-3.5 shrink-0 ${item.cls}`} />
+                  <span className="truncate">{item.label}</span>
+                </div>
+                <div className={`text-lg font-black tabular-nums mt-1 ${item.cls}`}>
+                  {loading ? "—" : item.value}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 min-w-0">
+            <div className="lg:col-span-2 rounded-xl border border-border p-3 min-w-0">
+              <div className="text-xs font-semibold mb-2">
+                Propensão Média (%) por Tempo no Site / App
+              </div>
+              <div className="w-full h-[210px] min-w-0">
+                <ResponsiveContainer width="99%" height="100%">
+                  <BarChart data={filtered.dwellTrendSeries} margin={{ top: 6, right: 6, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip />
+                    <Bar dataKey="propensao" name="Propensão (%)" fill="#059669" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="sessoes" name="Sessões" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="lg:col-span-3 rounded-xl border border-border p-3 min-w-0">
+              <div className="text-xs font-semibold mb-2">Ranking de Qualidade dos Leads</div>
+              {filtered.topLeads.length === 0 ? (
+                <p className="py-8 text-center text-xs text-muted-foreground">
+                  Ainda sem sessões humanas registradas neste período.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-[210px] overflow-y-auto pr-1">
+                  {filtered.topLeads.map((lead) => (
+                    <div
+                      key={lead.id}
+                      onClick={() => navigate(routes.adminPath("/clientes"))}
+                      className="rounded-lg border border-border/70 px-3 py-2 flex items-center justify-between gap-2 text-xs hover:bg-muted/40 cursor-pointer"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold">#{lead.tokenShort}</span>
+                          <Badge variant="outline" className="text-[10px]">
+                            {lead.channel}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            IP {lead.ipMasked}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap gap-x-2.5">
+                          <span>Tempo: {fmtSeconds(lead.totalSeconds)}</span>
+                          <span>Cliques cript.: {lead.encryptedClicks}</span>
+                          <span>Visitas IP: {lead.returnVisits}</span>
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right space-y-1">
+                        <Badge className={`text-[10px] border ${leadBadgeVariantClass(lead.quality)}`}>
+                          {leadQualityLabel(lead.quality)} · {lead.probability}%
+                        </Badge>
+                        <Progress value={lead.probability} className="h-1 w-24 ml-auto" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <ProjectTestingGuide />
     </div>

@@ -85,6 +85,6 @@ test("App router and top download banner route directly to /google-play", () => 
   const topBanner = readRel("src/components/store/AppDownloadBanner.tsx");
 
   assert.match(appRoutes, /<Route path="\/google-play" element=\{<GooglePlayDownloadPage \/>\} \/>/);
-  assert.match(topBanner, /navigate\("\/google-play"\)/);
+  assert.match(topBanner, /encodeEncryptedLink\("\/google-play"/);
   assert.doesNotMatch(topBanner, /\/functions\/v1\/download-app/);
 });

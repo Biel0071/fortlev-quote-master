@@ -10,7 +10,9 @@ const SUPABASE_URL =
   typeof window !== "undefined" &&
   (window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1" ||
-    window.location.hostname.endsWith(".sslip.io"))
+    window.location.hostname.endsWith(".sslip.io") ||
+    window.location.hostname === "materialdecontrucao.online" ||
+    window.location.hostname.endsWith(".materialdecontrucao.online"))
     ? window.location.origin
     : envSupabaseUrl && !envSupabaseUrl.includes("flkionbmkuqgkudjjuqk.supabase.co")
       ? envSupabaseUrl

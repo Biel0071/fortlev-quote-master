@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FullScreenLoader } from '@/components/shared/FullScreenLoader';
-import { DEFAULT_FALLBACK_STORES } from '@/contexts/StoreContext';
+import { isDatabaseStoreId } from '@/utils/storeId';
 
 interface PlanLimits {
   max_stores: number;
@@ -62,205 +62,214 @@ const TenantContext = createContext<TenantContextType>({
   hasFeature: () => false,
 });
 
+const TENANT_CACHE_PREFIX = 'lovable:tenant_scope:v2:';
+const TENANT_CACHE_TTL = 10 * 60 * 1000;
+const memoryScopeCache = new Map<string, { at: number; store: Store | null; tenant: Tenant | null }>();
+
+function computeTenantScopeKey(hostname: string, pathname: string): string {
+  const adminStoreMatch = pathname.match(/\/admin\/store\/([^\/]+)/);
+  if (adminStoreMatch?.[1]) return `admin:${adminStoreMatch[1]}`;
+  const section = pathname.split('/')[1] ?? '';
+  if (['admin', 'auth', 'master'].includes(section)) return 'system';
+  const pMatch = pathname.match(/\/p\/([^\/]+)/);
+  if (pMatch?.[1]) return `slug:${pMatch[1].toLowerCase()}`;
+  return `host:${hostname.toLowerCase().replace(/^www\./, '')}`;
+}
+
+function readScopeCache(scopeKey: string): { store: Store | null; tenant: Tenant | null } | null {
+  if (scopeKey === 'system') return { store: null, tenant: null };
+  const mem = memoryScopeCache.get(scopeKey);
+  if (mem && Date.now() - mem.at < TENANT_CACHE_TTL) return { store: mem.store, tenant: mem.tenant };
+  try {
+    const raw = sessionStorage.getItem(TENANT_CACHE_PREFIX + scopeKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || Date.now() - parsed.at > TENANT_CACHE_TTL) return null;
+    memoryScopeCache.set(scopeKey, parsed);
+    return { store: parsed.store ?? null, tenant: parsed.tenant ?? null };
+  } catch {
+    return null;
+  }
+}
+
+function writeScopeCache(scopeKey: string, store: Store | null, tenant: Tenant | null) {
+  if (scopeKey === 'system' || !store) return;
+  const entry = { at: Date.now(), store, tenant };
+  memoryScopeCache.set(scopeKey, entry);
+  try {
+    sessionStorage.setItem(TENANT_CACHE_PREFIX + scopeKey, JSON.stringify(entry));
+  } catch {
+    /* ignore */
+  }
+}
+
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const defaultStoreFallback = DEFAULT_FALLBACK_STORES[0];
-  const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [store, setStore] = useState<Store | null>(() => ({
-    id: defaultStoreFallback.id,
-    name: defaultStoreFallback.name,
-    slug: defaultStoreFallback.slug,
-    tenant_id: 'default-tenant'
-  }));
-  const [isLoading, setIsLoading] = useState(false);
+  const scopeKey = computeTenantScopeKey(
+    typeof window !== 'undefined' ? window.location.hostname : 'localhost',
+    location.pathname,
+  );
+  const initialCached = readScopeCache(scopeKey);
+  const [tenant, setTenant] = useState<Tenant | null>(() => initialCached?.tenant ?? null);
+  const [store, setStore] = useState<Store | null>(() => initialCached?.store ?? null);
+  const [isLoading, setIsLoading] = useState<boolean>(() => initialCached === null && scopeKey !== 'system');
   const [error, setError] = useState<string | null>(null);
 
   const hasFeature = (feature: keyof PlanLimits) => {
     if (!tenant?.subscription?.plan?.limits) return false;
     const limit = tenant.subscription.plan.limits[feature];
     if (typeof limit === 'boolean') return limit;
-    return true; // For numeric limits, just existence means it has the feature capability
+    return true;
   };
 
   useEffect(() => {
     let alive = true;
 
+    if (scopeKey === 'system') {
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    const cached = readScopeCache(scopeKey);
+    if (cached?.store && isDatabaseStoreId(cached.store.id)) {
+      setStore(cached.store);
+      if (cached.tenant) setTenant(cached.tenant);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
     async function resolveStore() {
       setIsLoading(true);
+      setError(null);
       try {
         const hostname = window.location.hostname;
         const hostnameCandidates = getHostnameCandidates(hostname);
         const pathname = location.pathname;
-        const pathParts = pathname.split('/');
-        const section = pathParts[1] ?? '';
-        
-        let storeId: string | undefined;
-        let tenantId: string | undefined;
 
-        // Timeout de proteção de 1.5s para evitar congelamento caso o Supabase não responda
         const timeoutId = setTimeout(() => {
           if (alive) setIsLoading(false);
-        }, 1500);
+        }, 10000);
 
-        // 1. Resolve Store and Tenant by Route Params (Master Impersonation)
-        // Check for /admin/store/:storeId
         const adminStoreMatch = pathname.match(/\/admin\/store\/([^\/]+)/);
-        if (adminStoreMatch && adminStoreMatch[1]) {
-          storeId = adminStoreMatch[1];
-        }
-
-        // Admin/master/auth routes without an explicit store must not wait for
-        // storefront tenant resolution. This keeps admin navigation instant and
-        // prevents stale storefront state from freezing the app after returning home.
-        // We now skip resolution for known system paths to prevent the "page palette" from getting confused.
-        const isSystemPath = ['admin', 'auth', 'master'].includes(section);
-        if (isSystemPath && !storeId) {
+        if (adminStoreMatch && !isDatabaseStoreId(adminStoreMatch[1])) {
+          clearTimeout(timeoutId);
+          setStore(null);
+          setTenant(null);
+          setError('O identificador da loja não é válido.');
           setIsLoading(false);
           return;
         }
-        // If needed for performance on real domains, we could add a check for window.location.hostname.includes('lovable.app')
 
+        // Single round-trip query resolving stores + store_domains together
+        const { data: allStores, error: storesErr } = await supabase
+          .from('stores')
+          .select('id, name, slug, tenant_id, active, store_domains(domain, verified, is_primary)');
 
-        // 2. Resolve by Domain (only verified domains count as real mappings)
-        if (!storeId) {
-          const { data: domainData } = await supabase
-            .from('store_domains')
-            .select('store_id, tenant_id, verified')
-            .in('domain', hostnameCandidates)
-            .eq('verified', true)
-            .order('is_primary', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (domainData) {
-            storeId = domainData.store_id;
-            tenantId = domainData.tenant_id;
-          }
-        }
-
-        // 3. Resolve by Slug (/p/:slug) ou Rota Raiz
-        if (!storeId) {
-          const pMatch = pathname.match(/\/p\/([^\/]+)/);
-          // Se for root (/), podemos tentar resolver por slug 'materiais' se nada mais for achado
-          const possibleSlug = pMatch ? pMatch[1] : (pathParts[1] && !['admin', 'auth', 'master', 'home', 'loja', 'rastreio', 'rastrear-pedido', 'orcamentos', 'checkout', 'carrinho'].includes(pathParts[1]) ? pathParts[1] : null);
-          
-          if (possibleSlug) {
-            const { data: slugData } = await supabase
-              .from('stores')
-              .select('id, tenant_id')
-              .eq('slug', possibleSlug)
-              .maybeSingle();
-            
-            if (slugData) {
-              storeId = slugData.id;
-              tenantId = slugData.tenant_id;
-            }
-          }
-        }
-
-        // 4. Default Fallback (Only for root or non-admin/non-master routes)
-        if (!storeId && (pathname === '/' || !['admin', 'master', 'auth'].includes(section))) {
-          // Priority: 1. Materiais de Construção (current active store), 2. Any other active store
-          const { data: fallbackStores } = await supabase
-            .from('stores')
-            .select('id, name, slug, tenant_id, active')
-            .eq('active', true)
-            .order('created_at', { ascending: false });
-          
-          if (fallbackStores && fallbackStores.length > 0) {
-            // Find Materiais de Construção (current primary store)
-            const materiaisStore = fallbackStores.find(s => 
-              s.name.toLowerCase().includes('materiais') || 
-              s.slug === 'materiais'
-            );
-            
-            const preferred = materiaisStore || fallbackStores[0];
-            
-            storeId = preferred.id;
-            tenantId = preferred.tenant_id;
-          }
-        }
-
-        // 5. Finalize Store Data com Fallback Seguro
+        clearTimeout(timeoutId);
         if (!alive) return;
-        if (storeId) {
-          try {
-            const { data: storeData, error: storeErr } = await supabase
-              .from('stores')
-              .select('id, name, slug, tenant_id')
-              .eq('id', storeId)
-              .single();
-            
-            if (!storeErr && storeData) {
-              if (!alive) return;
-              setStore(storeData);
-              tenantId = storeData.tenant_id;
-            } else {
-              // Se não encontrou no banco, usa fallback
-              const def = DEFAULT_FALLBACK_STORES[0];
-              setStore({ id: def.id, name: def.name, slug: def.slug, tenant_id: 'default-tenant' });
-            }
-          } catch {
-            const def = DEFAULT_FALLBACK_STORES[0];
-            setStore({ id: def.id, name: def.name, slug: def.slug, tenant_id: 'default-tenant' });
-          }
-        } else {
-          // Em rotas públicas da loja, nunca deixe store nulo
-          const def = DEFAULT_FALLBACK_STORES[0];
-          setStore({ id: def.id, name: def.name, slug: def.slug, tenant_id: 'default-tenant' });
+
+        if (storesErr) {
+          setStore(null);
+          setTenant(null);
+          setError(storesErr.code === '42501'
+            ? 'Sem permissão para acessar os dados desta loja.'
+            : 'Não foi possível carregar os dados da loja no banco.');
+          setIsLoading(false);
+          return;
         }
 
-        // 6. Fetch Tenant Data with Subscription and White Label
-        if (tenantId) {
-          const { data: tenantData } = await supabase
-            .from('tenants')
-            .select(`
-              id, 
-              name,
-              saas_subscriptions (
-                id,
-                status,
-                saas_plans (
-                  id,
-                  name,
-                  limits
-                )
-              ),
-              tenant_white_label (*)
-            `)
-            .eq('id', tenantId)
-            .single();
+        const rows = (allStores ?? []) as Array<any>;
+        let matched: any = null;
 
-          if (tenantData) {
-            if (!alive) return;
-            const sub = tenantData.saas_subscriptions?.[0];
-            setTenant({
-              id: tenantData.id,
-              name: tenantData.name,
-              subscription: sub ? {
-                id: sub.id,
-                status: sub.status,
-                plan: {
-                  id: sub.saas_plans.id,
-                  name: sub.saas_plans.name,
-                  limits: sub.saas_plans.limits as unknown as PlanLimits
-                }
-              } : undefined,
-              whiteLabel: tenantData.tenant_white_label?.[0]
-            });
+        if (adminStoreMatch?.[1]) {
+          matched = rows.find((r) => r.id === adminStoreMatch[1]);
+        }
+        if (!matched) {
+          const pMatch = pathname.match(/\/p\/([^\/]+)/);
+          if (pMatch?.[1]) {
+            matched = rows.find((r) => String(r.slug).toLowerCase() === pMatch[1].toLowerCase());
+          }
+        }
+        if (!matched) {
+          matched = rows.find((r) =>
+            Array.isArray(r.store_domains) &&
+            r.store_domains.some((d: any) => d?.verified && d?.domain && hostnameCandidates.includes(String(d.domain).toLowerCase()))
+          );
+        }
+        if (!matched) {
+          const activeRows = rows.filter((r) => r.active);
+          matched =
+            activeRows.find((r) => String(r.slug) === 'materiais' || String(r.name).toLowerCase().includes('materiais')) ??
+            activeRows[0] ??
+            null;
+        }
+
+        if (matched && isDatabaseStoreId(matched.id)) {
+          const resolvedStore: Store = {
+            id: matched.id,
+            name: matched.name,
+            slug: matched.slug,
+            tenant_id: matched.tenant_id,
+          };
+          setStore(resolvedStore);
+          writeScopeCache(scopeKey, resolvedStore, null);
+          setIsLoading(false); // Unblock UI immediately without waiting for tenant plan metadata!
+
+          if (matched.tenant_id) {
+            supabase
+              .from('tenants')
+              .select(`
+                id,
+                name,
+                saas_subscriptions (
+                  id,
+                  status,
+                  saas_plans (
+                    id,
+                    name,
+                    limits
+                  )
+                ),
+                tenant_white_label (*)
+              `)
+              .eq('id', matched.tenant_id)
+              .maybeSingle()
+              .then(({ data: tenantData }) => {
+                if (!alive || !tenantData) return;
+                const sub = (tenantData as any).saas_subscriptions?.[0];
+                const resolvedTenant: Tenant = {
+                  id: tenantData.id,
+                  name: tenantData.name,
+                  subscription: sub ? {
+                    id: sub.id,
+                    status: sub.status,
+                    plan: {
+                      id: sub.saas_plans.id,
+                      name: sub.saas_plans.name,
+                      limits: sub.saas_plans.limits as unknown as PlanLimits,
+                    },
+                  } : undefined,
+                  whiteLabel: (tenantData as any).tenant_white_label?.[0],
+                };
+                setTenant(resolvedTenant);
+                writeScopeCache(scopeKey, resolvedStore, resolvedTenant);
+              });
           }
         } else {
+          setStore(null);
           setTenant(null);
+          setError('A loja não foi identificada no banco.');
+          setIsLoading(false);
         }
       } catch (err: any) {
         if (!alive) return;
         console.error('Error resolving tenant:', err);
         setError(err.message);
-        // Garante que mesmo com erro de rede ou Supabase inacessível, a loja padrão fica ativa
-        const def = DEFAULT_FALLBACK_STORES[0];
-        setStore({ id: def.id, name: def.name, slug: def.slug, tenant_id: 'default-tenant' });
-      } finally {
-        if (alive) setIsLoading(false);
+        setStore(null);
+        setTenant(null);
+        setIsLoading(false);
       }
     }
 
@@ -269,7 +278,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => {
       alive = false;
     };
-  }, [location.pathname]);
+  }, [scopeKey]);
 
   return (
     <TenantContext.Provider value={{ tenant, store, isLoading, error, hasFeature }}>

@@ -1,5 +1,6 @@
-// Lovable Cloud function: analyze-project-structure
-// Uses Lovable AI Gateway via LOVABLE_API_KEY.
+import { getAiGatewayConfig, aiGatewayUrl, getAiModel } from "../_shared/aiGateway.ts";
+// Edge function: analyze-project-structure
+// Uses self-hosted AI gateway via AI_GATEWAY_API_KEY.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -36,8 +37,8 @@ serve(async (req) => {
       files?: InputFile[];
     };
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const { apiKey: AI_GATEWAY_API_KEY } = getAiGatewayConfig();
+    if (!AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
 
     const m: Mode = mode === "deep" ? "deep" : "quick";
     const sc = String(scope ?? "");
@@ -87,14 +88,14 @@ serve(async (req) => {
       JSON.stringify(prepared.map(({ path, content }) => ({ path, content }))),
     ].join("\n");
 
-    const gatewayResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const gatewayResp = await fetch(aiGatewayUrl("/v1/chat/completions"), {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${AI_GATEWAY_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: getAiModel(),
         stream: false,
         messages: [
           { role: "system", content: system },

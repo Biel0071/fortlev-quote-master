@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const redirectTo = (location.state as any)?.from ?? "/admin";
+  const redirectTo = (location.state as any)?.from ?? "/admin/store/519f9bb4-e830-40e0-8e29-94b976cab5e5/dashboard";
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

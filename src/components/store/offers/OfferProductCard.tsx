@@ -63,17 +63,19 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
           {formatProductTitle(product.name)}
         </h3>
 
-        <div className="flex items-center gap-1">
-          <div className="flex gap-0.5">
-            {Array.from({ length: 5 }, (_, i) => (
-              <Star
-                key={i}
-                className={`h-3 w-3 ${i < Math.round(rating?.avg ?? 0) ? "fill-current text-promo" : "fill-muted text-muted-foreground/40"}`}
-              />
-            ))}
+        {rating ? (
+          <div className="flex items-center gap-1">
+            <div className="flex gap-0.5">
+              {Array.from({ length: 5 }, (_, i) => (
+                <Star
+                  key={i}
+                  className={`h-3 w-3 ${i < Math.round(rating.avg) ? "fill-current text-promo" : "fill-muted text-muted-foreground/40"}`}
+                />
+              ))}
+            </div>
+            <span className="text-[10px] text-muted-foreground">({rating.total})</span>
           </div>
-          <span className="text-[10px] text-muted-foreground">({rating?.total ?? 0})</span>
-        </div>
+        ) : null}
 
         <div className="mt-auto">
           <div className="text-[10px] sm:text-xs text-muted-foreground line-through">
@@ -81,9 +83,6 @@ export function OfferProductCard({ product, prices, onAdd }: Props) {
           </div>
           <div className="text-base sm:text-lg font-extrabold text-destructive">
             {formatCurrency(prices.promoPrice)}{unitLabel}
-          </div>
-          <div className="text-xs font-bold text-pix mt-0.5">
-            {formatCurrency(prices.promoPrice * 0.93)} no PIX
           </div>
         </div>
 

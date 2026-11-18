@@ -1,9 +1,23 @@
 name: Build & Deploy (Blue/Green)
+run-name: Deploy ${{ inputs.publish_request_id || github.sha }}
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Commit de main confirmado no painel
+        required: false
+        type: string
+      publish_request_id:
+        description: Identificador idempotente da solicitação
+        required: false
+        type: string
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
@@ -12,23 +26,57 @@ env:
 jobs:
   lint-build:
     runs-on: ubuntu-latest
+    outputs:
+      has_vps_secrets: ${{ steps.check_secrets.outputs.ready }}
     steps:
+      - name: Check optional VPS deploy secrets
+        id: check_secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          if [[ -n "$VPS_HOST" && -n "$VPS_USER" && -n "$VPS_SSH_KEY" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate requested main commit
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          PUBLISH_REQUEST_ID: ${{ inputs.publish_request_id }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Production deploys are restricted to main."
+            exit 1
+          fi
+          if [[ -n "$EXPECTED_SHA" && "$EXPECTED_SHA" != "$GITHUB_SHA" ]]; then
+            echo "main changed after confirmation; refresh the publish preview."
+            exit 1
+          fi
+          if [[ -n "$PUBLISH_REQUEST_ID" && ! "$PUBLISH_REQUEST_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ ]]; then
+            echo "Invalid publish request identifier."
+            exit 1
+          fi
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
-      - run: bun install --frozen-lockfile
-      - run: bun run lint || true   # non-blocking; tighten later
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:catalog
       - name: TypeScript check
-        run: bunx tsc --noEmit
+        run: npx tsc --noEmit
       - name: Vite build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
-        run: bun run build
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://loja.209-50-241-22.sslip.io' }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'public-anon-build-check' }}
+        run: npm run build
 
   docker:
     needs: lint-build
+    if: needs.lint-build.outputs.has_vps_secrets == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -55,7 +103,7 @@ jobs:
           build-args: |
             VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
             VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-            VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+            BUILD_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -73,4 +121,29 @@ jobs:
             set -e
             cd /opt/app
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            curl -fsSL "https://raw.githubusercontent.com/Biel0071/fortlev-quote-master/${{ github.sha }}/infra/scripts/deploy.sh" -o ./deploy.sh
+            chmod +x ./deploy.sh
             ./deploy.sh ${{ needs.docker.outputs.image }}
+      - name: Verify public HTTPS site
+        id: verify-public-site
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors --max-time 30 https://materialdecontrucao.online/healthz -o /dev/null
+          curl --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors --max-time 30 https://materialdecontrucao.online/ -o /dev/null
+          curl --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors --max-time 30 https://materialdecontrucao.online/deploy-version.json -o "$RUNNER_TEMP/deploy-version.json"
+          python3 -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"] + "/deploy-version.json")).get("commit") == os.environ["EXPECTED_SHA"], "The domain is not serving this workflow commit"'
+      - name: Roll back if the public HTTPS check fails
+        if: failure() && steps.verify-public-site.outcome == 'failure'
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/app
+            curl -fsSL "https://raw.githubusercontent.com/Biel0071/fortlev-quote-master/${{ github.sha }}/infra/scripts/rollback.sh" -o ./rollback.sh
+            chmod +x ./rollback.sh
+            ./rollback.sh

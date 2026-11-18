@@ -1,3 +1,4 @@
+import { getAiGatewayConfig, aiGatewayUrl, getAiModel } from "../_shared/aiGateway.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.3";
 
@@ -230,14 +231,14 @@ Regras obrigatórias:
 Retorne APENAS um JSON array sem markdown:
 [{"author_name":"Nome Sobrenome","author_location":"Cidade - UF","rating":5,"title":"Título curto","content":"Texto...","pros":"Pontos positivos ou null","cons":"Pontos negativos ou null","verified_purchase":true}]`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch(aiGatewayUrl("/v1/chat/completions"), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${lovableApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: getAiModel(),
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -364,9 +365,9 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const { apiKey: AI_GATEWAY_API_KEY } = getAiGatewayConfig();
     if (!SUPABASE_URL || !SERVICE) throw new Error("Missing backend config");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    if (!AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY not configured");
 
     const supa = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
     const body = await req.json();
@@ -394,7 +395,7 @@ serve(async (req) => {
       for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
         const batch = productIds.slice(i, i + BATCH_SIZE);
         const batchPromises = batch.map(async (productId) => {
-          const result = await generateReviewsForProduct(supa, SUPABASE_URL, LOVABLE_API_KEY, productId, count, mode);
+          const result = await generateReviewsForProduct(supa, SUPABASE_URL, AI_GATEWAY_API_KEY, productId, count, mode);
           results.push({ product_id: productId, ...result });
         });
         await Promise.all(batchPromises);
@@ -564,7 +565,7 @@ serve(async (req) => {
       for (const p of batchProducts) {
         try {
           const result = await generateReviewsForProduct(
-            supa, SUPABASE_URL, LOVABLE_API_KEY,
+            supa, SUPABASE_URL, AI_GATEWAY_API_KEY,
             p.id, p.needed, "text_image", true
           );
           results.push({ product_id: p.id, tier: p.tier, target: p.target, needed: p.needed, ...result });

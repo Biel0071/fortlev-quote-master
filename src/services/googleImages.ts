@@ -47,7 +47,14 @@ export type ImportImagesResult = {
 };
 
 function getFunctionsBaseUrl() {
-  const url = import.meta.env.VITE_SUPABASE_URL as string;
+  const url =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.endsWith(".sslip.io") ||
+      window.location.hostname.includes("materialdecontrucao.online"))
+      ? window.location.origin
+      : (import.meta.env.VITE_SUPABASE_URL as string);
   return `${url}/functions/v1`;
 }
 
@@ -102,6 +109,7 @@ export async function searchGoogleProductImages(params: {
 export async function importGoogleProductImages(params: {
   productId: string;
   images: GoogleImageResult[];
+  coverOnly?: boolean;
 }): Promise<ImportImagesResult> {
   const headers = await authHeaders();
 
@@ -112,6 +120,7 @@ export async function importGoogleProductImages(params: {
       action: "import",
       productId: params.productId,
       images: params.images,
+      coverOnly: params.coverOnly ?? false,
     }),
   });
 
@@ -124,6 +133,7 @@ export async function importGoogleProductImages(params: {
     if (errorCode === "unauthorized") friendlyMsg = "Sessão expirada. Faça login novamente.";
     else if (errorCode === "forbidden") friendlyMsg = "Acesso negado. Você precisa ser administrador.";
     else if (errorCode === "product_not_found") friendlyMsg = "Produto não encontrado para vincular as imagens.";
+    else if (errorCode === "product_already_has_images") friendlyMsg = "Este produto já tem uma foto. A imagem atual foi preservada.";
     else if (errorCode === "invalid_payload") friendlyMsg = "Selecione imagens válidas para importar.";
     else if (errorCode === "no_valid_images") {
       friendlyMsg = "Não foi possível salvar as imagens selecionadas. Tente outras opções da lista.";
@@ -158,8 +168,8 @@ export async function runImagePipeline(params: {
     body: JSON.stringify({
       action: "pipeline",
       productId: params.productId,
-      autoApprove: params.autoApprove ?? true,
-      maxImages: params.maxImages ?? 5,
+      autoApprove: params.autoApprove ?? false,
+      maxImages: Math.min(params.maxImages ?? 1, 1),
     }),
   });
 

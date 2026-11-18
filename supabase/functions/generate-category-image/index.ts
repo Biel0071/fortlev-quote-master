@@ -3,6 +3,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateImageBytes } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,10 +35,7 @@ serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL");
     const anon = Deno.env.get("SUPABASE_ANON_KEY");
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
     if (!url || !anon || !service) throw new Error("Backend env vars missing");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization") ?? "";
 
@@ -95,51 +93,7 @@ serve(async (req) => {
     const slug = String(cat.slug ?? body?.slug ?? "categoria").trim() || "categoria";
     const prompt = buildPrompt(name);
 
-    const genResp = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        prompt,
-        n: 1,
-        size: "512x512",
-      }),
-    });
-
-    if (!genResp.ok) {
-      const t = await genResp.text();
-      console.error("image generation error", genResp.status, t);
-      return new Response(JSON.stringify({ error: "image_generation_failed", status: genResp.status }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const genPayload = await genResp.json();
-    const imageUrl = genPayload?.data?.[0]?.url as string | undefined;
-    if (!imageUrl) {
-      console.error("image generation payload missing url", genPayload);
-      return new Response(JSON.stringify({ error: "image_url_missing" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Download image binary
-    const imgResp = await fetch(imageUrl);
-    if (!imgResp.ok) {
-      const t = await imgResp.text();
-      console.error("image download failed", imgResp.status, t);
-      return new Response(JSON.stringify({ error: "image_download_failed" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const bytes = new Uint8Array(await imgResp.arrayBuffer());
+    const bytes = await generateImageBytes(prompt, { width: 512, height: 512 });
 
     const path = `ai/${slug}/${Date.now()}-${crypto.randomUUID()}.png`;
     const { error: upErr } = await admin.storage.from("category-images").upload(path, bytes, {

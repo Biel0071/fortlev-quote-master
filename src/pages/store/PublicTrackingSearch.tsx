@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { cloud } from "@/lib/cloud";
 import { AppHeader } from "@/components/store/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,23 +26,72 @@ import {
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { FloatingChatButton } from "@/components/store/FloatingChatButton";
 import { useConsent } from "@/hooks/store/useConsent";
-import { TrackingCustomerCard } from "@/components/store/tracking/TrackingCustomerCard";
+import {
+  TrackingCustomerCard,
+  type TrackingCustomerCardProps,
+  type TrackingOrderItem,
+} from "@/components/store/tracking/TrackingCustomerCard";
+import { useTenant } from "@/providers/TenantProvider";
+import {
+  formatCpfCnpj,
+  resolveTrackingItemsAndTotal,
+  type RawTrackingItemInput,
+} from "@/utils/trackingItems";
+
+interface TrackingMetadata {
+  custom_items?: RawTrackingItemInput[];
+  custom_total?: number;
+  custom_progress?: number;
+}
+
+interface TrackingOrderRecord {
+  id?: string;
+  store_id?: string | null;
+  status?: string | null;
+  total?: number | null;
+  customer_name?: string | null;
+  customer_cpf?: string | null;
+  address?: string | null;
+  cep?: string | null;
+  items?: TrackingOrderItem[];
+}
+
+export interface TrackingSearchResult {
+  notFound?: boolean;
+  id?: string;
+  store_id?: string | null;
+  tracking_code?: string;
+  posted_at?: string | null;
+  estimated_delivery_at?: string | null;
+  delivered_at?: string | null;
+  metadata?: TrackingMetadata | null;
+  store?: { id: string; name: string; slug: string } | null;
+  carrier?: TrackingCustomerCardProps["carrier"];
+  status?: { id?: string; label?: string | null; progress_percentage?: number | null } | null;
+  order?: TrackingOrderRecord | null;
+  storeName?: string | null;
+  storeAddress?: string | null;
+  timeline?: NonNullable<TrackingCustomerCardProps["timeline"]>;
+}
 
 export interface PublicTrackingSearchProps {
-  initialPreviewData?: any;
+  initialPreviewData?: TrackingSearchResult | null;
 }
 
 export default function PublicTrackingSearch({ initialPreviewData }: PublicTrackingSearchProps = {}) {
   const [searchParams] = useSearchParams();
+  const { store: tenantStore } = useTenant();
+  const initialQueryParam = searchParams.get("q") || "";
   const [loading, setLoading] = useState(false);
-  const [code, setCode] = useState(searchParams.get("q") || "");
+  const [code, setCode] = useState(initialQueryParam);
   const [cpf, setCpf] = useState("");
-  const [result, setResult] = useState<any>(initialPreviewData || null);
+  const [result, setResult] = useState<TrackingSearchResult | null>(initialPreviewData || null);
   const [activeInfo, setActiveInfo] = useState<{ title: string; desc: string } | null>(null);
-  const [simulatedTimeline, setSimulatedTimeline] = useState<any[]>([]);
-  const [simulatedProgress, setSimulatedProgress] = useState<number>(0);
-  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulatedTimeline, setSimulatedTimeline] = useState<
+    NonNullable<TrackingCustomerCardProps["timeline"]>
+  >([]);
   const { consent, saveConsent } = useConsent();
+  const autoSearchedRef = useRef(false);
 
   useEffect(() => {
     if (initialPreviewData) {
@@ -50,235 +99,231 @@ export default function PublicTrackingSearch({ initialPreviewData }: PublicTrack
     }
   }, [initialPreviewData]);
 
-  const enrichOrderItemsAndTotal = async (trackingObj: any, timelineRows: any[], orderItems: any[]) => {
-    const meta = (trackingObj?.metadata as any) || {};
-    let items = orderItems && orderItems.length > 0 ? orderItems : meta.custom_items || [];
-    let total = Number(trackingObj?.order?.total || meta.custom_total || 0);
+  const enrichOrderItemsAndTotal = useCallback(
+    async (
+      trackingObj: TrackingSearchResult,
+      timelineRows: NonNullable<TrackingCustomerCardProps["timeline"]>,
+      orderItems: RawTrackingItemInput[]
+    ): Promise<TrackingSearchResult> => {
+      const meta = trackingObj?.metadata || {};
+      const { items, total } = await resolveTrackingItemsAndTotal({
+        orderItems,
+        customItems: meta.custom_items,
+        orderTotal: trackingObj?.order?.total,
+        customTotal: meta.custom_total,
+        customerCpf: trackingObj?.order?.customer_cpf,
+      });
 
-    const customerCpf = (trackingObj?.order?.customer_cpf || "").replace(/\D/g, "");
-    if ((items.length === 0 || total <= 0) && customerCpf) {
-      try {
-        const [fRes, cRes] = await Promise.all([
-          cloud
-            .from("fortlev_quotations")
-            .select("total, items_json")
-            .filter("customer_json->>document", "eq", customerCpf)
-            .order("created_at", { ascending: false })
-            .limit(1),
-          cloud
-            .from("construction_quotations")
-            .select("total, items_json")
-            .filter("customer_json->>document", "eq", customerCpf)
-            .order("created_at", { ascending: false })
-            .limit(1),
-        ]);
-        const quote: any = (fRes.data && fRes.data[0]) || (cRes.data && cRes.data[0]);
-        if (quote) {
-          if (total <= 0 && Number(quote.total) > 0) total = Number(quote.total);
-          if (items.length === 0 && Array.isArray(quote.items_json)) {
-            items = quote.items_json.map((qItem: any) => ({
-              product_name: qItem.name || qItem.productName || qItem.description || "Material",
-              quantity: Number(qItem.quantity || 1),
-              unit_price: Number(qItem.unitPrice || qItem.price || 0),
-              line_total: Number(qItem.total || (qItem.unitPrice || 0) * (qItem.quantity || 1)),
-            }));
-          }
+      const effectiveStoreId = trackingObj?.store_id || trackingObj?.order?.store_id || null;
+      let footerStoreName: string | null = null;
+      let footerStoreAddress: string | null = null;
+
+      if (effectiveStoreId) {
+        try {
+          const { data: footerData } = await cloud
+            .from("home_footer")
+            .select("store_name, address")
+            .eq("store_id", effectiveStoreId)
+            .eq("active", true)
+            .eq("key", "main")
+            .maybeSingle();
+          footerStoreName = footerData?.store_name || null;
+          footerStoreAddress = footerData?.address || null;
+        } catch {
+          // Fallback silently to store relation
         }
-      } catch {
-        // Fallback silently if public RLS restricts quotations
       }
-    }
 
-    return {
-      ...trackingObj,
-      timeline: timelineRows || [],
-      order: {
-        ...trackingObj.order,
-        total,
-        items,
-      },
-    };
-  };
+      const storeName =
+        footerStoreName ||
+        trackingObj?.store?.name ||
+        tenantStore?.name ||
+        null;
 
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!code && !cpf) return;
-    setLoading(true);
-    setResult(null);
+      return {
+        ...trackingObj,
+        storeName,
+        storeAddress: footerStoreAddress,
+        timeline: timelineRows || [],
+        order: {
+          ...trackingObj.order,
+          total,
+          items,
+        },
+      };
+    },
+    [tenantStore?.name]
+  );
 
-    try {
-      const cleanCode = code.trim().toUpperCase();
-      const cleanCpf = cpf.replace(/\D/g, "");
+  const performSearch = useCallback(
+    async (rawCode: string, rawCpf: string) => {
+      if (!rawCode && !rawCpf) return;
+      setLoading(true);
+      setResult(null);
 
-      const { data: tracking, error: trackingError } = await cloud
-        .from("order_tracking_main")
-        .select(`
+      try {
+        const cleanCode = rawCode.trim().toUpperCase();
+        const digitsFromCode = rawCode.replace(/\D/g, "");
+        const cleanCpf =
+          rawCpf.replace(/\D/g, "") ||
+          (digitsFromCode.length === 11 || digitsFromCode.length === 14 ? digitsFromCode : "");
+
+        const trackingSelect = `
           id,
+          store_id,
           tracking_code,
           posted_at,
           estimated_delivery_at,
           delivered_at,
           metadata,
+          store:stores(id, name, slug),
           carrier:order_tracking_carriers(id, name, logo_url, website, tracking_url_template),
           status:order_tracking_status(id, label, progress_percentage),
           order:store_orders(
             id,
+            store_id,
             status,
             total,
             customer_name,
             customer_cpf,
-            address
+            address,
+            cep
           )
-        `)
-        .eq("tracking_code", cleanCode)
-        .maybeSingle();
+        `;
 
-      if (trackingError) throw trackingError;
+        const { data: tracking, error: trackingError } = await cloud
+          .from("order_tracking_main")
+          .select(trackingSelect)
+          .eq("tracking_code", cleanCode)
+          .maybeSingle();
 
-      if (tracking) {
-        const [{ data: timeline }, { data: items }] = await Promise.all([
-          cloud
-            .from("order_tracking_timeline")
-            .select("*")
-            .eq("tracking_id", tracking.id)
-            .order("event_at", { ascending: false }),
-          cloud
-            .from("store_order_items")
-            .select("*")
-            .eq("order_id", (tracking.order as any)?.id),
-        ]);
+        if (trackingError) throw trackingError;
 
-        const enriched = await enrichOrderItemsAndTotal(tracking, timeline || [], items || []);
-        setResult(enriched);
-        setLoading(false);
-        return;
-      }
+        const typedTracking = tracking as unknown as TrackingSearchResult | null;
+        if (typedTracking) {
+          const orderId = typedTracking.order?.id;
+          const [{ data: timeline }, { data: items }] = await Promise.all([
+            cloud
+              .from("order_tracking_timeline")
+              .select("*")
+              .eq("tracking_id", typedTracking.id as string)
+              .order("event_at", { ascending: false }),
+            orderId
+              ? cloud
+                  .from("store_order_items")
+                  .select("*")
+                  .eq("order_id", orderId)
+                  .order("created_at", { ascending: true })
+              : Promise.resolve({ data: [] as RawTrackingItemInput[], error: null }),
+          ]);
 
-      if (cleanCpf) {
-        const { data: orders, error: orderError } = await cloud
-          .from("store_orders")
-          .select("id")
-          .eq("customer_cpf", cleanCpf);
+          const enriched = await enrichOrderItemsAndTotal(
+            typedTracking,
+            (timeline || []) as NonNullable<TrackingCustomerCardProps["timeline"]>,
+            (items || []) as RawTrackingItemInput[]
+          );
+          setResult(enriched);
+          setLoading(false);
+          return;
+        }
 
-        if (orderError) throw orderError;
+        if (cleanCpf) {
+          const formattedDoc = formatCpfCnpj(cleanCpf);
+          const { data: orders, error: orderError } = await cloud
+            .from("store_orders")
+            .select("id")
+            .or(`customer_cpf.eq.${cleanCpf},customer_cpf.eq.${formattedDoc}`);
 
-        if (orders && orders.length > 0) {
-          const { data: cpfTracking, error: cpfError } = await cloud
-            .from("order_tracking_main")
-            .select(`
-              id,
-              tracking_code,
-              posted_at,
-              estimated_delivery_at,
-              delivered_at,
-              metadata,
-              carrier:order_tracking_carriers(id, name, logo_url, website, tracking_url_template),
-              status:order_tracking_status(id, label, progress_percentage),
-              order:store_orders(
-                id,
-                status,
-                total,
-                customer_name,
-                customer_cpf,
-                address
-              )
-            `)
-            .in("order_id", orders.map((o) => o.id))
-            .order("created_at", { ascending: false })
-            .limit(1);
+          if (orderError) throw orderError;
 
-          if (cpfError) throw cpfError;
+          if (orders && orders.length > 0) {
+            const { data: cpfTracking, error: cpfError } = await cloud
+              .from("order_tracking_main")
+              .select(trackingSelect)
+              .in("order_id", orders.map((o) => o.id))
+              .order("created_at", { ascending: false })
+              .limit(1);
 
-          const found = cpfTracking && cpfTracking.length > 0 ? cpfTracking[0] : null;
-          if (found) {
-            const [{ data: timeline }, { data: items }] = await Promise.all([
-              cloud
-                .from("order_tracking_timeline")
-                .select("*")
-                .eq("tracking_id", found.id)
-                .order("event_at", { ascending: false }),
-              cloud
-                .from("store_order_items")
-                .select("*")
-                .eq("order_id", (found.order as any)?.id),
-            ]);
+            if (cpfError) throw cpfError;
 
-            const enriched = await enrichOrderItemsAndTotal(found, timeline || [], items || []);
-            setResult(enriched);
-            setLoading(false);
-            return;
+            const found =
+              cpfTracking && cpfTracking.length > 0
+                ? (cpfTracking[0] as unknown as TrackingSearchResult)
+                : null;
+            if (found) {
+              const foundOrderId = found.order?.id;
+              const [{ data: timeline }, { data: items }] = await Promise.all([
+                cloud
+                  .from("order_tracking_timeline")
+                  .select("*")
+                  .eq("tracking_id", found.id as string)
+                  .order("event_at", { ascending: false }),
+                foundOrderId
+                  ? cloud
+                      .from("store_order_items")
+                      .select("*")
+                      .eq("order_id", foundOrderId)
+                      .order("created_at", { ascending: true })
+                  : Promise.resolve({ data: [] as RawTrackingItemInput[], error: null }),
+              ]);
+
+              const enriched = await enrichOrderItemsAndTotal(
+                found,
+                (timeline || []) as NonNullable<TrackingCustomerCardProps["timeline"]>,
+                (items || []) as RawTrackingItemInput[]
+              );
+              setResult(enriched);
+              setLoading(false);
+              return;
+            }
           }
         }
-      }
 
-      setResult({ notFound: true });
-      toast({
-        title: "Não encontrado",
-        description: "Nenhum pedido encontrado para os dados informados.",
-        variant: "destructive",
-      });
-    } catch (error: any) {
-      console.error("DEBUG: Error in handleSearch:", error);
-      toast({
-        title: "Erro na consulta",
-        description: "Ocorreu um erro ao buscar seu rastreio.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+        setResult({ notFound: true });
+        toast({
+          title: "Não encontrado",
+          description: "Nenhum pedido encontrado para os dados informados.",
+          variant: "destructive",
+        });
+      } catch (error: unknown) {
+        console.error("DEBUG: Error in handleSearch:", error);
+        toast({
+          title: "Erro na consulta",
+          description: "Ocorreu um erro ao buscar seu rastreio.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [enrichOrderItemsAndTotal]
+  );
+
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    void performSearch(code, cpf);
   };
 
   useEffect(() => {
-    if (searchParams.get("q") && !initialPreviewData) {
-      void handleSearch();
+    if (initialQueryParam && !initialPreviewData && !autoSearchedRef.current) {
+      autoSearchedRef.current = true;
+      void performSearch(initialQueryParam, "");
     }
-  }, []);
+  }, [initialQueryParam, initialPreviewData, performSearch]);
 
   useEffect(() => {
     if (!result || result.notFound) return;
-
-    const meta = (result.metadata as any) || {};
-    const customPct = typeof meta.custom_progress === "number" ? meta.custom_progress : null;
-    const baseProgress = customPct ?? result.status?.progress_percentage ?? 25;
 
     const sortedTimeline = [...(result.timeline || [])].sort(
       (a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime()
     );
     setSimulatedTimeline(sortedTimeline);
-    setSimulatedProgress(baseProgress);
-
-    const statusLabel = (result.status?.label || "").toLowerCase();
-    const isOngoing =
-      statusLabel.includes("transporte") ||
-      statusLabel.includes("trânsito") ||
-      statusLabel.includes("postado") ||
-      statusLabel.includes("coletado");
-
-    if (isOngoing && baseProgress < 100 && customPct === null) {
-      setIsSimulating(true);
-      const now = new Date();
-      const postedAt = new Date(result.posted_at || result.created_at || Date.now());
-      const estimatedAt = result.estimated_delivery_at
-        ? new Date(result.estimated_delivery_at)
-        : new Date(postedAt.getTime() + 7 * 86400000);
-
-      const timeDiff = Math.max(86400000, estimatedAt.getTime() - postedAt.getTime());
-      const elapsed = Math.max(0, now.getTime() - postedAt.getTime());
-      const progressRatio = Math.min(0.9, elapsed / timeDiff);
-      const newProgress = Math.max(baseProgress, Math.floor(progressRatio * 100));
-      setSimulatedProgress(newProgress);
-    } else {
-      setIsSimulating(false);
-    }
   }, [result]);
 
   const effectiveProgress =
     typeof result?.metadata?.custom_progress === "number"
       ? result.metadata.custom_progress
-      : isSimulating
-      ? simulatedProgress
-      : result?.status?.progress_percentage || 25;
+      : result?.status?.progress_percentage ?? 25;
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-12 tracking-search-page flex flex-col">
@@ -287,7 +332,7 @@ export default function PublicTrackingSearch({ initialPreviewData }: PublicTrack
       {!initialPreviewData && <FloatingChatButton />}
 
       <div className={`flex-1 flex flex-col justify-center items-center w-full px-4 ${result && !result.notFound ? "py-6 sm:py-8" : "py-8 sm:py-16 my-auto"}`}>
-        <main className={`w-full mx-auto space-y-6 sm:space-y-8 ${result && !result.notFound ? "max-w-4xl" : "max-w-xl"}`}>
+        <main className={`w-full mx-auto space-y-6 sm:space-y-8 ${result && !result.notFound ? "max-w-5xl" : "max-w-xl"}`}>
           <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
               <Truck className="w-7 h-7 sm:w-8 sm:h-8" />
@@ -297,7 +342,7 @@ export default function PublicTrackingSearch({ initialPreviewData }: PublicTrack
                 Rastreio de Pedidos
               </h1>
               <p className="text-muted-foreground max-w-md mx-auto text-xs sm:text-base">
-                Acompanhe o status, a transportadora oficial e a porcentagem de envio em tempo real.
+                Acompanhe o status, a logística e a rota de entrega do seu pedido em tempo real.
               </p>
             </div>
           </div>
@@ -350,7 +395,7 @@ export default function PublicTrackingSearch({ initialPreviewData }: PublicTrack
               {/* Faixa de Homologação e Confiança Centralizada */}
               <div className="pt-4 border-t border-slate-100 flex flex-col items-center justify-center text-center gap-2.5">
                 <span className="text-xs sm:text-sm font-bold text-slate-700 tracking-tight">
-                  Trabalhamos com as melhores transportadoras do mercado!
+                  Entrega monitorada diretamente com a logística da loja
                 </span>
                 <div className="inline-flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200/90 px-4 py-1.5 rounded-full shadow-xs">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
@@ -362,15 +407,6 @@ export default function PublicTrackingSearch({ initialPreviewData }: PublicTrack
 
         {result && !result.notFound ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {isSimulating && (
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
-                <p className="text-[11px] font-bold text-blue-800 uppercase tracking-wider">
-                  Telemetria Logística Ativa: Sincronizando posição com a transportadora...
-                </p>
-              </div>
-            )}
-
             {effectiveProgress >= 60 && !consent?.notifications && (
               <Card className="bg-slate-900 text-white rounded-3xl overflow-hidden shadow-xl border-none">
                 <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -404,7 +440,7 @@ export default function PublicTrackingSearch({ initialPreviewData }: PublicTrack
             )}
 
             <TrackingCustomerCard
-              trackingCode={result.tracking_code}
+              trackingCode={result.tracking_code || ""}
               orderId={result.order?.id}
               statusLabel={result.status?.label || "Coletado"}
               progress={effectiveProgress}
@@ -412,12 +448,14 @@ export default function PublicTrackingSearch({ initialPreviewData }: PublicTrack
               postedAt={result.posted_at}
               deliveredAt={result.delivered_at}
               carrier={result.carrier}
+              storeName={result.storeName}
+              storeAddress={result.storeAddress}
               timeline={simulatedTimeline}
               items={result.order?.items || []}
               orderTotal={result.order?.total}
               customerName={result.order?.customer_name}
               address={result.order?.address}
-              isSimulating={isSimulating}
+              cep={result.order?.cep}
               onResetSearch={() => {
                 setResult(null);
                 setCode("");

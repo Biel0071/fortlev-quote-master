@@ -31,30 +31,36 @@ export type TrackEventInput = {
 
 export async function startOrUpdateVisitorSession({
   sessionToken,
-  consentGiven,
 }: {
   sessionToken: string;
   consentGiven: boolean;
 }) {
-  const { data, error } = await cloud.functions.invoke("track-event", {
-    body: { action: "start_session", session_token: sessionToken, consent_given: consentGiven },
+  const { data, error } = await cloud.rpc("rpc_track_visitor_event", {
+    p_action: "start_session",
+    p_session_token: sessionToken,
+    p_device: typeof navigator !== "undefined" ? navigator.userAgent : "web",
+    p_source:
+      typeof document !== "undefined" && document.referrer
+        ? document.referrer
+        : "direct",
   });
   if (error) throw error;
-  return data as any;
+  return data as Record<string, unknown>;
 }
 
 export async function setVisitorConsent({
   sessionToken,
-  consentGiven,
 }: {
   sessionToken: string;
   consentGiven: boolean;
 }) {
-  const { data, error } = await cloud.functions.invoke("track-event", {
-    body: { action: "set_consent", session_token: sessionToken, consent_given: consentGiven },
+  const { data, error } = await cloud.rpc("rpc_track_visitor_event", {
+    p_action: "set_consent",
+    p_session_token: sessionToken,
+    p_device: typeof navigator !== "undefined" ? navigator.userAgent : "web",
   });
   if (error) throw error;
-  return data as any;
+  return data as Record<string, unknown>;
 }
 
 // Client-side throttle por assinatura de evento para evitar perdas de tipos diferentes
@@ -64,7 +70,6 @@ const THROTTLE_MS = 2000;
 
 export async function trackVisitorEvent({
   sessionToken,
-  consentGiven,
   event,
 }: {
   sessionToken: string;
@@ -82,23 +87,26 @@ export async function trackVisitorEvent({
   _lastTrackSignature = signature;
 
   try {
-    const { data, error } = await cloud.functions.invoke("track-event", {
-      body: {
-        action: "track_event",
-        session_token: sessionToken,
-        consent_given: consentGiven,
-        event: {
-          type: event.type,
-          path: event.path,
-          product_id: event.productId ?? null,
-          category_id: event.categoryId ?? null,
-          duration: event.duration ?? null,
-          metadata: event.metadata ?? {},
-        },
-      },
+    const isUuid = (v?: string | null) =>
+      Boolean(v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v));
+
+    const { data, error } = await cloud.rpc("rpc_track_visitor_event", {
+      p_action: "track_event",
+      p_session_token: sessionToken,
+      p_event_type: event.type,
+      p_path: event.path ?? null,
+      p_product_id: isUuid(event.productId) ? event.productId : null,
+      p_category_id: isUuid(event.categoryId) ? event.categoryId : null,
+      p_duration: event.duration != null ? Math.max(0, Math.floor(Number(event.duration))) : 0,
+      p_metadata: (event.metadata ?? {}) as Record<string, unknown>,
+      p_device: typeof navigator !== "undefined" ? navigator.userAgent : "web",
+      p_source:
+        typeof document !== "undefined" && document.referrer
+          ? document.referrer
+          : "direct",
     });
     if (error) console.warn("[tracking] event error:", error);
-    return data as any;
+    return data as Record<string, unknown>;
   } catch (err) {
     console.warn("[tracking] event failed:", err);
     return { skipped: true, reason: "error" };
@@ -116,7 +124,7 @@ export async function createChatSession({
     body: { action: "create_chat_session", session_token: sessionToken, consent_given: consentGiven },
   });
   if (error) throw error;
-  return data as any;
+  return data as Record<string, unknown>;
 }
 
 export async function logChatMessage({
@@ -132,7 +140,7 @@ export async function logChatMessage({
     body: { action: "log_chat_message", chat_session_id: chatSessionId, role, content },
   });
   if (error) throw error;
-  return data as any;
+  return data as Record<string, unknown>;
 }
 
 export async function closeChatSession({ chatSessionId }: { chatSessionId: string }) {
@@ -140,7 +148,7 @@ export async function closeChatSession({ chatSessionId }: { chatSessionId: strin
     body: { action: "close_chat_session", chat_session_id: chatSessionId },
   });
   if (error) throw error;
-  return data as any;
+  return data as Record<string, unknown>;
 }
 
 export async function analyzeChatConversation({ chatSessionId }: { chatSessionId: string }) {
@@ -148,5 +156,5 @@ export async function analyzeChatConversation({ chatSessionId }: { chatSessionId
     body: { chat_session_id: chatSessionId },
   });
   if (error) throw error;
-  return data as any;
+  return data as Record<string, unknown>;
 }

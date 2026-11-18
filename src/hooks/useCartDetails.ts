@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
+import { resolveVerifiedCartPrice } from "@/modules/catalog/cartPrice";
 
 export type ResolvedCartLine = {
   productId: string;
@@ -12,18 +13,18 @@ export type ResolvedCartLine = {
   lineTotal: number;
   imagePath: string | null;
   hasPrice: boolean;
+  isVerified: boolean;
 };
 
 export function useCartDetails() {
   const cart = useCart();
-  const { activeProducts, loading } = useStoreProducts();
+  const { activeProducts, loading, error } = useStoreProducts();
 
   const lines = useMemo<ResolvedCartLine[]>(() => {
     return cart.lines.map((line) => {
       const product = activeProducts.find((item) => item.id === line.productId) ?? null;
-      const basePrice = Number((product as any)?.price ?? line.snapshot?.unitPrice ?? 0);
-      const promoPrice = Number((product as any)?.promo_price ?? 0);
-      const effectivePrice = promoPrice > 0 && promoPrice < basePrice ? promoPrice : basePrice;
+      const isVerified = product !== null;
+      const effectivePrice = resolveVerifiedCartPrice(product) ?? 0;
 
       return {
         productId: line.productId,
@@ -33,8 +34,9 @@ export function useCartDetails() {
         unit: String((product as any)?.unit ?? line.snapshot?.unit ?? "un"),
         effectivePrice,
         lineTotal: Math.max(0, effectivePrice * line.quantity),
-        imagePath: ((product as any)?.images?.[0]?.path as string | null | undefined) ?? line.snapshot?.imagePath ?? null,
-        hasPrice: Number.isFinite(effectivePrice) && effectivePrice > 0,
+        imagePath: isVerified ? ((product as any)?.images?.[0]?.path as string | null | undefined) ?? null : null,
+        hasPrice: isVerified && effectivePrice > 0,
+        isVerified,
       };
     });
   }, [cart.lines, activeProducts]);
@@ -46,5 +48,7 @@ export function useCartDetails() {
     lines,
     subtotal,
     productsLoading: loading,
+    productsError: error,
+    canCheckout: !loading && !error && lines.every((line) => line.isVerified && line.hasPrice),
   };
 }

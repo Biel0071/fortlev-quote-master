@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateImageBytes, getAiGatewayConfig } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,44 +15,6 @@ type Body = {
   targetFolder?: string;
 };
 
-function bytesFromBase64(b64: string): Uint8Array {
-  const clean = b64.includes(",") ? b64.split(",")[1] : b64;
-  const binary = atob(clean);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
-async function bytesFromUrlOrData(raw: string): Promise<Uint8Array> {
-  if (raw.startsWith("data:image")) return bytesFromBase64(raw);
-  if (!raw.startsWith("http")) return bytesFromBase64(raw);
-
-  const imgResp = await fetch(raw);
-  if (!imgResp.ok) throw new Error(`image_download_failed:${imgResp.status}`);
-  return new Uint8Array(await imgResp.arrayBuffer());
-}
-
-async function extractImageBytes(payload: any): Promise<Uint8Array> {
-  const msg = payload?.choices?.[0]?.message;
-  const directUrl = msg?.images?.[0]?.image_url?.url ?? msg?.images?.[0]?.url;
-  if (typeof directUrl === "string" && directUrl.length > 0) {
-    return bytesFromUrlOrData(directUrl);
-  }
-
-  const content = msg?.content;
-  if (Array.isArray(content)) {
-    for (const part of content) {
-      const u = part?.image_url?.url ?? part?.image_url ?? part?.url;
-      if (typeof u === "string" && u.length > 0) return bytesFromUrlOrData(u);
-
-      const b64 = part?.b64_json ?? part?.image_base64 ?? part?.data;
-      if (typeof b64 === "string" && b64.length > 0) return bytesFromBase64(b64);
-    }
-  }
-
-  throw new Error("image_url_missing");
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -59,10 +22,9 @@ serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL");
     const anon = Deno.env.get("SUPABASE_ANON_KEY");
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    getAiGatewayConfig();
 
     if (!url || !anon || !service) throw new Error("Backend env vars missing");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization") ?? "";
 
@@ -122,49 +84,10 @@ serve(async (req) => {
       });
     }
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: `${prompt}. Preserve product/banner realism and no text overlays unless requested.` },
-              { type: "image_url", image_url: { url: sourceUrl } },
-            ],
-          },
-        ],
-        modalities: ["image", "text"],
-      }),
-    });
-
-    if (!aiResp.ok) {
-      if (aiResp.status === 429) {
-        return new Response(JSON.stringify({ error: "rate_limited" }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiResp.status === 402) {
-        return new Response(JSON.stringify({ error: "payment_required" }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const text = await aiResp.text();
-      return new Response(JSON.stringify({ error: `ai_generation_failed:${text}` }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const payload = await aiResp.json();
-    const imageBytes = await extractImageBytes(payload);
+    const imageBytes = await generateImageBytes(
+      `${prompt}. Preserve product/banner realism and no text overlays unless requested.`,
+      { image: sourceUrl, width: 1024, height: 1024 },
+    );
 
     const path = `${targetFolder}/${Date.now()}-${crypto.randomUUID()}.png`;
     const { error: uploadErr } = await admin.storage.from(bucket).upload(path, imageBytes, {

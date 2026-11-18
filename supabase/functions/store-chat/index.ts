@@ -1,5 +1,6 @@
-// Lovable Cloud function: store-chat
-// Uses Lovable AI Gateway via LOVABLE_API_KEY.
+import { getAiGatewayConfig, aiGatewayUrl, getAiModel } from "../_shared/aiGateway.ts";
+// Edge function: store-chat
+// Uses self-hosted AI gateway via AI_GATEWAY_API_KEY.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -21,8 +22,8 @@ serve(async (req) => {
       input?: string;
     };
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const { apiKey: AI_GATEWAY_API_KEY } = getAiGatewayConfig();
+    if (!AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
 
     const userText = String(input ?? "").trim();
     if (!userText) {
@@ -31,14 +32,14 @@ serve(async (req) => {
       });
     }
 
-    const gatewayResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const gatewayResp = await fetch(aiGatewayUrl("/v1/chat/completions"), {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${AI_GATEWAY_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: getAiModel(),
         stream: false,
         messages: [
           { role: "system", content: system || "Você é um atendente virtual útil e objetivo." },

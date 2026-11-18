@@ -3,8 +3,21 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const VPS_SUPABASE_GATEWAY = "https://loja.209-50-241-22.sslip.io";
+const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+const SUPABASE_URL =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname.endsWith(".sslip.io"))
+    ? window.location.origin
+    : envSupabaseUrl && !envSupabaseUrl.includes("flkionbmkuqgkudjjuqk.supabase.co")
+      ? envSupabaseUrl
+      : VPS_SUPABASE_GATEWAY;
+
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "public-anon-build-check";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

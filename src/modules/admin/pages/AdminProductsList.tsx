@@ -29,6 +29,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast as sonnerToast } from "sonner";
+import { getImageRetryUpdates } from "@/modules/catalog/imageRecovery";
 
 type Row = {
   id: string;
@@ -45,6 +46,14 @@ type Row = {
 
 type Category = { id: string; name: string; slug: string };
 type GridSize = "sm" | "md" | "lg";
+
+function describeReadError(error: unknown) {
+  const readError = error as { code?: string; message?: string };
+  if (readError?.code === "42501" || /permission|row-level security|not authorized/i.test(readError?.message ?? "")) {
+    return "Sem permissão para consultar este catálogo.";
+  }
+  return "Banco indisponível: não foi possível consultar este catálogo.";
+}
 
 const GRID_COLS: Record<GridSize, string> = {
   sm: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6",
@@ -71,8 +80,12 @@ function useDebounce(value: string, delay: number) {
 
 export default function AdminProductsList() {
   const nav = useNavigate();
-  const { activeStoreId, routes } = useStore();
+  const { activeStoreId, routes, reloadStores, storesError } = useStore();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   const [rows, setRows] = useState<Row[]>([]);
   const [imageMap, setImageMap] = useState<Record<string, string>>({});
@@ -98,68 +111,96 @@ export default function AdminProductsList() {
   const [priceReport, setPriceReport] = useState<any>(null);
 
   const load = async () => {
-    if (!activeStoreId) return;
+    if (!activeStoreId) {
+      setRows([]);
+      setImageMap({});
+      setLoadError("A loja ainda não foi identificada no banco.");
+      setImageError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    setLoadError(null);
+    setImageError(null);
 
-    const PAGE_SIZE = 1000;
-    let allRows: Row[] = [];
-    let from = 0;
-    let hasMore = true;
+    try {
+      const PAGE_SIZE = 1000;
+      const allRows: Row[] = [];
+      let from = 0;
+      let hasMore = true;
 
-    while (hasMore) {
-      const { data, error } = await cloud
-        .from("store_products")
-        .select("id, name, sku, price, promo_price, stock, active, status, category, category_id")
-        .eq("store_id", activeStoreId)
-        .order("name", { ascending: true })
+      while (hasMore) {
+        const { data, error } = await cloud
+          .from("store_products")
+          .select("id, name, sku, price, promo_price, stock, active, status, category, category_id")
+          .eq("store_id", activeStoreId)
+          .order("name", { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
 
-        .range(from, from + PAGE_SIZE - 1);
-
-      if (error) {
-        toast({ title: "Erro", description: error.message, variant: "destructive" });
-        break;
+        if (error) throw error;
+        const batch = (data ?? []) as Row[];
+        allRows.push(...batch);
+        hasMore = batch.length === PAGE_SIZE;
+        from += PAGE_SIZE;
       }
-      const batch = (data ?? []) as Row[];
-      allRows = [...allRows, ...batch];
-      hasMore = batch.length === PAGE_SIZE;
-      from += PAGE_SIZE;
-    }
 
-    setRows(allRows);
-    setLoading(false);
-
-    // Load first image for each product
-    const imgMap: Record<string, string> = {};
-    const IMG_PAGE = 1000;
-    let imgFrom = 0;
-    let imgMore = true;
-    while (imgMore) {
-      const { data: imgs } = await cloud
-        .from("store_product_images")
-        .select("product_id, path")
-        .eq("store_id", activeStoreId)
-        .order("sort_order", { ascending: true })
-
-        .range(imgFrom, imgFrom + IMG_PAGE - 1);
-      if (!imgs || imgs.length === 0) break;
-      for (const img of imgs as any[]) {
-        if (!imgMap[img.product_id]) imgMap[img.product_id] = img.path;
+      const imgMap: Record<string, string> = {};
+      const IMG_PAGE = 1000;
+      let imgFrom = 0;
+      let imgMore = true;
+      while (imgMore) {
+        const { data: imgs, error } = await cloud
+          .from("store_product_images")
+          .select("product_id, path")
+          .eq("store_id", activeStoreId)
+          .order("sort_order", { ascending: true })
+          .range(imgFrom, imgFrom + IMG_PAGE - 1);
+        if (error) {
+          setImageError(describeReadError(error));
+          break;
+        }
+        if (!imgs || imgs.length === 0) break;
+        for (const img of imgs as Array<{ product_id: string; path: string }>) {
+          if (!imgMap[img.product_id]) imgMap[img.product_id] = img.path;
+        }
+        imgMore = imgs.length === IMG_PAGE;
+        imgFrom += IMG_PAGE;
       }
-      imgMore = imgs.length === IMG_PAGE;
-      imgFrom += IMG_PAGE;
+
+      setRows(allRows);
+      setImageMap(imgMap);
+    } catch (error) {
+      setRows([]);
+      setImageMap({});
+      setLoadError(describeReadError(error));
+    } finally {
+      setLoading(false);
     }
-    setImageMap(imgMap);
   };
 
   const loadCategories = async () => {
-    if (!activeStoreId) return;
-    const { data } = await cloud
-      .from("store_categories")
-      .select("id, name, slug")
-      .eq("store_id", activeStoreId)
-      .order("name", { ascending: true });
-
-    setCategories((data ?? []) as Category[]);
+    setCategoriesLoading(true);
+    if (!activeStoreId) {
+      setCategories([]);
+      setCategoriesError("A loja ainda não foi identificada no banco.");
+      setCategoriesLoading(false);
+      return;
+    }
+    try {
+      const { data, error } = await cloud
+        .from("store_categories")
+        .select("id, name, slug")
+        .eq("store_id", activeStoreId)
+        .order("name", { ascending: true });
+      if (error) throw error;
+      setCategoriesError(null);
+      setCategories((data ?? []) as Category[]);
+    } catch (error) {
+      setCategories([]);
+      setCategoriesError(describeReadError(error));
+    } finally {
+      setCategoriesLoading(false);
+    }
   };
 
   useEffect(() => { load(); loadCategories(); }, [activeStoreId]);
@@ -226,26 +267,31 @@ export default function AdminProductsList() {
 
   const activeCount = rows.filter(r => r.active).length;
   const inactiveCount = rows.length - activeCount;
+  const productStatsUnavailable = loading || !!loadError;
 
   // Stats
   const suspiciousCount = useMemo(() => {
     return rows.filter(r => r.price <= 0 || r.price > 100000).length;
   }, [rows]);
 
-  const noImageCount = useMemo(() => {
-    return rows.filter(r => r.status === "no_image_found").length;
-  }, [rows]);
+  const noImageCount = useMemo(() => rows.filter((row) => !imageMap[row.id]).length, [rows, imageMap]);
+  const retryImageCount = useMemo(() => rows.filter((row) => !imageMap[row.id] && row.status === "no_image_found").length, [rows, imageMap]);
 
   const reprocessNoImage = async () => {
-    const ids = rows.filter(r => r.status === "no_image_found").map(r => r.id);
-    if (ids.length === 0) return;
-    // Optimistic
-    setRows(prev => prev.map(r => r.status === "no_image_found" ? { ...r, active: true, status: "import_pending" } : r));
+    const updates = getImageRetryUpdates(rows, new Set(Object.keys(imageMap)));
+    if (updates.length === 0) return;
+    const ids = updates.map((update) => update.id);
+    setRows(prev => prev.map(r => ids.includes(r.id) ? { ...r, status: "import_pending" } : r));
     for (let i = 0; i < ids.length; i += 50) {
       const batch = ids.slice(i, i + 50);
-      await cloud.from("store_products").update({ active: true, status: "import_pending" } as any).in("id", batch);
+      const { error } = await cloud.from("store_products").update({ status: updates[i].status }).in("id", batch);
+      if (error) {
+        await load();
+        toast({ title: "Erro ao agendar busca", description: describeReadError(error), variant: "destructive" });
+        return;
+      }
     }
-    toast({ title: "Reprocessamento agendado", description: `${ids.length} produtos reativados para nova importação.` });
+    toast({ title: "Nova busca agendada", description: `${ids.length} produtos sem imagem serão reprocessados; status ativo preservado.` });
   };
 
   const categoryCounts = useMemo(() => {
@@ -452,14 +498,34 @@ export default function AdminProductsList() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      {(loadError || imageError || categoriesError) && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-900">
+          <span>{!activeStoreId && storesError ? storesError : loadError ?? imageError ?? categoriesError}</span>
+          <Button variant="outline" size="sm" onClick={() => { reloadStores(); void load(); void loadCategories(); }} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Tentar novamente
+          </Button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Package className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-xl font-bold">{activeCount}</p>
+              <p className="text-xl font-bold">{productStatsUnavailable ? "—" : rows.length}</p>
+              <p className="text-[10px] text-muted-foreground">Total de produtos</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Package className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xl font-bold">{productStatsUnavailable ? "—" : activeCount}</p>
               <p className="text-[10px] text-muted-foreground">Produtos ativos</p>
             </div>
           </CardContent>
@@ -470,7 +536,7 @@ export default function AdminProductsList() {
               <EyeOff className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-xl font-bold">{inactiveCount}</p>
+              <p className="text-xl font-bold">{productStatsUnavailable ? "—" : inactiveCount}</p>
               <p className="text-[10px] text-muted-foreground">Inativos</p>
             </div>
           </CardContent>
@@ -481,7 +547,7 @@ export default function AdminProductsList() {
               <ImagePlus className="h-5 w-5 text-destructive" />
             </div>
             <div>
-              <p className="text-xl font-bold">{noImageCount}</p>
+              <p className="text-xl font-bold">{productStatsUnavailable || imageError ? "—" : noImageCount}</p>
               <p className="text-[10px] text-muted-foreground">Sem imagem</p>
             </div>
           </CardContent>
@@ -492,7 +558,7 @@ export default function AdminProductsList() {
               <AlertTriangle className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-xl font-bold">{suspiciousCount}</p>
+              <p className="text-xl font-bold">{productStatsUnavailable ? "—" : suspiciousCount}</p>
               <p className="text-[10px] text-muted-foreground">Preço suspeito</p>
             </div>
           </CardContent>
@@ -503,7 +569,7 @@ export default function AdminProductsList() {
               <LayoutGrid className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-xl font-bold">{categories.length}</p>
+              <p className="text-xl font-bold">{productStatsUnavailable || categoriesLoading || categoriesError ? "—" : categories.length}</p>
               <p className="text-[10px] text-muted-foreground">Categorias</p>
             </div>
           </CardContent>
@@ -511,14 +577,14 @@ export default function AdminProductsList() {
       </div>
 
       {/* Reprocess no-image products */}
-      {noImageCount > 0 && (
+      {noImageCount > 0 && !productStatsUnavailable && !imageError && (
         <div className="flex items-center gap-3 p-3 rounded-xl border bg-destructive/5 border-destructive/20">
           <ImagePlus className="h-5 w-5 text-destructive shrink-0" />
           <p className="text-sm flex-1">
-            <strong>{noImageCount}</strong> produtos desativados por falta de imagem.
+            <strong>{noImageCount}</strong> produtos sem imagem. A ausência de foto não deve desativar produtos.
           </p>
-          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={reprocessNoImage}>
-            <RefreshCw className="h-3.5 w-3.5" /> Reprocessar todos
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={reprocessNoImage} disabled={retryImageCount === 0}>
+            <RefreshCw className="h-3.5 w-3.5" /> Buscar novamente ({retryImageCount})
           </Button>
         </div>
       )}
@@ -691,7 +757,7 @@ export default function AdminProductsList() {
                 className="text-xs"
                 onClick={() => setFilterActive(f)}
               >
-                {f === "all" ? `Todos (${rows.length})` : f === "active" ? `Ativos (${activeCount})` : `Inativos (${inactiveCount})`}
+                {f === "all" ? `Todos (${productStatsUnavailable ? "—" : rows.length})` : f === "active" ? `Ativos (${productStatsUnavailable ? "—" : activeCount})` : `Inativos (${productStatsUnavailable ? "—" : inactiveCount})`}
               </Button>
             ))}
             <Button variant="outline" size="icon" className="h-9 w-9" onClick={load} disabled={loading || batchRunning}>
@@ -741,10 +807,15 @@ export default function AdminProductsList() {
             <div key={i} className="h-36 rounded-xl bg-muted/30 animate-pulse" />
           ))}
         </div>
+      ) : loadError ? (
+        <div role="status" className="py-16 text-center text-muted-foreground">
+          <AlertTriangle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+          <p>Os produtos não foram carregados. Tente novamente após recuperar o acesso ao banco.</p>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p>{q ? "Nenhum produto encontrado." : "Nenhum produto cadastrado."}</p>
+          <p>{rows.length === 0 ? "Nenhum produto visível para esta loja. Se esperava produtos, confira o tenant e as permissões." : "Nenhum produto corresponde aos filtros."}</p>
         </div>
       ) : (
         <>

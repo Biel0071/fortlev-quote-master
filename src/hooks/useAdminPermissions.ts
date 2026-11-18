@@ -40,7 +40,7 @@ export function useAdminPermissions() {
       // Timeout de resiliência para não travar permissões se rede/Supabase falhar
       const checkPromise = cloud.rpc("is_master_admin");
       const timeoutPromise = new Promise<{ data: any; error: any }>((resolve) =>
-        setTimeout(() => resolve({ data: false, error: new Error("timeout") }), 2000)
+        setTimeout(() => resolve({ data: false, error: new Error("timeout") }), 8000)
       );
       const { data: isMasterAdmin } = await Promise.race([checkPromise, timeoutPromise]);
 

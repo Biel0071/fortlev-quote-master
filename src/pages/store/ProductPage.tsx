@@ -244,7 +244,7 @@ export default function ProductPage() {
   const { slug } = useParams();
   const cart = useCart();
   const tracker = useVisitorTracker();
-  const { activeProducts, loading } = useStoreProducts();
+  const { activeProducts, loading, error: productsError } = useStoreProducts();
 
   const home = useHomeContent();
   const storePages = useStorePages();
@@ -326,22 +326,12 @@ export default function ProductPage() {
 
 
   const basePrice = useMemo(() => Number((product as any)?.price ?? 0), [product]);
+  const hasValidPrice = Number.isFinite(basePrice) && basePrice > 0;
   const promoPrice = useMemo(() => Number((product as any)?.promo_price ?? 0), [product]);
   const hasPromo = promoPrice > 0 && basePrice > 0 && promoPrice < basePrice;
   const effectivePrice = hasPromo ? promoPrice : basePrice;
 
   const totalDynamic = useMemo(() => Math.max(0, effectivePrice * Math.max(1, qty)), [effectivePrice, qty]);
-
-  const installments = useMemo(() => {
-    if (!effectivePrice || effectivePrice <= 0) return null;
-    return `ou 10x de ${formatCurrency(effectivePrice / 10)} sem juros`;
-  }, [effectivePrice]);
-
-  const pixPrice = useMemo(() => {
-    if (!effectivePrice || effectivePrice <= 0) return null;
-    const v = effectivePrice * 0.93;
-    return v > 0 ? v : null;
-  }, [effectivePrice]);
 
   const descriptionMd = useMemo(() => {
     const existing = String((product as any)?.description ?? "").trim();
@@ -387,6 +377,8 @@ export default function ProductPage() {
 
         {loading && !product ? (
           <div className="text-muted-foreground text-sm">Carregando...</div>
+        ) : productsError && !product ? (
+          <div role="alert" className="text-sm text-destructive">Não foi possível validar este produto no banco. {productsError}</div>
         ) : !product ? (
           <div className="text-muted-foreground text-sm">Produto não encontrado.</div>
         ) : (
@@ -438,13 +430,15 @@ export default function ProductPage() {
                   </div>
                 ) : null}
 
-                <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground break-words [overflow-wrap:anywhere]">
-                  {Number((product as any).stock ?? 0) <= Number((product as any).min_stock ?? 0) ? (
+                {!(product as any).is_local_fallback && <div className="mt-1.5 text-xs sm:text-sm text-muted-foreground break-words [overflow-wrap:anywhere]">
+                  {Number((product as any).stock ?? 0) <= 0 ? (
+                    <span>Indisponível no momento</span>
+                  ) : Number((product as any).stock) <= Number((product as any).min_stock ?? 0) ? (
                     <span>Últimas unidades disponíveis</span>
                   ) : (
                     <span>Disponível para envio imediato</span>
                   )}
-                </div>
+                </div>}
               </div>
 
               {/* Price */}
@@ -452,32 +446,20 @@ export default function ProductPage() {
                 {hasPromo ? (
                   <div className="text-xs sm:text-sm text-muted-foreground line-through break-words">De {formatCurrency(basePrice)}</div>
                 ) : null}
-                <div className="text-2xl sm:text-4xl font-semibold tracking-tight break-words">{formatCurrency(effectivePrice)}</div>
-                {installments ? <div className="text-xs sm:text-sm text-muted-foreground break-words">{installments}</div> : null}
+                <div className="text-2xl sm:text-4xl font-semibold tracking-tight break-words">{hasValidPrice ? formatCurrency(effectivePrice) : "Preço não informado"}</div>
               </div>
-
-              {/* PIX */}
-              {pixPrice ? (
-                <Card className="rounded-2xl border-border bg-card shadow-sm w-full min-w-0 overflow-hidden">
-                  <CardContent className="p-3 sm:p-5 min-w-0">
-                    <div className="text-xs sm:text-sm font-medium text-foreground">7% de desconto no PIX</div>
-                    <div className="mt-0.5 text-xs sm:text-sm text-muted-foreground break-words">
-                      No PIX: <span className="font-medium text-foreground">{formatCurrency(pixPrice)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : null}
 
               {/* Total */}
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-muted/20 px-3 sm:px-4 py-2.5 sm:py-3 min-w-0">
                 <span className="text-xs sm:text-sm text-muted-foreground">Total</span>
-                <span className="text-base sm:text-lg font-semibold text-right break-words">{formatCurrency(totalDynamic)}</span>
+                <span className="text-base sm:text-lg font-semibold text-right break-words">{hasValidPrice ? formatCurrency(totalDynamic) : "—"}</span>
               </div>
 
               <QuantitySelector value={qty} onChange={setQty} />
 
               <Button
                 className="h-12 sm:h-14 rounded-2xl w-full shadow-sm transition-transform active:scale-[0.99] text-sm sm:text-base"
+                disabled={!hasValidPrice}
                 onClick={() => {
                   trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: (product as any).id });
                   tracker.track({ type: "add_cart", productId: (product as any).id, categoryId: (product as any).category_id ?? null });
@@ -494,7 +476,7 @@ export default function ProductPage() {
                 Adicionar ao carrinho
               </Button>
 
-              <ShippingCalculator subtotal={totalDynamic} />
+              {hasValidPrice ? <ShippingCalculator subtotal={totalDynamic} /> : null}
 
               {/* Info cards */}
               <Card className="rounded-2xl border-border bg-card shadow-sm min-w-0 max-w-full overflow-hidden">
@@ -576,8 +558,7 @@ export default function ProductPage() {
         <div className="fixed inset-x-0 bottom-16 z-30 md:hidden border-t border-border bg-background/95 backdrop-blur-md px-3 py-2.5 safe-area-bottom">
           <div className="flex items-center gap-3 max-w-lg mx-auto">
             <div className="flex-1 min-w-0">
-              <div className="text-lg font-bold tracking-tight">{formatCurrency(effectivePrice)}</div>
-              {installments && <div className="text-[10px] text-muted-foreground truncate">{installments}</div>}
+              <div className="text-lg font-bold tracking-tight">{hasValidPrice ? formatCurrency(effectivePrice) : "Preço não informado"}</div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <div className="flex items-center rounded-lg border border-border bg-card">
@@ -597,6 +578,7 @@ export default function ProductPage() {
               </div>
               <Button
                 className="h-10 rounded-xl px-5 text-sm font-semibold"
+                disabled={!hasValidPrice}
                 onClick={() => {
                   trackClickEvent({ sessionToken: tracker.sessionToken, type: "add_to_cart", productId: (product as any).id });
                   tracker.track({ type: "add_cart", productId: (product as any).id, categoryId: (product as any).category_id ?? null });

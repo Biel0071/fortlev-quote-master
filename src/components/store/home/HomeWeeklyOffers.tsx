@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { BadgePercent, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,12 +59,6 @@ function OfferCard({
     category: product?.category,
   });
 
-  // Installments hint: fixed 10x (sem juros)
-  const installments = useMemo(() => {
-    if (!effective || effective <= 0) return null;
-    return `ou 10x de ${formatCurrency(effective / 10)} sem juros`;
-  }, [effective]);
-
   return (
     <Card className="h-full overflow-hidden rounded-2xl bg-card shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md">
       <div className="relative aspect-[4/3] bg-muted/20 border-b border-border overflow-hidden">
@@ -98,7 +92,6 @@ function OfferCard({
               <span className="text-xs font-medium text-muted-foreground">/{product.unit}</span>
             )}
           </div>
-          {installments ? <div className="text-xs text-muted-foreground">{installments}</div> : null}
 
           <div className="mt-3 flex items-center gap-2">
             <Input

@@ -79,7 +79,7 @@ export default function CheckoutPage() {
   const cart = useCart();
   const tracker = useVisitorTracker();
   const leadTracker = useCheckoutSessionTracker();
-  const { activeProducts } = useStoreProducts();
+  const { activeProducts, loading: productsLoading, error: productsError } = useStoreProducts();
   const contact = useStoreContact();
   const { threshold: WHATSAPP_ROUTE_LIMIT, gatewayEnabled } = useRoutingThreshold();
 
@@ -225,6 +225,11 @@ export default function CheckoutPage() {
     identify: { customerName: string; customerPhone: string };
     delivery?: { cep: string; address: string; number: string; complement?: string; notes?: string };
   }): Promise<OrderRpcResult> => {
+    if (productsLoading || productsError || computed.lines.length !== cart.lines.length) {
+      const message = productsError ?? "Estamos validando os produtos do carrinho. Tente novamente quando o catálogo carregar.";
+      toast({ title: "Não foi possível validar o carrinho", description: message, variant: "destructive" });
+      throw new Error(message);
+    }
     if (computed.lines.length === 0) {
       toast({ title: "Carrinho vazio", description: "Adicione itens antes de finalizar.", variant: "destructive" });
       throw new Error("Carrinho vazio");
@@ -480,7 +485,15 @@ export default function CheckoutPage() {
           Carrinho <span className="mx-1">/</span> <span className="font-medium text-foreground">Finalizar sua compra</span>
         </nav>
 
-        {computed.lines.length === 0 ? (
+        {productsError ? (
+          <div role="alert" className="mx-auto max-w-xl rounded-2xl border border-destructive/30 bg-card p-8 text-center text-muted-foreground">
+            Não é possível finalizar a compra enquanto o catálogo estiver indisponível. {productsError}
+          </div>
+        ) : productsLoading ? (
+          <div role="status" className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
+            Validando os produtos do carrinho…
+          </div>
+        ) : computed.lines.length === 0 ? (
           <div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
             Carrinho vazio.
           </div>

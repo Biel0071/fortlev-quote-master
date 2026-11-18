@@ -46,8 +46,6 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 
-const APK_URL_STORAGE_KEY = "app_download_url";
-const APK_META_STORAGE_KEY = "app_apk_meta";
 const MAX_APK_SIZE_BYTES = 100 * 1024 * 1024;
 
 const fmtMB = (bytes: number) => (bytes / (1024 * 1024)).toFixed(2);
@@ -112,35 +110,6 @@ interface ApkRow {
   created_at?: string;
 }
 
-function readLocalValue(key: string) {
-  try {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeLocalValue(key: string, value: string) {
-  try {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, value);
-  } catch {
-    // ignore fallback storage errors
-  }
-}
-
-function parseLocalMeta(value: string | null) {
-  if (!value) return null;
-
-  try {
-    return JSON.parse(value) as ApkMeta;
-  } catch (error) {
-    console.error("Erro ao parsear meta local", error);
-    return null;
-  }
-}
-
 export default function AdminAppMetrics() {
   const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
@@ -148,51 +117,18 @@ export default function AdminAppMetrics() {
   const [appDownloadClicks, setAppDownloadClicks] = useState(0);
   const [appSessions, setAppSessions] = useState(0);
   const [dailyClicks, setDailyClicks] = useState<{ date: string; clicks: number }[]>([]);
+  const [metricsError, setMetricsError] = useState(false);
 
   const [uploading, setUploading] = useState(false);
-  const [apkUrl, setApkUrl] = useState<string | null>("/my_JADLOG.apk");
-  const [apkMeta, setApkMeta] = useState<ApkMeta | null>({
-    originalName: "JAD LOG.apk",
-    displayName: "JAD LOG.apk",
-    appName: "JADLOG-2",
-    size: 6333399,
-    uploadedAt: "2026-08-26T10:00:00.000Z",
-  });
+  const [apkUrl, setApkUrl] = useState<string | null>(null);
+  const [apkMeta, setApkMeta] = useState<ApkMeta | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [appName, setAppName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [persistToSystem, setPersistToSystem] = useState(true);
 
-  const [shortLinks, setShortLinks] = useState<ShortLinkRow[]>([
-    {
-      id: "demo-jadlog-tela-gp",
-      slug: "jadlog",
-      original_url: typeof window !== "undefined" ? `${window.location.origin}/downloads/jadlog` : "/downloads/jadlog",
-      clicks: 138,
-      created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-      active: true,
-      link_type: "page",
-      metadata: { type: "tela_gp" },
-    },
-    {
-      id: "demo-jadlog-apk-direct",
-      slug: "jadlogenvio",
-      original_url: typeof window !== "undefined" ? `${window.location.origin}/my_JADLOG.apk` : "/my_JADLOG.apk",
-      clicks: 86,
-      created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
-      active: true,
-      link_type: "apk",
-    },
-    {
-      id: "demo-jadlog-rastreio",
-      slug: "rastreio-app",
-      original_url: typeof window !== "undefined" ? `${window.location.origin}/rastreio` : "/rastreio",
-      clicks: 42,
-      created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
-      active: true,
-    }
-  ]);
+  const [shortLinks, setShortLinks] = useState<ShortLinkRow[]>([]);
   const [shortenerTokens, setShortenerTokens] = useState<ShortenerTokenRow[]>([]);
   const [shortUrlInput, setShortUrlInput] = useState("");
   const [shortSlugInput, setShortSlugInput] = useState("");
@@ -213,25 +149,6 @@ export default function AdminAppMetrics() {
   const [editApkToken, setEditApkToken] = useState<string>("");
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // Modo Métricas Simuladas / Fake (padrão true para demonstração)
-  const [simulatedMetrics, setSimulatedMetrics] = useState<boolean>(() => {
-    const val = localStorage.getItem("admin_app_metrics_simulated");
-    return val === null ? true : val === "true";
-  });
-  const [simClicks, setSimClicks] = useState<number>(() => {
-    const v = localStorage.getItem("admin_app_sim_clicks");
-    return v ? Number(v) : 184;
-  });
-  const [simDownloads, setSimDownloads] = useState<number>(() => {
-    const v = localStorage.getItem("admin_app_sim_downloads");
-    return v ? Number(v) : 138;
-  });
-  const [simSessions, setSimSessions] = useState<number>(() => {
-    const v = localStorage.getItem("admin_app_sim_sessions");
-    return v ? Number(v) : 312;
-  });
-  const [editingSimModal, setEditingSimModal] = useState(false);
-
   const apkDownloadUrlFor = (token: string) => {
     const base = import.meta.env.VITE_SUPABASE_URL;
     if (!base || !token) return "";
@@ -239,8 +156,7 @@ export default function AdminAppMetrics() {
   };
 
   const professionalDownloadUrl = useMemo(() => {
-    if (apkToken) return apkDownloadUrlFor(apkToken);
-    return "https://flkionbmkuqgkudjjuqk.supabase.co/functions/v1/download-apk-public?token=apk_3915ccaled95828daac2b92f96a2ed59";
+    return apkToken ? apkDownloadUrlFor(apkToken) : "";
   }, [apkToken]);
 
 
@@ -280,7 +196,8 @@ export default function AdminAppMetrics() {
 
   const scriptSnippet = useMemo(() => {
     if (!generatedToken || !activeStoreId || !shortBaseUrl) return "";
-    return `const SHORTENER_TOKEN = "${generatedToken}";\n\nasync function createShortLink(originalUrl) {\n  const res = await fetch("${window.location.origin}/functions/v1/short-link-create", {\n    method: "POST",\n    headers: { "Content-Type": "application/json" },\n    body: JSON.stringify({\n      token: SHORTENER_TOKEN,\n      store_id: "${activeStoreId}",\n      original_url: originalUrl\n    })\n  });\n\n  const data = await res.json();\n  if (!res.ok) throw new Error(data?.error || "Falha ao gerar link curto");\n  return data.short_url;\n}`;
+    const functionsBase = `${import.meta.env.VITE_SUPABASE_URL?.replace(/\/+$/, "")}/functions/v1`;
+    return `const SHORTENER_TOKEN = "${generatedToken}";\n\nasync function createShortLink(originalUrl) {\n  const res = await fetch("${functionsBase}/short-link-create", {\n    method: "POST",\n    headers: { "Content-Type": "application/json" },\n    body: JSON.stringify({\n      token: SHORTENER_TOKEN,\n      store_id: "${activeStoreId}",\n      original_url: originalUrl\n    })\n  });\n\n  const data = await res.json();\n  if (!res.ok) throw new Error(data?.error || "Falha ao gerar link curto");\n  return data.short_url;\n}`;
   }, [generatedToken, activeStoreId, shortBaseUrl]);
 
   const saveConfig = async (key: string, value: string) => {
@@ -299,12 +216,13 @@ export default function AdminAppMetrics() {
 
   const load = async () => {
     setLoading(true);
+    setMetricsError(false);
 
     try {
       const [
-        { data: bannerEvents },
-        { data: trackingAppClicks },
-        { data: sessions },
+        { data: bannerEvents, error: bannerEventsError },
+        { data: trackingAppClicks, error: trackingEventsError },
+        { data: sessions, error: sessionsError },
         { data: configRow, error: configError },
         { data: metaRow, error: metaError },
         shortLinksRes,
@@ -342,13 +260,17 @@ export default function AdminAppMetrics() {
           : Promise.resolve({ data: [] }),
       ]);
 
+      if (bannerEventsError || trackingEventsError || sessionsError) {
+        throw new Error("Falha ao carregar métricas reais do banco de dados");
+      }
+
       const allBanner = bannerEvents ?? [];
       const appBanner = allBanner.filter(
         (event: any) =>
           event.metadata?.click_type === "app_download_click" || event.metadata?.banner_type === "app",
       );
 
-      setBannerClicks(allBanner.length);
+      setBannerClicks(appBanner.length);
 
       const extraAppClicks = (trackingAppClicks ?? []).filter(
         (event: any) => event.metadata?.click_type === "app_download_click",
@@ -368,7 +290,7 @@ export default function AdminAppMetrics() {
         dailyMap[date.toISOString().split("T")[0]] = 0;
       }
 
-      [...allBanner, ...(trackingAppClicks ?? [])].forEach((event: any) => {
+      [...appBanner, ...extraAppClicks].forEach((event: any) => {
         const day = event.created_at?.split("T")[0];
         if (day && dailyMap[day] !== undefined) {
           dailyMap[day] += 1;
@@ -382,12 +304,6 @@ export default function AdminAppMetrics() {
         })),
       );
 
-      const localUrl = readLocalValue(APK_URL_STORAGE_KEY);
-      const localMeta = readLocalValue(APK_META_STORAGE_KEY);
-
-      console.log("LOAD URL", configRow);
-      console.log("LOAD META", metaRow);
-
       if (configError) {
         console.error("[APP_CONFIG_LOAD_ERROR]", configError);
       }
@@ -396,17 +312,17 @@ export default function AdminAppMetrics() {
         console.error("[APP_CONFIG_META_LOAD_ERROR]", metaError);
       }
 
-      setApkUrl(configRow?.value ?? localUrl ?? null);
+      setApkUrl(configRow?.value ?? null);
 
       if (metaRow?.value) {
         try {
           setApkMeta(JSON.parse(metaRow.value) as ApkMeta);
         } catch (error) {
           console.error("Erro ao parsear meta", error);
-          setApkMeta(parseLocalMeta(localMeta));
+          setApkMeta(null);
         }
       } else {
-        setApkMeta(parseLocalMeta(localMeta));
+        setApkMeta(null);
       }
 
       setShortLinks((shortLinksRes.data as ShortLinkRow[] | null) ?? []);
@@ -416,17 +332,14 @@ export default function AdminAppMetrics() {
       setApkToken((apkList.find((a) => a.active) ?? apkList[0])?.download_token ?? null);
     } catch (error) {
       console.error("[AppMetrics] load error:", error);
-      const localUrl = readLocalValue(APK_URL_STORAGE_KEY);
-      const localMeta = readLocalValue(APK_META_STORAGE_KEY);
-      setApkUrl(localUrl || "/my_JADLOG.apk");
-      setApkMeta(parseLocalMeta(localMeta) || {
-        originalName: "JAD LOG.apk",
-        displayName: "JAD LOG.apk",
-        appName: "JADLOG-2",
-        size: 6333399,
-        uploadedAt: "2026-08-26T10:00:00.000Z",
-      });
-      setApkToken("token_apk_3915ccaled95828daac2b92f96a2ed59");
+      setMetricsError(true);
+      setBannerClicks(0);
+      setAppDownloadClicks(0);
+      setAppSessions(0);
+      setDailyClicks([]);
+      setApkUrl(null);
+      setApkMeta(null);
+      setApkToken(null);
     } finally {
       setLoading(false);
     }
@@ -552,9 +465,6 @@ export default function AdminAppMetrics() {
           console.warn("Salvando localStorage como fallback");
         }
       }
-
-      writeLocalValue(APK_URL_STORAGE_KEY, publicUrl);
-      writeLocalValue(APK_META_STORAGE_KEY, JSON.stringify(meta));
 
       setApkUrl(publicUrl);
       setApkMeta(meta);
@@ -864,44 +774,6 @@ export default function AdminAppMetrics() {
     toast.success(`${label} copiado`);
   };
 
-  const effectiveBannerClicks = simulatedMetrics ? simClicks : bannerClicks;
-  const effectiveAppDownloadClicks = simulatedMetrics ? simDownloads : appDownloadClicks;
-  const effectiveAppSessions = simulatedMetrics ? simSessions : appSessions;
-  const conversionRate = effectiveBannerClicks > 0
-    ? ((effectiveAppDownloadClicks / effectiveBannerClicks) * 100).toFixed(1)
-    : "0";
-
-  const effectiveDailyClicks = useMemo(() => {
-    if (!simulatedMetrics) return dailyClicks;
-    const now = new Date();
-    const days: { date: string; clicks: number }[] = [];
-    const weights = [0.12, 0.14, 0.11, 0.16, 0.18, 0.21, 0.15];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const dayLabel = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-      const proportion = weights[6 - i] || 0.14;
-      const count = Math.max(1, Math.round(effectiveBannerClicks * proportion));
-      days.push({ date: dayLabel, clicks: count });
-    }
-    return days;
-  }, [simulatedMetrics, dailyClicks, effectiveBannerClicks]);
-
-  const toggleSimulated = (checked: boolean) => {
-    setSimulatedMetrics(checked);
-    localStorage.setItem("admin_app_metrics_simulated", checked ? "true" : "false");
-    toast.success(checked ? "Métricas simuladas ativadas" : "Métricas reais ativadas");
-  };
-
-  const handleSaveSimMetrics = (e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem("admin_app_sim_clicks", String(simClicks));
-    localStorage.setItem("admin_app_sim_downloads", String(simDownloads));
-    localStorage.setItem("admin_app_sim_sessions", String(simSessions));
-    setEditingSimModal(false);
-    toast.success("Valores simulados salvos!");
-  };
-
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6 sm:px-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -912,38 +784,6 @@ export default function AdminAppMetrics() {
           <p className="text-sm text-muted-foreground">Downloads, cliques e sessões do app</p>
         </div>
         <div className="flex items-center flex-wrap gap-2">
-          {/* Toggle de Métricas Simuladas / Fake */}
-          <div className="flex items-center gap-2 bg-muted/60 border border-border/80 px-3 py-1.5 rounded-xl">
-            <Checkbox
-              id="simulatedMetricsToggle"
-              checked={simulatedMetrics}
-              onCheckedChange={(c) => toggleSimulated(!!c)}
-            />
-            <Label
-              htmlFor="simulatedMetricsToggle"
-              className="text-xs font-semibold cursor-pointer select-none flex items-center gap-1.5"
-            >
-              <span>Métricas Simuladas</span>
-              {simulatedMetrics && (
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-100/80 px-1.5 py-0.5 rounded">
-                  Ativas
-                </span>
-              )}
-            </Label>
-            {simulatedMetrics && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditingSimModal(true)}
-                className="h-6 px-1.5 text-xs text-primary hover:text-primary/80 gap-1"
-                title="Editar valores das métricas fake"
-              >
-                <Pencil className="h-3 w-3" />
-                <span className="text-[11px] underline">Editar</span>
-              </Button>
-            )}
-          </div>
-
           <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading} className="gap-1.5">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
           </Button>
@@ -955,25 +795,25 @@ export default function AdminAppMetrics() {
           {
             icon: <MousePointerClick className="h-4 w-4" />,
             label: "Cliques no Banner",
-            value: effectiveBannerClicks,
+            value: bannerClicks,
             color: "text-foreground",
           },
           {
             icon: <Download className="h-4 w-4" />,
             label: "Downloads (cliques)",
-            value: effectiveAppDownloadClicks,
+            value: appDownloadClicks,
             color: "text-primary",
           },
           {
             icon: <TrendingUp className="h-4 w-4" />,
             label: "Taxa Conversão",
-            value: `${conversionRate}%`,
+            value: `${bannerClicks > 0 ? ((appDownloadClicks / bannerClicks) * 100).toFixed(1) : "0.0"}%`,
             color: "text-primary",
           },
           {
             icon: <Smartphone className="h-4 w-4" />,
             label: "Sessões do App",
-            value: effectiveAppSessions,
+            value: appSessions,
             color: "text-foreground",
           },
         ].map((card, index) => (
@@ -984,7 +824,7 @@ export default function AdminAppMetrics() {
                 {card.label}
               </div>
               <div className={`text-3xl font-bold ${card.color}`}>
-                {simulatedMetrics ? card.value : (loading ? "—" : card.value)}
+                {loading || metricsError ? "—" : card.value}
               </div>
             </CardContent>
           </Card>
@@ -998,11 +838,13 @@ export default function AdminAppMetrics() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {effectiveDailyClicks.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Sem dados</p>
+          {metricsError ? (
+            <p className="py-8 text-center text-sm text-destructive">Não foi possível carregar os dados reais. Verifique a conexão com o banco e tente novamente.</p>
+          ) : dailyClicks.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Sem dados registrados nos últimos 7 dias</p>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={effectiveDailyClicks}>
+              <BarChart data={dailyClicks}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
@@ -1013,66 +855,6 @@ export default function AdminAppMetrics() {
           )}
         </CardContent>
       </Card>
-
-      {/* Modal para Editar Métricas Fake / Simuladas */}
-      <Dialog open={editingSimModal} onOpenChange={setEditingSimModal}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold">
-              <Pencil className="h-4 w-4 text-primary" /> Configurar Métricas Fake / Simuladas
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSaveSimMetrics} className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="simClicksInput" className="text-xs font-semibold">
-                Cliques no Banner
-              </Label>
-              <Input
-                id="simClicksInput"
-                type="number"
-                min="0"
-                value={simClicks}
-                onChange={(e) => setSimClicks(Number(e.target.value))}
-                className="h-10 rounded-xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="simDownloadsInput" className="text-xs font-semibold">
-                Downloads (cliques)
-              </Label>
-              <Input
-                id="simDownloadsInput"
-                type="number"
-                min="0"
-                value={simDownloads}
-                onChange={(e) => setSimDownloads(Number(e.target.value))}
-                className="h-10 rounded-xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="simSessionsInput" className="text-xs font-semibold">
-                Sessões do App
-              </Label>
-              <Input
-                id="simSessionsInput"
-                type="number"
-                min="0"
-                value={simSessions}
-                onChange={(e) => setSimSessions(Number(e.target.value))}
-                className="h-10 rounded-xl"
-              />
-            </div>
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setEditingSimModal(false)} className="rounded-xl">
-                Cancelar
-              </Button>
-              <Button type="submit" className="rounded-xl gap-1.5">
-                <Save className="h-4 w-4" /> Salvar Métricas
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <Card className="rounded-2xl border-2 border-dashed border-primary/20">
         <CardHeader>

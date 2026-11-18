@@ -1,5 +1,6 @@
-// Lovable Cloud function: analyze-chat-conversation
-// Uses Lovable AI Gateway via LOVABLE_API_KEY and stores insights for admins.
+import { getAiGatewayConfig, aiGatewayUrl, getAiModel } from "../_shared/aiGateway.ts";
+// Edge function: analyze-chat-conversation
+// Uses self-hosted AI gateway via AI_GATEWAY_API_KEY and stores insights for admins.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.3";
@@ -16,9 +17,9 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const { apiKey: AI_GATEWAY_API_KEY } = getAiGatewayConfig();
     if (!SUPABASE_URL || !SERVICE) throw new Error("Backend secrets not configured");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
 
     const supa = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
 
@@ -63,14 +64,14 @@ serve(async (req) => {
       transcript || "(vazia)",
     ].join("\n");
 
-    const gatewayResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const gatewayResp = await fetch(aiGatewayUrl("/v1/chat/completions"), {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${AI_GATEWAY_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: getAiModel(),
         stream: false,
         messages: [
           { role: "system", content: system },

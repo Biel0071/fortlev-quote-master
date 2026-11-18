@@ -1,3 +1,4 @@
+import { getOptionalAiGatewayConfig, aiGatewayUrl, getAiModel } from "../_shared/aiGateway.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -8,7 +9,7 @@ const corsHeaders = {
 };
 
 /* ── AI Gateway ── */
-const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_GATEWAY = "/v1/chat/completions";
 const AI_MAX_CONCURRENT = 3;
 let activeAICalls = 0;
 const aiQueue: Array<{ resolve: () => void }> = [];
@@ -82,7 +83,7 @@ async function callAIWithRetry(
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     await acquireAISlot();
     try {
-      const resp = await fetch(AI_GATEWAY, {
+      const resp = await fetch(aiGatewayUrl(AI_GATEWAY), {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -214,10 +215,10 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
+    const AI_GATEWAY_API_KEY = getOptionalAiGatewayConfig()?.apiKey ?? "";
 
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
+    if (!AI_GATEWAY_API_KEY) {
+      return new Response(JSON.stringify({ error: "AI_GATEWAY_API_KEY not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -298,7 +299,7 @@ serve(async (req) => {
         // Call AI with retry and concurrency control
         let parsed: any;
         try {
-          parsed = await callAIWithRetry(LOVABLE_API_KEY, buildEnrichPrompt(productName));
+          parsed = await callAIWithRetry(AI_GATEWAY_API_KEY, buildEnrichPrompt(productName));
         } catch (e: any) {
           console.error("AI enrichment failed after retries:", e.message);
           // Return partial success - pipeline continues

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
 import { useTenant } from "@/providers/TenantProvider";
 import { getSmartCache, runApiMicrotask, setSmartCache } from "@/utils/smartCache";
-import festivalCaixasDesktop from "@/assets/banners/festival-caixas-desktop.png";
-import festivalCaixasMobile from "@/assets/banners/festival-caixas-mobile.png";
+import { isDatabaseStoreId } from "@/utils/storeId";
+import { describeCatalogError } from "@/modules/catalog/catalogResult";
 
 export type HomeBanner = {
   id: string;
@@ -105,36 +105,21 @@ type HomeContentCache = {
   seo: HomeSeo | null;
 };
 
-const HOME_CONTENT_CACHE_BASE_KEY = "home_content:v1";
+const HOME_CONTENT_CACHE_BASE_KEY = "home_content:v2";
 const HOME_CONTENT_CACHE_TTL_MS = 1000 * 60 * 3;
-
-export const DEFAULT_FALLBACK_BANNER: HomeBanner = {
-  id: "banner-default-festival",
-  title: "Festival de Caixas d'Água Fortlev",
-  subtitle: "As melhores ofertas em reservatórios e caixas d'água",
-  button_label: "Aproveitar Ofertas",
-  link_url: "/ofertas",
-  link: "/ofertas",
-  image_path: festivalCaixasDesktop,
-  image_desktop_path: festivalCaixasDesktop,
-  image_mobile_path: festivalCaixasMobile,
-  sort_order: 1,
-  position: 1,
-  active: true,
-  is_active: true,
-};
 
 type UseHomeContentOptions = {
   enabled?: boolean;
 };
 
 export function useHomeContent(options?: UseHomeContentOptions) {
-  const { store } = useTenant();
-  const enabled = (options?.enabled ?? true) && !!store;
+  const { store, isLoading: tenantLoading } = useTenant();
+  const requested = options?.enabled ?? true;
+  const enabled = requested && isDatabaseStoreId(store?.id ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [banners, setBanners] = useState<HomeBanner[]>([DEFAULT_FALLBACK_BANNER]);
+  const [banners, setBanners] = useState<HomeBanner[]>([]);
   const [benefits, setBenefits] = useState<HomeBenefit[]>([]);
   const [policies, setPolicies] = useState<HomePolicy[]>([]);
   const [sections, setSections] = useState<HomeSection[]>([]);
@@ -147,30 +132,66 @@ export function useHomeContent(options?: UseHomeContentOptions) {
   const HOME_CONTENT_CACHE_KEY = useMemo(() => `${HOME_CONTENT_CACHE_BASE_KEY}:${store?.id ?? 'default'}`, [store?.id]);
 
   const load = async (opts?: { silent?: boolean }) => {
-    if (!enabled || !store) return;
+    if (!requested) {
+      setLoading(false);
+      return;
+    }
+    if (!enabled || !store) {
+      setBanners([]);
+      setError("A loja não foi identificada no banco. Conteúdo local não verificado foi ocultado.");
+      setLoading(false);
+      return;
+    }
     if (!opts?.silent) setLoading(true);
     setError(null);
 
     try {
-      const results = await Promise.all([
-        cloud.from("store_banners").select("id, title, subtitle, button_label, link_url, link, image_path, image_desktop_path, image_mobile_path, sort_order, position, active, is_active").or("is_active.eq.true,active.eq.true").eq("store_id", store.id).order("position", { ascending: true }).order("sort_order", { ascending: true }),
-        cloud.from("home_benefits").select("id, title, subtitle, icon, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
-        cloud.from("home_policies").select("id, title, subtitle, icon, link_url, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
-        cloud.from("home_sections").select("id, category_id, title_override, subtitle_override, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
-        cloud.from("home_footer").select("id, key, logo_path, store_name, address, whatsapp, hours, extra_note, instagram_url, facebook_url, active").eq("active", true).eq("key", "main").eq("store_id", store.id).maybeSingle(),
-        cloud.from("home_departments").select("id, kind, label, icon, link_url, category_id, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
-        cloud.from("home_offers").select("id, product_id, badge_text, promo_price, starts_at, ends_at, sort_order, active").eq("store_id", store.id).order("sort_order", { ascending: true }),
-        cloud.from("home_seo").select("id, key, meta_title, meta_description, og_image_path, active").eq("active", true).eq("key", "store_home").eq("store_id", store.id).maybeSingle(),
-      ]);
+      let rawBanners: any[] = [];
+      let benefitsData: any[] = [];
+      let policiesData: any[] = [];
+      let sectionsData: any[] = [];
+      let footerData: any = null;
+      let departmentsData: any[] = [];
+      let offersData: any[] = [];
+      let seoData: any = null;
 
-      const [b, ben, pol, sec, f, deps, off, s] = results;
+      const rpcRes = await cloud.rpc("get_storefront_bootstrap", { _store_id: store.id });
+      if (!rpcRes.error && rpcRes.data && typeof rpcRes.data === "object") {
+        const boot = rpcRes.data as Record<string, any>;
+        rawBanners = Array.isArray(boot.banners) ? boot.banners : [];
+        benefitsData = Array.isArray(boot.benefits) ? boot.benefits : [];
+        policiesData = Array.isArray(boot.policies) ? boot.policies : [];
+        sectionsData = Array.isArray(boot.sections) ? boot.sections : [];
+        footerData = boot.footer ?? null;
+        departmentsData = Array.isArray(boot.departments) ? boot.departments : [];
+        offersData = Array.isArray(boot.offers) ? boot.offers : [];
+        seoData = boot.seo ?? null;
+      } else {
+        const results = await Promise.all([
+          cloud.from("store_banners").select("id, title, subtitle, button_label, link_url, link, image_path, image_desktop_path, image_mobile_path, sort_order, position, active, is_active").or("is_active.eq.true,active.eq.true").eq("store_id", store.id).order("position", { ascending: true }).order("sort_order", { ascending: true }),
+          cloud.from("home_benefits").select("id, title, subtitle, icon, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
+          cloud.from("home_policies").select("id, title, subtitle, icon, link_url, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
+          cloud.from("home_sections").select("id, category_id, title_override, subtitle_override, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
+          cloud.from("home_footer").select("id, key, logo_path, store_name, address, whatsapp, hours, extra_note, instagram_url, facebook_url, active").eq("active", true).eq("key", "main").eq("store_id", store.id).maybeSingle(),
+          cloud.from("home_departments").select("id, kind, label, icon, link_url, category_id, sort_order, active").eq("active", true).eq("store_id", store.id).order("sort_order", { ascending: true }),
+          cloud.from("home_offers").select("id, product_id, badge_text, promo_price, starts_at, ends_at, sort_order, active").eq("store_id", store.id).order("sort_order", { ascending: true }),
+          cloud.from("home_seo").select("id, key, meta_title, meta_description, og_image_path, active").eq("active", true).eq("key", "store_home").eq("store_id", store.id).maybeSingle(),
+        ]);
 
-      results.forEach((res, i) => {
-        if (res.error) console.error(`[useHomeContent] Query ${i} failed:`, res.error);
-      });
+        const [b, ben, pol, sec, f, deps, off, s] = results;
+        const queryError = results.find((res) => res.error)?.error;
+        if (queryError) throw queryError;
+        rawBanners = (b.data ?? []) as any[];
+        benefitsData = (ben.data ?? []) as any[];
+        policiesData = (pol.data ?? []) as any[];
+        sectionsData = (sec.data ?? []) as any[];
+        footerData = (f.data as any) ?? null;
+        departmentsData = (deps.data ?? []) as any[];
+        offersData = (off.data ?? []) as any[];
+        seoData = (s.data as any) ?? null;
+      }
 
-      const rawBanners = (b.data ?? []) as any[];
-      const normalizedBanners = (rawBanners.length > 0 ? rawBanners : [DEFAULT_FALLBACK_BANNER]).map((row) => {
+      const normalizedBanners = rawBanners.map((row) => {
         const imagePath = row.image_path || row.image_desktop_path || row.image_mobile_path;
         return {
           ...row,
@@ -188,13 +209,13 @@ export function useHomeContent(options?: UseHomeContentOptions) {
 
       const payload: HomeContentCache = {
         banners: normalizedBanners,
-        benefits: (ben.data ?? []) as any,
-        policies: (pol.data ?? []) as any,
-        sections: (sec.data ?? []) as any,
-        footer: (f.data as any) ?? null,
-        departments: (deps.data ?? []) as any,
-        offers: (off.data ?? []) as any,
-        seo: (s.data as any) ?? null,
+        benefits: benefitsData as any,
+        policies: policiesData as any,
+        sections: sectionsData as any,
+        footer: footerData,
+        departments: departmentsData as any,
+        offers: offersData as any,
+        seo: seoData,
       };
 
       setBanners(payload.banners);
@@ -208,22 +229,30 @@ export function useHomeContent(options?: UseHomeContentOptions) {
       setSmartCache(HOME_CONTENT_CACHE_KEY, payload);
     } catch (error) {
       console.error("[useHomeContent] Error loading home content:", error);
-      const message = error instanceof Error ? error.message : "Falha ao carregar conteúdo da Home";
-      setBanners([DEFAULT_FALLBACK_BANNER]);
-      setError(message);
+      setError(describeCatalogError(error));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (tenantLoading) {
+      setError(null);
+      setLoading(true);
+      return;
+    }
     if (!enabled || !store) {
+      if (requested) {
+        setBanners([]);
+        setError("A loja não foi identificada no banco. Conteúdo local não verificado foi ocultado.");
+      }
       setLoading(false);
       return;
     }
 
     const cached = getSmartCache<HomeContentCache>(HOME_CONTENT_CACHE_KEY, HOME_CONTENT_CACHE_TTL_MS);
     if (cached) {
+      setError(null);
       setBanners(cached.banners ?? []);
       setBenefits(cached.benefits ?? []);
       setPolicies(cached.policies ?? []);
@@ -239,7 +268,7 @@ export function useHomeContent(options?: UseHomeContentOptions) {
 
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, store?.id, HOME_CONTENT_CACHE_KEY]);
+  }, [enabled, requested, tenantLoading, store?.id, HOME_CONTENT_CACHE_KEY]);
 
   // Polling automático: revalida banners/conteúdo da home silenciosamente
   // a cada 60s e quando a aba volta a ficar visível.

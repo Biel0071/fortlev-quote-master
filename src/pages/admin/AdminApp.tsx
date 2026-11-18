@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import AdminLayout from "@/modules/admin/pages/AdminLayout";
 import { useStore } from "@/contexts/StoreContext";
 
@@ -67,12 +67,13 @@ function AdminPageFallback() {
 
 export default function AdminApp() {
   const { routes } = useStore();
+  const { storeId } = useParams();
 
   return (
     <Suspense fallback={<AdminPageFallback />}>
       <Routes>
         <Route element={<AdminLayout />}>
-          <Route index element={<AdminStoreSelector />} />
+          <Route index element={storeId ? <Navigate to="dashboard" replace /> : <AdminStoreSelector />} />
           <Route path="master" element={<AdminMasterDashboard />} />
           <Route path="dashboard" element={<AdminDashboardShell />}>
             <Route index element={<AdminDashboardOverview />} />

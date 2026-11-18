@@ -1,3 +1,4 @@
+import { getAiGatewayConfig, aiGatewayUrl, getAiModel } from "../_shared/aiGateway.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.3";
 
@@ -74,9 +75,9 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const { apiKey: AI_GATEWAY_API_KEY } = getAiGatewayConfig();
     if (!SUPABASE_URL || !SERVICE) throw new Error("Missing backend config");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    if (!AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY not configured");
 
     const supa = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
 
@@ -212,10 +213,10 @@ Retorne APENAS JSON array:
 [{"author_name":"Nome","author_location":"Cidade-UF","rating":5,"title":"Título","content":"Texto","pros":"positivo ou null","cons":"negativo ou null"}]`;
 
         try {
-          const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          const aiResp = await fetch(aiGatewayUrl("/v1/chat/completions"), {
             method: "POST",
-            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ model: "google/gemini-2.5-flash-lite", messages: [{ role: "user", content: prompt }] }),
+            headers: { Authorization: `Bearer ${AI_GATEWAY_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: getAiModel(), messages: [{ role: "user", content: prompt }] }),
           });
 
           if (!aiResp.ok) { const errText = await aiResp.text(); console.error(`[engine] AI error ${aiResp.status} for ${product.name}: ${errText.slice(0,200)}`); continue; }

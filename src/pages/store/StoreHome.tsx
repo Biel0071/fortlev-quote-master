@@ -9,7 +9,7 @@ import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { useCart } from "@/hooks/useCart";
 import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
-import { useHomeContent, DEFAULT_FALLBACK_BANNER } from "@/hooks/useHomeContent";
+import { useHomeContent } from "@/hooks/useHomeContent";
 import { useTenant } from "@/providers/TenantProvider";
 import { HomeHeroCarousel } from "@/components/store/home/HomeHeroCarousel";
 import { CartDrawer } from "@/components/store/CartDrawer";
@@ -89,8 +89,8 @@ export default function StoreHome() {
 
 
   const home = useHomeContent({ enabled: true });
-  const { activeCategories, loading: categoriesLoading } = useStoreCategories({ enabled: phase.categories });
-  const { activeProducts, loading: productsLoading } = useStoreProducts({ enabled: phase.featured || phase.additional });
+  const { activeCategories, loading: categoriesLoading, error: categoriesError } = useStoreCategories({ enabled: phase.categories });
+  const { activeProducts, loading: productsLoading, error: productsError } = useStoreProducts({ enabled: phase.featured || phase.additional });
   const { offerProducts: offerList } = useOfferProducts(activeProducts);
 
   const [cartOpen, setCartOpen] = useState(false);
@@ -124,7 +124,7 @@ export default function StoreHome() {
   }, [home.seo?.og_image_path]);
   useDynamicSeo({ title: seo.title, description: seo.description, ogImageUrl, canonicalPath: "/" });
 
-  const { isLoading: tenantLoading, store: tenantStoreData } = useTenant();
+  const { isLoading: tenantLoading, store: tenantStoreData, error: tenantError } = useTenant();
   const loading = (tenantLoading && !tenantStoreData) || (productsLoading && activeProducts.length === 0) || (categoriesLoading && activeCategories.length === 0);
 
   const featuredIds = useMemo(() => {
@@ -167,7 +167,9 @@ export default function StoreHome() {
     !productsLoading &&
     !categoriesLoading &&
     (activeProducts?.length ?? 0) === 0 &&
-    (activeCategories?.length ?? 0) === 0;
+    (activeCategories?.length ?? 0) === 0 &&
+    !productsError &&
+    !categoriesError;
 
   if (storeHasNoContent) {
     return <StoreUnderDevelopment storeName={tenantStoreData?.name} />;
@@ -177,8 +179,6 @@ export default function StoreHome() {
 
 
   // Se o tenant carregou mas não há loja ativa, usa o fallback automático da loja padrão em vez de travar
-  const effectiveStore = tenantStoreData ?? DEFAULT_FALLBACK_STORES[0];
-
   const onAdd = (productId: string, qty: number) => {
     const product: any = offerList.find((item: any) => item.id === productId)
       ?? activeProducts.find((item: any) => item.id === productId);
@@ -200,7 +200,7 @@ export default function StoreHome() {
 
 
   // Improved empty store detection
-  const isEmptyStore = phase.featured && !loading && !tenantLoading && activeProducts.length === 0 && !home.loading;
+  const isEmptyStore = phase.featured && !loading && !tenantLoading && activeProducts.length === 0 && !home.loading && !tenantError && !productsError && !categoriesError && !home.error;
 
   return (
     <div className="flex flex-col bg-background w-full overflow-x-hidden min-h-screen">
@@ -212,6 +212,12 @@ export default function StoreHome() {
       />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
+
+      {tenantError || home.error ? (
+        <div role="alert" className="mx-auto mt-4 w-[calc(100%-2rem)] max-w-6xl rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-foreground">
+          Loja indisponível: {tenantError || home.error}
+        </div>
+      ) : null}
 
       {isEmptyStore ? (
         <div className="flex-1 flex flex-col items-center justify-center py-24 px-6 text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -244,7 +250,7 @@ export default function StoreHome() {
         <>
           <div className="w-full overflow-hidden">
             <HomeHeroCarousel
-              banners={home.banners.length > 0 ? home.banners : [DEFAULT_FALLBACK_BANNER]}
+              banners={home.banners}
               loading={home.loading && home.banners.length === 0}
             />
           </div>
@@ -265,6 +271,12 @@ export default function StoreHome() {
           >
             {!phase.categories || (categoriesLoading && !activeCategories.length) ? (
               <CategorySkeleton />
+            ) : categoriesError ? (
+              <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-foreground">
+                Categorias indisponíveis: {categoriesError}
+              </div>
+            ) : activeCategories.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma categoria cadastrada no banco.</p>
             ) : (
               <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
             )}
@@ -309,6 +321,11 @@ export default function StoreHome() {
               </Link>
             }
           >
+            {productsError ? (
+              <div role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-foreground">
+                Catálogo indisponível: {productsError}
+              </div>
+            ) : null}
             {!phase.featured || (productsLoading && !activeProducts.length) ? (
               <ProductGridSkeleton count={10} />
             ) : (

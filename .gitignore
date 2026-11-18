@@ -28,5 +28,7 @@ backups/database/
 backups/auth/
 backups/storage/
 backups/metadata/
+.env
 .env.local
+.env.*.local
 

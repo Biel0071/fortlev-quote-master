@@ -81,19 +81,21 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
               {product.name}
             </h2>
 
-            <div className="flex items-center gap-1.5">
-              <div className="flex gap-0.5">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <Star
-                    key={i}
-                    className={`h-4 w-4 ${i < Math.round(rating?.avg ?? 0) ? "fill-current text-promo" : "fill-muted text-muted-foreground/40"}`}
-                  />
-                ))}
+            {rating ? (
+              <div className="flex items-center gap-1.5">
+                <div className="flex gap-0.5">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-4 w-4 ${i < Math.round(rating.avg) ? "fill-current text-promo" : "fill-muted text-muted-foreground/40"}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {rating.avg} ({rating.total})
+                </span>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {rating?.avg ?? 0} ({rating?.total ?? 0})
-              </span>
-            </div>
+            ) : null}
 
             <div>
               <div className="text-sm text-muted-foreground line-through">
@@ -101,12 +103,6 @@ export function OfferHeroCard({ products, getOfferPrices, onAdd }: Props) {
               </div>
               <div className="text-2xl sm:text-3xl font-extrabold text-destructive">
                 {formatCurrency(prices.promoPrice)}{unitLabel}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                ou 10x de {formatCurrency(prices.promoPrice / 10)} sem juros
-              </div>
-              <div className="text-sm font-bold text-pix mt-0.5">
-                {formatCurrency(prices.promoPrice * 0.93)} no PIX
               </div>
             </div>
 

@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useMemo, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
+import { isDatabaseStoreId } from "@/utils/storeId";
 
 export type AppStore = "materiais" | "fortlev" | "construcao" | string;
 
@@ -18,6 +19,8 @@ type StoreContextValue = {
   setStore: (store: AppStore) => string | null;
   label: string;
   storesLoading: boolean;
+  storesError: string | null;
+  reloadStores: () => void;
   activeStoreId: string | null;
   availableStores: Array<{ value: AppStore; label: string; id: string }>;
   setActiveStoreId: (id: string | null) => void;
@@ -38,46 +41,27 @@ const STORE_LABEL: Record<string, string> = {
   construcao: "Construção (Orçamentos)",
 };
 
-export const DEFAULT_FALLBACK_STORES: StoreDbRow[] = [
-  {
-    id: "f5e69cd7-e-b465-4024-9b99-d388262b08fa",
-    name: "Materiais de Construção",
-    slug: "materiais",
-    domain: "materialdecontrucao.online",
-    active: true,
-    store_domains: [{ domain: "materialdecontrucao.online", verified: true }],
-  },
-  {
-    id: "fortlev-store-id-default",
-    name: "Home Completa Fortlev",
-    slug: "fortlev",
-    domain: "fortlev.lovable.app",
-    active: true,
-    store_domains: [{ domain: "fortlev.lovable.app", verified: true }],
-  },
-  {
-    id: "construcao-store-id-default",
-    name: "Construção (Orçamentos)",
-    slug: "construcao",
-    domain: "construcao.lovable.app",
-    active: true,
-    store_domains: [{ domain: "construcao.lovable.app", verified: true }],
-  },
-];
-
-const STORES_CACHE_KEY = "lovable:stores:v2";
+const STORES_CACHE_KEY = "lovable:stores:v3";
 const STORES_CACHE_TTL = 5 * 60 * 1000;
 
 function loadCachedStores(): StoreDbRow[] | null {
   try {
     const raw = sessionStorage.getItem(STORES_CACHE_KEY);
-    if (!raw) return DEFAULT_FALLBACK_STORES;
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as { at: number; data: StoreDbRow[] };
-    if (!parsed?.data || Date.now() - parsed.at > STORES_CACHE_TTL) return DEFAULT_FALLBACK_STORES;
-    return parsed.data.length > 0 ? parsed.data : DEFAULT_FALLBACK_STORES;
+    if (!parsed?.data || Date.now() - parsed.at > STORES_CACHE_TTL) return null;
+    return parsed.data.filter((store) => isDatabaseStoreId(store.id));
   } catch {
-    return DEFAULT_FALLBACK_STORES;
+    return null;
   }
+}
+
+function describeStoreLoadError(error: unknown) {
+  const readError = error as { code?: string; message?: string };
+  if (readError?.code === "42501" || /permission|row-level security|not authorized/i.test(readError?.message ?? "")) {
+    return "Sem permissão para consultar as lojas.";
+  }
+  return "Banco indisponível: não foi possível listar as lojas.";
 }
 
 function saveCachedStores(data: StoreDbRow[]) {
@@ -114,7 +98,10 @@ export function StoreProvider({ children }: StoreProviderProps) {
   const [store, setStoreRaw] = useState<AppStore>("materiais");
   const [activeStoreId, setActiveStoreId] = useState<string | null>(null);
   const [dbStores, setDbStores] = useState<StoreDbRow[]>(cached ?? []);
-  const [storesLoading, setStoresLoading] = useState(!cached);
+  const [storesLoading, setStoresLoading] = useState(cached === null);
+  const [storesError, setStoresError] = useState<string | null>(null);
+  const [storesRetry, setStoresRetry] = useState(0);
+  const reloadStores = useCallback(() => setStoresRetry((attempt) => attempt + 1), []);
 
   // Refs to avoid re-running effect on state changes it itself produces
   const storeRef = useRef(store);
@@ -125,23 +112,30 @@ export function StoreProvider({ children }: StoreProviderProps) {
   // Load stores from DB once (and refresh cache silently)
   useEffect(() => {
     let cancelled = false;
+    setStoresLoading(true);
+    setStoresError(null);
     const timer = setTimeout(() => {
       if (!cancelled) {
+        setStoresError("A consulta das lojas excedeu o tempo limite. Verifique a conexão e tente novamente.");
         setStoresLoading(false);
       }
-    }, 1500);
+    }, 10000);
 
     cloud
       .from("stores")
       .select("id, name, slug, domain, active, store_domains(domain, verified)")
       .order("name")
-      .then(({ data }) => {
-        if (cancelled || !data || data.length === 0) return;
-        setDbStores(data as StoreDbRow[]);
-        saveCachedStores(data as StoreDbRow[]);
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) throw error;
+        setStoresError(null);
+        const realStores = ((data ?? []) as StoreDbRow[]).filter((item) => isDatabaseStoreId(item.id));
+        setDbStores(realStores);
+        saveCachedStores(realStores);
       })
       .catch((err) => {
-        console.warn("Could not fetch remote stores, using fallback:", err);
+        if (!cancelled) setStoresError(describeStoreLoadError(err));
+        console.warn("Could not fetch remote stores:", err);
       })
       .finally(() => {
         clearTimeout(timer);
@@ -151,7 +145,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, []);
+  }, [storesRetry]);
 
   // Resolve active store from URL/hostname. Depends ONLY on dbStores + pathname
   // — never on `store`/`activeStoreId` (would loop).
@@ -164,7 +158,8 @@ export function StoreProvider({ children }: StoreProviderProps) {
 
     const apply = (slug: string, id: string | null) => {
       if (currentStore !== slug) setStoreRaw(slug);
-      if (currentId !== id) setActiveStoreId(id);
+      const databaseId = isDatabaseStoreId(id) ? id : null;
+      if (currentId !== databaseId) setActiveStoreId(databaseId);
     };
 
     if (pathname === "/admin") {
@@ -212,8 +207,9 @@ export function StoreProvider({ children }: StoreProviderProps) {
     const found = dbStores.find((s) => s.slug === newStore || s.id === newStore);
     if (found) {
       setStoreRaw(found.slug);
-      setActiveStoreId(found.id);
-      return found.id;
+      const databaseId = isDatabaseStoreId(found.id) ? found.id : null;
+      setActiveStoreId(databaseId);
+      return databaseId;
     }
     setStoreRaw(newStore);
     return null;
@@ -231,13 +227,15 @@ export function StoreProvider({ children }: StoreProviderProps) {
       const cleanPath = path.startsWith("/") ? path : `/${path}`;
       return `${adminBase}${cleanPath === "/" ? "" : cleanPath}`;
     };
-    const label = dbStore?.name ?? STORE_LABEL[store] ?? store;
+    const label = dbStore?.name ?? (isStoreScopedAdminPath ? "Loja não identificada" : STORE_LABEL[store] ?? store);
 
     return {
       store,
       setStore,
       label,
       storesLoading,
+      storesError,
+      reloadStores,
       activeStoreId,
       availableStores: dbStores.map((s) => ({ value: s.slug, label: s.name, id: s.id })),
       setActiveStoreId,
@@ -249,7 +247,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
         adminPath,
       },
     };
-  }, [store, activeStoreId, dbStores, storesLoading, location.pathname]);
+  }, [store, activeStoreId, dbStores, storesLoading, storesError, reloadStores, location.pathname]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
@@ -259,9 +257,3 @@ export function useStore() {
   if (!ctx) throw new Error("useStore must be used within StoreProvider");
   return ctx;
 }
-
-export const STORE_OPTIONS: Array<{ value: AppStore; label: string }> = [
-  { value: "materiais", label: "Materiais de Construção" },
-  { value: "fortlev", label: "Home Completa Fortlev" },
-  { value: "construcao", label: "Construção (Orçamentos)" },
-];

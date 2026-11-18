@@ -11,14 +11,11 @@ const DOWNLOAD_CLICKED_KEY = "app_download_clicked";
 const REEXPAND_MS = 15_000;
 
 function getDownloadUrl(storeId: string | null) {
-  // Always use current domain origin for multi-store support
-  const base = `${window.location.origin}/functions/v1/download-app`;
-  if (storeId) return `${base}?store_id=${storeId}`;
-
-  // Fallback: use Supabase project URL directly
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-  if (!projectId) return null;
-  return `https://${projectId}.supabase.co/functions/v1/download-app`;
+  // Edge Functions live on the configured API domain, which can differ from the store domain.
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/+$/, "");
+  if (!supabaseUrl) return null;
+  const endpoint = `${supabaseUrl}/functions/v1/download-app`;
+  return storeId ? `${endpoint}?store_id=${encodeURIComponent(storeId)}` : endpoint;
 }
 
 export function AppDownloadBanner() {

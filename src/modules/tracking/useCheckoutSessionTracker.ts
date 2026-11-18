@@ -21,6 +21,7 @@ function getOrCreatePersistentSessionId(fallback?: string) {
 
 export type CheckoutSessionPayload = {
   name: string;
+  cpf?: string;
   phone: string;
   email?: string;
   cep?: string;
@@ -28,6 +29,7 @@ export type CheckoutSessionPayload = {
   number?: string;
   complement?: string;
   notes?: string;
+  paymentMethod?: string;
   subtotal: number;
   total: number;
   routeType: "whatsapp" | "gateway";
@@ -80,25 +82,24 @@ export function useCheckoutSessionTracker() {
       return smartCache.fetch(
         key,
         async () => {
-          const { data, error } = await cloud.functions.invoke("checkout-session", {
-            body: {
-              session_id: sid,
-              consent_given: consentOk,
-              is_persistent: consentOk,
-              nome: payload.name,
-              telefone: payload.phone,
-              email: payload.email ?? "",
-              cep: payload.cep ?? "",
-              endereco: payload.address ?? "",
-              numero: payload.number ?? "",
-              complemento: payload.complement ?? "",
-              observacoes: payload.notes ?? "",
-              subtotal: payload.subtotal,
-              total: payload.total,
-              route_type: payload.routeType,
-              cart_items: payload.cartItems,
-              last_step: payload.lastStep,
-            },
+          const { data, error } = await cloud.rpc("rpc_save_checkout_collection", {
+            p_session_id: sid,
+            p_nome: payload.name ?? "",
+            p_cpf: payload.cpf ?? "",
+            p_telefone: payload.phone ?? "",
+            p_email: payload.email ?? "",
+            p_cep: payload.cep ?? "",
+            p_endereco: payload.address ?? "",
+            p_numero: payload.number ?? "",
+            p_complemento: payload.complement ?? "",
+            p_observacoes: payload.notes ?? "",
+            p_payment_method: payload.paymentMethod ?? "",
+            p_subtotal: payload.subtotal ?? 0,
+            p_total: payload.total ?? 0,
+            p_route_type: payload.routeType,
+            p_cart_items: payload.cartItems ?? [],
+            p_consent_given: consentOk,
+            p_user_agent: typeof navigator !== "undefined" ? navigator.userAgent : "web",
           });
 
           if (error) throw error;

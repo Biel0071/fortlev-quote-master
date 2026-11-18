@@ -1,3 +1,4 @@
+import { getOptionalAiGatewayConfig, aiGatewayUrl, getAiModel } from "../_shared/aiGateway.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -118,17 +119,17 @@ serve(async (req) => {
     const alerts: string[] = [];
     const suggestions: string[] = [];
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (LOVABLE_API_KEY) {
+    const AI_GATEWAY_API_KEY = getOptionalAiGatewayConfig()?.apiKey ?? "";
+    if (AI_GATEWAY_API_KEY) {
       try {
-        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiResp = await fetch(aiGatewayUrl("/v1/chat/completions"), {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            Authorization: `Bearer ${AI_GATEWAY_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
+            model: getAiModel(),
             messages: [
               {
                 role: "system",

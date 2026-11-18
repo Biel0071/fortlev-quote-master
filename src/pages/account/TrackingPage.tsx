@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { AppHeader } from "@/components/store/AppHeader";
@@ -8,28 +8,61 @@ import { useSession } from "@/hooks/useSession";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { Clock, ArrowLeft } from "lucide-react";
 import { Badge as UIBadge } from "@/components/ui/badge";
-import { TrackingCustomerCard } from "@/components/store/tracking/TrackingCustomerCard";
+import {
+  TrackingCustomerCard,
+  type TrackingCustomerCardProps,
+  type TrackingOrderItem,
+} from "@/components/store/tracking/TrackingCustomerCard";
+import { useTenant } from "@/providers/TenantProvider";
+import {
+  resolveTrackingItemsAndTotal,
+  type RawTrackingItemInput,
+} from "@/utils/trackingItems";
 
 type OrderRow = {
   id: string;
+  store_id?: string | null;
   status: string;
   total: number;
   shipping: number;
   subtotal: number;
   discount: number;
   customer_name?: string | null;
+  customer_cpf?: string | null;
   address?: string | null;
+  cep?: string | null;
   created_at: string;
+};
+
+type TrackingData = {
+  store_id?: string | null;
+  tracking_code?: string | null;
+  estimated_delivery_at?: string | null;
+  posted_at?: string | null;
+  delivered_at?: string | null;
+  metadata?: {
+    custom_items?: RawTrackingItemInput[];
+    custom_progress?: number;
+    custom_total?: number;
+  } | null;
+  store?: { id: string; name: string; slug: string } | null;
+  status?: { label?: string | null; progress_percentage?: number | null } | null;
+  carrier?: TrackingCustomerCardProps["carrier"];
+  timeline?: TrackingCustomerCardProps["timeline"];
 };
 
 export default function TrackingPage() {
   const { id } = useParams();
   const { user, loading: sessionLoading } = useSession();
+  const { store: tenantStore } = useTenant();
 
   const [order, setOrder] = useState<OrderRow | null>(null);
-  const [items, setItems] = useState<Array<{ name_snapshot: string; quantity: number; line_total: number }>>([]);
-  const [tracking, setTracking] = useState<any>(null);
-  const [timeline, setTimeline] = useState<any[]>([]);
+  const [items, setItems] = useState<TrackingOrderItem[]>([]);
+  const [resolvedTotal, setResolvedTotal] = useState<number>(0);
+  const [tracking, setTracking] = useState<TrackingData | null>(null);
+  const [timeline, setTimeline] = useState<NonNullable<TrackingCustomerCardProps["timeline"]>>([]);
+  const [storeName, setStoreName] = useState<string | null>(null);
+  const [storeAddress, setStoreAddress] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string>("");
 
@@ -49,7 +82,7 @@ export default function TrackingPage() {
     return map[s] ?? s;
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     setErr("");
@@ -58,24 +91,25 @@ export default function TrackingPage() {
       const [orderRes, itemsRes] = await Promise.all([
         cloud
           .from("store_orders")
-          .select("id, status, total, shipping, subtotal, discount, customer_name, address, created_at")
+          .select("id, store_id, status, total, shipping, subtotal, discount, customer_name, customer_cpf, address, cep, created_at")
           .eq("id", id)
           .single(),
         cloud
           .from("store_order_items")
-          .select("name_snapshot, quantity, line_total")
+          .select("name_snapshot, unit_snapshot, price_snapshot, quantity, line_total")
           .eq("order_id", id)
           .order("created_at", { ascending: true }),
       ]);
 
       if (orderRes.error) throw orderRes.error;
-      setOrder(orderRes.data as any);
-      setItems((itemsRes.data ?? []) as any);
+      const loadedOrder = orderRes.data as OrderRow;
+      setOrder(loadedOrder);
 
       const { data: trackData, error: trackErr } = await cloud
         .from("order_tracking_main")
         .select(`
           *,
+          store:stores(id, name, slug),
           status:order_tracking_status(*),
           carrier:order_tracking_carriers(*),
           timeline:order_tracking_timeline(*)
@@ -85,20 +119,53 @@ export default function TrackingPage() {
 
       if (trackErr) throw trackErr;
 
-      if (trackData) {
-        setTracking(trackData);
-        setTimeline(trackData.timeline || []);
+      const typedTrackData = (trackData as unknown as TrackingData | null) ?? null;
+      if (typedTrackData) {
+        setTracking(typedTrackData);
+        setTimeline(typedTrackData.timeline || []);
       }
-    } catch (error: any) {
-      setErr(error.message);
+
+      const resolved = await resolveTrackingItemsAndTotal({
+        orderItems: (itemsRes.data ?? []) as RawTrackingItemInput[],
+        customItems: typedTrackData?.metadata?.custom_items,
+        orderTotal: loadedOrder.total,
+        customTotal: typedTrackData?.metadata?.custom_total,
+        customerCpf: loadedOrder.customer_cpf,
+      });
+      setItems(resolved.items);
+      setResolvedTotal(resolved.total);
+
+      const effectiveStoreId = typedTrackData?.store_id || loadedOrder?.store_id || null;
+      let footerStoreName: string | null = null;
+      let footerStoreAddress: string | null = null;
+      if (effectiveStoreId) {
+        try {
+          const { data: footerData } = await cloud
+            .from("home_footer")
+            .select("store_name, address")
+            .eq("store_id", effectiveStoreId)
+            .eq("active", true)
+            .eq("key", "main")
+            .maybeSingle();
+          footerStoreName = footerData?.store_name || null;
+          footerStoreAddress = footerData?.address || null;
+        } catch {
+          // Fallback to store join
+        }
+      }
+
+      setStoreName(footerStoreName || typedTrackData?.store?.name || tenantStore?.name || null);
+      setStoreAddress(footerStoreAddress);
+    } catch (error: unknown) {
+      setErr(error instanceof Error ? error.message : "Erro ao carregar rastreio.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, tenantStore?.name]);
 
   useEffect(() => {
     if (user) void load();
-  }, [user?.id, id]);
+  }, [user, load]);
 
   if (!sessionLoading && !user) return <Navigate to="/conta" replace state={{ from: `/rastreio/${id}` }} />;
 
@@ -110,7 +177,7 @@ export default function TrackingPage() {
       <AppHeader cartCount={0} />
       <StoreMobileChrome cartCount={0} />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Button asChild variant="ghost" size="icon" className="rounded-full">
@@ -120,7 +187,7 @@ export default function TrackingPage() {
             </Button>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Rastreio do pedido</h1>
-              <p className="text-sm text-muted-foreground">Acompanhe atualizações da entrega e transportadora oficial.</p>
+              <p className="text-sm text-muted-foreground">Acompanhe atualizações da entrega e logística do pedido.</p>
             </div>
           </div>
           <UIBadge variant="outline" className="hidden sm:flex font-black border-primary/20 text-primary">
@@ -151,11 +218,14 @@ export default function TrackingPage() {
             postedAt={tracking?.posted_at}
             deliveredAt={tracking?.delivered_at}
             carrier={tracking?.carrier}
+            storeName={storeName}
+            storeAddress={storeAddress}
             timeline={timeline}
             items={items}
-            orderTotal={order.total || tracking?.metadata?.custom_total}
+            orderTotal={resolvedTotal || order.total || tracking?.metadata?.custom_total}
             customerName={order.customer_name}
             address={order.address}
+            cep={order.cep}
           />
         )}
       </main>

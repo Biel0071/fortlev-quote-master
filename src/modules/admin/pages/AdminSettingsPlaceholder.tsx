@@ -298,6 +298,7 @@ type WebHook = { id: string; event: string; url: string; secret: string; active:
 
 export function AdminSettingsIntegracoes() {
   const { activeStoreId } = useStore();
+  const apiFunctionsBase = `${import.meta.env.VITE_SUPABASE_URL?.replace(/\/+$/, "") ?? "https://seu-dominio.com"}/functions/v1`;
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [hooks, setHooks] = useState<WebHook[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
@@ -502,7 +503,7 @@ export function AdminSettingsIntegracoes() {
             <p className="font-semibold mb-1">Exemplo (curl)</p>
             <pre className="bg-muted/50 p-3 rounded text-[10px] overflow-x-auto">
 {`curl -X POST \\
-  https://flkionbmkuqgkudjjuqk.supabase.co/functions/v1/api-quotation/analyze \\
+  ${apiFunctionsBase}/api-quotation/analyze \\
   -H "x-api-key: SUA_CHAVE_AQUI" \\
   -H "Content-Type: application/json" \\
   -d '{"text": "João Silva, 2 caixas 1000L"}'`}
@@ -511,7 +512,7 @@ export function AdminSettingsIntegracoes() {
               variant="outline"
               size="sm"
               className="mt-2 h-7 text-[11px]"
-              onClick={() => copy(`curl -X POST https://flkionbmkuqgkudjjuqk.supabase.co/functions/v1/api-quotation/analyze -H "x-api-key: SUA_CHAVE" -H "Content-Type: application/json" -d '{"text":"João Silva, 2 caixas 1000L"}'`)}
+              onClick={() => copy(`curl -X POST ${apiFunctionsBase}/api-quotation/analyze -H "x-api-key: SUA_CHAVE" -H "Content-Type: application/json" -d '{"text":"João Silva, 2 caixas 1000L"}'`)}
             >
               <Copy className="h-3 w-3 mr-1" /> Copiar exemplo
             </Button>

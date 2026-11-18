@@ -18,12 +18,12 @@ COPY . .
 # Vite envs (must be set at build time)
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
-ARG VITE_SUPABASE_PROJECT_ID
+ARG BUILD_SHA=unknown
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
-    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
-    VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID
+    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
 
-RUN npm run build
+RUN printf '{"commit":"%s"}\n' "$BUILD_SHA" > public/deploy-version.json \
+ && npm run build
 
 # ---------- Stage 2: runtime (nginx) ----------
 FROM nginx:1.27-alpine AS runtime

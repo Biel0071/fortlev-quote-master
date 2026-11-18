@@ -1,29 +1,61 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Store,
   Package,
   Truck,
-  CheckCircle2,
   MapPin,
+  CheckCircle2,
+  User,
+  Map,
   Calendar,
   Clock,
-  Box,
   ShieldCheck,
   CreditCard,
-  Smartphone,
   Navigation2,
   Copy,
   Check,
-  ExternalLink,
   Share2,
-  Gauge,
 } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { TrackingMap } from "@/components/store/tracking/TrackingMap";
-import { CarrierBrandLogo, resolveOfficialCarrier } from "@/components/store/tracking/CarrierBrandLogo";
+import { createRouteVariantSeed } from "@/utils/trackingGeo";
+import { CarrierBrandLogo } from "@/components/store/tracking/CarrierBrandLogo";
+import {
+  buildWhiteLabelAutomatedTimeline,
+  resolveEffectiveCarrierName,
+  resolveNearestCarrierCd,
+  type NearestCarrierCdResult,
+  type WhiteLabelTrackingConfig,
+} from "@/utils/whiteLabelTracking";
+import {
+  evaluateLastDayDeliverySchedule,
+  formatDateSaoPauloBR,
+  formatDateTimeSaoPauloBR,
+} from "@/utils/deliverySchedule";
 import { toast } from "@/hooks/use-toast";
+
+export interface TrackingOrderItem {
+  product_name?: string;
+  name_snapshot?: string;
+  name?: string;
+  unit_snapshot?: string | null;
+  unit?: string | null;
+  quantity: number;
+  price_snapshot?: number | null;
+  unit_price?: number | null;
+  price?: number | null;
+  subtotal?: number | null;
+  total?: number | null;
+  line_total?: number | null;
+  product?: {
+    name?: string | null;
+    unit?: string | null;
+    basePrice?: number | null;
+  } | null;
+}
 
 export interface TrackingCustomerCardProps {
   trackingCode: string;
@@ -40,6 +72,10 @@ export interface TrackingCustomerCardProps {
     website?: string | null;
     tracking_url_template?: string | null;
   } | null;
+  storeName?: string | null;
+  storeAddress?: string | null;
+  storeLogoUrl?: string | null;
+  whiteLabelConfig?: WhiteLabelTrackingConfig;
   timeline?: Array<{
     id?: string;
     title: string;
@@ -49,18 +85,14 @@ export interface TrackingCustomerCardProps {
     event_at: string;
     is_simulated?: boolean;
   }>;
-  items?: Array<{
-    product_name?: string;
-    name_snapshot?: string;
-    quantity: number;
-    unit_price?: number;
-    line_total?: number;
-  }>;
+  items?: TrackingOrderItem[];
   orderTotal?: number | null;
   customerName?: string | null;
   address?: string | null;
+  cep?: string | null;
   isSimulating?: boolean;
   compact?: boolean;
+  now?: Date;
   onResetSearch?: () => void;
 }
 
@@ -70,29 +102,133 @@ export const TrackingCustomerCard: React.FC<TrackingCustomerCardProps> = ({
   statusLabel,
   progress,
   estimatedDeliveryAt,
+  postedAt,
+  deliveredAt,
   carrier,
+  storeName,
+  storeAddress,
+  storeLogoUrl,
+  whiteLabelConfig,
   timeline = [],
   items = [],
   orderTotal = 0,
   customerName,
   address,
+  cep,
   isSimulating = false,
   compact = false,
+  now,
   onResetSearch,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [showMap, setShowMap] = useState(progress >= 60);
+  const [showMap, setShowMap] = useState(true);
+  const [liveNow, setLiveNow] = useState<Date>(() => new Date());
+  const [routeSeed, setRouteSeed] = useState<number>(() => createRouteVariantSeed());
+  const [resolvedNearestCd, setResolvedNearestCd] =
+    useState<NearestCarrierCdResult | null>(null);
+
+  useEffect(() => {
+    setRouteSeed(createRouteVariantSeed());
+  }, [trackingCode]);
+
+  useEffect(() => {
+    if (now) return;
+    const timer = window.setInterval(() => {
+      setLiveNow(new Date());
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [now]);
+
+  const activeNow = now ?? liveNow;
+
+  const schedule = useMemo(
+    () =>
+      evaluateLastDayDeliverySchedule({
+        now: activeNow,
+        statusLabel,
+        estimatedDeliveryAt,
+        deliveredAt,
+      }),
+    [activeNow, statusLabel, estimatedDeliveryAt, deliveredAt]
+  );
 
   const safeProgress = Math.max(5, Math.min(100, Math.round(Number(progress) || 10)));
-  const isDelivered = safeProgress >= 100 || statusLabel.toLowerCase().includes("entregue");
-  const officialCarrier = resolveOfficialCarrier(carrier?.name);
+  const isDelivered =
+    Boolean(deliveredAt) ||
+    safeProgress >= 100 ||
+    statusLabel.toLowerCase().includes("entregue");
+  const isCancelled = statusLabel.toLowerCase().includes("cancelad");
+
+  const visualProgress = isDelivered
+    ? 100
+    : isCancelled
+    ? safeProgress
+    : schedule.isOutForDeliveryLastDay
+    ? 85
+    : Math.max(safeProgress, 65);
+
+  const effectiveStatusHeadline = isDelivered
+    ? statusLabel || "Entregue"
+    : isCancelled
+    ? statusLabel
+    : schedule.headline;
+
+  const effectiveCarrierName = useMemo(
+    () => resolveEffectiveCarrierName(carrier?.name, whiteLabelConfig),
+    [carrier?.name, whiteLabelConfig]
+  );
+
+  const effectiveStoreName =
+    (whiteLabelConfig?.originStoreName || storeName || "").trim() ||
+    "Loja Oficial";
+  const effectiveStoreAddress =
+    (whiteLabelConfig?.originStoreAddress || storeAddress || "").trim() || null;
+
+  const activeNearestCd = useMemo(
+    () =>
+      resolvedNearestCd ||
+      resolveNearestCarrierCd({
+        destination: { lat: -19.9167, lon: -43.9345, uf: "MG" },
+        carrierName: effectiveCarrierName,
+        config: whiteLabelConfig,
+      }),
+    [resolvedNearestCd, effectiveCarrierName, whiteLabelConfig]
+  );
+
+  const displayTimeline = useMemo(
+    () =>
+      buildWhiteLabelAutomatedTimeline({
+        existingTimeline: timeline,
+        postedAt,
+        estimatedDeliveryAt,
+        deliveredAt,
+        now: activeNow,
+        originStoreName: effectiveStoreName,
+        originStoreAddress: effectiveStoreAddress,
+        carrierName: effectiveCarrierName,
+        nearestCd: activeNearestCd,
+        schedule,
+      }),
+    [
+      timeline,
+      postedAt,
+      estimatedDeliveryAt,
+      deliveredAt,
+      activeNow,
+      effectiveStoreName,
+      effectiveStoreAddress,
+      effectiveCarrierName,
+      activeNearestCd,
+      schedule,
+    ]
+  );
 
   const steps = [
-    { label: "Loja", pct: 10, icon: <Package className="w-3.5 h-3.5" />, active: safeProgress >= 10 },
-    { label: "CD", pct: 35, icon: <MapPin className="w-3.5 h-3.5" />, active: safeProgress >= 30 },
-    { label: "Trânsito", pct: 65, icon: <Truck className="w-3.5 h-3.5" />, active: safeProgress >= 50 },
-    { label: "Entrega", pct: 85, icon: <Smartphone className="w-3.5 h-3.5" />, active: safeProgress >= 85 },
-    { label: "Entregue", pct: 100, icon: <CheckCircle2 className="w-3.5 h-3.5" />, active: safeProgress >= 100 },
+    { label: "Loja", icon: <Store className="w-4 h-4" strokeWidth={2.2} />, active: visualProgress >= 10 },
+    { label: "CD", icon: <Package className="w-4 h-4" strokeWidth={2.2} />, active: visualProgress >= 30 },
+    { label: "Trânsito", icon: <Truck className="w-4 h-4" strokeWidth={2.2} />, active: visualProgress >= 50 },
+    { label: "Entrega", icon: <MapPin className="w-4 h-4" strokeWidth={2.2} />, active: visualProgress >= 85 },
+    { label: "Entregue", icon: <CheckCircle2 className="w-4 h-4" strokeWidth={2.2} />, active: isDelivered },
   ];
 
   const handleCopyCode = () => {
@@ -105,168 +241,175 @@ export const TrackingCustomerCard: React.FC<TrackingCustomerCardProps> = ({
 
   const handleShareWhatsApp = () => {
     const url = `${window.location.origin}/rastreio?q=${encodeURIComponent(trackingCode)}`;
-    const text = `Acompanhe o rastreio do pedido (${trackingCode}) - Status: ${statusLabel} (${safeProgress}% concluído): ${url}`;
+    const text = `Acompanhe o rastreio do pedido (${trackingCode}) - Status: ${effectiveStatusHeadline}: ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
+
+  const normalizedItems = useMemo(() => {
+    return (items || []).map((item) => {
+      const itemName =
+        item.product_name ||
+        item.name_snapshot ||
+        item.product?.name ||
+        item.name ||
+        "Material / Produto";
+      const qty = Math.max(1, Number(item.quantity || 1));
+      const unit = item.unit || item.unit_snapshot || item.product?.unit || null;
+      const rawUnitPrice = Number(
+        item.unit_price ??
+          item.price_snapshot ??
+          item.price ??
+          item.product?.basePrice ??
+          0
+      );
+      const rawLineTotal = Number(
+        item.line_total ?? item.subtotal ?? item.total ?? 0
+      );
+      const lineTotal =
+        rawLineTotal > 0 ? rawLineTotal : rawUnitPrice > 0 ? rawUnitPrice * qty : 0;
+      const unitPrice =
+        rawUnitPrice > 0 ? rawUnitPrice : lineTotal > 0 ? lineTotal / qty : 0;
+
+      return {
+        itemName,
+        qty,
+        unit,
+        unitPrice,
+        lineTotal,
+      };
+    });
+  }, [items]);
 
   const computedTotal =
     Number(orderTotal) > 0
       ? Number(orderTotal)
-      : items.reduce((acc, it) => acc + Number(it.line_total || (it.unit_price || 0) * (it.quantity || 1) || 0), 0);
+      : normalizedItems.reduce((acc, it) => acc + it.lineTotal, 0);
 
-  const externalTrackingUrl =
-    carrier?.tracking_url_template && trackingCode
-      ? carrier.tracking_url_template.replace(/\{\{?code\}?\}/gi, trackingCode)
-      : officialCarrier?.trackingUrlTemplate
-      ? officialCarrier.trackingUrlTemplate.replace(/\{\{?code\}?\}/gi, trackingCode)
-      : null;
-
-  const carrierWebsite = carrier?.website || officialCarrier?.website || null;
+  const formattedEstimatedDate = formatDateSaoPauloBR(estimatedDeliveryAt);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Card className="overflow-hidden border-2 border-primary/10 shadow-2xl rounded-3xl bg-white">
-        {/* Top Hero Header */}
+        {/* Compact Top Hero Card: Destinatário -> Em rota na região -> Pedido/Cód/Copiar/Compartilhar -> Previsão -> Barra -> Emojis */}
         <div
           className={`${
             isDelivered
               ? "bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-700"
+              : schedule.phase === "reschedule"
+              ? "bg-gradient-to-br from-amber-700 via-amber-600 to-slate-800"
               : "bg-gradient-to-br from-[#17337A] via-[#1E3A8A] to-[#0F2356]"
-          } p-6 sm:p-8 text-white relative overflow-hidden`}
+          } p-4 sm:p-6 text-white relative overflow-hidden`}
         >
-          <div className="absolute top-0 right-0 w-72 h-72 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-56 h-56 bg-black/15 rounded-full -ml-16 -mb-16 blur-2xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/15 rounded-full -ml-16 -mb-16 blur-2xl pointer-events-none" />
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-[10px] uppercase font-black tracking-[0.2em] text-white/75">
-                  Status do seu pedido
-                </p>
-                {customerName && (
-                  <span className="text-[10px] font-bold bg-white/15 px-2.5 py-0.5 rounded-full border border-white/10">
-                    Destinatário: {customerName}
-                  </span>
-                )}
+          <div className="relative z-10 space-y-2.5">
+            {/* 1. Destinatário */}
+            {customerName && (
+              <div
+                className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold bg-white/15 px-3 py-1 rounded-full border border-white/15 w-fit max-w-full"
+                data-testid="tracking-recipient"
+              >
+                <User className="w-3.5 h-3.5 text-white/90 shrink-0" strokeWidth={2.3} />
+                <span className="truncate">Destinatário: {customerName}</span>
               </div>
+            )}
 
-              <div className="flex items-center gap-3">
-                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">
-                  {statusLabel || "Em Processamento"}
+            {/* 2. Em rota na região */}
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2.5">
+                <h2
+                  className="text-xl sm:text-2xl font-black uppercase tracking-tight leading-tight"
+                  data-testid="tracking-status-headline"
+                >
+                  {effectiveStatusHeadline}
                 </h2>
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#34d399]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#34d399] shrink-0" />
               </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-medium text-white/90">
-                <span>Pedido #{orderId ? orderId.slice(0, 8) : "83b0dd1b"}</span>
-                <span>•</span>
-                <span className="font-mono font-bold bg-white/10 px-2.5 py-0.5 rounded-lg border border-white/15">
-                  Código {trackingCode}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleCopyCode}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold bg-white/15 hover:bg-white/25 transition-colors px-2.5 py-1 rounded-lg"
-                  title="Copiar código de rastreio"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copied ? "Copiado" : "Copiar"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShareWhatsApp}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold bg-white/15 hover:bg-white/25 transition-colors px-2.5 py-1 rounded-lg"
-                  title="Compartilhar rastreio no WhatsApp"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  Compartilhar
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 relative z-10">
-              {estimatedDeliveryAt && (
-                <div className="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 shadow-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Calendar className="w-3.5 h-3.5 text-white/80" />
-                    <p className="text-[10px] uppercase font-black tracking-wider text-white/80 leading-none">
-                      Previsão de Entrega
-                    </p>
-                  </div>
-                  <p className="text-xl font-black">
-                    {new Date(estimatedDeliveryAt).toLocaleDateString("pt-BR")}
-                  </p>
-                </div>
+              {!isDelivered && !isCancelled && (
+                <p className="text-[11px] sm:text-xs text-white/80 font-medium leading-snug">
+                  {schedule.subtext}
+                </p>
               )}
             </div>
-          </div>
 
-          {/* Progresso Logístico & % de Envio */}
-          <div className="mt-8 relative z-10">
-            <div className="flex justify-between items-end mb-3">
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/70 block">
-                  Progresso Logístico (% de Envio)
-                </span>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="text-xs font-black bg-white text-[#17337A] px-3.5 py-1 rounded-full inline-flex items-center gap-1.5 shadow-sm">
-                    <Gauge className="w-3.5 h-3.5" />
-                    {safeProgress}% Concluído
-                  </div>
-                  <span className="text-[11px] font-bold text-white/80 bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
-                    {safeProgress < 30
-                      ? "Preparação e Coleta Inicial"
-                      : safeProgress < 60
-                      ? "Processado no Centro de Distribuição"
-                      : safeProgress < 85
-                      ? "Transferência Rodoviária em Curso"
-                      : safeProgress < 100
-                      ? "Rota Final de Entrega"
-                      : "Entrega Concluída com Sucesso"}
-                  </span>
-                </div>
-              </div>
-              <Box className="w-8 h-8 opacity-25 hidden sm:block" />
-            </div>
-
-            {/* Barra de Progresso com Indicador de Caminhão */}
-            <div className="relative h-5 bg-black/25 rounded-full p-1 shadow-inner border border-white/10">
-              <div
-                className="h-full bg-gradient-to-r from-sky-200 via-white to-white rounded-full transition-all duration-700 ease-out shadow-[0_0_20px_rgba(255,255,255,0.65)] relative"
-                style={{ width: `${safeProgress}%` }}
+            {/* 3. Pedido, Cód, Copiar, Compartilhar */}
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] sm:text-xs font-semibold text-white/95">
+              <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">
+                Pedido #{orderId ? orderId.slice(0, 8) : "83b0dd1b"}
+              </span>
+              <span className="font-mono font-bold bg-white/10 px-2.5 py-1 rounded-lg border border-white/15">
+                Cód: {trackingCode}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="inline-flex items-center gap-1 font-bold bg-white/15 hover:bg-white/25 transition-colors px-2.5 py-1 rounded-lg"
+                title="Copiar código de rastreio"
               >
-                <div className="absolute right-0 -top-1.5 w-6 h-6 rounded-full bg-white text-[#17337A] shadow-md flex items-center justify-center border-2 border-[#17337A]">
-                  <Truck className="w-3 h-3" />
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? "Copiado" : "Copiar"}
+              </button>
+              <button
+                type="button"
+                onClick={handleShareWhatsApp}
+                className="inline-flex items-center gap-1 font-bold bg-white/15 hover:bg-white/25 transition-colors px-2.5 py-1 rounded-lg"
+                title="Compartilhar rastreio no WhatsApp"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                Compartilhar
+              </button>
+            </div>
+
+            {/* 4. Previsão */}
+            {formattedEstimatedDate && (
+              <div
+                className="inline-flex items-center gap-2 bg-white/12 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/20 w-fit"
+                data-testid="estimated-delivery-box"
+              >
+                <Calendar className="w-3.5 h-3.5 text-sky-200 shrink-0" />
+                <span className="text-[11px] uppercase font-bold tracking-wider text-white/80">
+                  Previsão:
+                </span>
+                <span className="text-sm sm:text-base font-black" data-testid="estimated-delivery-date">
+                  {formattedEstimatedDate}
+                </span>
+              </div>
+            )}
+
+            {/* 5. Barra de Progresso */}
+            <div className="pt-1">
+              <div className="relative h-3.5 bg-black/25 rounded-full p-0.5 shadow-inner border border-white/10">
+                <div
+                  className="h-full bg-gradient-to-r from-sky-200 via-white to-white rounded-full transition-all duration-700 ease-out shadow-[0_0_16px_rgba(255,255,255,0.65)] relative"
+                  style={{ width: `${visualProgress}%` }}
+                >
+                  <div className="absolute right-0 -top-1.5 w-5 h-5 rounded-full bg-white text-[#17337A] shadow-md flex items-center justify-center border-2 border-[#17337A]">
+                    <Truck className="w-2.5 h-2.5" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* 5 Etapas Sincronizadas com % */}
-            <div className="flex justify-between mt-5 px-1">
+            {/* 6. Ícones Monocromáticos das Etapas */}
+            <div className="flex justify-between pt-1 px-0.5" data-testid="tracking-emoji-steps">
               {steps.map((step, idx) => (
-                <div key={idx} className="flex flex-col items-center gap-1.5 flex-1 relative">
+                <div key={idx} className="flex flex-col items-center gap-1 flex-1 relative">
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-500 border backdrop-blur-md ${
+                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all duration-500 border backdrop-blur-md ${
                       step.active
-                        ? "bg-white text-[#17337A] border-white shadow-[0_0_15px_rgba(255,255,255,0.35)] scale-105"
-                        : "bg-white/5 text-white/40 border-white/10"
+                        ? "bg-white text-[#17337A] border-white shadow-[0_0_14px_rgba(255,255,255,0.35)] scale-105"
+                        : "bg-white/5 text-white/45 border-white/10"
                     }`}
                   >
                     {step.icon}
                   </div>
                   <span
-                    className={`text-[9px] font-black uppercase tracking-tight transition-all leading-none text-center ${
-                      step.active ? "opacity-100 text-white" : "opacity-45 text-white/70"
+                    className={`text-[9px] font-black uppercase tracking-tight leading-none text-center ${
+                      step.active ? "text-white" : "opacity-50 text-white/75"
                     }`}
                   >
                     {step.label}
-                  </span>
-                  <span
-                    className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
-                      step.active ? "bg-white/20 text-white" : "text-white/35"
-                    }`}
-                  >
-                    {step.pct}%
                   </span>
                 </div>
               ))}
@@ -274,67 +417,85 @@ export const TrackingCustomerCard: React.FC<TrackingCustomerCardProps> = ({
           </div>
         </div>
 
-        {/* Corpo Principal: Linha do Tempo + Transportadora Oficial + Produtos */}
+        {/* 7. Mapa de Entrega */}
+        <div className="p-4 sm:p-6 pb-0 space-y-2.5">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <Map className="w-3.5 h-3.5" strokeWidth={2.3} />
+              </div>
+              <h3 className="font-black uppercase tracking-wider text-xs sm:text-sm text-slate-800">
+                Mapa de Entrega
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Badge
+                variant="outline"
+                className={`text-[10px] font-black uppercase border-primary/20 text-primary ${
+                  isSimulating || !isDelivered ? "bg-primary/5" : ""
+                }`}
+                data-testid="tracking-route-badge"
+              >
+                {!isDelivered ? "Em Rota Compartilhada" : "Concluído"}
+              </Badge>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMap((v) => !v)}
+                className="h-7 rounded-full text-[10px] font-black uppercase tracking-wider px-2.5"
+              >
+                <Navigation2 className="w-3 h-3 mr-1 text-primary" />
+                {showMap ? "Ocultar Mapa" : "Ver Mapa"}
+              </Button>
+            </div>
+          </div>
+
+          {showMap && (
+            <div className="space-y-3 animate-in fade-in duration-300">
+              <TrackingMap
+                address={address}
+                cep={cep}
+                storeName={effectiveStoreName}
+                storeAddress={effectiveStoreAddress}
+                carrierName={effectiveCarrierName}
+                whiteLabelConfig={whiteLabelConfig}
+                schedule={schedule}
+                isDelivered={isDelivered}
+                variantSeed={routeSeed}
+                onNearestCdResolved={setResolvedNearestCd}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Corpo Principal: Linha do Tempo + Logística + Produtos */}
         <div className={`p-6 sm:p-8 grid grid-cols-1 ${compact ? "lg:grid-cols-1" : "lg:grid-cols-5"} gap-8`}>
-          {/* Coluna Esquerda: Mapa & Linha do Tempo */}
+          {/* Coluna Esquerda: Linha do Tempo */}
           <div className={`${compact ? "" : "lg:col-span-3"} space-y-6`}>
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <h3 className="font-black uppercase tracking-widest text-sm text-slate-800">
-                  Linha do Tempo
-                </h3>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <Clock className="w-4 h-4" />
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowMap((v) => !v)}
-                  className="h-7 rounded-full text-[10px] font-black uppercase tracking-wider px-3"
-                >
-                  <Navigation2 className="w-3 h-3 mr-1 text-primary" />
-                  {showMap ? "Ocultar Mapa" : "Ver Mapa de Rota"}
-                </Button>
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] font-black uppercase border-primary/20 text-primary ${
-                    isSimulating ? "animate-pulse bg-primary/5" : ""
-                  }`}
-                >
-                  {isSimulating ? "Monitoramento Ativo" : "Tempo Real"}
-                </Badge>
-              </div>
+              <h3 className="font-black uppercase tracking-widest text-sm text-slate-800">
+                Linha do Tempo
+              </h3>
             </div>
 
-            {showMap && (
-              <div className="space-y-3 animate-in fade-in duration-300">
-                <TrackingMap address={address || "Centro de Distribuição Regional"} />
-                {address && (
-                  <div className="p-3.5 bg-slate-900 rounded-2xl text-white flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60">
-                        Destino da Entrega
-                      </p>
-                      <p className="text-xs sm:text-sm font-bold">{address}</p>
-                    </div>
-                    <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/30 text-[10px]">
-                      Rota Validada
-                    </Badge>
-                  </div>
+            {displayTimeline.length === 0 ? (
+              <div className="p-6 rounded-2xl border border-dashed border-slate-200 text-center text-sm text-slate-500 space-y-1.5">
+                <p className="font-semibold text-slate-700">
+                  {!isDelivered && !isCancelled
+                    ? schedule.headline
+                    : "Objeto registrado na base logística."}
+                </p>
+                {!isDelivered && !isCancelled && (
+                  <p className="text-xs text-slate-500">{schedule.subtext}</p>
                 )}
-              </div>
-            )}
-
-            {timeline.length === 0 ? (
-              <div className="p-6 rounded-2xl border border-dashed border-slate-200 text-center text-sm text-slate-500">
-                Objeto registrado na base logística ({safeProgress}% concluído).
               </div>
             ) : (
               <div className="relative pl-5 space-y-8 before:absolute before:left-5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                {timeline.map((event, idx) => (
+                {displayTimeline.map((event, idx) => (
                   <div key={event.id || idx} className="relative pl-8">
                     <div
                       className={`absolute left-[-7px] top-1.5 w-4 h-4 rounded-full border-4 border-white shadow-sm ${
@@ -351,7 +512,7 @@ export const TrackingCustomerCard: React.FC<TrackingCustomerCardProps> = ({
                           {event.title}
                         </span>
                         <span className="text-[10px] font-bold text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-200/80 w-fit">
-                          {new Date(event.event_at).toLocaleString("pt-BR")}
+                          {formatDateTimeSaoPauloBR(event.event_at)}
                         </span>
                       </div>
                       {event.description && (
@@ -376,122 +537,104 @@ export const TrackingCustomerCard: React.FC<TrackingCustomerCardProps> = ({
             )}
           </div>
 
-          {/* Coluna Direita: Transportadora Oficial + Produtos + Total */}
+          {/* Coluna Direita: Logística + Produtos + Total */}
           <div className={`${compact ? "" : "lg:col-span-2"} space-y-5`}>
-            {/* Card da Transportadora com Logo Oficial */}
-            <div className="p-5 rounded-3xl bg-slate-50/90 border border-slate-200/80 space-y-4 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <CarrierBrandLogo
-                    name={carrier?.name || "Jadlog"}
-                    logoUrl={carrier?.logo_url}
-                    size="md"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider leading-none mb-1">
-                      Transportadora Oficial
-                    </p>
-                    <h4 className="font-black text-lg text-slate-800 truncate">
-                      {carrier?.name || officialCarrier?.name || "Jadlog"}
-                    </h4>
-                    <p className="text-[11px] font-semibold text-slate-500 truncate">
-                      {officialCarrier?.modality || "Logística Integrada"}
-                    </p>
-                  </div>
+            {/* Card de Logística com Logo Oficial da Empresa / Transportadora */}
+            <div
+              className="p-5 rounded-3xl bg-slate-50/90 border border-slate-200/80 space-y-3.5 shadow-sm"
+              data-testid="logistics-card"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <CarrierBrandLogo
+                  name={effectiveCarrierName}
+                  logoUrl={
+                    carrier?.logo_url ||
+                    whiteLabelConfig?.brandLogoUrl ||
+                    storeLogoUrl ||
+                    undefined
+                  }
+                  size="md"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider leading-none mb-1">
+                    Logística • {effectiveStoreName}
+                  </p>
+                  <h4
+                    className="font-black text-base sm:text-lg text-slate-800 leading-tight truncate"
+                    data-testid="logistics-store-name"
+                  >
+                    {effectiveCarrierName}
+                  </h4>
+                  <p
+                    className="text-[11px] font-semibold text-slate-500 truncate"
+                    title={`${activeNearestCd.name} (${activeNearestCd.city}/${activeNearestCd.uf})`}
+                  >
+                    {activeNearestCd.name}
+                  </p>
                 </div>
               </div>
 
-              {/* Métricas de % de Envio e Eficiência da Transportadora */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="bg-white p-3 rounded-2xl border border-slate-100">
-                  <span className="text-[9px] font-black uppercase text-slate-400 block">
-                    % de Envio Atual
-                  </span>
-                  <span className="text-base font-black text-primary">{safeProgress}%</span>
-                </div>
-                <div className="bg-white p-3 rounded-2xl border border-slate-100">
-                  <span className="text-[9px] font-black uppercase text-slate-400 block">
-                    Eficiência SLA
-                  </span>
-                  <span className="text-base font-black text-emerald-600">
-                    {officialCarrier?.slaRate ?? 98.5}%
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-white p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <p className="text-[10px] font-bold text-slate-700 uppercase tracking-tight">
+              <div className="bg-white px-3.5 py-3 rounded-xl border border-slate-100 flex items-center justify-center gap-2 text-center">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <p className="text-[10px] font-bold text-slate-700 uppercase tracking-tight leading-snug text-center">
                   {isDelivered
                     ? "Encomenda entregue e assinada pelo recebedor"
-                    : "Pedido em carga monitorada pela transportadora"}
+                    : !isCancelled
+                    ? "Em rota compartilhada junto com outras entregas na região"
+                    : "Pedido em carga monitorada pela logística"}
                 </p>
               </div>
-
-              {(externalTrackingUrl || carrierWebsite) && (
-                <div className="flex gap-2">
-                  {externalTrackingUrl && (
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 rounded-xl font-bold text-xs h-9"
-                    >
-                      <a href={externalTrackingUrl} target="_blank" rel="noreferrer">
-                        <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                        Portal {carrier?.name || officialCarrier?.name || "Oficial"}
-                      </a>
-                    </Button>
-                  )}
-                  {!externalTrackingUrl && carrierWebsite && (
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 rounded-xl font-bold text-xs h-9"
-                    >
-                      <a href={carrierWebsite} target="_blank" rel="noreferrer">
-                        <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                        Site Oficial
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Card Produtos do Pedido */}
-            <div className="p-5 rounded-3xl border border-slate-200/80 bg-white space-y-3.5 shadow-sm">
-              <div className="flex items-center justify-between">
+            <div
+              className="p-4 sm:p-5 rounded-3xl border border-slate-200/80 bg-white space-y-3 shadow-sm"
+              data-testid="order-products-card"
+            >
+              <div className="flex items-center justify-between gap-2">
                 <h4 className="font-black uppercase tracking-wider text-xs text-slate-500">
                   Produtos do Pedido
                 </h4>
-                <Badge variant="secondary" className="text-[10px] font-bold">
-                  {items.length > 0 ? `${items.length} ${items.length === 1 ? "item" : "itens"}` : "Carga Conferida"}
+                <Badge variant="secondary" className="text-[10px] font-bold shrink-0">
+                  {normalizedItems.length > 0
+                    ? `${normalizedItems.length} ${normalizedItems.length === 1 ? "item" : "itens"}`
+                    : "Carga Conferida"}
                 </Badge>
               </div>
 
-              {items.length > 0 ? (
-                <div className="space-y-2.5">
-                  {items.map((item, i) => {
-                    const itemName = item.product_name || item.name_snapshot || "Material / Produto";
-                    const price = item.line_total || (item.unit_price ? item.unit_price * item.quantity : 0);
+              {normalizedItems.length > 0 ? (
+                <div className="space-y-2">
+                  {normalizedItems.map((item, i) => {
+                    const unitSuffix = (item.unit || "un").trim();
                     return (
                       <div
                         key={i}
-                        className="flex items-center justify-between gap-3 text-xs sm:text-sm p-2.5 rounded-xl bg-slate-50 border border-slate-100"
+                        data-testid="order-product-row"
+                        className="flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100"
                       >
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-slate-800 truncate">{itemName}</p>
-                          {price > 0 && (
-                            <p className="text-[11px] text-slate-500 font-semibold">
-                              {formatCurrency(Number(price))}
-                            </p>
-                          )}
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <p className="text-xs sm:text-[13px] font-bold text-slate-800 leading-snug break-words">
+                            {item.itemName}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-slate-500 font-semibold leading-tight">
+                            <span className="whitespace-nowrap">
+                              Qtd: {item.qty} {unitSuffix}
+                            </span>
+                            {item.unitPrice > 0 && (
+                              <span className="whitespace-nowrap">
+                                • {formatCurrency(item.unitPrice)}/{unitSuffix}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className="font-black text-primary bg-primary/10 px-2.5 py-1 rounded-lg shrink-0">
-                          x{item.quantity}
-                        </span>
+                        <div className="flex flex-col items-end gap-0.5 shrink-0 pl-1">
+                          <span className="text-xs sm:text-sm font-black text-slate-900 tabular-nums whitespace-nowrap">
+                            {item.lineTotal > 0 ? formatCurrency(item.lineTotal) : "—"}
+                          </span>
+                          <span className="text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                            x{item.qty}
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
@@ -520,11 +663,11 @@ export const TrackingCustomerCard: React.FC<TrackingCustomerCardProps> = ({
                   <p className="text-[10px] uppercase font-black tracking-widest opacity-60">
                     Valor Total do Pedido
                   </p>
-                  <p className="text-2xl font-black">
+                  <p className="text-2xl font-black tabular-nums">
                     {computedTotal > 0 ? formatCurrency(computedTotal) : "Frete & Carga Faturada"}
                   </p>
                   <p className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Carga segurada pela transportadora
+                    <ShieldCheck className="w-3.5 h-3.5" /> Carga conferida e monitorada
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">

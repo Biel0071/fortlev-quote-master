@@ -47,7 +47,6 @@ Em **Repo → Settings → Secrets and variables → Actions**:
 | ------------------------------- | --------------------------------------------------------- |
 | `VITE_SUPABASE_URL`             | do `.env`                                                 |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | do `.env`                                                 |
-| `VITE_SUPABASE_PROJECT_ID`      | do `.env`                                                 |
 | `VPS_HOST`                      | IP público da VPS                                         |
 | `VPS_USER`                      | usuário SSH (ex: `deploy`)                                |
 | `VPS_SSH_KEY`                   | chave privada SSH (o público vai em `~/.ssh/authorized_keys` do usuário) |

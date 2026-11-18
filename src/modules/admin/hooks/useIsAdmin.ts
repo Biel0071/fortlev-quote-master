@@ -31,7 +31,7 @@ export function useIsAdmin() {
 
       const rpcPromise = cloud.rpc("is_master_admin");
       const timeoutPromise = new Promise<{ data: any; error: any }>((resolve) =>
-        setTimeout(() => resolve({ data: null, error: new Error("timeout") }), 2000)
+        setTimeout(() => resolve({ data: null, error: new Error("timeout") }), 8000)
       );
       const { data: isMaster, error: masterError } = await Promise.race([rpcPromise, timeoutPromise]);
       if (!masterError && isMaster) {

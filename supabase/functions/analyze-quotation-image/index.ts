@@ -1,3 +1,4 @@
+import { getAiGatewayConfig, aiGatewayUrl, getAiModel } from "../_shared/aiGateway.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -13,8 +14,8 @@ serve(async (req) => {
     const { text, image, images } = await req.json();
     const allImages = images || (image ? [image] : []);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const { apiKey: AI_GATEWAY_API_KEY } = getAiGatewayConfig();
+    if (!AI_GATEWAY_API_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
 
     const messages = [
       {
@@ -95,14 +96,14 @@ serve(async (req) => {
 
     let gatewayResp: Response;
     try {
-      gatewayResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      gatewayResp = await fetch(aiGatewayUrl("/v1/chat/completions"), {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${AI_GATEWAY_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: getAiModel("vision"),
           messages,
           response_format: { type: "json_object" },
         }),

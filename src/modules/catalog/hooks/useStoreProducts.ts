@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { cloud } from "@/lib/cloud";
 import { useTenant } from "@/providers/TenantProvider";
 import type { StoreProduct, StoreProductImage } from "@/types/store";
-import { constructionProducts } from "@/data/constructionProducts";
 import { getSmartCache, runApiMicrotask, setSmartCache } from "@/utils/smartCache";
+import { isDatabaseStoreId } from "@/utils/storeId";
+import { chooseCatalogProducts, describeCatalogError } from "../catalogResult";
 
 type ProductRow = StoreProduct;
 
 type ProductWithImages = ProductRow & { images: StoreProductImage[] };
 
-const PRODUCTS_CACHE_BASE_KEY = "store_products:list";
+const PRODUCTS_CACHE_BASE_KEY = "store_products:list:v4";
 const PRODUCTS_CACHE_TTL_MS = 1000 * 60 * 10;
 const sharedProductsInflight = new Map<string, Promise<ProductWithImages[]>>();
 let lastSilentRefreshAt = 0;
@@ -18,45 +19,26 @@ type UseStoreProductsOptions = {
   enabled?: boolean;
 };
 
-const INITIAL_FALLBACK_PRODUCTS: ProductWithImages[] = constructionProducts.map((p, idx) => ({
-  id: p.id,
-  source_id: p.id,
-  name: p.name,
-  description: p.name,
-  category: p.category,
-  category_id: null,
-  unit: p.unit,
-  price: p.basePrice,
-  promo_price: 0,
-  stock: 50,
-  min_stock: 5,
-  sku: p.id.toUpperCase(),
-  featured: idx < 12,
-  best_seller: idx < 8,
-  views: 100 + idx,
-  clicks: 50 + idx,
-  sales: 20 + idx,
-  active: true,
-  is_promotion: false,
-  discount_percentage: null,
-  promotion_limit_per_customer: null,
-  store_id: "f5e69cd7-e-b465-4024-9b99-d388262b08fa",
-  created_at: new Date().toISOString(),
-  images: [],
-}));
-
 export function useStoreProducts(options?: UseStoreProductsOptions) {
-  const { store } = useTenant();
-  const enabled = (options?.enabled ?? true) && !!store;
-  const [products, setProducts] = useState<ProductWithImages[]>(INITIAL_FALLBACK_PRODUCTS);
-  const [loading, setLoading] = useState(false);
+  const { store, isLoading: tenantLoading } = useTenant();
+  const requested = options?.enabled ?? true;
+  const hasDatabaseStore = isDatabaseStoreId(store?.id ?? null);
+  const enabled = requested && hasDatabaseStore;
+  const [products, setProducts] = useState<ProductWithImages[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const PRODUCTS_CACHE_KEY = useMemo(() => `${PRODUCTS_CACHE_BASE_KEY}:${store?.id ?? 'default'}`, [store?.id]);
 
   const load = async (opts?: { silent?: boolean; retries?: number }) => {
-    if (!enabled || !store?.id) {
-      console.warn("[useStoreProducts] Skipping load: not enabled or no store ID", { enabled, storeId: store?.id });
+    if (!requested) {
+      setLoading(false);
+      return;
+    }
+    if (!hasDatabaseStore || !store?.id) {
+      setProducts([]);
+      setError("A loja não foi identificada no banco. Produtos locais não verificados foram ocultados.");
+      setLoading(false);
       return;
     }
     if (!opts?.silent) setLoading(true);
@@ -85,7 +67,7 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
               .order("name", { ascending: true })
               .range(from, from + PAGE_SIZE - 1);
 
-            if (fetchError) throw new Error(fetchError.message);
+            if (fetchError) throw fetchError;
 
             const batch = data ?? [];
             allData = [...allData, ...batch];
@@ -126,52 +108,36 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
       }
 
       const mapped = await inflight;
-      setProducts(mapped);
-      setSmartCache(PRODUCTS_CACHE_KEY, mapped, PRODUCTS_CACHE_TTL_MS);
+      const resolvedProducts = chooseCatalogProducts(mapped, []);
+      setProducts(resolvedProducts);
+      setSmartCache(PRODUCTS_CACHE_KEY, resolvedProducts, PRODUCTS_CACHE_TTL_MS);
       setLoading(false);
     } catch (err: any) {
-      console.warn("[useStoreProducts] Falha ao carregar do backend remoto. Ativando catálogo local de fallback:", err);
-      // Mapeia os 121 produtos locais de materiais de construção para garantir exibição imediata
-      const fallbackList: ProductWithImages[] = constructionProducts.map((p, idx) => ({
-        id: p.id,
-        source_id: p.id,
-        name: p.name,
-        description: p.name,
-        category: p.category,
-        category_id: null,
-        unit: p.unit,
-        price: p.basePrice,
-        promo_price: 0,
-        stock: 50,
-        min_stock: 5,
-        sku: p.id.toUpperCase(),
-        featured: idx < 12,
-        best_seller: idx < 8,
-        views: 100 + idx,
-        clicks: 50 + idx,
-        sales: 20 + idx,
-        active: true,
-        is_promotion: false,
-        discount_percentage: null,
-        promotion_limit_per_customer: null,
-        store_id: store?.id ?? "f5e69cd7-e-b465-4024-9b99-d388262b08fa",
-        created_at: new Date().toISOString(),
-        images: [],
-      }));
-      setProducts(fallbackList);
-      setError(null);
+      console.warn("[useStoreProducts] Não foi possível carregar produtos do banco:", err);
+      setProducts([]);
+      setError(describeCatalogError(err));
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (tenantLoading) {
+      setError(null);
+      setLoading(true);
+      return;
+    }
     if (!enabled) {
+      if (requested && !hasDatabaseStore) {
+        setProducts([]);
+        setError("A loja não foi identificada no banco. Produtos locais não verificados foram ocultados.");
+      }
       setLoading(false);
       return;
     }
 
     const cached = getSmartCache<ProductWithImages[]>(PRODUCTS_CACHE_KEY, PRODUCTS_CACHE_TTL_MS);
     if (cached) {
+      setError(null);
       setProducts(cached);
       setLoading(false);
       const now = Date.now();
@@ -184,29 +150,9 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
 
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, PRODUCTS_CACHE_KEY]);
+  }, [enabled, hasDatabaseStore, requested, tenantLoading, PRODUCTS_CACHE_KEY]);
 
   const activeProducts = useMemo(() => products.filter((p) => p.active), [products]);
 
-  const fallbackMap = useMemo(() => {
-    const map = new Map<string, { price: number; unit: string; category: string }>();
-    for (const p of constructionProducts) {
-      map.set(p.id, { price: p.basePrice, unit: p.unit, category: p.category });
-    }
-    return map;
-  }, []);
-
-  const enrichedActive = useMemo(() => {
-    return activeProducts.map((p) => {
-      const fb = p.source_id ? fallbackMap.get(p.source_id) : undefined;
-      return {
-        ...p,
-        price: p.price > 0 ? p.price : fb?.price ?? p.price,
-        unit: p.unit ?? fb?.unit ?? p.unit,
-        category: p.category ?? fb?.category ?? p.category,
-      };
-    });
-  }, [activeProducts, fallbackMap]);
-
-  return { products, activeProducts: enrichedActive, loading, error, reload: load };
+  return { products, activeProducts, loading, error, reload: load };
 }

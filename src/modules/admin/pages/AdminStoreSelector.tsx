@@ -51,7 +51,7 @@ import {
   Play,
 } from "lucide-react";
 import { toast } from "sonner";
-import { type AppStore, DEFAULT_FALLBACK_STORES } from "@/contexts/StoreContext";
+import { type AppStore } from "@/contexts/StoreContext";
 
 type StoreRow = {
   id: string;
@@ -94,17 +94,11 @@ export default function AdminStoreSelector() {
   const { user } = useSession();
   const { isMaster, storeAccess, loading: permLoading } = useAdminPermissions();
   const { setStore, setActiveStoreId } = useStore();
-  const [stores, setStores] = useState<StoreRow[]>(DEFAULT_FALLBACK_STORES as unknown as StoreRow[]);
-  const [summaries, setSummaries] = useState<StoreSummary[]>(
-    (DEFAULT_FALLBACK_STORES as unknown as StoreRow[]).map((s) => ({
-      store: s,
-      orderCount: 0,
-      productCount: 0,
-      domains: [],
-      planName: "Plano Base",
-    }))
-  );
+  const [stores, setStores] = useState<StoreRow[]>([]);
+  const [summaries, setSummaries] = useState<StoreSummary[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [statsAvailable, setStatsAvailable] = useState(true);
 
   // Dialogs
   const [createOpen, setCreateOpen] = useState(false);
@@ -146,6 +140,7 @@ export default function AdminStoreSelector() {
 
   const loadStores = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const query = cloud
         .from("stores")
@@ -163,22 +158,19 @@ export default function AdminStoreSelector() {
       ]);
 
       const timeoutPromise = new Promise<{ data: any; dataPlans: any }>((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout carregando lojas")), 2000)
+        setTimeout(() => reject(new Error("Timeout carregando lojas")), 10000)
       );
 
-      const [{ data }, { data: plansData }] = await Promise.race([
+      const [{ data, error: storesError }, { data: plansData }] = await Promise.race([
         fetchPromise,
         timeoutPromise as any,
       ]);
+      if (storesError) throw storesError;
 
       const allPlans = (plansData as PlanRow[]) ?? [];
       setPlans(allPlans);
 
       let available = (data as StoreRow[]) ?? [];
-
-      if (available.length === 0 && DEFAULT_FALLBACK_STORES.length > 0) {
-        available = DEFAULT_FALLBACK_STORES as unknown as StoreRow[];
-      }
 
       if (!isMaster && storeAccess.length > 0) {
         const allowedIds = new Set(storeAccess.map((s) => s.store_id));
@@ -191,9 +183,10 @@ export default function AdminStoreSelector() {
       let allDomains: StoreDomain[] = [];
       let orderCount = 0;
       let productCount = 0;
+      setStatsAvailable(false);
 
       try {
-        const [{ data: domains }, { count: oc }, { count: pc }] = await Promise.all([
+        const [domainsResult, ordersResult, productsResult] = await Promise.all([
           cloud
             .from("store_domains")
             .select("id, store_id, domain, is_primary, verified")
@@ -201,11 +194,15 @@ export default function AdminStoreSelector() {
           cloud.from("store_orders").select("*", { count: "exact", head: true }),
           cloud.from("store_products").select("*", { count: "exact", head: true }).eq("active", true),
         ]);
-        allDomains = (domains as StoreDomain[]) ?? [];
-        orderCount = oc ?? 0;
-        productCount = pc ?? 0;
+        if (domainsResult.error || ordersResult.error || productsResult.error) {
+          throw domainsResult.error ?? ordersResult.error ?? productsResult.error;
+        }
+        allDomains = (domainsResult.data as StoreDomain[]) ?? [];
+        orderCount = ordersResult.count ?? 0;
+        productCount = productsResult.count ?? 0;
+        setStatsAvailable(true);
       } catch {
-        // Ignora falhas de estatísticas secundárias
+        setStatsAvailable(false);
       }
 
       const sums: StoreSummary[] = available.map((store) => {
@@ -221,18 +218,11 @@ export default function AdminStoreSelector() {
 
       setSummaries(sums);
     } catch (err) {
-      console.warn("Fallback de lojas ativado no AdminStoreSelector:", err);
-      const fallbackStores = DEFAULT_FALLBACK_STORES as unknown as StoreRow[];
-      setStores(fallbackStores);
-      setSummaries(
-        fallbackStores.map((store) => ({
-          store,
-          orderCount: 0,
-          productCount: 0,
-          domains: [],
-          planName: "Plano Base",
-        }))
-      );
+      console.warn("Falha ao consultar lojas no AdminStoreSelector:", err);
+      setLoadError("Não foi possível confirmar as lojas no banco. Nenhum dado local fictício será exibido.");
+      setStores([]);
+      setSummaries([]);
+      setStatsAvailable(false);
     } finally {
       setLoading(false);
     }
@@ -414,16 +404,17 @@ export default function AdminStoreSelector() {
     );
   }
 
-  if (stores.length === 0 && !isMaster) {
+  if (stores.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="rounded-2xl max-w-md">
+        <Card className="rounded-2xl max-w-md" role={loadError ? "alert" : undefined}>
           <CardContent className="p-8 text-center space-y-3">
             <Store className="w-12 h-12 mx-auto text-muted-foreground/40" />
-            <h2 className="text-lg font-semibold">Sem acesso a lojas</h2>
+            <h2 className="text-lg font-semibold">{loadError ? "Lojas indisponíveis" : isMaster ? "Nenhuma loja cadastrada" : "Sem acesso a lojas"}</h2>
             <p className="text-sm text-muted-foreground">
-              Você não possui acesso a nenhuma loja. Entre em contato com o administrador master.
+              {loadError ?? (isMaster ? "O banco não retornou lojas cadastradas." : "Você não possui acesso a nenhuma loja. Entre em contato com o administrador master.")}
             </p>
+            {loadError ? <Button variant="outline" onClick={() => void loadStores()}>Tentar novamente</Button> : null}
           </CardContent>
         </Card>
       </div>
@@ -469,9 +460,9 @@ export default function AdminStoreSelector() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { icon: Store, value: stores.filter(s => s.active).length, label: "Lojas ativas" },
-            { icon: ShoppingCart, value: summaries.reduce((s, x) => s + x.orderCount, 0), label: "Pedidos total" },
-            { icon: Package, value: summaries.reduce((s, x) => s + x.productCount, 0), label: "Produtos ativos" },
-            { icon: Users, value: storeAccess.length || "∞", label: "Acessos" },
+            { icon: ShoppingCart, value: statsAvailable ? summaries.reduce((s, x) => s + x.orderCount, 0) : "—", label: "Pedidos total" },
+            { icon: Package, value: statsAvailable ? summaries.reduce((s, x) => s + x.productCount, 0) : "—", label: "Produtos ativos" },
+            { icon: Users, value: storeAccess.length || "—", label: "Acessos" },
           ].map(({ icon: Icon, value, label }) => (
             <Card key={label} className="rounded-xl">
               <CardContent className="p-4 text-center">
@@ -541,11 +532,11 @@ export default function AdminStoreSelector() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="text-center">
-                        <div className="text-sm font-bold">{summary.orderCount}</div>
+                        <div className="text-sm font-bold">{statsAvailable ? summary.orderCount : "—"}</div>
                         <div className="text-[10px] text-muted-foreground">Pedidos</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-sm font-bold">{summary.productCount}</div>
+                        <div className="text-sm font-bold">{statsAvailable ? summary.productCount : "—"}</div>
                         <div className="text-[10px] text-muted-foreground">Produtos</div>
                       </div>
                     </div>

@@ -21,7 +21,7 @@ export default function StoreCatalog() {
   const cart = useCart();
   const tracker = useVisitorTracker();
   const { activeProducts, loading, error, reload } = useStoreProducts();
-  const { activeCategories } = useStoreCategories();
+  const { activeCategories, error: categoriesError } = useStoreCategories();
   const [cartOpen, setCartOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const [mounted, setMounted] = useState(false);
@@ -134,9 +134,11 @@ export default function StoreCatalog() {
             <p className="text-xs sm:text-sm text-muted-foreground">Navegue por categorias e encontre seus produtos.</p>
           </div>
           <span className="text-xs font-medium text-muted-foreground whitespace-nowrap bg-muted/50 px-2 py-1 rounded-full shrink-0">
-            {filtered.length} {filtered.length === 1 ? "produto" : "produtos"}
+            {error || loading ? "— produtos" : `${filtered.length} ${filtered.length === 1 ? "produto" : "produtos"}`}
           </span>
         </header>
+
+        {categoriesError ? <p role="alert" className="mb-4 text-sm text-destructive">Categorias indisponíveis: {categoriesError}</p> : null}
 
         {(loading && filtered.length === 0) || !mounted ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">

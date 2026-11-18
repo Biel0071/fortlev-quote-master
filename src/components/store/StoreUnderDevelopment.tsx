@@ -1,5 +1,3 @@
-import mfLogo from "@/assets/mf-logo.png.asset.json";
-
 interface StoreUnderDevelopmentProps {
   storeName?: string;
   logoUrl?: string;
@@ -12,17 +10,12 @@ interface StoreUnderDevelopmentProps {
  * está marcada como "em desenvolvimento".
  */
 export function StoreUnderDevelopment({ storeName, logoUrl }: StoreUnderDevelopmentProps) {
-  const displayLogo = logoUrl || mfLogo.url;
-  const displayName = storeName || "Mania Fashion Atacadista";
+  const displayName = storeName || "Loja de materiais";
 
   return (
     <main className="min-h-screen w-full flex flex-col items-center justify-center bg-background px-6 py-12">
       <div className="max-w-md w-full flex flex-col items-center text-center gap-8">
-        <img
-          src={displayLogo}
-          alt={displayName}
-          className="w-56 sm:w-64 h-auto object-contain"
-        />
+        {logoUrl ? <img src={logoUrl} alt={displayName} className="w-56 sm:w-64 h-auto object-contain" /> : null}
 
         <div className="space-y-3">
           <h1 className="text-2xl sm:text-3xl font-serif tracking-tight text-foreground">

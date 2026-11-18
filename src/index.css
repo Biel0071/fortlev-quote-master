@@ -339,3 +339,22 @@ html, body {
 .animate-flame-blink {
   animation: flameBlink 1s ease-in-out infinite;
 }
+
+/* Leaflet map compatibility with Tailwind base img reset & stacking isolation */
+.leaflet-container {
+  font-family: inherit;
+  z-index: 0;
+}
+
+.leaflet-container img {
+  max-width: none !important;
+}
+
+.leaflet-tracking-icon {
+  background: transparent;
+  border: none;
+}
+
+.leaflet-control-attribution {
+  display: none !important;
+}

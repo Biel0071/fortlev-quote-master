@@ -68,7 +68,6 @@ Nenhum rebuild de imagem é necessário — o app já resolve tenant por Host he
 | `VPS_SSH_KEY` | chave privada |
 | `VITE_SUPABASE_URL` | build-time |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | build-time |
-| `VITE_SUPABASE_PROJECT_ID` | build-time |
 
 ## 6. Commit & push (via Lovable)
 

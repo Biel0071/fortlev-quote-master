@@ -1,8 +1,9 @@
-// Lovable Cloud function: generate-product-preview
+// Edge function: generate-product-preview
 // Creates a versioned AI preview for a draft product: 5 images + SEO description + 10 comments.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { aiGatewayUrl, generateImageBytes, getAiGatewayConfig, getAiModel } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,109 +30,8 @@ function buildImagePrompt(name: string, angle: string) {
   return IMAGE_PROMPT_BASE.replace("{product_name}", name) + ` Angle: ${angle}.`;
 }
 
-async function extractImageBytes(payload: any): Promise<Uint8Array> {
-  // 1) Newer multimodal formats
-  const msg = payload?.choices?.[0]?.message;
-
-  const url1 = msg?.images?.[0]?.image_url?.url ?? msg?.images?.[0]?.url;
-  if (typeof url1 === "string" && url1.length > 0) return await bytesFromUrlOrData(url1);
-
-  // Some providers put image parts in message.content as an array
-  const content = msg?.content;
-  if (Array.isArray(content)) {
-    for (const part of content) {
-      const u = part?.image_url?.url ?? part?.image_url ?? part?.url;
-      if (typeof u === "string" && u.length > 0) return await bytesFromUrlOrData(u);
-
-      const b64 = part?.b64_json ?? part?.image_base64 ?? part?.data;
-      if (typeof b64 === "string" && b64.length > 0) return bytesFromBase64(b64);
-    }
-  }
-
-  // Sometimes it comes as a string (may contain a data URL)
-  if (typeof content === "string" && content.trim().length > 0) {
-    const raw = content.trim();
-    if (raw.startsWith("data:image")) return await bytesFromUrlOrData(raw);
-
-    // Heuristic: if it looks like base64, try decoding
-    if (/^[A-Za-z0-9+/=\n\r]+$/.test(raw) && raw.length > 1000) return bytesFromBase64(raw);
-  }
-
-  // 2) Legacy /images/generations formats (defensive)
-  const first = payload?.data?.[0];
-  const legacyUrl = first?.url;
-  const legacyB64 = first?.b64_json;
-  if (typeof legacyUrl === "string" && legacyUrl.length > 0) return await bytesFromUrlOrData(legacyUrl);
-  if (typeof legacyB64 === "string" && legacyB64.length > 0) return bytesFromBase64(legacyB64);
-
-  // Diagnostics: keep it small
-  const topKeys = Object.keys(payload ?? {}).join(",");
-  const choiceKeys = Object.keys(payload?.choices?.[0] ?? {}).join(",");
-  const msgKeys = Object.keys(msg ?? {}).join(",");
-  const contentType = Array.isArray(content) ? "array" : typeof content;
-
-  throw new Error(`image_url_missing:top=${topKeys};choice=${choiceKeys};msg=${msgKeys};contentType=${contentType}`);
-}
-
-function bytesFromBase64(b64: string): Uint8Array {
-  // Accept both pure base64 and data URLs
-  const clean = b64.includes(",") ? b64.split(",")[1] : b64;
-  if (!clean) throw new Error("image_b64_missing");
-
-  const binary = atob(clean);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
-async function bytesFromUrlOrData(raw: string): Promise<Uint8Array> {
-  // data:image/png;base64,...
-  if (raw.startsWith("data:image")) {
-    return bytesFromBase64(raw);
-  }
-
-  // Some gateways can return a plain base64 without header
-  if (!raw.startsWith("http")) {
-    return bytesFromBase64(raw);
-  }
-
-  const imgResp = await fetch(raw);
-  if (!imgResp.ok) {
-    const t = await imgResp.text();
-    throw new Error(`image_download_failed:${imgResp.status}:${t}`);
-  }
-  return new Uint8Array(await imgResp.arrayBuffer());
-}
-
-async function aiGeneratePng({
-  LOVABLE_API_KEY,
-  prompt,
-}: {
-  LOVABLE_API_KEY: string;
-  prompt: string;
-}) {
-  // Use the multimodal chat endpoint for image models (returns base64 data URLs)
-  const genResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash-image",
-      messages: [{ role: "user", content: prompt }],
-      modalities: ["image", "text"],
-      temperature: 0.7,
-    }),
-  });
-
-  if (!genResp.ok) {
-    const t = await genResp.text();
-    throw new Error(`image_generation_failed:${genResp.status}:${t}`);
-  }
-
-  const payload = await genResp.json();
-  return await extractImageBytes(payload);
+async function aiGeneratePng(prompt: string) {
+  return generateImageBytes(prompt, { width: 1024, height: 1024 });
 }
 
 function safeJsonParse<T>(raw: string): T | null {
@@ -143,10 +43,10 @@ function safeJsonParse<T>(raw: string): T | null {
 }
 
 async function aiGenerateText({
-  LOVABLE_API_KEY,
+  AI_GATEWAY_API_KEY,
   productName,
 }: {
-  LOVABLE_API_KEY: string;
+  AI_GATEWAY_API_KEY: string;
   productName: string;
 }): Promise<{ description: string; comments: Array<{ author_name: string; rating: number; comment_text: string }> }> {
   const system =
@@ -160,14 +60,14 @@ async function aiGenerateText({
     "{\"description\": string, \"comments\": [{\"author_name\": string, \"rating\": 1-5, \"comment_text\": string}]}.",
   ].join("\n");
 
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const resp = await fetch(aiGatewayUrl("/v1/chat/completions"), {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      Authorization: `Bearer ${AI_GATEWAY_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: getAiModel(),
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
@@ -216,10 +116,9 @@ serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL");
     const anon = Deno.env.get("SUPABASE_ANON_KEY");
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const { apiKey: AI_GATEWAY_API_KEY } = getAiGatewayConfig();
 
     if (!url || !anon || !service) throw new Error("Backend env vars missing");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization") ?? "";
 
@@ -290,7 +189,7 @@ serve(async (req) => {
 
     // Generate text first
     const { description, comments } = await aiGenerateText({
-      LOVABLE_API_KEY,
+      AI_GATEWAY_API_KEY,
       productName: String((p as any).name),
     });
 
@@ -303,7 +202,7 @@ serve(async (req) => {
     for (let i = 0; i < 5; i++) {
       const angle = ANGLES[i] ?? `variation ${i + 1}`;
       const prompt = buildImagePrompt(String((p as any).name), angle);
-      const pngBytes = await aiGeneratePng({ LOVABLE_API_KEY, prompt });
+      const pngBytes = await aiGeneratePng(prompt);
       const path = `ai/preview/${safeId}/v${nextVersion}/${now}-${crypto.randomUUID()}.png`;
 
       const { error: upErr } = await admin.storage.from("product-images").upload(path, pngBytes, {

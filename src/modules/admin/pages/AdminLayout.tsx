@@ -46,6 +46,7 @@ import { cloud } from "@/lib/cloud";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSession } from "@/hooks/useSession";
 import { StoreSwitcher } from "@/components/StoreSwitcher";
+import { AdminPublishCenter } from "@/modules/admin/components/AdminPublishCenter";
 import { useStore } from "@/contexts/StoreContext";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useStorePermissions } from "@/hooks/useStorePermissions";
@@ -56,10 +57,12 @@ type SidebarSubItem = {
   page?: string;
 };
 
+type SidebarIcon = typeof LayoutDashboard;
+
 type SidebarItem = {
   title: string;
   url: string;
-  icon: any;
+  icon: SidebarIcon;
   page: string;
   subItems?: SidebarSubItem[];
 };
@@ -131,6 +134,29 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
   },
 ];
 
+const TOP_HUB_ITEMS: Array<{ title: string; url: string; icon: SidebarIcon }> = [
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Rastreamento", url: "/tracking-dashboard", icon: MapPin },
+  { title: "Home da Loja", url: "/home", icon: Home },
+  { title: "Pedidos & Coleta", url: "/pedidos", icon: ShoppingBag },
+  { title: "Orçamentos", url: "/orcamentos", icon: FileText },
+  { title: "Produtos", url: "/produtos", icon: Box },
+  { title: "Categorias", url: "/categorias", icon: Tags },
+  { title: "Avaliações", url: "/avaliacoes", icon: Star },
+  { title: "Cupons", url: "/configuracoes/cupons", icon: TicketPercent },
+  { title: "Banners", url: "/banners", icon: ImageIcon },
+  { title: "Ofertas", url: "/ofertas", icon: BarChart3 },
+  { title: "Análise de Clientes", url: "/clientes", icon: Users },
+  { title: "Funil de Conversão", url: "/funil", icon: Target },
+  { title: "Mapa de Cliques", url: "/mapa-cliques", icon: MousePointerClick },
+  { title: "APK Studio", url: "/google-play-studio", icon: Smartphone },
+  { title: "Métricas App", url: "/app-metricas", icon: Store },
+  { title: "Insights IA", url: "/insights-ia", icon: Brain },
+  { title: "Relatórios IA", url: "/inteligencia-ia", icon: Sparkles },
+  { title: "Tema", url: "/tema", icon: Palette },
+  { title: "Configurações", url: "/configuracoes", icon: Settings },
+];
+
 const AdminSidebar = memo(function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -149,7 +175,6 @@ const AdminSidebar = memo(function AdminSidebar() {
     window.location.hostname.includes("lovable.dev") ||
     window.location.hostname.includes("trycloudflare.com")
   );
-
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
       <SidebarContent className="gap-0">
@@ -272,6 +297,10 @@ export default function AdminLayout() {
     window.location.hostname.includes("lovable.dev") ||
     window.location.hostname.includes("trycloudflare.com")
   );
+  const isLocalHost = typeof window !== "undefined" && (
+    window.location.hostname === "localhost" ||
+    window.location.hostname.includes("127.0.0.1")
+  );
   const canRender = !sessionLoading && !adminLoading;
   if (!canRender && !isDevOrPreview) return <FullScreenLoader label="Carregando admin..." />;
   if (!user && !isDevOrPreview) return <Navigate to="/auth/login" replace />;
@@ -298,9 +327,12 @@ export default function AdminLayout() {
     return <FullScreenLoader label="Carregando loja..." />;
   }
 
-  if (isStoreScopedPage && (storesLoading || !activeStoreId)) {
-    if (storesLoading && !isDevOrPreview) return <FullScreenLoader label="Carregando loja..." />;
-    if (!storesLoading && !activeStoreId) {
+  if (isStoreScopedPage && storesLoading && !isDevOrPreview) {
+    return <FullScreenLoader label="Carregando loja..." />;
+  }
+
+  if (isStoreScopedPage && !activeStoreId && !isDevOrPreview) {
+    if (!storesLoading) {
       return (
         <div className="min-h-screen bg-background p-6 space-y-4">
           <p className="text-destructive font-medium">Loja não encontrada.</p>
@@ -354,16 +386,67 @@ export default function AdminLayout() {
               <div className="hidden md:block">
                 <StoreSwitcher className="w-[220px] bg-background" />
               </div>
+              {(isAdmin || isLocalHost) && <AdminPublishCenter />}
               <Button variant="outline" size="sm" className="text-xs" onClick={() => nav(routes.publicHome)}>
                 Ver loja
               </Button>
-              <Button variant="ghost" size="sm" className="text-xs" onClick={async () => { await cloud.auth.signOut(); nav("/"); }}>
-                Sair
-              </Button>
+              {user ? (
+                <Button variant="ghost" size="sm" className="text-xs" onClick={async () => { await cloud.auth.signOut(); nav("/"); }}>
+                  Sair
+                </Button>
+              ) : (
+                <Button size="sm" className="text-xs" onClick={() => nav("/auth/login", { state: { from: location.pathname } })}>
+                  Entrar Admin
+                </Button>
+              )}
             </div>
           </header>
 
-          <main className="min-w-0 flex-1">
+          {!user && !sessionLoading && (
+            <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center justify-between gap-3 text-xs">
+              <span className="text-amber-900 dark:text-amber-200">
+                Modo visualização sem login ativo: entre como administrador para liberar <strong>Vendas Registradas</strong>, <strong>CRM / Leads</strong>, <strong>Pedidos</strong> e <strong>Publicar</strong>.
+              </span>
+              <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={() => nav("/auth/login", { state: { from: location.pathname } })}>
+                Fazer login
+              </Button>
+            </div>
+          )}
+
+          {/* Hub Superior Fixo: 2 fileiras de ícones para navegação direta em qualquer página */}
+          <nav
+            aria-label="Acesso rápido às páginas do painel"
+            data-testid="admin-top-icon-hub"
+            className="border-b border-border bg-card/90 backdrop-blur-sm px-3 sm:px-4 py-2 sticky top-12 z-20 min-w-0"
+          >
+            <div className="grid grid-cols-10 gap-1 sm:gap-1.5 max-w-5xl mx-auto">
+              {TOP_HUB_ITEMS.map((item) => {
+                const fullPath = routes.adminPath(item.url);
+                const isActive =
+                  location.pathname === fullPath ||
+                  (item.url !== "/dashboard" && location.pathname.startsWith(`${fullPath}/`));
+                const IconComp = item.icon;
+                return (
+                  <button
+                    key={item.url}
+                    type="button"
+                    onClick={() => nav(fullPath)}
+                    title={item.title}
+                    aria-label={item.title}
+                    className={`h-8 sm:h-9 w-full rounded-lg flex items-center justify-center border transition-all ${
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm scale-[1.03]"
+                        : "bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60"
+                    }`}
+                  >
+                    <IconComp className="h-4 w-4 shrink-0" strokeWidth={2.1} />
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          <main className="min-w-0 max-w-full flex-1 overflow-x-hidden">
             <Outlet />
           </main>
         </div>

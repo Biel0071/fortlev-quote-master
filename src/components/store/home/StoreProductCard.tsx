@@ -99,7 +99,8 @@ function QtyStepper({
 
 function ProductCardRating({ productId }: { productId: string }) {
   const rating = useProductRating(productId);
-  return <MiniStars avg={rating?.avg ?? 0} total={rating?.total ?? 0} />;
+  if (!rating) return null;
+  return <MiniStars avg={rating.avg} total={rating.total} />;
 }
 
 export function StoreProductCard({
@@ -122,16 +123,11 @@ export function StoreProductCard({
   }, [addingFx]);
 
   const basePrice = Number(product?.price ?? 0);
+  const hasValidPrice = Number.isFinite(basePrice) && basePrice > 0;
   const promo = Number(product?.promo_price ?? 0);
   const hasPromo = promo > 0 && basePrice > 0 && promo < basePrice;
 
   const effectivePrice = useMemo(() => (hasPromo ? promo : basePrice), [hasPromo, promo, basePrice]);
-
-  const installments = useMemo(() => {
-    if (!effectivePrice || effectivePrice <= 0) return null;
-    const x = effectivePrice / 10;
-    return `ou 10x de ${formatCurrency(x)} sem juros`;
-  }, [effectivePrice]);
 
   const imageSrc = getProductImageUrl(product?.images, undefined, {
     name: product?.name,
@@ -192,17 +188,11 @@ export function StoreProductCard({
             <div className="text-[10px] sm:text-xs text-muted-foreground line-through">{formatCurrency(basePrice)}</div>
           )}
           <div className="text-base sm:text-lg font-extrabold tracking-tight leading-tight">
-            {formatCurrency(effectivePrice)}
+            {hasValidPrice ? formatCurrency(effectivePrice) : "Preço não informado"}
             {product?.unit && product.unit !== "un" && (
               <span className="text-xs font-medium text-muted-foreground">/{product.unit}</span>
             )}
           </div>
-          <div className="text-xs sm:text-sm font-bold text-pix mt-0.5">
-            {formatCurrency(effectivePrice * 0.93)} no PIX
-          </div>
-          {installments && (
-            <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">{installments}</div>
-          )}
         </div>
 
         {/* Qty + Add button */}
@@ -216,6 +206,7 @@ export function StoreProductCard({
             <Button
               variant="accent"
               className={`h-10 sm:h-12 rounded-xl px-3 sm:px-4 w-full text-xs sm:text-base font-semibold transition-transform ${addingFx ? "scale-[0.97]" : ""}`}
+              disabled={!hasValidPrice}
               onClick={(e) => {
                 e.stopPropagation();
                 setAddingFx(true);

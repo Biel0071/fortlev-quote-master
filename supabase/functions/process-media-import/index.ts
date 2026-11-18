@@ -1,4 +1,5 @@
-// Edge function: processa fila de media_import_jobs com IA (Lovable AI Gateway)
+import { getAiGatewayConfig, aiGatewayUrl, getAiModel } from "../_shared/aiGateway.ts";
+// Edge function: processa fila de media_import_jobs com IA (self-hosted AI gateway)
 // Para cada arquivo (foto ou vídeo já com frames extraídos no cliente):
 //  1) Envia melhor frame para o modelo de visão
 //  2) IA devolve nome, descrição, categoria, tags
@@ -8,7 +9,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const { apiKey: AI_GATEWAY_API_KEY } = getAiGatewayConfig();
 
 type Job = {
   id: string;
@@ -41,14 +42,14 @@ Categorias disponíveis na loja: ${catList}.
 Retorne APENAS JSON válido, sem markdown, no formato:
 {"name":"Nome comercial curto em PT-BR","description":"2-3 frases vendedoras","category_name":"Categoria mais adequada da lista (ou sugerida)","tags":["tag1","tag2","tag3"],"confidence":0-100}`;
 
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const res = await fetch(aiGatewayUrl("/v1/chat/completions"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Lovable-API-Key": LOVABLE_API_KEY,
+      Authorization: `Bearer ${AI_GATEWAY_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: getAiModel("vision"),
       messages: [
         {
           role: "user",

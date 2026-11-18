@@ -272,7 +272,6 @@ export default function AdminAiAnalysis() {
           "# Exemplo de variáveis (não inclua segredos)",
           "VITE_SUPABASE_URL=",
           "VITE_SUPABASE_PUBLISHABLE_KEY=",
-          "VITE_SUPABASE_PROJECT_ID=",
         ].join("\n"),
       );
     }

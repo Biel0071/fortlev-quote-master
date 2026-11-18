@@ -1,3 +1,4 @@
+import { getOptionalAiGatewayConfig, aiGatewayUrl, getAiModel } from "../_shared/aiGateway.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -24,6 +25,7 @@ type ImportBody = {
   action: "import";
   productId: string;
   images: SearchResult[];
+  coverOnly?: boolean;
 };
 
 type PipelineBody = {
@@ -195,6 +197,13 @@ function calculateHeuristicScore(item: SearchResult, productName: string, catego
   return Math.min(maxScore, score) / maxScore; // normalize to 0-1
 }
 
+function isPreferredImageSource(item: SearchResult) {
+  try {
+    const host = new URL(item.imageUrl).hostname.toLowerCase();
+    return /(^|\.)(obramax\.com\.br|leroymerlin\.com\.br|telhanorte\.com\.br|sodimac\.com\.br)$/.test(host);
+  } catch { return false; }
+}
+
 /* ── Search Engines ── */
 function sourceScopedQuery(source: ImageSource, query: string) {
   const map: Record<string, string> = {
@@ -294,18 +303,18 @@ async function validateWithAI(
   productName: string,
   category: string,
 ): Promise<{ confidence: number; analysis: string }> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) return { confidence: 0.5, analysis: "AI key not configured" };
+  const AI_GATEWAY_API_KEY = getOptionalAiGatewayConfig()?.apiKey ?? "";
+  if (!AI_GATEWAY_API_KEY) return { confidence: 0.5, analysis: "AI key not configured" };
 
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(aiGatewayUrl("/v1/chat/completions"), {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${AI_GATEWAY_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: getAiModel("vision"),
         messages: [
           {
             role: "system",
@@ -388,20 +397,21 @@ async function runPipeline(
   } else {
     // Step 1: Multi-source search with smart queries
     const { brand, model, weight } = extractProductAttributes(productName);
+    const dimensions = productName.match(/\b\d+(?:[.,]\d+)?\s*(?:mm|cm|m³|m²|m|kg|g|l|lt|ml|\")/gi) ?? [];
+    const unit = productName.match(/\b(?:m³|m²|kg|g|un|sc|br|rl|cx|pç|pc|l|lt|ml)\b/gi)?.join(" ") ?? "";
     const queries = [
-      productName, // full name
-      brand ? `${productName} ${brand} embalagem` : `${productName} embalagem`,
-      model ? `${brand} ${model} ${weight}`.trim() : "",
+      brand ? `${brand} ${productName} ${dimensions.join(" ")} ${unit} fabricante` : `${productName} ${dimensions.join(" ")} ${unit} fabricante`,
+      `${productName} ${dimensions.join(" ")} ${unit} site:obramax.com.br`,
+      `${productName} ${dimensions.join(" ")} ${unit} produto construção`,
       // Usage-context queries for realistic review photos
       `${productName} instalado`,
-      `${productName} obra aplicação`,
     ].filter(Boolean);
 
     log.push(`Queries: ${queries.join(" | ")}`);
 
     // Search in parallel across sources
     const searchPromises: Promise<SearchResult[]>[] = [];
-    for (const q of queries.slice(0, 2)) {
+    for (const q of queries.slice(0, 3)) {
       searchPromises.push(searchDuckDuckGoImages(q, 1, "bing"));
       if (GOOGLE_API_KEY && GOOGLE_CX) {
         searchPromises.push(searchWithGoogleApi(q, 1, GOOGLE_API_KEY, GOOGLE_CX));
@@ -441,7 +451,7 @@ async function runPipeline(
   // Step 3: Heuristic scoring
   const scored = filtered.map(item => ({
     ...item,
-    heuristicScore: calculateHeuristicScore(item, productName, category),
+    heuristicScore: Math.min(1, calculateHeuristicScore(item, productName, category) + (isPreferredImageSource(item) ? 0.12 : 0)),
   }));
 
   // Sort by heuristic score descending, pick top candidates for AI
@@ -483,7 +493,7 @@ async function runPipeline(
       source: candidate.source,
       confidence,
       ai_analysis: analysis,
-      status,
+      status: status === "review" ? "pending" : status,
     }, { onConflict: "product_id,image_url", ignoreDuplicates: false }).catch(() => {
       // If upsert fails (no unique constraint), try insert
       return admin.from("image_review_queue").insert({
@@ -492,7 +502,7 @@ async function runPipeline(
         source: candidate.source,
         confidence,
         ai_analysis: analysis,
-        status,
+        status: status === "review" ? "pending" : status,
       });
     });
   }
@@ -512,7 +522,15 @@ async function runPipeline(
     .limit(1)
     .maybeSingle();
 
-  let sort = Number(maxSortRow?.sort_order ?? -1) + 1;
+  if (Number(maxSortRow?.sort_order ?? -1) >= 0) {
+    return {
+      ok: false, product_id: productId, product_disabled: false, saved: [],
+      ai_calls_used: 0, candidates_found: 0, candidates_filtered: 0,
+      candidates_scored: 0, validated: [], fallback_needed: false,
+      log: ["Existing image detected; preserving current images"],
+    };
+  }
+  let sort = 0;
 
   for (const entry of approved.slice(0, maxImages)) {
     try {
@@ -559,17 +577,10 @@ async function runPipeline(
 
   log.push(`Saved: ${saved.length} images`);
 
-  // Step 6: If no images saved, auto-disable product
-  let aiFallbackUsed = false;
+  // A failed image search must never change the product's availability or metadata.
+  let aiFallbackUsed = saved.length === 0;
   if (saved.length === 0) {
-    log.push("No valid images found — disabling product automatically");
-    aiFallbackUsed = true;
-
-    // Mark product as inactive with no_image_found status
-    await admin
-      .from("store_products")
-      .update({ active: false, status: "no_image_found" } as any)
-      .eq("id", productId);
+    log.push("No valid images found — product remains unchanged and active status is preserved");
 
     // Log to image_import_logs for audit
     await admin.from("image_import_logs").insert({
@@ -578,16 +589,16 @@ async function runPipeline(
       images_found: allCandidates.length,
       images_saved: 0,
       processing_time: 0,
-      error_message: "Produto desativado automaticamente por não possuir imagens válidas",
+      error_message: "Nenhuma imagem válida encontrada; produto e disponibilidade preservados",
     } as any);
 
-    log.push("Product disabled: status=no_image_found, active=false");
+    log.push("Product retained without metadata changes");
   }
 
   return {
     ok: true,
     product_id: productId,
-    product_disabled: saved.length === 0,
+    product_disabled: false,
     saved,
     ai_calls_used: aiCallsUsed,
     candidates_found: allCandidates.length,
@@ -700,7 +711,7 @@ serve(async (req) => {
       // Apply technical filter + heuristic score for display
       images = images.filter(technicalFilter).map(img => ({
         ...img,
-        heuristicScore: calculateHeuristicScore(img, rawQuery),
+        heuristicScore: Math.min(1, calculateHeuristicScore(img, rawQuery) + (isPreferredImageSource(img) ? 0.12 : 0)),
       }));
       images.sort((a, b) => (b.heuristicScore || 0) - (a.heuristicScore || 0));
       images = images.slice(0, 40);
@@ -740,10 +751,19 @@ serve(async (req) => {
           });
         }
 
+        const { count: imageCount, error: imageCountError } = await admin
+          .from("store_product_images").select("id", { count: "exact", head: true }).eq("product_id", productId);
+        if (imageCountError) throw imageCountError;
+        if ((imageCount ?? 0) > 0) {
+          return new Response(JSON.stringify({ error: "product_already_has_images" }), {
+            status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         const result = await runPipeline(
           admin, productId, product.name, product.category || "",
-          pb.autoApprove ?? true,
-          Math.min(pb.maxImages ?? 5, 5),
+          false,
+          Math.min(pb.maxImages ?? 1, 1),
           GOOGLE_API_KEY, GOOGLE_CX,
         );
 
@@ -770,18 +790,34 @@ serve(async (req) => {
           });
         }
 
+        if (ib.coverOnly) {
+          const { count: existingCount, error: countError } = await admin.from("store_product_images")
+            .select("id", { count: "exact", head: true }).eq("product_id", productId);
+          if (countError) throw countError;
+          if ((existingCount ?? 0) > 0) {
+            return new Response(JSON.stringify({ error: "product_already_has_images" }), {
+              status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+
         const { data: maxSortRow } = await admin.from("store_product_images")
           .select("sort_order").eq("product_id", productId)
           .order("sort_order", { ascending: false }).limit(1).maybeSingle();
 
         let sort = Number(maxSortRow?.sort_order ?? -1) + 1;
+        if (ib.coverOnly && sort > 0) {
+          return new Response(JSON.stringify({ error: "product_already_has_images" }), {
+            status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const inserted: Array<{ path: string; public_url: string; sort_order: number }> = [];
         const usedUrls = new Set<string>();
         let failed = 0;
 
         for (const img of images) {
           const sourceUrl = safeText(img.imageUrl, 1200);
-          if (!sourceUrl.startsWith("http")) { failed++; continue; }
+          if (!passesUrlFilter(sourceUrl)) { failed++; continue; }
           if (usedUrls.has(sourceUrl)) continue;
           usedUrls.add(sourceUrl);
 
@@ -826,22 +862,16 @@ serve(async (req) => {
         }
 
         if (inserted.length === 0) {
-          // Auto-disable product instead of returning error
-          await admin
-            .from("store_products")
-            .update({ active: false, status: "no_image_found" } as any)
-            .eq("id", productId);
-
           await admin.from("image_import_logs").insert({
             product_id: productId,
             status: "no_image",
             images_found: images.length,
             images_saved: 0,
             processing_time: 0,
-            error_message: "Produto desativado automaticamente — nenhuma imagem válida importada",
+            error_message: "Nenhuma imagem válida importada; produto e disponibilidade preservados",
           } as any);
 
-          return new Response(JSON.stringify({ ok: true, product_disabled: true, imported: [], requested: images.length, failed }), {
+          return new Response(JSON.stringify({ ok: true, product_disabled: false, imported: [], requested: images.length, failed }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }

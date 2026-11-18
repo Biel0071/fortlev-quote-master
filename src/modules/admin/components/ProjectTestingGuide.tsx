@@ -8,7 +8,6 @@ import {
   Settings, 
   Sparkles, 
   Smartphone,
-  CheckCircle2,
   Terminal,
   Store
 } from "lucide-react";
@@ -58,10 +57,6 @@ export const ProjectTestingGuide = () => {
             <Terminal className="h-5 w-5 text-primary" />
             Guia de Testes do Sistema
           </CardTitle>
-          <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[10px] font-semibold text-green-600 uppercase tracking-wider">Sistema Online</span>
-          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-6">

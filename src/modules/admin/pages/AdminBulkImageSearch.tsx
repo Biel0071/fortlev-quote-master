@@ -7,6 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import { ProductImageSearchModal } from "@/components/admin/ProductImageSearchModal";
+import { constructionProducts } from "@/modules/catalog/data/constructionProducts";
+import { useTenant } from "@/providers/TenantProvider";
 import {
   searchGoogleProductImages,
   importGoogleProductImages,
@@ -27,9 +29,24 @@ type ProductRow = {
   name: string;
   description: string | null;
   active: boolean;
+  unit?: string | null;
   imageCount: number;
   images: Array<{ id: string; path: string; sort_order: number }>;
 };
+
+function imageMatchConfidence(image: GoogleImageResult, productName: string) {
+  const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const title = normalize(image.title || "");
+  const tokens = normalize(productName).split(/[^a-z0-9]+/).filter((token) => token.length >= 3);
+  const matches = tokens.filter((token) => title.includes(token));
+  const titleScore = tokens.length ? matches.length / tokens.length : 0;
+  const dimensions = productName.match(/\d+(?:[.,]\d+)?\s?(?:mm|cm|m³|m²|kg|g|l|lt|ml|m)\b/gi) ?? [];
+  const dimensionsMatch = dimensions.length === 0 || dimensions.every((value) => normalize(title).includes(normalize(value).replace(/\s/g, "")));
+  const brand = productName.match(/\b(?:Fortlev|Tigre|Krona|Vonder|Quartzolit|Coral|Suvinil|Bosch|Makita|Stanley|DeWalt|Amanco|Deca|Docol|Lorenzetti|Votoran|LIZ|Precon|Amecon)\b/i)?.[0];
+  const brandMatch = !brand || title.includes(normalize(brand));
+  const confidence = Math.min(0.98, titleScore * 0.72 + (brandMatch ? 0.14 : 0) + (dimensionsMatch ? 0.14 : 0));
+  return { confidence, trusted: confidence >= 0.76 && dimensionsMatch && brandMatch };
+}
 
 type JobStatus = "pending" | "processing" | "completed" | "error" | "retry";
 
@@ -83,16 +100,25 @@ type PipelineRunRecord = {
 };
 
 /* ───── Constants ───── */
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_URL =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname.endsWith(".sslip.io") ||
+    window.location.hostname.includes("materialdecontrucao.online"))
+    ? window.location.origin
+    : (import.meta.env.VITE_SUPABASE_URL as string);
 const MAX_WORKERS = 15;
-const AI_MAX_CONCURRENT = 3;
-const MAX_IMAGES_PER_PRODUCT = 8;
+const MAX_IMAGES_PER_PRODUCT = 3;
 const MAX_RETRIES = 3;
 const RETRY_DELAY_429 = 30_000;
-const RETRY_DELAYS_AI = [5_000, 10_000, 20_000];
 const INTER_WORKER_DELAY = 200;
 const SOURCES_FALLBACK: ImageSearchSource[] = ["bing", "google", "mercado_livre"];
 const SAVE_INTERVAL_MS = 10_000; // persist state every 10s
+
+function normalizeProductName(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
 
 function getPublicUrl(path: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${path}`;
@@ -100,18 +126,6 @@ function getPublicUrl(path: string) {
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
-}
-
-function extractBaseKeyword(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\d+/g, "")
-    .replace(/\s*(x|mm|cm|m²|kg|lt|ml|un|pç|pc)\s*/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(" ")
-    .slice(0, 2)
-    .join(" ");
 }
 
 /* ───── Semaphore for concurrency control ───── */
@@ -138,6 +152,7 @@ class Semaphore {
 
 export default function AdminBulkImageSearch() {
   const navigate = useNavigate();
+  const { store } = useTenant();
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -153,7 +168,6 @@ export default function AdminBulkImageSearch() {
 
   // Product selection for rebuild
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
-  const rebuildModeRef = useRef(false);
 
   // Pipeline state
   const [pipelineRunning, setPipelineRunning] = useState(false);
@@ -173,7 +187,6 @@ export default function AdminBulkImageSearch() {
 
   // Image cache
   const imageCacheRef = useRef(new Map<string, GoogleImageResult[]>());
-  const aiSemRef = useRef(new Semaphore(AI_MAX_CONCURRENT));
 
   /* ─── Load pipeline run history from DB ─── */
   const loadRunHistory = async () => {
@@ -292,6 +305,17 @@ export default function AdminBulkImageSearch() {
   /* ─── Pagination-aware load ─── */
   const load = async () => {
     setLoading(true);
+    let targetStoreId = store?.id;
+    if (!targetStoreId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetStoreId)) {
+      const { data: materialStore } = await cloud.from("stores").select("id").eq("slug", "materiais").maybeSingle();
+      targetStoreId = materialStore?.id;
+    }
+    if (!targetStoreId) {
+      toast({ title: "Loja não identificada", description: "Não foi possível localizar o depósito de materiais no banco.", variant: "destructive" });
+      setProducts(constructionProducts.map((product) => ({ id: `local:${product.id}`, name: product.name, description: product.description ?? product.name, active: true, imageCount: 0, images: [] })));
+      setLoading(false);
+      return;
+    }
     const PAGE_SIZE = 1000;
     let allData: any[] = [];
     let from = 0;
@@ -300,13 +324,14 @@ export default function AdminBulkImageSearch() {
     while (hasMore) {
       const { data, error } = await cloud
         .from("store_products")
-        .select("id, name, description, active, sku, store_product_images(id, path, sort_order)")
+        .select("id, source_id, name, description, active, unit, sku, store_product_images(id, path, sort_order)")
+        .eq("store_id", targetStoreId)
         .order("name", { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
 
       if (error) {
         toast({ title: "Erro", description: error.message, variant: "destructive" });
-        setProducts([]);
+        setProducts(constructionProducts.map((product) => ({ id: `local:${product.id}`, name: product.name, description: product.description ?? product.name, active: true, imageCount: 0, images: [] })));
         setLoading(false);
         return;
       }
@@ -317,17 +342,58 @@ export default function AdminBulkImageSearch() {
       from += PAGE_SIZE;
     }
 
+    const knownSourceIds = new Set(allData.map((p: any) => p.source_id).filter(Boolean));
+    const knownNames = new Set(allData.map((p: any) => normalizeProductName(p.name)));
+    const missingLocal = constructionProducts.filter((product) => !knownSourceIds.has(product.id) && !knownNames.has(normalizeProductName(product.name)));
+    if (missingLocal.length > 0) {
+      const { error: seedError } = await cloud.from("store_products").upsert(
+        missingLocal.map((product) => ({
+          source_id: product.id,
+          store_id: targetStoreId,
+          name: product.name,
+          description: product.description ?? product.name,
+          category: product.category,
+          unit: product.unit,
+          price: product.basePrice,
+          stock: 0,
+          active: true,
+          status: "published",
+        })) as any,
+        { onConflict: "source_id", ignoreDuplicates: true },
+      );
+      if (!seedError) {
+        const { data: refreshed, error: refreshError } = await cloud.from("store_products")
+          .select("id, source_id, name, description, active, unit, sku, store_product_images(id, path, sort_order)")
+          .eq("store_id", targetStoreId).order("name", { ascending: true });
+        if (!refreshError && refreshed) allData = refreshed;
+      } else {
+        toast({ title: "Catálogo local pendente", description: `Não foi possível cadastrar ${missingLocal.length} produtos no banco: ${seedError.message}`, variant: "destructive" });
+      }
+    }
     const mapped = allData.map((p: any) => ({
       id: p.id,
       name: p.name,
       description: p.description,
       active: p.active,
+      unit: p.unit,
       imageCount: Array.isArray(p.store_product_images) ? p.store_product_images.length : 0,
       images: Array.isArray(p.store_product_images)
         ? (p.store_product_images as any[]).sort((a: any, b: any) => a.sort_order - b.sort_order)
         : [],
     }));
-    setProducts(mapped);
+    const importedSourceIds = new Set(allData.map((p: any) => p.source_id).filter(Boolean));
+    const importedNames = new Set(allData.map((p: any) => normalizeProductName(p.name)));
+    const missingSeedProducts: ProductRow[] = constructionProducts
+      .filter((product) => !importedSourceIds.has(product.id) && !importedNames.has(normalizeProductName(product.name)))
+      .map((product) => ({
+        id: `local:${product.id}`,
+        name: product.name,
+        description: product.description ?? product.name,
+        active: true,
+        imageCount: 0,
+        images: [],
+      }));
+    setProducts([...mapped, ...missingSeedProducts]);
 
     if (detailProduct) {
       const updated = mapped.find((p) => p.id === detailProduct.id);
@@ -409,16 +475,6 @@ export default function AdminBulkImageSearch() {
     const cached = imageCacheRef.current.get(cacheKey);
     if (cached && cached.length > 0) return { images: cached, fromCache: true };
 
-    const baseKey = extractBaseKeyword(query);
-    if (baseKey.length >= 3) {
-      const similarKey = `${baseKey} produto construção`.toLowerCase().trim();
-      const similarCached = imageCacheRef.current.get(similarKey);
-      if (similarCached && similarCached.length > 0) {
-        imageCacheRef.current.set(cacheKey, similarCached);
-        return { images: similarCached, fromCache: true };
-      }
-    }
-
     const queriesToTry = [...(extraQueries ?? []), query];
 
     for (const q of queriesToTry) {
@@ -431,10 +487,6 @@ export default function AdminBulkImageSearch() {
             const { images } = await searchGoogleProductImages({ query: q, start: 1, source });
             if (images.length > 0) {
               imageCacheRef.current.set(cacheKey, images);
-              if (baseKey.length >= 3) {
-                const bkc = `${baseKey} produto construção`.toLowerCase().trim();
-                if (!imageCacheRef.current.has(bkc)) imageCacheRef.current.set(bkc, images);
-              }
               return { images, fromCache: false };
             }
             break;
@@ -474,135 +526,61 @@ export default function AdminBulkImageSearch() {
     if (!job || abortRef.current) return;
 
     const startTime = Date.now();
-    updateJob(jobIdx, { status: "processing", workerId, step: "🧠 Interpretando com IA..." });
+    updateJob(jobIdx, { status: "processing", workerId, step: "🔎 Buscando foto do produto..." });
     updateStats({ activeWorkers: (statsRef.current?.activeWorkers ?? 0) + 1, processing: (statsRef.current?.processing ?? 0) + 1, pending: (statsRef.current?.pending ?? 0) - 1 });
 
     try {
-      // STEP 0: Delete old images if rebuild mode
-      if (rebuildModeRef.current) {
-        updateJob(jobIdx, { step: "🗑️ Removendo imagens antigas..." });
-        try {
-          const { data: existingImages } = await cloud.from("store_product_images").select("id, path").eq("product_id", job.productId);
-          if (existingImages && existingImages.length > 0) {
-            const paths = existingImages.map((img: any) => img.path).filter(Boolean);
-            if (paths.length > 0) {
-              await cloud.storage.from("product-images").remove(paths);
-            }
-            await cloud.from("store_product_images").delete().eq("product_id", job.productId);
-          }
-        } catch { /* ignore cleanup errors */ }
-      }
-
-      // STEP 1: AI Enrichment
-      let aiSearchQueries: string[] = [];
-      let layeredQueries: { manufacturer?: string[]; marketplace?: string[]; general?: string[] } = {};
-      let imageRejectionTerms: string[] = [];
-      let imageAcceptanceTerms: string[] = [];
-      let aiImagePrompt = "";
+      // Image-only processing: do not call product enrichment or rewrite metadata.
       const product = products.find((p) => p.id === job.productId);
-      const needsDescription = !product?.description || (product.description?.trim().length ?? 0) < 20;
-      const neededImages = rebuildModeRef.current ? MAX_IMAGES_PER_PRODUCT : MAX_IMAGES_PER_PRODUCT - (product?.imageCount ?? 0);
-
-      if (needsDescription || neededImages > 0) {
-        updateJob(jobIdx, { step: "🧠 Aguardando slot IA..." });
-        await aiSemRef.current.acquire();
-        try {
-          updateJob(jobIdx, { step: "🧠 IA interpretando..." });
-          for (let aiAttempt = 0; aiAttempt < MAX_RETRIES; aiAttempt++) {
-            try {
-              const { data, error } = await cloud.functions.invoke("enrich-products", {
-                body: { action: "enrich", productId: job.productId, productName: job.productName },
-              });
-              if (!error && data?.success) {
-                aiSearchQueries = data.searchQueries ?? [];
-                layeredQueries = data.searchQueriesLayered ?? {};
-                imageRejectionTerms = data.imageRejectionTerms ?? [];
-                imageAcceptanceTerms = data.imageAcceptanceTerms ?? [];
-                aiImagePrompt = data.aiImagePrompt ?? "";
-                updateJob(jobIdx, { descriptionGenerated: true, techSheetGenerated: true });
-                updateStats({ descriptionsGenerated: (statsRef.current?.descriptionsGenerated ?? 0) + 1 });
-              } else if (data && !data.success) {
-                aiSearchQueries = data.searchQueries ?? [];
-                layeredQueries = data.searchQueriesLayered ?? {};
-                imageRejectionTerms = data.imageRejectionTerms ?? [];
-                imageAcceptanceTerms = data.imageAcceptanceTerms ?? [];
-                aiImagePrompt = data.aiImagePrompt ?? "";
-              }
-              break;
-            } catch (aiErr: any) {
-              const msg = aiErr?.message || "";
-              const is429 = msg.includes("429") || msg.includes("rate") || msg.includes("limit");
-              if (is429 && aiAttempt < MAX_RETRIES - 1) {
-                updateJob(jobIdx, { step: `🧠 Rate limit, retry ${aiAttempt + 1}...` });
-                await sleep(RETRY_DELAYS_AI[aiAttempt] ?? 20_000);
-                continue;
-              }
-              console.error("AI enrichment error:", msg);
-              break;
-            }
-          }
-        } finally {
-          aiSemRef.current.release();
-        }
+      if (job.productId.startsWith("local:")) {
+        throw new Error("Item do catálogo local ausente no banco; cadastre o item no admin antes de vincular a foto.");
       }
+      const neededImages = product?.imageCount ? 0 : 1;
+      const brand = job.productName.match(/\b(?:Fortlev|Tigre|Krona|Vonder|Quartzolit|Coral|Suvinil|Bosch|Makita|Stanley|DeWalt|Amanco|Deca|Docol|Lorenzetti|Votoran|LIZ|Precon|Amecon|Icasa|Incepa|Afort|CSM|Stihl)\b/i)?.[0];
+      const dimension = job.productName.match(/\d+(?:[.,]\d+)?\s?(?:mm|cm|m³|m²|kg|g|l|lt|ml|m)\b/gi)?.join(" ") ?? "";
+      const unit = product?.unit ?? constructionProducts.find((item) => item.name === job.productName)?.unit ?? "";
+      const queries = [
+        `${brand ? `${brand} ` : ""}${job.productName} ${dimension} ${unit} fabricante`.trim(),
+        `${job.productName} ${dimension} ${unit} site:obramax.com.br`.trim(),
+        `${job.productName} ${dimension} ${unit} produto construção`.trim(),
+      ];
 
       // STEP 2: Layered Image Search
       if (neededImages > 0 && !abortRef.current) {
-        let allFoundImages: GoogleImageResult[] = [];
+        const allFoundImages: GoogleImageResult[] = [];
 
         // Layer 1: Manufacturer
-        if (layeredQueries.manufacturer && layeredQueries.manufacturer.length > 0 && !abortRef.current) {
+        if (!abortRef.current) {
           updateJob(jobIdx, { step: "🏭 Buscando no fabricante..." });
-          for (const q of layeredQueries.manufacturer) {
+          for (const q of queries.slice(0, 1)) {
             if (abortRef.current || allFoundImages.length >= MAX_IMAGES_PER_PRODUCT) break;
             const { images } = await searchWithCache(q);
-            const filt = images.filter((img) => {
-              const title = (img.title || "").toLowerCase();
-              const hasRejection = imageRejectionTerms.some((t) => title.includes(t.toLowerCase()));
-              const hasAcceptance = imageAcceptanceTerms.some((t) => title.includes(t.toLowerCase()));
-              if (hasRejection && !hasAcceptance) return false;
-              return true;
-            });
-            allFoundImages.push(...filt);
+            allFoundImages.push(...images);
           }
         }
 
         // Layer 2: Marketplace
-        if (allFoundImages.length < neededImages && layeredQueries.marketplace && !abortRef.current) {
+        if (allFoundImages.length < neededImages && !abortRef.current) {
           updateJob(jobIdx, { step: "🛒 Buscando em marketplaces..." });
-          for (const q of layeredQueries.marketplace) {
+          for (const q of queries.slice(1, 2)) {
             if (abortRef.current || allFoundImages.length >= MAX_IMAGES_PER_PRODUCT) break;
             const { images } = await searchWithCache(q);
-            const filt = images.filter((img) => {
-              const title = (img.title || "").toLowerCase();
-              const hasRejection = imageRejectionTerms.some((t) => title.includes(t.toLowerCase()));
-              const hasAcceptance = imageAcceptanceTerms.some((t) => title.includes(t.toLowerCase()));
-              if (hasRejection && !hasAcceptance) return false;
-              return true;
-            });
-            allFoundImages.push(...filt);
+            allFoundImages.push(...images);
           }
         }
 
         // Layer 3: General
-        if (allFoundImages.length < neededImages && layeredQueries.general && !abortRef.current) {
+        if (allFoundImages.length < neededImages && !abortRef.current) {
           updateJob(jobIdx, { step: "🔍 Busca geral..." });
-          for (const q of layeredQueries.general) {
+          for (const q of queries.slice(2)) {
             if (abortRef.current || allFoundImages.length >= MAX_IMAGES_PER_PRODUCT) break;
             const { images } = await searchWithCache(q);
-            const filt = images.filter((img) => {
-              const title = (img.title || "").toLowerCase();
-              const hasRejection = imageRejectionTerms.some((t) => title.includes(t.toLowerCase()));
-              const hasAcceptance = imageAcceptanceTerms.some((t) => title.includes(t.toLowerCase()));
-              if (hasRejection && !hasAcceptance) return false;
-              return true;
-            });
-            allFoundImages.push(...filt);
+            allFoundImages.push(...images);
           }
         }
 
         // Fallback
-        if (allFoundImages.length === 0 && aiSearchQueries.length === 0 && !abortRef.current) {
+        if (allFoundImages.length === 0 && !abortRef.current) {
           updateJob(jobIdx, { step: "🔍 Buscando imagens..." });
           const defaultQuery = `${job.productName} produto construção`;
           const { images } = await searchWithCache(defaultQuery);
@@ -619,53 +597,48 @@ export default function AdminBulkImageSearch() {
 
         updateJob(jobIdx, { imagesFound: uniqueImages.length });
 
-        // STEP 3: Import
+        // Import only high-confidence matches; send the rest to manual review.
         if (uniqueImages.length > 0 && !abortRef.current) {
-          updateJob(jobIdx, { step: "💾 Salvando imagens..." });
-          const toImport = uniqueImages.slice(0, Math.min(neededImages, MAX_IMAGES_PER_PRODUCT));
-          try {
-            const result = await importGoogleProductImages({ productId: job.productId, images: toImport });
-            updateJob(jobIdx, { imagesSaved: result.imported.length });
-            updateStats({ imagesApproved: (statsRef.current?.imagesApproved ?? 0) + result.imported.length });
-          } catch { /* partial failure */ }
-        }
-
-        // STEP 4: AI Image Generation Fallback
-        const currentSaved = jobsRef.current[jobIdx]?.imagesSaved ?? 0;
-        if (currentSaved === 0 && aiImagePrompt && !abortRef.current) {
-          updateJob(jobIdx, { step: "🎨 Aguardando slot IA..." });
-          await aiSemRef.current.acquire();
-          try {
-            updateJob(jobIdx, { step: "🎨 Gerando imagem com IA..." });
-            for (let genAttempt = 0; genAttempt < MAX_RETRIES; genAttempt++) {
-              try {
-                const { data, error } = await cloud.functions.invoke("enrich-products", {
-                  body: {
-                    action: "generate-image",
-                    productId: job.productId,
-                    prompt: aiImagePrompt,
-                  },
-                });
-                if (!error && data?.success) {
-                  updateJob(jobIdx, { imagesSaved: 1, imagesFound: 1 });
-                  updateStats({ imagesApproved: (statsRef.current?.imagesApproved ?? 0) + 1 });
-                }
-                break;
-              } catch (genErr: any) {
-                const msg = genErr?.message || "";
-                const is429 = msg.includes("429") || msg.includes("rate") || msg.includes("limit");
-                if (is429 && genAttempt < MAX_RETRIES - 1) {
-                  updateJob(jobIdx, { step: `🎨 Rate limit, retry ${genAttempt + 1}...` });
-                  await sleep(RETRY_DELAYS_AI[genAttempt] ?? 20_000);
-                  continue;
-                }
-                break;
-              }
+          const candidates = uniqueImages.slice(0, 8).map((image) => ({ image, ...imageMatchConfidence(image, job.productName) }));
+          const trusted = candidates.find((candidate) => candidate.trusted);
+          const uncertain = candidates.filter((candidate) => !candidate.trusted);
+          const queueForReview = async (items = uncertain) => {
+            if (items.length === 0) return;
+            const { data: queued, error: queuedError } = await (cloud as any).from("image_review_queue")
+              .select("image_url").eq("product_id", job.productId).in("image_url", items.map(({ image }) => image.imageUrl));
+            if (queuedError) {
+              console.warn("Não foi possível consultar candidatas já registradas", queuedError.message);
+              return;
             }
-          } finally {
-            aiSemRef.current.release();
+            const existingUrls = new Set((queued ?? []).map((item: { image_url: string }) => item.image_url));
+            const rows = items.filter(({ image }) => !existingUrls.has(image.imageUrl)).map(({ image, confidence }) => ({
+                product_id: job.productId,
+                image_url: image.imageUrl,
+                source: image.source ?? "bing",
+                confidence,
+                ai_analysis: "Correspondência de nome/medida não suficientemente confiável; revisar antes de importar.",
+                status: "pending",
+              }));
+            if (rows.length === 0) return;
+            const { error: reviewError } = await (cloud as any).from("image_review_queue").insert(rows);
+            if (reviewError) console.warn("Não foi possível registrar candidatas para revisão", reviewError.message);
+          };
+          if (trusted && !product?.imageCount) {
+            updateJob(jobIdx, { step: "💾 Salvando foto confiável..." });
+            try {
+              const result = await importGoogleProductImages({ productId: job.productId, images: [trusted.image], coverOnly: true });
+              updateJob(jobIdx, { imagesSaved: result.imported.length });
+              updateStats({ imagesApproved: (statsRef.current?.imagesApproved ?? 0) + result.imported.length });
+              if (result.imported.length === 0) await queueForReview([...uncertain, trusted]);
+            } catch { await queueForReview([...uncertain, trusted]); }
+          } else {
+            await queueForReview();
+          }
+          if (!trusted) {
+            updateJob(jobIdx, { step: "👀 Candidatas enviadas para revisão" });
           }
         }
+
       }
 
       const elapsed = Date.now() - startTime;
@@ -707,9 +680,9 @@ export default function AdminBulkImageSearch() {
         product_id: finalJob.productId,
         images_found: finalJob.imagesFound,
         images_saved: finalJob.imagesSaved,
-        status: finalJob.status,
+        status: finalJob.imagesFound === 0 ? "no_image" : finalJob.imagesSaved === 0 ? "review" : "completed",
         processing_time: finalJob.time,
-        error_message: finalJob.error || null,
+        error_message: finalJob.error || (finalJob.imagesFound === 0 ? "Nenhum resultado de imagem encontrado; produto permanece ativo." : finalJob.imagesSaved === 0 ? "Candidatas aguardam revisão manual; produto permanece inalterado." : null),
       } as any);
     } catch { /* ignore */ }
 
@@ -834,13 +807,17 @@ export default function AdminBulkImageSearch() {
 
     toast({
       title: finalStatus === "stopped" ? "Pipeline interrompido" : "Pipeline concluído",
-      description: `${completedCount} de ${finalJobs.length} produtos enriquecidos em ${(totalTime / 1000).toFixed(0)}s.`,
+      description: `${completedCount} de ${finalJobs.length} produtos processados em ${(totalTime / 1000).toFixed(0)}s.`,
     });
   };
 
   const startPipeline = () => {
-    rebuildModeRef.current = false;
-    runPipeline(filtered);
+    const eligible = filtered.filter((product) => product.imageCount === 0 && !product.id.startsWith("local:"));
+    if (eligible.length === 0 && filtered.some((product) => product.id.startsWith("local:"))) {
+      toast({ title: "Catálogo local aguardando o banco", description: "Os itens locais aparecem como pendentes; reconecte o Supabase para cadastrá-los e importar as fotos." });
+      return;
+    }
+    runPipeline(eligible);
   };
 
   const startRebuildSelected = () => {
@@ -848,14 +825,17 @@ export default function AdminBulkImageSearch() {
       toast({ title: "Selecione produtos", description: "Marque pelo menos um produto para refazer imagens." });
       return;
     }
-    const eligible = products.filter((p) => selectedProductIds.has(p.id));
-    rebuildModeRef.current = true;
+    const eligible = products.filter((p) => selectedProductIds.has(p.id) && p.imageCount === 0 && !p.id.startsWith("local:"));
+    if (eligible.length === 0) {
+      toast({ title: "Nada para processar", description: "Selecione produtos sem imagem que já estejam cadastrados no banco." });
+      return;
+    }
     runPipeline(eligible);
   };
 
   const startRebuildBatch = (limit: number) => {
-    const eligible = limit === 0 ? [...products] : products.slice(0, limit);
-    rebuildModeRef.current = true;
+    const noImageProducts = products.filter((product) => product.imageCount === 0 && !product.id.startsWith("local:"));
+    const eligible = limit === 0 ? noImageProducts : noImageProducts.slice(0, limit);
     runPipeline(eligible);
   };
 
@@ -878,7 +858,6 @@ export default function AdminBulkImageSearch() {
       toast({ title: "Sem erros", description: "Nenhum produto com erro para reprocessar." });
       return;
     }
-    rebuildModeRef.current = false;
     runPipeline(eligible);
   };
 

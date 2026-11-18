@@ -19,7 +19,7 @@ function calcShipping(subtotal: number) {
 }
 
 export default function CartPage() {
-  const { cart, lines, subtotal } = useCartDetails();
+  const { cart, lines, subtotal, productsLoading, productsError, canCheckout } = useCartDetails();
   const tracker = useVisitorTracker();
   const nav = useNavigate();
 
@@ -38,7 +38,7 @@ export default function CartPage() {
     () =>
       lines.reduce((acc, l) => {
         const base = Number((l.product as any)?.price ?? 0);
-        if (base > l.effectivePrice) acc += (base - l.effectivePrice) * l.quantity;
+        if (l.isVerified && base > l.effectivePrice) acc += (base - l.effectivePrice) * l.quantity;
         return acc;
       }, 0),
     [lines],
@@ -66,6 +66,16 @@ export default function CartPage() {
             <Link to="/loja">Continuar comprando</Link>
           </Button>
         </div>
+
+        {productsError || productsLoading || lines.some((line) => !line.isVerified) ? (
+          <div role={productsError ? "alert" : "status"} className="rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-foreground">
+            {productsError
+              ? `Os preços e a disponibilidade do carrinho não podem ser validados. ${productsError}`
+              : productsLoading
+                ? "Validando os produtos e preços atuais no banco…"
+                : "Há itens que não foram encontrados ativos no catálogo. Remova-os ou aguarde a regularização antes de finalizar."}
+          </div>
+        ) : null}
 
         {lines.length === 0 ? (
           <Card className="rounded-2xl">
@@ -99,7 +109,10 @@ export default function CartPage() {
 
                         <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex items-start justify-between gap-2">
-                            <h2 className="text-base sm:text-lg font-semibold leading-tight line-clamp-2">{line.name}</h2>
+                            <div className="min-w-0">
+                              <h2 className="text-base sm:text-lg font-semibold leading-tight line-clamp-2">{line.name}</h2>
+                              {!line.isVerified ? <span className="text-xs text-amber-700">Item não validado</span> : null}
+                            </div>
                             <button
                               type="button"
                               aria-label="Remover item"
@@ -111,7 +124,7 @@ export default function CartPage() {
                           </div>
 
                           <div className="text-sm">
-                            {line.hasPrice ? (
+                            {line.isVerified && line.hasPrice ? (
                               <div className="flex items-baseline gap-2 flex-wrap">
                                 <span className="font-bold text-foreground">{formatCurrency(line.effectivePrice)}</span>
                                 <span className="text-xs text-muted-foreground">/ {line.unit}</span>
@@ -120,7 +133,7 @@ export default function CartPage() {
                                 )}
                               </div>
                             ) : (
-                              <span className="text-muted-foreground">Preço em atualização</span>
+                              <span className="text-muted-foreground">Preço não validado</span>
                             )}
                           </div>
 
@@ -132,7 +145,7 @@ export default function CartPage() {
                               onRemove={() => cart.remove(line.productId)}
                             />
                             <div className="text-lg sm:text-xl font-bold tracking-tight tabular-nums">
-                              {formatCurrency(line.lineTotal)}
+                              {line.isVerified && line.hasPrice ? formatCurrency(line.lineTotal) : "—"}
                             </div>
                           </div>
                         </div>
@@ -211,13 +224,13 @@ export default function CartPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between text-muted-foreground">
                       <span>Subtotal</span>
-                      <span className="text-foreground font-medium tabular-nums">{formatCurrency(subtotal)}</span>
+                      <span className="text-foreground font-medium tabular-nums">{canCheckout ? formatCurrency(subtotal) : "—"}</span>
                     </div>
                     <div className="flex items-center justify-between text-muted-foreground">
                       <span>Frete</span>
-                      <span className="tabular-nums">{cepValid ? formatCurrency(shipping) : "—"}</span>
+                      <span className="tabular-nums">{canCheckout && cepValid ? formatCurrency(shipping) : "—"}</span>
                     </div>
-                    {savings > 0 && (
+                    {canCheckout && savings > 0 && (
                       <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
                         <span>Economia</span>
                         <span className="tabular-nums">- {formatCurrency(savings)}</span>
@@ -227,12 +240,14 @@ export default function CartPage() {
 
                   <div className="border-t border-border/70 pt-3 flex items-center justify-between">
                     <span className="text-base font-semibold">Total</span>
-                    <span className="text-2xl font-extrabold tracking-tight tabular-nums">{formatCurrency(total)}</span>
+                    <span className="text-2xl font-extrabold tracking-tight tabular-nums">{canCheckout ? formatCurrency(total) : "—"}</span>
                   </div>
 
                   <Button
                     className="h-14 rounded-xl w-full text-base font-bold gap-2"
+                    disabled={!canCheckout}
                     onClick={() => {
+                      if (!canCheckout) return;
                       trackClickEvent({ sessionToken: tracker.sessionToken, type: "start_checkout" });
                       nav("/checkout");
                     }}

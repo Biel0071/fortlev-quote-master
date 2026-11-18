@@ -14,11 +14,11 @@ import { FloatingChatButton } from "@/components/store/FloatingChatButton";
 import NotFound from "@/pages/NotFound";
 
 import StoreHome from "@/pages/store/StoreHome";
-import ProductPage from "@/pages/store/ProductPage";
-import CartPage from "@/pages/store/CartPage";
-import CheckoutPage from "@/pages/store/CheckoutPage";
-import StoreCatalog from "@/pages/store/StoreCatalog";
-import OffersPage from "@/pages/store/OffersPage";
+const ProductPage = lazy(() => import("@/pages/store/ProductPage"));
+const CartPage = lazy(() => import("@/pages/store/CartPage"));
+const CheckoutPage = lazy(() => import("@/pages/store/CheckoutPage"));
+const StoreCatalog = lazy(() => import("@/pages/store/StoreCatalog"));
+const OffersPage = lazy(() => import("@/pages/store/OffersPage"));
 const PaymentPendingPage = lazy(() => import("@/pages/store/PaymentPendingPage"));
 const StorePage = lazy(() => import("@/pages/store/StorePage"));
 import ShortLinkRedirect from "@/pages/store/ShortLinkRedirect";

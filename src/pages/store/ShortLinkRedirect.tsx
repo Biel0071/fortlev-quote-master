@@ -55,12 +55,6 @@ export default function ShortLinkRedirect() {
           referrer: document.referrer || decoded.source,
         });
 
-        if (/^\/(google-play|downloads|app\/|myjadlog)/i.test(decoded.targetUrl)) {
-          try {
-            localStorage.setItem("material_online_app_mode", "1");
-          } catch { /* ignore storage errors */ }
-        }
-
         if (decoded.targetUrl.startsWith("/")) {
           navigate(decoded.targetUrl, { replace: true });
         } else {

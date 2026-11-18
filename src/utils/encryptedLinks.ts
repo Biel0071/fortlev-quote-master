@@ -28,11 +28,12 @@ export function detectAppChannel(pathname?: string): TrackingChannel {
       if (window.matchMedia?.("(display-mode: standalone)")?.matches) {
         return "app";
       }
-      if (window.localStorage?.getItem("material_online_app_mode") === "1") {
+      const search = window.location.search || "";
+      if (/[?&](utm_source|channel)=app(?:&|$)/i.test(search)) {
         return "app";
       }
     } catch {
-      /* ignore storage errors */
+      /* ignore browser environment errors */
     }
   }
   return "site";

@@ -136,7 +136,6 @@ export default function GooglePlayDownloadPage() {
   const handleInstallClick = () => {
     if (downloadProgress !== null && !isCompleted) return;
     try {
-      localStorage.setItem("material_online_app_mode", "1");
       const token =
         localStorage.getItem("tracking_session_token_v1") ||
         sessionStorage.getItem("tracking_session_token_temp_v1") ||
@@ -152,7 +151,7 @@ export default function GooglePlayDownloadPage() {
           },
         });
       }
-    } catch { /* ignore storage/tracking errors */ }
+    } catch { /* ignore tracking errors */ }
     setDownloadProgress(0);
     let progress = 0;
     const interval = window.setInterval(async () => {

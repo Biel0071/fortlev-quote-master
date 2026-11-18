@@ -23,6 +23,7 @@ let scrollListenerInitialized = false;
 let productVisitListenerInitialized = false;
 let clickListenerInitialized = false;
 let lastUserActivityAt = Date.now();
+let lastDwellFlushAt = Date.now();
 let activityListenersInitialized = false;
 
 function ensureToken(persist: boolean) {
@@ -64,15 +65,6 @@ export function useVisitorTracker() {
   }, [sessionToken, trackingEnabled]);
 
   useEffect(() => {
-    const channel = detectAppChannel(location.pathname);
-    if (channel === "app") {
-      try {
-        localStorage.setItem("material_online_app_mode", "1");
-      } catch { /* ignore storage errors */ }
-    }
-  }, [location.pathname]);
-
-  useEffect(() => {
     if (!trackingEnabled || isProtectedPath(location.pathname)) return;
     const key = `${sessionToken}:${trackingEnabled ? "1" : "0"}`;
     if (startedSessions.has(key)) return;
@@ -98,6 +90,7 @@ export function useVisitorTracker() {
     const channel = detectAppChannel(location.pathname);
     const started = Date.now();
     lastUserActivityAt = started;
+    lastDwellFlushAt = started;
 
     collectAndTrackEvent({
       sessionToken,
@@ -124,7 +117,14 @@ export function useVisitorTracker() {
     }
 
     return () => {
-      const duration = Math.min(300, Math.max(0, Math.round((Date.now() - started) / 1000)));
+      const isVisibleAndActive =
+        document.visibilityState === "visible" && Date.now() - lastUserActivityAt <= 60_000;
+      const duration = isVisibleAndActive
+        ? Math.min(10, Math.max(0, Math.round((Date.now() - lastDwellFlushAt) / 1000)))
+        : 0;
+      if (duration > 0) {
+        lastDwellFlushAt = Date.now();
+      }
       collectAndTrackEvent({
         sessionToken,
         consentGiven: consentOk,
@@ -144,6 +144,12 @@ export function useVisitorTracker() {
       ["pointerdown", "keydown", "scroll", "mousemove", "touchstart"].forEach((evtName) => {
         window.addEventListener(evtName, markActive, { passive: true });
       });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          lastUserActivityAt = Date.now();
+          lastDwellFlushAt = Date.now();
+        }
+      });
     }
 
     if (!trackingEnabled || isProtectedPath(location.pathname) || location.pathname.startsWith("/r/")) {
@@ -157,6 +163,7 @@ export function useVisitorTracker() {
       const currentPath = window.location.pathname + window.location.search + window.location.hash;
       if (isProtectedPath(window.location.pathname) || window.location.pathname.startsWith("/r/")) return;
 
+      lastDwellFlushAt = Date.now();
       const channel = detectAppChannel(window.location.pathname);
       collectAndTrackEvent({
         sessionToken,

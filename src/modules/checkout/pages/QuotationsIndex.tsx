@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
+import { StoreFooter } from '@/components/store/StoreFooter';
 import { CompanyForm } from '@/components/CompanyForm';
 import { CustomerForm } from '@/components/CustomerForm';
 import { ProductSelector } from '@/components/ProductSelector';
@@ -368,9 +369,7 @@ const QuotationsContent = () => {
         onDownloadDANFE={() => previewQuotation && downloadNFePDF(previewQuotation)}
       />
 
-      <footer className="text-center py-6 text-sm text-muted-foreground border-t border-border mt-12">
-        <p>Sistema de Orçamentos Fortlev • {new Date().getFullYear()}</p>
-      </footer>
+      <StoreFooter />
     </div>
   );
 };

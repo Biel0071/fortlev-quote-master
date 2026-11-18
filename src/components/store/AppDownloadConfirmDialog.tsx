@@ -1,4 +1,5 @@
 import { MessageCircle, CheckCircle2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  apkUrl: string | null;
+  apkUrl?: string | null;
   whatsappLink: string;
   onTrack: (event: string) => void;
   onDownloadClick?: () => void;
@@ -39,7 +40,10 @@ export function AppDownloadConfirmDialog({
   const handleContinueDownload = () => {
     onTrack("app_download_continue");
     onDownloadClick?.();
-    if (apkUrl) window.open(apkUrl, "_blank", "noopener,noreferrer");
+    onOpenChange(false);
+    if (apkUrl && /^https?:\/\//i.test(apkUrl)) {
+      window.open(apkUrl, "_blank", "noopener,noreferrer");
+    }
   };
 
   return (
@@ -93,13 +97,23 @@ export function AppDownloadConfirmDialog({
             Já estou instalando
           </Button>
 
-          <button
-            type="button"
-            onClick={handleContinueDownload}
-            className="text-xs text-primary underline underline-offset-4 mx-auto py-1"
-          >
-            Continuar download
-          </button>
+          {apkUrl && /^https?:\/\//i.test(apkUrl) ? (
+            <button
+              type="button"
+              onClick={handleContinueDownload}
+              className="text-xs text-primary underline underline-offset-4 mx-auto py-1"
+            >
+              Baixar no Google Play
+            </button>
+          ) : (
+            <Link
+              to="/google-play"
+              onClick={handleContinueDownload}
+              className="text-xs text-primary underline underline-offset-4 mx-auto py-1"
+            >
+              Baixar no Google Play
+            </Link>
+          )}
         </div>
       </DialogContent>
     </Dialog>

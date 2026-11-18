@@ -19,6 +19,7 @@ export function StoreLayout({
   pageLinks,
   footerStoreName,
   categories,
+  hideFooter = false,
 }: {
   children: ReactNode;
   cartCount: number;
@@ -29,9 +30,10 @@ export function StoreLayout({
   pageLinks?: Array<{ title: string; slug: string }>;
   footerStoreName?: string;
   categories?: Array<{ id: string; name: string; slug: string }>;
+  hideFooter?: boolean;
 }) {
   return (
-    <div className="flex flex-col bg-background w-full overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-background w-full overflow-x-hidden">
       <AppHeader
         cartCount={cartCount}
         onCartClick={onCartClick}
@@ -41,13 +43,11 @@ export function StoreLayout({
       <CartDrawer open={cartOpen} onOpenChange={onCartOpenChange} />
       <StoreMobileChrome cartCount={cartCount} onCartClick={onCartClick} />
 
-      <div className="main-content">
+      <div className="main-content flex-1">
         {children}
       </div>
 
-      {footer !== undefined ? (
-        <StoreFooter footer={footer ?? null} pageLinks={pageLinks ?? []} />
-      ) : null}
+      {!hideFooter ? <StoreFooter footer={footer} pageLinks={pageLinks} /> : null}
     </div>
   );
 }

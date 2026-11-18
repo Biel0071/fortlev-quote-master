@@ -11,6 +11,7 @@ import { useStoreProducts } from "@/hooks/useStoreProducts";
 import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { StoreProductCard } from "@/components/store/home/StoreProductCard";
+import { StoreFooter } from "@/components/store/StoreFooter";
 import { useSearchParams } from "react-router-dom";
 import { expandSearchTerms, smartMatch, smartScore } from "@/utils/smartSearch";
 
@@ -127,7 +128,7 @@ export default function StoreCatalog() {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
 
-      <main className="main-content mx-auto w-full max-w-7xl px-4 sm:px-6 py-4 sm:py-6 pb-28 md:pb-10 space-y-4 sm:space-y-6">
+      <main className="main-content flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 py-4 sm:py-6 pb-10 space-y-4 sm:space-y-6">
         <header className="flex items-end justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Catálogo</h1>
@@ -196,6 +197,7 @@ export default function StoreCatalog() {
           </div>
         )}
       </main>
+      <StoreFooter />
     </div>
   );
 }

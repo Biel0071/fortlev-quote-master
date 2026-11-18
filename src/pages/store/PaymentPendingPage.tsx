@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppHeader } from "@/components/store/AppHeader";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
+import { StoreFooter } from "@/components/store/StoreFooter";
 import { useCart } from "@/hooks/useCart";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,11 +100,11 @@ export default function PaymentPendingPage() {
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
-    <div className="flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <AppHeader cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="main-content max-w-2xl mx-auto px-4 sm:px-6 py-10 pb-24 md:pb-10">
+      <main className="main-content flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-10">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -209,6 +210,7 @@ export default function PaymentPendingPage() {
           </CardContent>
         </Card>
       </main>
+      <StoreFooter />
     </div>
   );
 }

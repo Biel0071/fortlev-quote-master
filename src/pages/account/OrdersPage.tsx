@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
+import { StoreFooter } from "@/components/store/StoreFooter";
 import { formatCurrency } from "@/utils/formatters";
 import { Package, Truck, CheckCircle2, Search, ArrowRight, RefreshCcw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -85,11 +86,11 @@ export default function OrdersPage() {
   if (!sessionLoading && !user) return <Navigate to="/conta" replace state={{ from: "/pedidos" }} />;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <AppHeader cartCount={0} />
       <StoreMobileChrome cartCount={0} />
 
-      <main className="main-content max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-8">
+      <main className="main-content flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-10 space-y-8">
         <header className="flex items-end justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-3xl font-black tracking-tight uppercase">Meus pedidos</h1>
@@ -199,6 +200,7 @@ export default function OrdersPage() {
           </div>
         )}
       </main>
+      <StoreFooter />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { AppHeader } from "@/components/store/AppHeader";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
+import { StoreFooter } from "@/components/store/StoreFooter";
 import { toast } from "@/hooks/use-toast";
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { useCart } from "@/hooks/useCart";
@@ -476,11 +477,11 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="flex flex-col bg-background w-full overflow-x-hidden">
+    <div className="min-h-screen flex flex-col bg-background w-full overflow-x-hidden">
       <AppHeader cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="main-content mx-auto w-full max-w-4xl px-3 sm:px-6 py-6 sm:py-8 pb-20 md:pb-8 min-w-0">
+      <main className="main-content flex-1 mx-auto w-full max-w-4xl px-3 sm:px-6 py-6 sm:py-8 pb-10 min-w-0">
         <nav aria-label="breadcrumb" className="mb-4 text-sm text-muted-foreground">
           Carrinho <span className="mx-1">/</span> <span className="font-medium text-foreground">Finalizar sua compra</span>
         </nav>
@@ -530,6 +531,7 @@ export default function CheckoutPage() {
           />
         )}
       </main>
+      <StoreFooter />
     </div>
   );
 }

@@ -55,6 +55,67 @@ document.addEventListener('DOMContentLoaded', () => {
       arrowText: "clique em abrir<br>para Instalar o app",
       installMode: "direct_flow"
     },
+    material_online: {
+      appTitle: "Material Online",
+      developer: "Material de Construção Online",
+      subtitle: "Android · Disponível exclusivamente no Google Play",
+      appIconUrl: "assets/material_online_logo.png",
+      ratingVal: "4,8",
+      ratingCount: "1,2 mil avaliações",
+      downloadsVal: "50 mil+",
+      downloadsLabel: "downloads",
+      heroBgUrl: "assets/material_online_banner.png",
+      installBtn: "Instalar no Google Play",
+      installOtherBtn: "Compartilhar",
+      installUrl: "/google-play",
+      arrowText: "clique em Instalar<br>para abrir no Android",
+      installMode: "direct_flow",
+      autoStartDownload: false,
+      trailerBtn: "",
+      trailerYoutube: "",
+      disclaimer: "Disponível exclusivamente para dispositivos Android via Google Play.",
+      aboutText: "O aplicativo oficial Material Online conecta você ao depósito com orçamento rápido, catálogo completo de materiais de construção, ofertas exclusivas e acompanhamento do seu pedido em tempo real.\n\n● Catálogo completo de materiais básicos e acabamento\n● Orçamento instantâneo e suporte direto via WhatsApp\n● Rastreamento de entrega e histórico de pedidos",
+      updatedAt: "18 de nov. de 2026",
+      platforms: "Android",
+      tags: ["Compras", "Construção", "Google Play"],
+      intelNote: "*Disponível apenas no Google Play (Android)",
+      eventBadge: "",
+      eventTitle: "",
+      eventBannerUrl: "",
+      featureBadge: "",
+      featureTitle: "",
+      featureBannerUrl: "",
+      ratingBadge: "L",
+      ratingTitle: "Classificação Livre",
+      ratingDesc: "Livre para todos os públicos",
+      pcTitle: "Disponível apenas no Google Play",
+      pcSubtitle: "Exclusivo para Android",
+      reqOs: "Android 8.0+",
+      reqStorage: "28 MB",
+      reqGpu: "",
+      reqCpu: "",
+      screenshots: [
+        "assets/material_online_banner.png"
+      ],
+      bar5: "88",
+      bar4: "8",
+      bar3: "2",
+      bar2: "1",
+      bar1: "1",
+      rev1Name: "Carlos Eduardo",
+      rev1Date: "15/11/2026",
+      rev1Stars: 5,
+      rev1Text: "Muito prático para cotar cimento, areia e acabamento direto pelo celular. Atendimento no WhatsApp super rápido.",
+      rev2Name: "Mariana Souza",
+      rev2Date: "12/11/2026",
+      rev2Stars: 5,
+      rev2Text: "Acompanhei a entrega da minha obra em tempo real pelo app Material Online. Recomendo!",
+      rev3Name: "Roberto Almeida",
+      rev3Date: "08/11/2026",
+      rev3Stars: 5,
+      rev3Text: "Fácil de usar e leve no Android, sem precisar baixar nada de fora do Google Play.",
+      relatedApps: []
+    },
     jadlog_mobile_clean: {
       appTitle: "my JADLOG",
       developer: "Google Commerce Ltd",
@@ -343,12 +404,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // State object - Padrão Jadlog Oficial Mobile (1:1 com a Imagem 3)
-  let state = loadPersistedState() || JSON.parse(JSON.stringify(PRESETS.jadlog_mobile_clean || PRESETS.sniper3d));
+  // State object - Padrão Material Online (Google Play exclusivo)
+  let state = loadPersistedState() || JSON.parse(JSON.stringify(PRESETS.material_online || PRESETS.jadlog_mobile_clean || PRESETS.sniper3d));
 
   function loadPersistedState() {
     try {
-      const saved = localStorage.getItem('google_play_studio_state_v3');
+      const saved = localStorage.getItem('google_play_studio_state_v4');
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.warn('Could not read from localStorage', e);
@@ -358,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function persistState() {
     try {
-      localStorage.setItem('google_play_studio_state_v3', JSON.stringify(state));
+      localStorage.setItem('google_play_studio_state_v4', JSON.stringify(state));
     } catch (e) {
       console.warn('Could not save to localStorage', e);
     }

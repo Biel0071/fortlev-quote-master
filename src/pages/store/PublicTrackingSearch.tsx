@@ -24,6 +24,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
+import { StoreFooter } from "@/components/store/StoreFooter";
 import { FloatingChatButton } from "@/components/store/FloatingChatButton";
 import { useConsent } from "@/hooks/store/useConsent";
 import {
@@ -326,7 +327,7 @@ export default function PublicTrackingSearch({ initialPreviewData }: PublicTrack
       : result?.status?.progress_percentage ?? 25;
 
   return (
-    <div className="min-h-screen bg-background pb-24 md:pb-12 tracking-search-page flex flex-col">
+    <div className="min-h-screen bg-background tracking-search-page flex flex-col">
       {!initialPreviewData && <AppHeader cartCount={0} />}
       {!initialPreviewData && <StoreMobileChrome cartCount={0} />}
       {!initialPreviewData && <FloatingChatButton />}
@@ -524,6 +525,7 @@ export default function PublicTrackingSearch({ initialPreviewData }: PublicTrack
         </Dialog>
       </main>
       </div>
+      {!initialPreviewData && <StoreFooter />}
     </div>
   );
 }

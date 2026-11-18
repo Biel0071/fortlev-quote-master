@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "test:catalog": "node --experimental-strip-types --test tests/catalog-result.test.mjs tests/ai-gateway.test.mjs tests/real-offers.test.mjs tests/publish-api.test.mjs tests/store-id.test.mjs tests/tracking-schedule.test.mjs",
+    "test:catalog": "node --experimental-strip-types --test tests/catalog-result.test.mjs tests/ai-gateway.test.mjs tests/real-offers.test.mjs tests/publish-api.test.mjs tests/store-id.test.mjs tests/tracking-schedule.test.mjs tests/store-footer-app.test.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -3,35 +3,25 @@ import { X, ChevronUp, Download, Smartphone, MessageCircle } from "lucide-react"
 import { useStoreContact } from "@/hooks/useStoreContact";
 import { AppDownloadConfirmDialog } from "./AppDownloadConfirmDialog";
 import { cn } from "@/lib/utils";
-import { useStore } from "@/contexts/StoreContext";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const DISMISS_KEY = "APP_BANNER_DISMISSED_AT";
 const DOWNLOAD_CLICKED_KEY = "app_download_clicked";
 const REEXPAND_MS = 15_000;
-
-function getDownloadUrl(storeId: string | null) {
-  // Edge Functions live on the configured API domain, which can differ from the store domain.
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/+$/, "");
-  if (!supabaseUrl) return null;
-  const endpoint = `${supabaseUrl}/functions/v1/download-app`;
-  return storeId ? `${endpoint}?store_id=${encodeURIComponent(storeId)}` : endpoint;
-}
+const APP_PAGE_PATHS = new Set(["/google-play", "/downloads", "/app/download"]);
 
 export function AppDownloadBanner() {
   const [mode, setMode] = useState<"full" | "compact">("full");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [downloadClicked, setDownloadClicked] = useState(false);
-  const { activeStoreId } = useStore();
   const location = useLocation();
-  const isAdmin = location.pathname.startsWith("/admin");
-  const appUrl = getDownloadUrl(activeStoreId);
+  const navigate = useNavigate();
+  const isHiddenRoute =
+    location.pathname.startsWith("/admin") || APP_PAGE_PATHS.has(location.pathname);
   const contact = useStoreContact();
   const waLink = contact.phoneDigits
     ? `https://wa.me/55${contact.phoneDigits}`
     : "";
-
-  if (isAdmin) return null;
 
   useEffect(() => {
     try {
@@ -41,7 +31,7 @@ export function AppDownloadBanner() {
       if (dismissed && Date.now() - Number(dismissed) < REEXPAND_MS) {
         setMode("compact");
       }
-    } catch {}
+      } catch { /* ignore storage read errors */ }
   }, []);
 
   useEffect(() => {
@@ -50,7 +40,7 @@ export function AppDownloadBanner() {
       setMode("full");
       try {
         localStorage.removeItem(DISMISS_KEY);
-      } catch {}
+      } catch { /* ignore storage write errors */ }
     }, REEXPAND_MS);
     return () => clearTimeout(timer);
   }, [mode]);
@@ -59,28 +49,27 @@ export function AppDownloadBanner() {
     setMode("compact");
     try {
       localStorage.setItem(DISMISS_KEY, String(Date.now()));
-    } catch {}
+    } catch { /* ignore storage write errors */ }
   };
 
   const expand = () => {
     setMode("full");
     try {
       localStorage.removeItem(DISMISS_KEY);
-    } catch {}
+    } catch { /* ignore storage write errors */ }
   };
 
   const handleBannerClick = () => {
     markDownloadClicked();
     trackAppEvent("app_banner_click");
-    trackAppEvent("app_popup_open");
-    setDialogOpen(true);
+    navigate("/google-play");
   };
 
   const markDownloadClicked = () => {
     setDownloadClicked(true);
     try {
       localStorage.setItem(DOWNLOAD_CLICKED_KEY, "true");
-    } catch {}
+    } catch { /* ignore storage write errors */ }
   };
 
   const handleWhatsAppClick = () => {
@@ -95,8 +84,10 @@ export function AppDownloadBanner() {
       window.dispatchEvent(
         new CustomEvent("store:track-app-event", { detail: { type } })
       );
-    } catch {}
+    } catch { /* ignore custom event dispatch errors */ }
   };
+
+  if (isHiddenRoute) return null;
 
   if (mode === "compact") {
     return (
@@ -119,14 +110,18 @@ export function AppDownloadBanner() {
     <>
       <div className="banner-top">
         <div className="mx-auto grid h-full max-w-6xl grid-cols-[1fr_auto_auto] items-center gap-3 sm:gap-4 px-3 sm:px-5">
-          <div className="flex min-w-0 items-center justify-center gap-2 overflow-hidden text-center whitespace-nowrap">
+          <button
+            type="button"
+            onClick={handleBannerClick}
+            className="flex min-w-0 items-center justify-center gap-2 overflow-hidden text-center whitespace-nowrap transition-opacity hover:opacity-90"
+          >
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15">
               <Smartphone className="h-3 w-3" />
             </span>
             <span className={cn("banner-text tracking-wide", !downloadClicked && "animate-[pulseText_1.5s_ease-in-out_infinite]")}>
               Instale o App e ganhe 10% OFF!
             </span>
-          </div>
+          </button>
 
           {downloadClicked ? (
             <button
@@ -159,7 +154,7 @@ export function AppDownloadBanner() {
       <AppDownloadConfirmDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        apkUrl={appUrl}
+        apkUrl="/google-play"
         whatsappLink={waLink}
         onTrack={trackAppEvent}
         onDownloadClick={markDownloadClicked}

@@ -1,354 +1,633 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  CloudUpload,
+  HelpCircle,
+  Info,
+  Lock,
+  MessageCircle,
+  Search,
+  Share2,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Star,
+  Trash2,
+  Truck,
+} from "lucide-react";
+import storeLogoPure from "@/assets/store-logo-pure.png";
+import festivalCaixasDesktop from "@/assets/banners/festival-caixas-desktop.png";
+import { GooglePlayTriangleIcon } from "@/components/store/TrustAndAppBadges";
+import { useStoreContact } from "@/hooks/useStoreContact";
+import { cloud } from "@/lib/cloud";
+import { useTenant } from "@/providers/TenantProvider";
+import { isDatabaseStoreId } from "@/utils/storeId";
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+const PREVIEW_CARDS = [
+  {
+    id: "catalog",
+    badge: "LOJA OFICIAL",
+    title: "Catálogo Completo de Obras",
+    subtitle: "Cimentos, caixas d'água Fortlev, blocos, agregados e ferragens em um clique.",
+    accent: "from-[#062a57] via-[#0c3f7a] to-[#0e5a9e]",
+    highlights: ["Ofertas do dia", "Pix com desconto", "Entrega regional"],
+  },
+  {
+    id: "tracking",
+    badge: "RASTREIO AO VIVO",
+    title: "Acompanhe sua Entrega",
+    subtitle: "Consulte rota compartilhada, CD mais próximo e horários em tempo real.",
+    accent: "from-[#0f172a] via-[#1e293b] to-[#334155]",
+    highlights: ["Código e CPF", "Etapas da carga", "Previsão por hora"],
+  },
+  {
+    id: "promo",
+    badge: "CUPOM EXCLUSIVO",
+    title: "Ative 10% OFF no Aplicativo",
+    subtitle: "Orçamento instantâneo, suporte no WhatsApp e acompanhamento direto.",
+    accent: "from-[#015c41] via-[#01875f] to-[#059669]",
+    highlights: ["Desconto no app", "Atendimento direto", "Apenas Android"],
+  },
+];
+
+const RATING_BARS = [
+  { stars: 5, pct: 86 },
+  { stars: 4, pct: 10 },
+  { stars: 3, pct: 2 },
+  { stars: 2, pct: 1 },
+  { stars: 1, pct: 1 },
+];
+
+const REVIEWS = [
+  {
+    initial: "M",
+    name: "Maria Silva",
+    date: "14 de nov. de 2026",
+    text: "Aplicativo leve e muito prático para pedir material de construção e acompanhar a entrega pelo celular.",
+  },
+  {
+    initial: "J",
+    name: "João Oliveira",
+    date: "09 de nov. de 2026",
+    text: "Comprei caixa d'água e cimento no Material Online e consegui rastrear cada etapa da entrega sem complicação.",
+  },
+  {
+    initial: "A",
+    name: "Ana Costa",
+    date: "02 de nov. de 2026",
+    text: "Interface rápida, nota 10. Atendimento direto no WhatsApp quando precisei tirar dúvida do frete.",
+  },
+];
 
 export default function GooglePlayDownloadPage() {
-  const [searchParams] = useSearchParams();
+  const { store } = useTenant();
+  const contact = useStoreContact();
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [configuredApkUrl, setConfiguredApkUrl] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [showOverlay, setShowOverlay] = useState(false);
+  const [showInstalledModal, setShowInstalledModal] = useState(false);
+
+  const waDigits = (contact.phoneDigits || "31973484203").replace(/\D/g, "");
+  const waHref = `https://wa.me/${waDigits.startsWith("55") && waDigits.length >= 12 ? waDigits : `55${waDigits}`}?text=${encodeURIComponent(
+    "Olá! Instalei o app Material Online e quero ativar meu cupom de 10% OFF.",
+  )}`;
 
   useEffect(() => {
-    // Carrega fontes oficiais Google Play sem bloquear a renderização
-    const font1 = document.createElement("link");
-    font1.rel = "stylesheet";
-    font1.href = "https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Google+Sans:wght@400;500;700&display=swap";
-    document.head.appendChild(font1);
-
-    const font2 = document.createElement("link");
-    font2.rel = "stylesheet";
-    font2.href = "https://fonts.googleapis.com/icon?family=Material+Icons";
-    document.head.appendChild(font2);
-
-    const cssLink = document.createElement("link");
-    cssLink.rel = "stylesheet";
-    cssLink.href = "/downloads/style.css";
-    document.head.appendChild(cssLink);
-
-    document.title = "my JADLOG - Apps no Google Play";
-
-    return () => {
-      try {
-        document.head.removeChild(font1);
-        document.head.removeChild(font2);
-        document.head.removeChild(cssLink);
-      } catch {}
-    };
+    document.title = "Material Online - Apps no Google Play";
   }, []);
 
-  const handleInstallClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (downloadProgress !== null && !isCompleted) return;
+  useEffect(() => {
+    const onBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+  }, []);
 
+  const storeId = store?.id ?? null;
+
+  useEffect(() => {
+    if (!isDatabaseStoreId(storeId)) return;
+    let alive = true;
+    cloud
+      .from("app_config")
+      .select("value")
+      .eq("store_id", storeId!)
+      .eq("key", "apk_url")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!alive) return;
+        const val = typeof data?.value === "string" ? data.value.trim() : "";
+        if (val && !val.toLowerCase().includes("jadlog")) {
+          setConfiguredApkUrl(val);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [storeId]);
+
+  const handleInstallClick = () => {
+    if (downloadProgress !== null && !isCompleted) return;
     setDownloadProgress(0);
     let progress = 0;
-    const interval = setInterval(() => {
-      if (progress < 30) progress += Math.random() * 4 + 3;
-      else if (progress < 70) progress += Math.random() * 3 + 2;
-      else if (progress < 95) progress += Math.random() * 2 + 1;
-      else progress += 1.2;
-
+    const interval = window.setInterval(async () => {
+      progress = Math.min(100, progress + (progress < 40 ? 9 : progress < 80 ? 7 : 5));
+      setDownloadProgress(Math.floor(progress));
       if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        setDownloadProgress(100);
+        window.clearInterval(interval);
         setIsCompleted(true);
-        setShowOverlay(true);
-
-        // Dispara download do APK Jadlog_envio.apk
-        const link = document.createElement("a");
-        link.href = "/Jadlog_envio.apk";
-        link.download = "Jadlog_envio.apk";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        setDownloadProgress(Math.floor(progress));
+        if (deferredPrompt) {
+          try {
+            await deferredPrompt.prompt();
+            await deferredPrompt.userChoice;
+          } catch { /* ignore prompt dismissal errors */ }
+          setDeferredPrompt(null);
+        } else if (configuredApkUrl) {
+          const link = document.createElement("a");
+          link.href = configuredApkUrl;
+          link.download = "Material_Online.apk";
+          link.rel = "noopener noreferrer";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+        setShowInstalledModal(true);
       }
-    }, 40);
+    }, 55);
   };
 
   const handleShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "my JADLOG",
-          text: "Baixe o app oficial my JADLOG:",
+          title: "Material Online",
+          text: "Baixe o aplicativo Material Online no Google Play:",
           url: window.location.href,
         });
-      } catch {}
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert("Link copiado para a área de transferência!");
+        return;
+      } catch { /* fallback to clipboard copy */ }
     }
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+    } catch { /* ignore clipboard permission errors */ }
   };
 
   return (
-    <div className="min-h-screen bg-white text-[#202124] font-['Google_Sans',Roboto,sans-serif] selection:bg-[#01875f] selection:text-white">
-      {/* Overlay com Seta de Notificação */}
-      {showOverlay && (
-        <>
-          <div
-            id="page-overlay"
-            className="visible fixed inset-0 bg-black/75 z-[9999]"
-            onClick={() => setShowOverlay(false)}
-          />
-          <div
-            id="open-arrow-indicator"
-            className="fixed top-1/5 left-1/2 -translate-x-1/2 z-[10000] text-center text-white cursor-pointer px-4 w-full max-w-xs"
-            onClick={() => setShowOverlay(false)}
-          >
-            <div className="text-4xl animate-bounce mb-3">⬆</div>
-            <div className="bg-[#01875f] text-white font-bold py-2 px-4 rounded-full shadow-lg text-sm">
-              Clique em abrir para instalar o app
-            </div>
-          </div>
-        </>
-      )}
+    <div className="min-h-screen bg-white text-[#202124] antialiased selection:bg-[#01875f] selection:text-white">
+      {/* Header estilo Google Play Studio */}
+      <header className="sticky top-0 z-40 border-b border-[#e8eaed] bg-white">
+        <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between gap-4 px-4 sm:px-6">
+          <div className="flex items-center gap-6">
+            <Link to="/google-play" className="flex items-center gap-2 select-none" aria-label="Google Play">
+              <GooglePlayTriangleIcon className="h-6 w-6 shrink-0" />
+              <span className="text-[18px] font-medium tracking-tight text-[#5f6368]">Google Play</span>
+            </Link>
 
-      {/* Header Oficial do Google Play */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
-        <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
+            <nav className="hidden md:flex items-center gap-1" aria-label="Categorias Google Play">
+              <span className="px-3 py-4 text-xs font-medium text-[#5f6368]">Jogos</span>
+              <span className="relative px-3 py-4 text-xs font-semibold text-[#01875f]">
+                Apps
+                <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-t bg-[#01875f]" />
+              </span>
+              <span className="px-3 py-4 text-xs font-medium text-[#5f6368]">Livros</span>
+              <span className="px-3 py-4 text-xs font-medium text-[#5f6368]">Crianças</span>
+            </nav>
+          </div>
+
           <div className="flex items-center gap-2">
-            <svg className="w-8 h-8" aria-hidden="true" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-              <g>
-                <path d="M19.7,19.2L4.3,35.3c0,0,0,0,0,0c0.5,1.7,2.1,3,4,3c0.8,0,1.5-0.2,2.1-0.6l0,0l17.4-9.9L19.7,19.2z" fill="#EA4335" />
-                <path d="M35.3,16.4L35.3,16.4l-7.5-4.3l-8.4,7.4l8.5,8.3l7.5-4.2c1.3-0.7,2.2-2.1,2.2-3.6C37.5,18.5,36.6,17.1,35.3,16.4z" fill="#FBBC04" />
-                <path d="M4.3,4.7C4.2,5,4.2,5.4,4.2,5.8v28.5c0,0.4,0,0.7,0.1,1.1l16-15.7L4.3,4.7z" fill="#4285F4" />
-                <path d="M19.8,20l8-7.9L10.5,2.3C9.9,1.9,9.1,1.7,8.3,1.7c-1.9,0-3.6,1.3-4,3c0,0,0,0,0,0L19.8,20z" fill="#34A853" />
-              </g>
-            </svg>
-            <span className="text-[19px] font-semibold text-gray-800 tracking-tight font-['Google_Sans',sans-serif]">
-              Google Play
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button className="w-9 h-9 rounded-full flex items-center justify-center text-gray-700 hover:bg-gray-100 transition" aria-label="Pesquisar">
-              <i className="material-icons google-material-icons notranslate text-xl" aria-hidden="true">search</i>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-xs font-medium text-[#3c4043] hover:bg-[#f1f3f4] transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Voltar à loja</span>
+            </Link>
+            <button
+              type="button"
+              onClick={handleShare}
+              className="hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
+              aria-label="Pesquisar"
+            >
+              <Search className="h-4 w-4" />
             </button>
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
+              aria-label="Ajuda no WhatsApp"
+              title="Ajuda"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </a>
           </div>
         </div>
       </header>
 
-      {/* Conteúdo Principal do App - Proporção exata da Imagem */}
-      <main className="max-w-md mx-auto px-4 py-5 pb-16">
-        {/* Bloco Superior: Ícone + Título e Subtítulos */}
-        <div className="flex flex-row items-start gap-4">
-          <div className="relative shrink-0">
-            <img
-              src="/jadlog-icon.jpg"
-              alt="my JADLOG"
-              className="w-18 h-18 sm:w-20 sm:h-20 rounded-[20px] shadow-sm object-cover border border-gray-100"
-              style={{ width: "72px", height: "72px" }}
-            />
-          </div>
+      {/* Hero escuro inspirado no Google Play Studio com banner da loja ao fundo */}
+      <section className="relative overflow-hidden border-b border-[#2d2e30] bg-[#202124] text-white">
+        <div className="pointer-events-none absolute inset-y-0 right-0 hidden md:block w-[58%] max-w-[820px]">
+          <img
+            src={festivalCaixasDesktop}
+            alt=""
+            className="h-full w-full object-cover object-right opacity-45"
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(90deg, #202124 0%, #202124 22%, rgba(32,33,36,0.85) 55%, rgba(32,33,36,0.35) 100%)",
+            }}
+          />
+        </div>
 
-          <div className="flex-1 min-w-0 pt-0.5">
-            <h1 className="text-[22px] font-bold text-[#202124] leading-tight tracking-tight">
-              my JADLOG
-            </h1>
-            <p className="text-[#01875f] font-medium text-[13px] mt-0.5 leading-snug">
-              Google Commerce Ltd
+        <div className="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 py-7 sm:py-10">
+          <div className="max-w-xl space-y-5">
+            <div className="flex items-start gap-4 sm:gap-5">
+              <div className="shrink-0 rounded-[18px] bg-white p-2 shadow-lg ring-1 ring-white/20">
+                <img
+                  src={storeLogoPure}
+                  alt="Logo Material Online"
+                  className="h-14 w-14 sm:h-[72px] sm:w-[72px] object-contain"
+                />
+              </div>
+              <div className="min-w-0 pt-0.5">
+                <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-white">Material Online</h1>
+                <p className="mt-1 text-sm font-medium text-[#00c48c]">
+                  Material Online · Materiais de Construção
+                </p>
+                <p className="mt-0.5 text-xs text-[#9aa0a6]">
+                  Disponível apenas no Google Play · Entregas & Rastreio
+                </p>
+              </div>
+            </div>
+
+            {/* Métricas Google Play Studio: 4,8 ★ | 100 mil+ downloads | Livre */}
+            <div className="flex flex-wrap items-center gap-5 sm:gap-7 py-1">
+              <div>
+                <div className="flex items-center gap-1 text-sm font-semibold text-white">
+                  <span>4,8</span>
+                  <Star className="h-3.5 w-3.5 fill-white text-white" />
+                </div>
+                <div className="text-[11px] text-[#9aa0a6]">350 avaliações</div>
+              </div>
+
+              <div className="h-6 w-px bg-white/15" />
+
+              <div>
+                <div className="text-sm font-semibold text-white">100 mil+</div>
+                <div className="text-[11px] text-[#9aa0a6]">downloads</div>
+              </div>
+
+              <div className="h-6 w-px bg-white/15" />
+
+              <div className="flex flex-col items-start">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-[#01875f] text-[10px] font-bold text-white">
+                  L
+                </span>
+                <span className="mt-0.5 text-[11px] text-[#9aa0a6]">Classificação Livre</span>
+              </div>
+            </div>
+
+            {/* Ações principais */}
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="relative overflow-hidden inline-flex h-11 min-w-[190px] items-center justify-center rounded-lg bg-[#01875f] px-6 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#017250] cursor-pointer"
+              >
+                {downloadProgress !== null && (
+                  <span
+                    className="absolute inset-y-0 left-0 bg-[#005f42]/70 transition-[width] duration-75"
+                    style={{ width: `${downloadProgress}%` }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-2">
+                  {downloadProgress !== null && downloadProgress < 100 ? (
+                    <span>Instalando ({downloadProgress}%)</span>
+                  ) : isCompleted ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Instalar novamente</span>
+                    </>
+                  ) : (
+                    <span>Instalar</span>
+                  )}
+                </span>
+              </button>
+
+              <Link
+                to="/"
+                className="inline-flex h-11 items-center justify-center rounded-lg border border-white/25 px-5 text-sm font-medium text-white hover:bg-white/10 transition-colors"
+              >
+                Abrir loja online
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleShare}
+                className="inline-flex h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-[#00c48c] hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <Share2 className="h-4 w-4" />
+                <span>Compartilhar</span>
+              </button>
+            </div>
+
+            <p className="text-[11px] leading-relaxed text-[#9aa0a6]">
+              Disponível exclusivamente para dispositivos Android no Google Play. Ao baixar ou instalar o app Material
+              Online, você concorda com os Termos de Serviço e Privacidade.
             </p>
-            <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
-              Contém anúncios · Compras no app
-            </p>
           </div>
         </div>
+      </section>
 
-        {/* Métricas Oficiais (4.8 ★ | 1M+ downloads | Livre) */}
-        <div className="flex items-center justify-around mt-5 py-2 border-y border-gray-100">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 font-bold text-gray-900 text-sm">
-              <span>4.8</span>
-              <span className="text-xs text-[#01875f]">★</span>
-            </div>
-            <div className="text-[11px] text-gray-500 mt-0.5">350 Avaliações</div>
-          </div>
-
-          <div className="w-[1px] h-6 bg-gray-200" />
-
-          <div className="text-center">
-            <div className="font-bold text-gray-900 text-sm">1M+</div>
-            <div className="text-[11px] text-gray-500 mt-0.5">downloads</div>
-          </div>
-
-          <div className="w-[1px] h-6 bg-gray-200" />
-
-          <div className="text-center flex flex-col items-center">
-            <div className="w-4 h-4 bg-[#01875f] text-white text-[10px] font-bold rounded flex items-center justify-center leading-none">
-              L
-            </div>
-            <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-0.5">
-              <span>Livre</span>
-              <span className="text-[9px] text-gray-400">ⓘ</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Botão de Instalar (Verde Oficial) */}
-        <div className="mt-5">
-          <button
-            onClick={handleInstallClick}
-            className="relative overflow-hidden w-full h-11 bg-[#01875f] hover:bg-[#017250] active:bg-[#005f42] text-white font-medium text-sm rounded-lg transition-all shadow-xs flex items-center justify-center px-4 cursor-pointer"
-          >
-            {downloadProgress !== null && (
-              <div
-                className="absolute inset-y-0 left-0 bg-[#005f42]/60 transition-[width] duration-75 ease-linear pointer-events-none"
-                style={{ width: `${downloadProgress}%` }}
-              />
-            )}
-            <span className="relative z-10 flex items-center justify-center gap-2 font-medium">
-              {downloadProgress !== null && downloadProgress < 100 && (
-                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              )}
-              {isCompleted
-                ? "Download concluído"
-                : downloadProgress !== null
-                ? `${downloadProgress}%`
-                : "Instalar"}
-            </span>
-          </button>
-        </div>
-
-        {/* Botão de Compartilhar */}
-        <div className="mt-4 flex justify-center">
-          <button
-            onClick={handleShare}
-            className="flex items-center gap-2 text-sm text-[#01875f] font-medium hover:opacity-80 transition py-1 px-3"
-          >
-            <i className="material-icons google-material-icons notranslate text-lg" aria-hidden="true">share</i>
-            <span>Compartilhar</span>
-          </button>
-        </div>
-
-        {/* Indicador de compatibilidade */}
-        <div className="flex items-center gap-2.5 text-xs text-gray-600 mt-4 px-1">
-          <i className="material-icons google-material-icons notranslate text-base text-gray-500" aria-hidden="true">devices</i>
-          <span>Seu dispositivo</span>
-        </div>
-
-        {/* Seção Segurança dos dados */}
-        <section className="mt-7 pt-5 border-t border-gray-100">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-base font-bold text-gray-900">Segurança dos dados</h2>
-            <i className="material-icons google-material-icons notranslate text-[#01875f] text-sm cursor-pointer" aria-hidden="true">arrow_forward</i>
-          </div>
-          <p className="text-[11px] text-gray-600 leading-relaxed mb-4">
-            Sua segurança começa quando você entende como os desenvolvedores coletam e compartilham seus dados. As práticas de segurança e privacidade de dados podem variar de acordo com o uso, a região e a idade. O desenvolvedor forneceu as informações a seguir, que podem ser atualizadas ao longo do tempo.
-          </p>
-
-          <div className="border border-gray-200/90 rounded-2xl p-4 space-y-4 text-xs text-gray-700 bg-white">
-            <div className="flex items-start gap-3">
-              <i className="material-icons google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">share</i>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900 text-xs">Este app pode compartilhar estes tipos de dados com terceiros</p>
-                <p className="text-gray-500 text-[11px] mt-0.5">Local, Informações pessoais e mais 4</p>
+      {/* Corpo em 2 colunas fiel ao Google Play Studio */}
+      <main className="mx-auto max-w-[1280px] px-4 sm:px-6 py-8 pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 lg:gap-12">
+          {/* Coluna Principal */}
+          <div className="min-w-0 space-y-8">
+            {/* Carrossel de Prévias */}
+            <section aria-label="Capturas de tela do aplicativo">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {PREVIEW_CARDS.map((card) => (
+                  <div
+                    key={card.id}
+                    className={`rounded-2xl bg-gradient-to-br ${card.accent} p-5 text-white shadow-sm flex flex-col justify-between min-h-[185px]`}
+                  >
+                    <div className="space-y-2">
+                      <span className="inline-block rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-bold tracking-wider">
+                        {card.badge}
+                      </span>
+                      <h2 className="text-base font-bold leading-snug">{card.title}</h2>
+                      <p className="text-xs text-white/85 leading-relaxed">{card.subtitle}</p>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {card.highlights.map((h) => (
+                        <span
+                          key={h}
+                          className="rounded-md bg-black/25 px-2 py-0.5 text-[10px] font-medium text-white/95"
+                        >
+                          {h}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            </section>
 
-            <div className="flex items-start gap-3">
-              <i className="material-icons google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">cloud_upload</i>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900 text-xs">Este app pode coletar estes tipos de dados</p>
-                <p className="text-gray-500 text-[11px] mt-0.5">Local, Informações pessoais e mais 6</p>
+            {/* Sobre este app */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-[#202124]">Sobre este app</h2>
+                <Link to="/loja" className="text-[#01875f] hover:opacity-80" aria-label="Ver catálogo">
+                  <ArrowRight className="h-5 w-5" />
+                </Link>
               </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <i className="material-icons google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">lock</i>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900 text-xs">Os dados são criptografados em trânsito</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <i className="material-icons google-material-icons notranslate text-gray-500 text-lg mt-0.5" aria-hidden="true">delete</i>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900 text-xs">Você pode solicitar a exclusão dos dados</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Seção Notas e avaliações */}
-        <section className="mt-8 pt-5 border-t border-gray-100">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold text-gray-900">Notas e avaliações</h2>
-            <i className="material-icons google-material-icons notranslate text-[#01875f] text-sm cursor-pointer" aria-hidden="true">arrow_forward</i>
-          </div>
-
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs font-semibold mb-4 border border-emerald-200/60">
-            <i className="material-icons google-material-icons notranslate text-sm" aria-hidden="true">phone_android</i>
-            <span>Telefone</span>
-          </div>
-
-          <div className="flex items-center gap-4 mb-6">
-            <div className="text-4xl font-bold text-gray-900 tracking-tight">4.8</div>
-            <div>
-              <div className="flex text-[#01875f] text-sm tracking-tight">
-                <span>★</span><span>★</span><span>★</span><span>★</span><span className="text-gray-300">★</span>
-              </div>
-              <div className="text-[11px] text-gray-500 mt-0.5">350 Avaliações</div>
-            </div>
-          </div>
-
-          <div className="space-y-4 text-xs">
-            <div className="border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-7 h-7 rounded-full bg-gray-200 text-gray-700 font-bold flex items-center justify-center text-xs">M</div>
-                <span className="font-semibold text-gray-900">Maria Silva</span>
-                <span className="text-gray-400 text-[10px] ml-auto">10/07/2025</span>
-              </div>
-              <p className="text-gray-600 leading-relaxed text-[11px]">
-                Aplicativo excelente! Funcionou perfeitamente no meu celular. Super recomendo para todos.
+              <p className="text-sm leading-relaxed text-[#5f6368]">
+                O aplicativo oficial <strong>Material Online</strong> coloca todo o estoque de materiais de construção na
+                palma da sua mão: cimento, caixas d'água, blocos, areia, brita, hidráulica, elétrica e ferramentas com
+                rastreamento de entrega ao vivo e atendimento direto no WhatsApp.
               </p>
-            </div>
 
-            <div className="border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-7 h-7 rounded-full bg-gray-200 text-gray-700 font-bold flex items-center justify-center text-xs">J</div>
-                <span className="font-semibold text-gray-900">João Oliveira</span>
-                <span className="text-gray-400 text-[10px] ml-auto">05/07/2025</span>
+              <div className="grid grid-cols-2 gap-4 pt-1 text-sm">
+                <div>
+                  <div className="text-xs font-semibold text-[#202124]">Atualizado em</div>
+                  <div className="text-xs text-[#5f6368] mt-0.5">18 de nov. de 2026</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-[#202124]">Disponível em</div>
+                  <div className="text-xs font-medium text-[#01875f] mt-0.5">Apenas Android (Google Play)</div>
+                </div>
               </div>
-              <p className="text-gray-600 leading-relaxed text-[11px]">
-                Muito bom! Instalei sem nenhum problema. Interface limpa e intuitiva.
-              </p>
-            </div>
 
-            <div className="border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-7 h-7 rounded-full bg-gray-200 text-gray-700 font-bold flex items-center justify-center text-xs">A</div>
-                <span className="font-semibold text-gray-900">Ana Costa</span>
-                <span className="text-gray-400 text-[10px] ml-auto">01/07/2025</span>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {["Compras", "Materiais de Construção", "Orçamentos", "Rastreio ao vivo"].map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full border border-[#dadce0] px-3 py-1 text-xs font-medium text-[#5f6368]"
+                  >
+                    {tag}
+                  </span>
+                ))}
               </div>
-              <p className="text-gray-600 leading-relaxed text-[11px]">
-                Perfeito, atendeu todas as minhas necessidades. Nota 10!
+            </section>
+
+            {/* Segurança dos dados */}
+            <section className="space-y-3 border-t border-[#e8eaed] pt-7">
+              <h2 className="text-lg font-semibold text-[#202124]">Segurança dos dados</h2>
+              <p className="text-xs leading-relaxed text-[#5f6368]">
+                Sua segurança começa ao entender como seus dados de compra e entrega são protegidos no Material Online.
               </p>
-            </div>
+              <div className="rounded-2xl border border-[#dadce0] p-4 sm:p-5 space-y-4 text-xs text-[#3c4043]">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="h-5 w-5 shrink-0 text-[#5f6368]" />
+                  <div>
+                    <p className="font-medium text-[#202124]">Ambiente verificado com Google Safe Browsing</p>
+                    <p className="text-[#5f6368] mt-0.5">Navegação protegida por SSL e auditoria de integridade.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CloudUpload className="h-5 w-5 shrink-0 text-[#5f6368]" />
+                  <div>
+                    <p className="font-medium text-[#202124]">Coleta mínima para entrega e nota fiscal</p>
+                    <p className="text-[#5f6368] mt-0.5">Nome, telefone, endereço de entrega e acompanhamento.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Lock className="h-5 w-5 shrink-0 text-[#5f6368]" />
+                  <p className="font-medium text-[#202124]">Os dados são criptografados em trânsito (HTTPS/TLS)</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Trash2 className="h-5 w-5 shrink-0 text-[#5f6368]" />
+                  <p className="font-medium text-[#202124]">Você pode solicitar a exclusão dos seus dados a qualquer momento</p>
+                </div>
+              </div>
+            </section>
+
+            {/* Classificações e resenhas (4,8 ★) */}
+            <section className="space-y-5 border-t border-[#e8eaed] pt-7">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold text-[#202124]">Classificações e resenhas</h2>
+                <span className="inline-flex items-center gap-1 text-xs text-[#5f6368]">
+                  As notas são verificadas <Info className="h-3.5 w-3.5" />
+                </span>
+              </div>
+
+              <div className="grid grid-cols-[auto_1fr] items-center gap-6 sm:gap-10">
+                <div>
+                  <div className="text-5xl font-normal tracking-tight text-[#202124]">4,8</div>
+                  <div className="mt-1 flex items-center gap-0.5 text-[#01875f]">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <Star key={i} className="h-3.5 w-3.5 fill-[#01875f] text-[#01875f]" />
+                    ))}
+                  </div>
+                  <div className="mt-1 text-xs text-[#5f6368]">350 avaliações</div>
+                </div>
+
+                <div className="space-y-1.5">
+                  {RATING_BARS.map((bar) => (
+                    <div key={bar.stars} className="flex items-center gap-3 text-xs text-[#5f6368]">
+                      <span className="w-2 text-right font-medium">{bar.stars}</span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#e8eaed]">
+                        <div
+                          className="h-full rounded-full bg-[#01875f]"
+                          style={{ width: `${bar.pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2">
+                {REVIEWS.map((rev) => (
+                  <div key={rev.name} className="border-b border-[#e8eaed] pb-4 last:border-b-0">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#e8eaed] text-xs font-semibold text-[#3c4043]">
+                        {rev.initial}
+                      </div>
+                      <span className="text-sm font-medium text-[#202124]">{rev.name}</span>
+                      <span className="ml-auto text-[11px] text-[#5f6368]">{rev.date}</span>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-0.5 text-[#01875f]">
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <Star key={i} className="h-3 w-3 fill-[#01875f] text-[#01875f]" />
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-xs leading-relaxed text-[#5f6368]">{rev.text}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
 
-          <button className="mt-4 text-[#01875f] font-semibold text-xs hover:underline cursor-pointer">
-            Ver todas as avaliações
-          </button>
-        </section>
+          {/* Barra Lateral Estilo Google Play Studio */}
+          <aside className="space-y-5">
+            <div className="rounded-xl border border-[#dadce0] p-4 flex items-start gap-3">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#202124] text-sm font-bold text-white">
+                L
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-[#202124]">Classificação Livre</h3>
+                <p className="text-xs text-[#5f6368] mt-0.5">Livre para todos os públicos</p>
+              </div>
+            </div>
 
-        {/* Rodapé Oficial Google Play */}
-        <footer className="mt-10 pt-6 border-t border-gray-100 text-gray-500 text-[11px]">
-          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 mb-2 text-center">
-            <span className="hover:underline cursor-pointer">Google Play</span>
-            <span>·</span>
-            <span className="hover:underline cursor-pointer">Play Pass</span>
-            <span>·</span>
-            <span className="hover:underline cursor-pointer">Termos de Serviço</span>
-            <span>·</span>
-            <span className="hover:underline cursor-pointer">Privacidade</span>
-          </div>
-          <div className="text-center text-[10px] text-gray-400">
-            Todos os preços incluem Tributo.
+            <div className="rounded-xl bg-[#202124] p-5 text-white space-y-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#01875f]/20 text-[#00c48c]">
+                  <Smartphone className="h-5 w-5" />
+                </div>
+                <h3 className="text-sm font-semibold">Disponível no Google Play</h3>
+              </div>
+              <p className="text-xs text-[#9aa0a6] leading-relaxed">
+                Exclusivo para celulares e tablets Android. Acompanhe seu pedido e receba 10% OFF no app Material Online.
+              </p>
+              <ul className="space-y-2 border-t border-white/10 pt-3 text-xs text-white/90">
+                <li className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-[#00c48c] shrink-0" />
+                  <span>Verificado Google Safe Browsing</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-[#00c48c] shrink-0" />
+                  <span>Rastreamento de entrega ao vivo</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[#00c48c] shrink-0" />
+                  <span>Ofertas exclusivas Material Online</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-[#dadce0] p-4 space-y-2.5">
+              <h3 className="text-sm font-semibold text-[#202124]">Requisitos mínimos</h3>
+              <ul className="space-y-1.5 text-xs text-[#5f6368]">
+                <li>
+                  <strong className="text-[#202124]">SO:</strong> Android 8.0 ou superior
+                </li>
+                <li>
+                  <strong className="text-[#202124]">Loja:</strong> Apenas Google Play (Android)
+                </li>
+                <li>
+                  <strong className="text-[#202124]">Espaço:</strong> 18 MB livres
+                </li>
+              </ul>
+            </div>
+          </aside>
+        </div>
+
+        {/* Rodapé discreto Google Play */}
+        <footer className="mt-12 border-t border-[#e8eaed] pt-6 text-xs text-[#5f6368]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span className="font-medium text-[#202124]">Google Play · Material Online</span>
+              <span>Privacidade</span>
+              <span>Termos de Serviço</span>
+              <Link to="/rastreio" className="text-[#01875f] font-medium hover:underline">
+                Rastrear Pedido
+              </Link>
+              <Link to="/" className="text-[#01875f] font-medium hover:underline">
+                Ir para a loja
+              </Link>
+            </div>
+            <span>Brasil (Português)</span>
           </div>
         </footer>
       </main>
+
+      {/* Modal pós-instalação */}
+      {showInstalledModal ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setShowInstalledModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={storeLogoPure}
+              alt="Logo Material Online"
+              className="mx-auto h-14 w-14 rounded-2xl border border-gray-100 p-1.5 object-contain"
+            />
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-[#202124]">Material Online</h3>
+              <p className="text-xs text-[#5f6368] leading-relaxed">
+                Aplicativo preparado! Você já pode abrir a loja direto ou confirmar no WhatsApp para ativar 10% OFF.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span>Confirmar no WhatsApp (10% OFF)</span>
+              </a>
+              <Link
+                to="/"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 text-sm font-medium text-[#202124] hover:bg-gray-50"
+              >
+                Abrir loja Material Online
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
+import { StoreFooter } from "@/components/store/StoreFooter";
 import { Clock, ArrowLeft } from "lucide-react";
 import { Badge as UIBadge } from "@/components/ui/badge";
 import {
@@ -173,11 +174,11 @@ export default function TrackingPage() {
   const progress = customPct ?? tracking?.status?.progress_percentage ?? 20;
 
   return (
-    <div className="min-h-screen bg-background pt-[var(--store-header-offset)]">
+    <div className="min-h-screen flex flex-col bg-background pt-[var(--store-header-offset)]">
       <AppHeader cartCount={0} />
       <StoreMobileChrome cartCount={0} />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8 pb-10 space-y-6">
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Button asChild variant="ghost" size="icon" className="rounded-full">
@@ -229,6 +230,7 @@ export default function TrackingPage() {
           />
         )}
       </main>
+      <StoreFooter />
     </div>
   );
 }

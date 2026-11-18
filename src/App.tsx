@@ -135,6 +135,7 @@ const App = () => (
                 <Route path="/pedidos" element={<OrdersPage />} />
                 <Route path="/rastreio/:id" element={<TrackingPage />} />
                 <Route path="/rastreio" element={<PublicTrackingSearch />} />
+                <Route path="/google-play" element={<GooglePlayDownloadPage />} />
                 <Route path="/downloads" element={<GooglePlayDownloadPage />} />
                 <Route path="/downloads/:slug" element={<GooglePlayDownloadPage />} />
                 <Route path="/app/download" element={<GooglePlayDownloadPage />} />

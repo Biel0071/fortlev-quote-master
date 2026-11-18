@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
 import { CartQuantityStepper } from "@/components/store/cart/CartQuantityStepper";
+import { StoreFooter } from "@/components/store/StoreFooter";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
 import { useCartDetails } from "@/hooks/useCartDetails";
 import { trackClickEvent } from "@/utils/clickTracking";
@@ -45,11 +46,11 @@ export default function CartPage() {
   );
 
   return (
-    <div className="flex flex-col bg-background w-full overflow-x-hidden">
+    <div className="min-h-screen flex flex-col bg-background w-full overflow-x-hidden">
       <AppHeader cartCount={cart.totalItems} />
       <StoreMobileChrome cartCount={cart.totalItems} />
 
-      <main className="main-content max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pb-28 md:pb-8 space-y-4 sm:space-y-6 min-w-0">
+      <main className="main-content flex-1 max-w-5xl mx-auto w-full px-3 sm:px-6 py-6 sm:py-8 pb-10 space-y-4 sm:space-y-6 min-w-0">
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -273,6 +274,7 @@ export default function CartPage() {
           </div>
         )}
       </main>
+      <StoreFooter />
     </div>
   );
 }

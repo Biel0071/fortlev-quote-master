@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
 import { StoreMobileChrome } from "@/components/store/mobile/StoreMobileChrome";
+import { StoreFooter } from "@/components/store/StoreFooter";
 
 type Profile = {
   id: string;
@@ -157,11 +158,11 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <AppHeader cartCount={0} />
       <StoreMobileChrome cartCount={0} />
 
-      <main className="main-content max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-10 space-y-6">
+      <main className="main-content flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-10 space-y-6">
         <header className="flex items-end justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Minha conta</h1>
@@ -283,6 +284,7 @@ export default function AccountPage() {
           </div>
         )}
       </main>
+      <StoreFooter />
     </div>
   );
 }

@@ -43,6 +43,7 @@ import {
   X,
   RotateCcw,
   Activity,
+  Eye,
 } from "lucide-react";
 import { encodeEncryptedLink } from "@/utils/encryptedLinks";
 import { Progress } from "@/components/ui/progress";
@@ -226,7 +227,17 @@ function ScreenMiniPreview({ screenId, onOpen }: { screenId: string; onOpen: () 
             <span className="text-zinc-600">·</span>
             <span>Apps</span>
           </div>
-          <span className="rounded bg-zinc-800/80 px-1 py-0.5 text-[8px] font-bold text-amber-400">4.8 ★</span>
+          <div className="flex items-center gap-1">
+            <span className="rounded bg-zinc-800/80 px-1 py-0.5 text-[8px] font-bold text-amber-400">4.8 ★</span>
+            <button
+              type="button"
+              onClick={onOpen}
+              title="Visualizar Tela no Navegador"
+              className="flex items-center gap-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 px-1.5 py-0.5 text-[8px] font-semibold transition-colors border border-emerald-500/30"
+            >
+              <Eye className="h-2.5 w-2.5" /> Visualizar
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-2 my-auto">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 grid place-items-center text-white shadow shrink-0">
@@ -264,7 +275,17 @@ function ScreenMiniPreview({ screenId, onOpen }: { screenId: string; onOpen: () 
           <div className="flex items-center gap-1 text-blue-400 font-bold">
             <Truck className="h-3 w-3" /> Jadlog Rastreio
           </div>
-          <span className="rounded-full bg-blue-500/20 text-blue-300 px-1.5 py-0.5 text-[8px] font-bold">Ao Vivo</span>
+          <div className="flex items-center gap-1">
+            <span className="rounded-full bg-blue-500/20 text-blue-300 px-1.5 py-0.5 text-[8px] font-bold">Ao Vivo</span>
+            <button
+              type="button"
+              onClick={onOpen}
+              title="Visualizar Tela no Navegador"
+              className="flex items-center gap-0.5 rounded bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-1.5 py-0.5 text-[8px] font-semibold transition-colors border border-blue-500/30"
+            >
+              <Eye className="h-2.5 w-2.5" /> Visualizar
+            </button>
+          </div>
         </div>
         <div className="my-auto space-y-1">
           <div className="rounded-lg bg-slate-800/90 p-1.5 border border-slate-700/80">
@@ -300,7 +321,17 @@ function ScreenMiniPreview({ screenId, onOpen }: { screenId: string; onOpen: () 
           <div className="flex items-center gap-1 text-purple-300 font-bold">
             <Palette className="h-3 w-3" /> APK Studio
           </div>
-          <span className="rounded bg-purple-500/20 text-purple-300 px-1 py-0.5 text-[8px] font-bold">Custom</span>
+          <div className="flex items-center gap-1">
+            <span className="rounded bg-purple-500/20 text-purple-300 px-1 py-0.5 text-[8px] font-bold">Custom</span>
+            <button
+              type="button"
+              onClick={onOpen}
+              title="Visualizar Tela no Navegador"
+              className="flex items-center gap-0.5 rounded bg-purple-500/20 hover:bg-purple-500/40 text-purple-300 px-1.5 py-0.5 text-[8px] font-semibold transition-colors border border-purple-500/30"
+            >
+              <Eye className="h-2.5 w-2.5" /> Visualizar
+            </button>
+          </div>
         </div>
         <div className="my-auto text-center py-1 space-y-1">
           <div className="inline-block p-1.5 rounded-full bg-purple-600/30 text-purple-300 border border-purple-500/30">
@@ -329,7 +360,17 @@ function ScreenMiniPreview({ screenId, onOpen }: { screenId: string; onOpen: () 
           <div className="flex items-center gap-1 text-amber-400 font-bold">
             <Globe className="h-3 w-3" /> Central de Downloads
           </div>
-          <span className="rounded bg-amber-500/20 text-amber-300 px-1 py-0.5 text-[8px] font-bold">Web Loja</span>
+          <div className="flex items-center gap-1">
+            <span className="rounded bg-amber-500/20 text-amber-300 px-1 py-0.5 text-[8px] font-bold">Web Loja</span>
+            <button
+              type="button"
+              onClick={onOpen}
+              title="Visualizar Tela no Navegador"
+              className="flex items-center gap-0.5 rounded bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 px-1.5 py-0.5 text-[8px] font-semibold transition-colors border border-amber-500/30"
+            >
+              <Eye className="h-2.5 w-2.5" /> Visualizar
+            </button>
+          </div>
         </div>
         <div className="my-auto flex items-center justify-center gap-2 py-1">
           <div className="h-8 w-8 rounded-lg bg-amber-600/20 text-amber-400 grid place-items-center border border-amber-500/30">
@@ -361,7 +402,17 @@ function ScreenMiniPreview({ screenId, onOpen }: { screenId: string; onOpen: () 
         <div className="flex items-center gap-1 text-zinc-300 font-bold">
           <Smartphone className="h-3 w-3 text-emerald-400" /> Binário Direto .APK
         </div>
-        <span className="rounded bg-zinc-800 text-zinc-400 px-1 py-0.5 text-[8px]">Sem Tela</span>
+        <div className="flex items-center gap-1">
+          <span className="rounded bg-zinc-800 text-zinc-400 px-1 py-0.5 text-[8px]">Sem Tela</span>
+          <button
+            type="button"
+            onClick={onOpen}
+            title="Testar Download Direto"
+            className="flex items-center gap-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 px-1.5 py-0.5 text-[8px] font-semibold transition-colors border border-emerald-500/30"
+          >
+            <Download className="h-2.5 w-2.5" /> Testar
+          </button>
+        </div>
       </div>
       <div className="my-auto text-center py-1">
         <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
@@ -404,7 +455,8 @@ export default function AdminAppMetrics() {
     store_downloads: "downloads",
     direct_binary: "apk-direto",
   });
-  const [screenTargetModeMap, setScreenTargetModeMap] = useState<Record<string, "screen" | "direct_apk" | "encrypted">>({});
+  const [screenTargetModeMap, setScreenTargetModeMap] = useState<Record<string, "screen" | "direct_apk" | "custom_url" | "encrypted">>({});
+  const [screenCustomUrlMap, setScreenCustomUrlMap] = useState<Record<string, string>>({});
   const [creatingScreenLinkId, setCreatingScreenLinkId] = useState<string | null>(null);
   const [savingDefaultScreen, setSavingDefaultScreen] = useState(false);
 
@@ -625,6 +677,13 @@ export default function AdminAppMetrics() {
     if (mode === "direct_apk" || screen.id === "direct_binary") {
       targetUrl = activeDownloadToken ? apkDownloadUrlFor(activeDownloadToken) : (apkUrl || "");
       isBinary = true;
+    } else if (mode === "custom_url") {
+      targetUrl = screenCustomUrlMap[screenId]?.trim() || "";
+      if (!targetUrl) {
+        toast.error("Informe a URL de destino personalizada");
+        return;
+      }
+      isBinary = false;
     } else {
       targetUrl = getTargetUrlForScreen(screen.id, activeDownloadToken) || (activeDownloadToken ? apkDownloadUrlFor(activeDownloadToken) : "");
     }
@@ -2867,12 +2926,12 @@ export default function AdminAppMetrics() {
                       <Link2 className="h-3 w-3 text-primary" /> Opções de Encurtador:
                     </span>
 
-                    {/* Chips de Opções: Tela | APK Direto | Criptografado */}
-                    <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg bg-muted/60 text-[10px] font-semibold">
+                    {/* Chips de Opções: Tela | APK Direto | URL Externa | Criptografado */}
+                    <div className="grid grid-cols-4 gap-1 p-0.5 rounded-lg bg-muted/60 text-[9px] font-semibold">
                       <button
                         type="button"
                         onClick={() => setScreenTargetModeMap((prev) => ({ ...prev, [screen.id]: "screen" }))}
-                        className={`py-1 rounded px-1 transition-all text-center truncate ${
+                        className={`py-1 rounded px-0.5 transition-all text-center truncate ${
                           activeMode === "screen"
                             ? "bg-primary text-primary-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
@@ -2884,28 +2943,57 @@ export default function AdminAppMetrics() {
                       <button
                         type="button"
                         onClick={() => setScreenTargetModeMap((prev) => ({ ...prev, [screen.id]: "direct_apk" }))}
-                        className={`py-1 rounded px-1 transition-all text-center truncate ${
+                        className={`py-1 rounded px-0.5 transition-all text-center truncate ${
                           activeMode === "direct_apk"
                             ? "bg-primary text-primary-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                         title="Redireciona diretamente para baixar o arquivo .apk"
                       >
-                        ⚡ APK Direto
+                        ⚡ APK
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScreenTargetModeMap((prev) => ({ ...prev, [screen.id]: "custom_url" }))}
+                        className={`py-1 rounded px-0.5 transition-all text-center truncate ${
+                          activeMode === "custom_url"
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="Redireciona para qualquer URL personalizada"
+                      >
+                        🌐 URL
                       </button>
                       <button
                         type="button"
                         onClick={() => setScreenTargetModeMap((prev) => ({ ...prev, [screen.id]: "encrypted" }))}
-                        className={`py-1 rounded px-1 transition-all text-center truncate ${
+                        className={`py-1 rounded px-0.5 transition-all text-center truncate ${
                           activeMode === "encrypted"
                             ? "bg-purple-600 text-white shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                         title="Gera link criptografado com anti-cloaker e rastreio de IP"
                       >
-                        🔒 Cloaker
+                        🔒 Cloak
                       </button>
                     </div>
+
+                    {/* Input opcional de URL personalizada quando activeMode === "custom_url" */}
+                    {activeMode === "custom_url" && (
+                      <div className="space-y-1">
+                        <Input
+                          placeholder="https://exemplo.com/pagina-destino"
+                          value={screenCustomUrlMap[screen.id] || ""}
+                          onChange={(e) =>
+                            setScreenCustomUrlMap((prev) => ({
+                              ...prev,
+                              [screen.id]: e.target.value,
+                            }))
+                          }
+                          className="h-6 text-[10px] font-mono"
+                        />
+                      </div>
+                    )}
 
                     {/* Formulário de Geração */}
                     <div className="flex items-center gap-1.5 pt-0.5">
@@ -2956,6 +3044,8 @@ export default function AdminAppMetrics() {
                     <p className="text-[10px] text-muted-foreground font-mono truncate">
                       {activeMode === "encrypted"
                         ? "Destino seguro: FNV-1a + anti-bot e track IP"
+                        : activeMode === "custom_url"
+                        ? `${shortBaseUrl}/${sanitizeSlug(screenSlug) || "slug"} ➔ ${screenCustomUrlMap[screen.id] || "URL Externa"}`
                         : `${shortBaseUrl}/${sanitizeSlug(screenSlug) || "slug"} ➔ ${
                             activeMode === "direct_apk" ? "Download direto .APK" : screen.name
                           }`}

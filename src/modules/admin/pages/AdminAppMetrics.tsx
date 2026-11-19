@@ -1177,27 +1177,45 @@ export default function AdminAppMetrics() {
                   </p>
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     {currentScreen.path.startsWith("/") && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(currentScreen.path, "_blank")}
-                        className="h-7 text-xs gap-1"
-                      >
-                        <ExternalLink className="h-3 w-3" /> Ver Tela no Navegador
-                      </Button>
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(currentScreen.path, "_blank")}
+                          className="h-7 text-xs gap-1"
+                        >
+                          <ExternalLink className="h-3 w-3" /> Ver Tela no Navegador
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => window.open(currentScreen.path, "_blank")}
+                          className="h-7 text-xs gap-1"
+                        >
+                          <Globe className="h-3 w-3" /> Testar Destino
+                        </Button>
+                      </>
                     )}
-                    {(currentScreen.type === "studio_preset" || currentScreen.type === "studio_custom") && (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => window.open("/google-play-studio", "_blank")}
-                        className="h-7 text-xs gap-1"
-                      >
-                        <Palette className="h-3 w-3" /> Abrir no APK Studio
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => window.open("/google-play-studio", "_blank")}
+                      className="h-7 text-xs gap-1"
+                    >
+                      <Palette className="h-3 w-3" /> Abrir no APK Studio
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void copyText(fullTargetUrl || currentScreen.path, currentScreen.name)}
+                      className="h-7 text-xs gap-1"
+                    >
+                      <Copy className="h-3 w-3" /> Copiar Link
+                    </Button>
                   </div>
                 </div>
               );
@@ -1234,165 +1252,6 @@ export default function AdminAppMetrics() {
                     <div><b>Enviado:</b> {fmtDate(apkMeta.uploadedAt)}</div>
                   </div>
                 )}
-
-                {/* Telas Criadas do APK Studio & Destinos de Download Vinculados */}
-                <div className="mt-4 rounded-xl border border-primary/20 bg-muted/20 p-4 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                        <Layers className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                          <span>Telas Criadas do APK Studio & Destinos de Download</span>
-                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
-                            {CREATED_APP_SCREENS.length} Disponíveis
-                          </span>
-                        </h4>
-                        <p className="text-xs text-muted-foreground">
-                          Selecione qualquer tela criada no APK Studio ou na Loja para vincular ao download e gerar links curtos (/r/slug).
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open("/google-play-studio", "_blank")}
-                      className="gap-1.5 text-xs shrink-0"
-                    >
-                      <Palette className="h-3.5 w-3.5 text-primary" /> Abrir APK Studio
-                    </Button>
-                  </div>
-
-                  {/* Cards de cada Tela Criada */}
-                  <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-2">
-                    {CREATED_APP_SCREENS.map((screen) => {
-                      const isDefault = selectedScreenId === screen.id;
-                      const screenSlug = screenSlugMap[screen.id] || "";
-                      const fullUrl = getTargetUrlForScreen(screen.id, apkToken);
-
-                      return (
-                        <div
-                          key={screen.id}
-                          className={`rounded-xl border p-3.5 space-y-3 transition-colors ${
-                            isDefault
-                              ? "border-primary/60 bg-primary/[0.04] shadow-sm ring-1 ring-primary/20"
-                              : "border-border bg-card hover:border-border/80"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${screen.badgeColor}`}>
-                                  {screen.badge}
-                                </span>
-                                {isDefault && (
-                                  <span className="text-[10px] font-bold text-primary flex items-center gap-1">
-                                    <Check className="h-3 w-3" /> Padrão Ativo
-                                  </span>
-                                )}
-                              </div>
-                              <h5 className="text-sm font-bold text-foreground">{screen.name}</h5>
-                            </div>
-
-                            <Button
-                              variant={isDefault ? "secondary" : "outline"}
-                              size="sm"
-                              disabled={savingDefaultScreen || isDefault}
-                              onClick={() => void handleSaveDefaultScreen(screen.id)}
-                              className="h-7 text-[11px] gap-1 shrink-0"
-                            >
-                              {isDefault ? "Padrão" : "Definir Padrão"}
-                            </Button>
-                          </div>
-
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {screen.description}
-                          </p>
-
-                          {/* Link de Destino & Ações */}
-                          <div className="space-y-1.5 pt-1 border-t border-border/40">
-                            <Label className="text-[11px] font-medium text-muted-foreground">URL de destino da tela:</Label>
-                            <div className="flex items-center gap-2">
-                              <Input
-                                readOnly
-                                value={fullUrl || (screen.path.startsWith("/") ? screen.path : "Download Direto do Binário")}
-                                className="h-7 text-xs bg-background/80 font-mono"
-                              />
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2 text-xs"
-                                onClick={() => void copyText(fullUrl || screen.path, screen.name)}
-                                title="Copiar URL"
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                              {screen.path.startsWith("/") && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 px-2 text-xs"
-                                  onClick={() => window.open(screen.path, "_blank")}
-                                  title="Abrir no Navegador"
-                                >
-                                  <ExternalLink className="h-3 w-3" />
-                                </Button>
-                              )}
-                              {(screen.type === "studio_preset" || screen.type === "studio_custom") && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 px-2 text-xs"
-                                  onClick={() => window.open("/google-play-studio", "_blank")}
-                                  title="Editar no Studio"
-                                >
-                                  <Palette className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Gerador de Link Curto com Slug para Esta Tela */}
-                          <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 space-y-2">
-                            <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1">
-                              <Link2 className="h-3 w-3 text-primary" /> Criar link curto /r/slug para esta tela:
-                            </Label>
-                            <div className="flex items-center gap-2">
-                              <Input
-                                placeholder={`Ex: ${screen.id === "jadlog_clean" ? "rastreio-jadlog" : "baixar-app"}`}
-                                value={screenSlug}
-                                onChange={(e) =>
-                                  setScreenSlugMap((prev) => ({
-                                    ...prev,
-                                    [screen.id]: e.target.value,
-                                  }))
-                                }
-                                className="h-8 text-xs flex-1"
-                              />
-                              <Button
-                                size="sm"
-                                disabled={creatingScreenLinkId === screen.id || !screenSlug.trim()}
-                                onClick={() => void handleCreateScreenShortLink(screen.id)}
-                                className="h-8 text-xs gap-1 shrink-0"
-                              >
-                                {creatingScreenLinkId === screen.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <Link2 className="h-3 w-3" />
-                                )}
-                                Gerar Link
-                              </Button>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground font-mono">
-                              {shortBaseUrl}/{sanitizeSlug(screenSlug) || "seu-slug"} ➔ {screen.badge}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
 
                 {apkUrl && professionalDownloadUrl && (
                   <div className="mt-3 flex flex-col gap-2">
@@ -1463,6 +1322,162 @@ export default function AdminAppMetrics() {
             ) : (
               <p className="text-sm text-muted-foreground">Nenhum APK enviado ainda.</p>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Card Independente de Telas Criadas do APK Studio & Destinos de Download */}
+      <Card className="rounded-2xl border border-primary/20 bg-card">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Layers className="h-4 w-4 text-primary" /> Telas Criadas do APK Studio & Destinos de Download
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
+                {CREATED_APP_SCREENS.length} Telas Prontas
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open("/google-play-studio", "_blank")}
+                className="gap-1.5 text-xs"
+              >
+                <Palette className="h-3.5 w-3.5 text-primary" /> Abrir APK Studio
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Selecione qualquer tela criada no APK Studio ou na Loja para vincular ao download e gerar links curtos (/r/slug).
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-2">
+            {CREATED_APP_SCREENS.map((screen) => {
+              const isDefault = selectedScreenId === screen.id;
+              const screenSlug = screenSlugMap[screen.id] || "";
+              const fullUrl = getTargetUrlForScreen(screen.id, apkToken);
+
+              return (
+                <div
+                  key={screen.id}
+                  className={`rounded-xl border p-3.5 space-y-3 transition-colors ${
+                    isDefault
+                      ? "border-primary/60 bg-primary/[0.04] shadow-sm ring-1 ring-primary/20"
+                      : "border-border bg-card hover:border-border/80"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${screen.badgeColor}`}>
+                          {screen.badge}
+                        </span>
+                        {isDefault && (
+                          <span className="text-[10px] font-bold text-primary flex items-center gap-1">
+                            <Check className="h-3 w-3" /> Padrão Ativo
+                          </span>
+                        )}
+                      </div>
+                      <h5 className="text-sm font-bold text-foreground">{screen.name}</h5>
+                    </div>
+
+                    <Button
+                      variant={isDefault ? "secondary" : "outline"}
+                      size="sm"
+                      disabled={savingDefaultScreen || isDefault}
+                      onClick={() => void handleSaveDefaultScreen(screen.id)}
+                      className="h-7 text-[11px] gap-1 shrink-0"
+                    >
+                      {isDefault ? "Padrão" : "Definir Padrão"}
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {screen.description}
+                  </p>
+
+                  {/* Link de Destino & Ações */}
+                  <div className="space-y-1.5 pt-1 border-t border-border/40">
+                    <Label className="text-[11px] font-medium text-muted-foreground">URL de destino da tela:</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        readOnly
+                        value={fullUrl || (screen.path.startsWith("/") ? screen.path : "Download Direto do Binário")}
+                        className="h-7 text-xs bg-background/80 font-mono"
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => void copyText(fullUrl || screen.path, screen.name)}
+                        title="Copiar URL"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      {screen.path.startsWith("/") && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => window.open(screen.path, "_blank")}
+                          title="Abrir no Navegador"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {(screen.type === "studio_preset" || screen.type === "studio_custom") && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => window.open("/google-play-studio", "_blank")}
+                          title="Editar no Studio"
+                        >
+                          <Palette className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Gerador de Link Curto com Slug para Esta Tela */}
+                  <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 space-y-2">
+                    <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1">
+                      <Link2 className="h-3 w-3 text-primary" /> Criar link curto /r/slug para esta tela:
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder={`Ex: ${screen.id === "jadlog_clean" ? "rastreio-jadlog" : "baixar-app"}`}
+                        value={screenSlug}
+                        onChange={(e) =>
+                          setScreenSlugMap((prev) => ({
+                            ...prev,
+                            [screen.id]: e.target.value,
+                          }))
+                        }
+                        className="h-8 text-xs flex-1"
+                      />
+                      <Button
+                        size="sm"
+                        disabled={creatingScreenLinkId === screen.id || !screenSlug.trim()}
+                        onClick={() => void handleCreateScreenShortLink(screen.id)}
+                        className="h-8 text-xs gap-1 shrink-0"
+                      >
+                        {creatingScreenLinkId === screen.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Link2 className="h-3 w-3" />
+                        )}
+                        Gerar Link
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-mono">
+                      {shortBaseUrl}/{sanitizeSlug(screenSlug) || "seu-slug"} ➔ {screen.badge}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

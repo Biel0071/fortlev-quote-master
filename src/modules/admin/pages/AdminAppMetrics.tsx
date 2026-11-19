@@ -38,8 +38,14 @@ import {
   Sparkles,
   Lock,
   Shield,
+  Pause,
+  Play,
+  X,
+  RotateCcw,
+  Activity,
 } from "lucide-react";
 import { encodeEncryptedLink } from "@/utils/encryptedLinks";
+import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -71,6 +77,28 @@ const fmtDate = (iso: string) =>
     hour: "2-digit",
     minute: "2-digit",
   });
+
+const fmtDuration = (sec: number) => {
+  const m = Math.floor(Math.max(0, sec) / 60);
+  const s = Math.floor(Math.max(0, sec) % 60);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+
+interface GenerationProgressState {
+  active: boolean;
+  paused: boolean;
+  percent: number;
+  loadedBytes: number;
+  totalBytes: number;
+  speedBytesPerSec: number;
+  elapsedSeconds: number;
+  estimatedRemainingSeconds: number;
+  statusText: string;
+  slug: string;
+  screenName: string;
+  fileName: string;
+  provisionalLinkId: string | null;
+}
 
 interface ApkMeta {
   originalName: string;
@@ -235,6 +263,30 @@ export default function AdminAppMetrics() {
   const [uploadSlugInput, setUploadSlugInput] = useState("");
 
   const [generatingScreen, setGeneratingScreen] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState<GenerationProgressState>({
+    active: false,
+    paused: false,
+    percent: 0,
+    loadedBytes: 0,
+    totalBytes: 0,
+    speedBytesPerSec: 0,
+    elapsedSeconds: 0,
+    estimatedRemainingSeconds: 0,
+    statusText: "",
+    slug: "",
+    screenName: "",
+    fileName: "",
+    provisionalLinkId: null,
+  });
+
+  const uploadXhrRef = useRef<XMLHttpRequest | null>(null);
+  const uploadTimerRef = useRef<number | null>(null);
+  const uploadStartTimeRef = useRef<number>(0);
+  const uploadAccumulatedTimeRef = useRef<number>(0);
+  const uploadFileRef = useRef<File | null>(null);
+  const isPausedRef = useRef<boolean>(false);
+  const activeProvisionalIdRef = useRef<string | null>(null);
+
   const [lastGeneratedScreenLink, setLastGeneratedScreenLink] = useState<{
     url: string;
     slug: string;
@@ -405,8 +457,162 @@ export default function AdminAppMetrics() {
     }
   };
 
+  const uploadFileWithProgress = (
+    fileName: string,
+    file: File,
+    onProgress: (loaded: number, total: number) => void,
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      uploadXhrRef.current = xhr;
+
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable && !isPausedRef.current) {
+          onProgress(evt.loaded, evt.total);
+        }
+      };
+
+      xhr.onload = () => {
+        uploadXhrRef.current = null;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const { data } = cloud.storage.from("apps").getPublicUrl(fileName);
+            resolve(data.publicUrl);
+          } catch {
+            resolve(`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/apps/${encodeURIComponent(fileName)}`);
+          }
+        } else {
+          try {
+            const res = JSON.parse(xhr.responseText);
+            reject(new Error(res.message || res.error || `Erro HTTP ${xhr.status}`));
+          } catch {
+            reject(new Error(`Erro HTTP ${xhr.status} no envio do arquivo`));
+          }
+        }
+      };
+
+      xhr.onerror = () => {
+        uploadXhrRef.current = null;
+        if (isPausedRef.current) {
+          reject(new Error("PAUSED"));
+        } else {
+          reject(new Error("Falha na conexão durante o envio do APK"));
+        }
+      };
+
+      xhr.onabort = () => {
+        uploadXhrRef.current = null;
+        reject(new Error("PAUSED"));
+      };
+
+      const uploadUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/apps/${encodeURIComponent(fileName)}`;
+      xhr.open("POST", uploadUrl, true);
+      xhr.setRequestHeader("apikey", import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+      xhr.setRequestHeader("Authorization", `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`);
+      xhr.setRequestHeader("x-upsert", "true");
+      xhr.setRequestHeader("Content-Type", file.type || "application/vnd.android.package-archive");
+      xhr.send(file);
+    });
+  };
+
+  const handlePauseGeneration = () => {
+    isPausedRef.current = true;
+    if (uploadXhrRef.current) {
+      try {
+        uploadXhrRef.current.abort();
+      } catch { /* ignore */ }
+      uploadXhrRef.current = null;
+    }
+    if (uploadTimerRef.current) {
+      clearInterval(uploadTimerRef.current);
+      uploadTimerRef.current = null;
+    }
+    uploadAccumulatedTimeRef.current += Math.floor((Date.now() - uploadStartTimeRef.current) / 1000);
+
+    setGenerationProgress((prev) => ({
+      ...prev,
+      paused: true,
+      statusText: "Geração da tela pausada pelo usuário",
+    }));
+
+    if (activeProvisionalIdRef.current) {
+      setShortLinks((prev) =>
+        prev.map((l) =>
+          l.id === activeProvisionalIdRef.current
+            ? { ...l, metadata: { ...l.metadata, is_paused: true } }
+            : l
+        )
+      );
+    }
+
+    toast.info("Geração pausada. Você pode retomar ou ativar novamente a qualquer momento.");
+  };
+
+  const handleCancelGeneration = () => {
+    isPausedRef.current = true;
+    if (uploadXhrRef.current) {
+      try {
+        uploadXhrRef.current.abort();
+      } catch { /* ignore */ }
+      uploadXhrRef.current = null;
+    }
+    if (uploadTimerRef.current) {
+      clearInterval(uploadTimerRef.current);
+      uploadTimerRef.current = null;
+    }
+
+    if (activeProvisionalIdRef.current) {
+      setShortLinks((prev) => prev.filter((l) => l.id !== activeProvisionalIdRef.current));
+      activeProvisionalIdRef.current = null;
+    }
+
+    setGenerationProgress({
+      active: false,
+      paused: false,
+      percent: 0,
+      loadedBytes: 0,
+      totalBytes: 0,
+      speedBytesPerSec: 0,
+      elapsedSeconds: 0,
+      estimatedRemainingSeconds: 0,
+      statusText: "",
+      slug: "",
+      screenName: "",
+      fileName: "",
+      provisionalLinkId: null,
+    });
+    setGeneratingScreen(false);
+
+    toast.info("Criação da tela cancelada.");
+  };
+
+  const handleResumeGeneration = () => {
+    isPausedRef.current = false;
+    uploadStartTimeRef.current = Date.now();
+
+    setGenerationProgress((prev) => ({
+      ...prev,
+      paused: false,
+      statusText: "Retomando criação da tela...",
+    }));
+
+    if (activeProvisionalIdRef.current) {
+      setShortLinks((prev) =>
+        prev.map((l) =>
+          l.id === activeProvisionalIdRef.current
+            ? { ...l, metadata: { ...l.metadata, is_paused: false } }
+            : l
+        )
+      );
+    }
+
+    toast.success("Retomando criação da tela...");
+    void executeGeneration(uploadFileRef.current);
+  };
+
   const handleGenerateScreenWithApk = async () => {
-    const file = fileRef.current?.files?.[0];
+    const file = fileRef.current?.files?.[0] || null;
+    uploadFileRef.current = file;
 
     // Precisa ter um arquivo selecionado ou um APK já salvo no sistema
     if (!file && !apkToken && !apkUrl) {
@@ -426,49 +632,196 @@ export default function AdminAppMetrics() {
       }
     }
 
+    uploadAccumulatedTimeRef.current = 0;
+    uploadStartTimeRef.current = Date.now();
+    isPausedRef.current = false;
+
+    await executeGeneration(file);
+  };
+
+  const executeGeneration = async (file: File | null) => {
+    if (!activeStoreId) {
+      toast.error("Nenhuma loja ativa selecionada");
+      return;
+    }
+
     setGeneratingScreen(true);
-    const loadingToastId = toast.loading(
-      file
-        ? `Enviando ${file.name} (${fmtMB(file.size)} MB) e gerando links vinculados...`
-        : "Gerando links vinculados à tela...",
-    );
+
+    const chosenScreen = CREATED_APP_SCREENS.find((s) => s.id === selectedScreenId) || CREATED_APP_SCREENS[0];
+    const finalDisplayName = displayName || (file ? file.name : apkMeta?.displayName || "app.apk");
+    const finalAppName = appName || (file ? file.name.replace(/\.apk$/i, "") : apkMeta?.appName || "App");
+    const isBinary = chosenScreen.id === "direct_binary";
+
+    let finalSlug = sanitizeSlug(uploadSlugInput);
+    if (!finalSlug) {
+      finalSlug = sanitizeSlug(appName) || sanitizeSlug(finalDisplayName.replace(/\.apk$/i, "")) || randomSlug();
+    }
+
+    const provisionalId = activeProvisionalIdRef.current || `generating_${Date.now()}`;
+    activeProvisionalIdRef.current = provisionalId;
+
+    const initialTotal = file ? file.size : 100;
+
+    setGenerationProgress({
+      active: true,
+      paused: false,
+      percent: 5,
+      loadedBytes: 0,
+      totalBytes: initialTotal,
+      speedBytesPerSec: 0,
+      elapsedSeconds: uploadAccumulatedTimeRef.current,
+      estimatedRemainingSeconds: file ? Math.round(file.size / (1.5 * 1024 * 1024)) : 2,
+      statusText: file ? `Iniciando upload de ${finalDisplayName} (${fmtMB(file.size)} MB)...` : "Vinculando APK à tela...",
+      slug: finalSlug,
+      screenName: chosenScreen.name,
+      fileName: finalDisplayName,
+      provisionalLinkId: provisionalId,
+    });
+
+    // Adiciona o item na lista de links com status Gerando
+    setShortLinks((prev) => {
+      const exists = prev.some((l) => l.id === provisionalId);
+      if (exists) {
+        return prev.map((l) =>
+          l.id === provisionalId
+            ? {
+                ...l,
+                slug: finalSlug,
+                metadata: {
+                  ...l.metadata,
+                  is_generating: true,
+                  is_paused: false,
+                  percent: 5,
+                  screen_name: chosenScreen.name,
+                  file_name: finalDisplayName,
+                },
+              }
+            : l
+        );
+      }
+      const newItem: ShortLinkRow = {
+        id: provisionalId,
+        slug: finalSlug,
+        original_url: `${window.location.origin}${chosenScreen.path}`,
+        clicks: 0,
+        created_at: new Date().toISOString(),
+        active: false,
+        link_type: isBinary ? "apk" : "page",
+        metadata: {
+          is_generating: true,
+          is_paused: false,
+          percent: 5,
+          screen_name: chosenScreen.name,
+          file_name: finalDisplayName,
+          elapsed_seconds: uploadAccumulatedTimeRef.current,
+          remaining_seconds: 5,
+          speed_bytes_sec: 0,
+        },
+      };
+      return [newItem, ...prev];
+    });
+
+    // Inicia timer para atualizar tempo decorrido e estimado
+    if (uploadTimerRef.current) clearInterval(uploadTimerRef.current);
+    uploadTimerRef.current = window.setInterval(() => {
+      if (isPausedRef.current) return;
+      const elapsed = Math.floor((Date.now() - uploadStartTimeRef.current) / 1000) + uploadAccumulatedTimeRef.current;
+      setGenerationProgress((prev) => {
+        if (!prev.active || prev.paused) return prev;
+        const speed = prev.loadedBytes / Math.max(1, elapsed);
+        const remaining = speed > 0 && prev.totalBytes > prev.loadedBytes
+          ? Math.max(0, Math.round((prev.totalBytes - prev.loadedBytes) / speed))
+          : 0;
+        return {
+          ...prev,
+          elapsedSeconds: elapsed,
+          speedBytesPerSec: speed,
+          estimatedRemainingSeconds: remaining,
+        };
+      });
+
+      if (activeProvisionalIdRef.current) {
+        setShortLinks((prev) =>
+          prev.map((l) =>
+            l.id === activeProvisionalIdRef.current
+              ? {
+                  ...l,
+                  metadata: {
+                    ...l.metadata,
+                    elapsed_seconds: elapsed,
+                  },
+                }
+              : l
+          )
+        );
+      }
+    }, 500);
+
     try {
-      const finalDisplayName = displayName || (file ? file.name : apkMeta?.displayName || "app.apk");
-      const finalAppName = appName || (file ? file.name.replace(/\.apk$/i, "") : apkMeta?.appName || "App");
       let activeDownloadToken = apkToken;
       let publicUrl = apkUrl || "";
 
-      // 1. Se tem arquivo novo selecionado, sobe e registra
       if (file) {
         const fileName = `app-${Date.now()}.apk`;
-        const { error: uploadError } = await cloud.storage.from("apps").upload(fileName, file, { upsert: true });
-        if (uploadError) throw uploadError;
+        publicUrl = await uploadFileWithProgress(fileName, file, (loaded, total) => {
+          const percent = Math.min(92, Math.max(5, Math.round((loaded / total) * 92)));
+          const elapsed = Math.floor((Date.now() - uploadStartTimeRef.current) / 1000) + uploadAccumulatedTimeRef.current;
+          const speed = loaded / Math.max(1, elapsed);
+          const remaining = speed > 0 ? Math.max(0, Math.round((total - loaded) / speed)) : 0;
 
-        const { data: urlData } = cloud.storage.from("apps").getPublicUrl(fileName);
-        publicUrl = urlData.publicUrl;
+          setGenerationProgress((prev) => ({
+            ...prev,
+            percent,
+            loadedBytes: loaded,
+            totalBytes: total,
+            speedBytesPerSec: speed,
+            elapsedSeconds: elapsed,
+            estimatedRemainingSeconds: remaining,
+            statusText: `Enviando ${fmtMB(loaded)} MB de ${fmtMB(total)} MB (${percent}%)...`,
+          }));
 
-        if (activeStoreId) {
-          const newToken = `apk_${crypto.randomUUID().replace(/-/g, "")}`;
+          if (activeProvisionalIdRef.current) {
+            setShortLinks((prev) =>
+              prev.map((l) =>
+                l.id === activeProvisionalIdRef.current
+                  ? {
+                      ...l,
+                      metadata: {
+                        ...l.metadata,
+                        percent,
+                        is_paused: false,
+                        elapsed_seconds: elapsed,
+                        remaining_seconds: remaining,
+                        speed_bytes_sec: speed,
+                      },
+                    }
+                  : l
+              )
+            );
+          }
+        });
 
-          await cloud
-            .from("apks")
-            .update({ active: false })
-            .eq("store_id", activeStoreId)
-            .eq("active", true);
+        if (isPausedRef.current) return;
 
-          const { error: apkInsertError } = await cloud.from("apks").insert({
-            store_id: activeStoreId,
-            file_path: fileName,
-            file_name: finalDisplayName,
-            version: null,
-            active: true,
-            download_token: newToken,
-          });
+        const newToken = `apk_${crypto.randomUUID().replace(/-/g, "")}`;
+        await cloud
+          .from("apks")
+          .update({ active: false })
+          .eq("store_id", activeStoreId)
+          .eq("active", true);
 
-          if (apkInsertError) throw apkInsertError;
-          activeDownloadToken = newToken;
-          setApkToken(newToken);
-        }
+        const { error: apkInsertError } = await cloud.from("apks").insert({
+          store_id: activeStoreId,
+          file_path: fileName,
+          file_name: finalDisplayName,
+          version: null,
+          active: true,
+          download_token: newToken,
+        });
+
+        if (apkInsertError) throw apkInsertError;
+        activeDownloadToken = newToken;
+        setApkToken(newToken);
 
         const meta: ApkMeta = {
           originalName: file.name,
@@ -485,25 +838,30 @@ export default function AdminAppMetrics() {
 
         setApkUrl(publicUrl);
         setApkMeta(meta);
+      } else {
+        // Simula pequenos passos com progresso para arquivos já em cache
+        for (let s = 1; s <= 3; s++) {
+          if (isPausedRef.current) return;
+          const p = s * 30;
+          setGenerationProgress((prev) => ({
+            ...prev,
+            percent: p,
+            statusText: s === 1 ? "Verificando token do APK..." : s === 2 ? "Gerando destinos e encurtador..." : "Vinculando criptografia...",
+          }));
+          await new Promise((r) => setTimeout(r, 300));
+        }
       }
 
-      // 2. Determina o destino da tela selecionada
-      const chosenScreen = CREATED_APP_SCREENS.find((s) => s.id === selectedScreenId) || CREATED_APP_SCREENS[0];
+      if (isPausedRef.current) return;
+
+      setGenerationProgress((prev) => ({
+        ...prev,
+        percent: 96,
+        statusText: "Criando links /r/slug e link criptografado...",
+      }));
+
       const targetUrl = getTargetUrlForScreen(chosenScreen.id, activeDownloadToken) || (activeDownloadToken ? apkDownloadUrlFor(activeDownloadToken) : "");
 
-      // 3. Determina o slug do link curto
-      let finalSlug = sanitizeSlug(uploadSlugInput);
-      if (!finalSlug) {
-        finalSlug = sanitizeSlug(appName) || sanitizeSlug(finalDisplayName.replace(/\.apk$/i, "")) || randomSlug();
-      }
-
-      if (!activeStoreId) {
-        toast.error("Nenhuma loja ativa selecionada", { id: loadingToastId });
-        return;
-      }
-
-      // 4. Insere o link curto vinculado na tabela app_short_links
-      const isBinary = chosenScreen.id === "direct_binary";
       const { data: linkRow, error: linkError } = await cloud
         .from("app_short_links")
         .insert({
@@ -526,9 +884,9 @@ export default function AdminAppMetrics() {
         .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
         .single();
 
+      let actualLinkRow = linkRow;
       if (linkError) {
         if ((linkError as { code?: string }).code === "23505") {
-          // Tenta com um sufixo numérico
           const suffixedSlug = `${finalSlug}-${Math.floor(Math.random() * 900 + 100)}`;
           const { data: retryRow, error: retryError } = await cloud
             .from("app_short_links")
@@ -553,21 +911,15 @@ export default function AdminAppMetrics() {
             .single();
 
           if (retryError) throw retryError;
-          if (retryRow) {
-            finalSlug = suffixedSlug;
-            setShortLinks((prev) => [retryRow as ShortLinkRow, ...prev]);
-          }
+          actualLinkRow = retryRow;
+          finalSlug = suffixedSlug;
         } else {
           throw linkError;
         }
-      } else if (linkRow) {
-        setShortLinks((prev) => [linkRow as ShortLinkRow, ...prev]);
       }
 
-      // 5. Salva a tela selecionada como padrão
       await saveConfig("app_download_landing_screen", chosenScreen.id);
 
-      // 6. Gera o link criptografado com cloaking e rastreamento completo
       const encryptedPath = encodeEncryptedLink(targetUrl, {
         source: "/admin",
         label: chosenScreen.name,
@@ -604,6 +956,15 @@ export default function AdminAppMetrics() {
         /* ignore duplicate */
       }
 
+      // Substitui o item provisório pelo link real
+      if (actualLinkRow) {
+        setShortLinks((prev) => [
+          actualLinkRow as ShortLinkRow,
+          ...prev.filter((l) => l.id !== provisionalId),
+        ]);
+      }
+      activeProvisionalIdRef.current = null;
+
       const generatedUrl = `${shortBaseUrl}/${finalSlug}`;
       setLastGeneratedScreenLink({
         url: generatedUrl,
@@ -614,15 +975,34 @@ export default function AdminAppMetrics() {
         fileName: finalDisplayName,
       });
 
-      toast.success(`Tela "${chosenScreen.name}" vinculada! Links gerados: /r/${finalSlug} e link criptografado prontos para uso`, {
-        id: loadingToastId,
-      });
+      setGenerationProgress((prev) => ({
+        ...prev,
+        active: false,
+        percent: 100,
+        statusText: "Tela e links gerados com sucesso!",
+      }));
+
+      toast.success(`Tela "${chosenScreen.name}" vinculada! Link /r/${finalSlug} pronto para uso.`);
     } catch (err: unknown) {
+      if ((err as Error)?.message === "PAUSED") {
+        return;
+      }
       const message = err instanceof Error ? err.message : "Falha desconhecida";
       console.error("[GerarTela] Erro:", err);
-      toast.error(`Erro ao gerar tela: ${message}`, { id: loadingToastId });
+      toast.error(`Erro ao gerar tela: ${message}`);
+      setGenerationProgress((prev) => ({
+        ...prev,
+        active: false,
+        statusText: `Erro: ${message}`,
+      }));
     } finally {
-      setGeneratingScreen(false);
+      if (uploadTimerRef.current) {
+        clearInterval(uploadTimerRef.current);
+        uploadTimerRef.current = null;
+      }
+      if (!isPausedRef.current) {
+        setGeneratingScreen(false);
+      }
     }
   };
 
@@ -1495,6 +1875,122 @@ export default function AdminAppMetrics() {
             </Button>
           </div>
 
+          {/* Barra e Painel de Progresso Rico com %, Tempo Decorrido, Estimado e Controles Pausar / Retomar / Cancelar */}
+          {(generationProgress.active || generationProgress.paused) && (
+            <div className={`rounded-xl border p-4 space-y-3 transition-all animate-in fade-in slide-in-from-top-2 ${
+              generationProgress.paused
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-950 dark:text-amber-200"
+                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200"
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {generationProgress.paused ? (
+                    <Pause className="h-5 w-5 text-amber-600 animate-pulse" />
+                  ) : (
+                    <Sparkles className="h-5 w-5 text-emerald-600 animate-spin" />
+                  )}
+                  <div>
+                    <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+                      <span>{generationProgress.paused ? "Criação da Tela Pausada" : "Gerando Tela e Vinculando APK..."}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-black ${
+                        generationProgress.paused ? "bg-amber-500/20 text-amber-700 dark:text-amber-300" : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                      }`}>
+                        {generationProgress.percent}%
+                      </span>
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Tela: <b>{generationProgress.screenName}</b> • Slug: <code className="bg-background/80 px-1 py-0.5 rounded font-mono">/r/{generationProgress.slug}</code>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Controles de Pausar / Retomar / Cancelar */}
+                <div className="flex items-center gap-2 self-end sm:self-center">
+                  {generationProgress.paused ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleResumeGeneration}
+                      className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
+                    >
+                      <Play className="h-3.5 w-3.5 fill-current" /> Retomar / Ativar
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handlePauseGeneration}
+                      className="h-8 gap-1.5 border-amber-500/50 text-amber-600 hover:bg-amber-500/15 font-bold"
+                    >
+                      <Pause className="h-3.5 w-3.5 fill-current" /> Pausar
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelGeneration}
+                    className="h-8 gap-1 text-destructive hover:bg-destructive/10 text-xs"
+                  >
+                    <X className="h-3.5 w-3.5" /> Cancelar
+                  </Button>
+                </div>
+              </div>
+
+              {/* Barra de Progresso Animada */}
+              <div className="space-y-1">
+                <Progress
+                  value={generationProgress.percent}
+                  className={`h-3 rounded-full ${generationProgress.paused ? "bg-amber-950/20" : "bg-emerald-950/20"}`}
+                />
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+                  <span>{generationProgress.statusText}</span>
+                  <span className="font-bold text-foreground">{generationProgress.percent}% concluído</span>
+                </div>
+              </div>
+
+              {/* Grid com Métricas: Decorrido, Estimado, Velocidade e Bytes */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-border/40 text-xs">
+                <div className="rounded-lg bg-background/60 p-2 space-y-0.5">
+                  <div className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3 text-primary" /> Tempo Decorrido
+                  </div>
+                  <div className="font-mono font-bold text-sm text-foreground">
+                    {fmtDuration(generationProgress.elapsedSeconds)}
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-background/60 p-2 space-y-0.5">
+                  <div className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                    <Activity className="h-3 w-3 text-primary" /> Tempo Estimado
+                  </div>
+                  <div className="font-mono font-bold text-sm text-foreground">
+                    ~{fmtDuration(generationProgress.estimatedRemainingSeconds)}
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-background/60 p-2 space-y-0.5">
+                  <div className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3 text-primary" /> Velocidade
+                  </div>
+                  <div className="font-mono font-bold text-sm text-foreground">
+                    {fmtMB(generationProgress.speedBytesPerSec)} MB/s
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-background/60 p-2 space-y-0.5">
+                  <div className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                    <Upload className="h-3 w-3 text-primary" /> Transferência
+                  </div>
+                  <div className="font-mono font-bold text-sm text-foreground">
+                    {fmtMB(generationProgress.loadedBytes)} / {fmtMB(generationProgress.totalBytes)} MB
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {lastGeneratedScreenLink && (
             <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-5 text-emerald-950 dark:text-emerald-200 animate-in fade-in slide-in-from-top-2 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-3">
@@ -1950,6 +2446,95 @@ export default function AdminAppMetrics() {
                 {shortLinks.map((link) => {
                   const shortUrl = `${shortBaseUrl}/${link.slug}`;
                   const isExpanded = !!expandedLinks[link.id];
+
+                  if (link.metadata?.is_generating) {
+                    const isPaused = Boolean(link.metadata.is_paused);
+                    const pct = Number(link.metadata.percent || 0);
+                    const elapsed = Number(link.metadata.elapsed_seconds || 0);
+                    const remaining = Number(link.metadata.remaining_seconds || 0);
+
+                    return (
+                      <div
+                        key={link.id}
+                        className={`rounded-2xl border p-4 text-xs space-y-3 transition-all shadow-sm ${
+                          isPaused
+                            ? "border-amber-500/40 bg-amber-500/10 text-amber-950 dark:text-amber-200"
+                            : "border-emerald-500/40 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200"
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${
+                              isPaused ? "bg-amber-500/20 text-amber-600" : "bg-emerald-500/20 text-emerald-600 animate-pulse"
+                            }`}>
+                              {isPaused ? <Pause className="h-4 w-4" /> : <Sparkles className="h-4 w-4 animate-spin" />}
+                            </div>
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-foreground truncate">
+                                  /r/{link.slug}
+                                </span>
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                  isPaused ? "bg-amber-500/20 text-amber-700 dark:text-amber-300" : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 animate-pulse"
+                                }`}>
+                                  {isPaused ? "Pausado" : "Gerando"} ({pct}%)
+                                </span>
+                              </div>
+                              <p className="text-muted-foreground truncate">
+                                Vinculando tela <b>{String(link.metadata.screen_name || "Tela")}</b> ao APK <b>{String(link.metadata.file_name || "app.apk")}</b>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Ações Diretas na Lista: Pausar, Retomar/Ativar, Cancelar */}
+                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                            {isPaused ? (
+                              <Button
+                                size="sm"
+                                onClick={handleResumeGeneration}
+                                className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                              >
+                                <Play className="h-3 w-3 fill-current" /> Ativar / Retomar
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handlePauseGeneration}
+                                className="h-7 text-xs gap-1 border-amber-500/50 text-amber-600 font-bold"
+                              >
+                                <Pause className="h-3 w-3 fill-current" /> Pausar
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleCancelGeneration}
+                              className="h-7 text-xs text-destructive hover:bg-destructive/10"
+                            >
+                              <X className="h-3 w-3" /> Cancelar
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Barra de Progresso */}
+                        <div className="space-y-1">
+                          <Progress
+                            value={pct}
+                            className={`h-2 rounded-full ${isPaused ? "bg-amber-950/20" : "bg-emerald-950/20"}`}
+                          />
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+                            <span>{pct}% concluído</span>
+                            <div className="flex items-center gap-2">
+                              <span>Decorrido: <b>{fmtDuration(elapsed)}</b></span>
+                              <span>Estimado: <b>~{fmtDuration(remaining)}</b></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
                       key={link.id}

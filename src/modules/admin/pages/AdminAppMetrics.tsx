@@ -216,6 +216,173 @@ export const CREATED_APP_SCREENS: CreatedAppScreen[] = [
   },
 ];
 
+function ScreenMiniPreview({ screenId, onOpen }: { screenId: string; onOpen: () => void }) {
+  if (screenId === "material_online") {
+    return (
+      <div className="relative group w-full h-32 rounded-xl bg-zinc-950 p-2.5 text-white overflow-hidden border border-zinc-800 shadow-inner flex flex-col justify-between">
+        <div className="flex items-center justify-between border-b border-zinc-850 pb-1 text-[9px] text-zinc-400">
+          <div className="flex items-center gap-1 font-semibold">
+            <span className="text-emerald-400 font-bold">Google Play</span>
+            <span className="text-zinc-600">·</span>
+            <span>Apps</span>
+          </div>
+          <span className="rounded bg-zinc-800/80 px-1 py-0.5 text-[8px] font-bold text-amber-400">4.8 ★</span>
+        </div>
+        <div className="flex items-center gap-2 my-auto">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 grid place-items-center text-white shadow shrink-0">
+            <Store className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-bold text-[11px] truncate text-white leading-tight">Material Online</p>
+            <p className="text-[9px] text-zinc-400 truncate">Materiais de Construção</p>
+            <p className="text-[8px] text-emerald-400 font-medium">100 mil+ downloads</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 pt-1">
+          <div className="flex-1 rounded-md bg-emerald-600 py-1 text-center font-bold text-[9px] text-white shadow-sm">
+            Instalar
+          </div>
+          <div className="rounded-md bg-zinc-900 border border-zinc-800 px-1.5 py-1 text-[8px] text-zinc-300">
+            Safe Browsing ✓
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 text-xs text-white font-bold transition-opacity backdrop-blur-[2px]"
+        >
+          <ExternalLink className="h-3.5 w-3.5 text-emerald-400" /> Visualizar Tela Completa
+        </button>
+      </div>
+    );
+  }
+
+  if (screenId === "jadlog_clean") {
+    return (
+      <div className="relative group w-full h-32 rounded-xl bg-slate-900 p-2.5 text-white overflow-hidden border border-slate-700 shadow-inner flex flex-col justify-between">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-1 text-[9px]">
+          <div className="flex items-center gap-1 text-blue-400 font-bold">
+            <Truck className="h-3 w-3" /> Jadlog Rastreio
+          </div>
+          <span className="rounded-full bg-blue-500/20 text-blue-300 px-1.5 py-0.5 text-[8px] font-bold">Ao Vivo</span>
+        </div>
+        <div className="my-auto space-y-1">
+          <div className="rounded-lg bg-slate-800/90 p-1.5 border border-slate-700/80">
+            <div className="flex justify-between text-[8px]">
+              <span className="text-slate-400">Rastreio Carga:</span>
+              <span className="text-emerald-400 font-bold">Em Rota de Entrega</span>
+            </div>
+            <div className="w-full bg-slate-700 h-1.5 rounded-full mt-1 overflow-hidden">
+              <div className="bg-blue-500 h-full w-3/4 rounded-full"></div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 pt-1">
+          <div className="flex-1 rounded-md bg-blue-600 py-1 text-center font-bold text-[9px] text-white shadow-sm">
+            Baixar Rastreio Jadlog (.apk)
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 text-xs text-white font-bold transition-opacity backdrop-blur-[2px]"
+        >
+          <ExternalLink className="h-3.5 w-3.5 text-blue-400" /> Visualizar Tela Completa
+        </button>
+      </div>
+    );
+  }
+
+  if (screenId === "studio_custom") {
+    return (
+      <div className="relative group w-full h-32 rounded-xl bg-gradient-to-br from-purple-950 via-slate-900 to-indigo-950 p-2.5 text-white overflow-hidden border border-purple-800/60 shadow-inner flex flex-col justify-between">
+        <div className="flex items-center justify-between border-b border-purple-800/40 pb-1 text-[9px]">
+          <div className="flex items-center gap-1 text-purple-300 font-bold">
+            <Palette className="h-3 w-3" /> APK Studio
+          </div>
+          <span className="rounded bg-purple-500/20 text-purple-300 px-1 py-0.5 text-[8px] font-bold">Custom</span>
+        </div>
+        <div className="my-auto text-center py-1 space-y-1">
+          <div className="inline-block p-1.5 rounded-full bg-purple-600/30 text-purple-300 border border-purple-500/30">
+            <Palette className="h-4 w-4" />
+          </div>
+          <p className="text-[10px] font-bold text-purple-100">Página Visual APK Studio</p>
+        </div>
+        <div className="rounded-md bg-purple-600 py-1 text-center font-bold text-[9px] text-white shadow-sm">
+          Editar no Studio
+        </div>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 text-xs text-white font-bold transition-opacity backdrop-blur-[2px]"
+        >
+          <ExternalLink className="h-3.5 w-3.5 text-purple-400" /> Visualizar Tela Completa
+        </button>
+      </div>
+    );
+  }
+
+  if (screenId === "store_downloads") {
+    return (
+      <div className="relative group w-full h-32 rounded-xl bg-zinc-900 p-2.5 text-white overflow-hidden border border-amber-800/40 shadow-inner flex flex-col justify-between">
+        <div className="flex items-center justify-between border-b border-zinc-800 pb-1 text-[9px]">
+          <div className="flex items-center gap-1 text-amber-400 font-bold">
+            <Globe className="h-3 w-3" /> Central de Downloads
+          </div>
+          <span className="rounded bg-amber-500/20 text-amber-300 px-1 py-0.5 text-[8px] font-bold">Web Loja</span>
+        </div>
+        <div className="my-auto flex items-center justify-center gap-2 py-1">
+          <div className="h-8 w-8 rounded-lg bg-amber-600/20 text-amber-400 grid place-items-center border border-amber-500/30">
+            <Download className="h-4 w-4" />
+          </div>
+          <div className="text-left text-[9px]">
+            <p className="font-bold text-white">App Oficial Loja</p>
+            <p className="text-zinc-400">Android APK Universal</p>
+          </div>
+        </div>
+        <div className="rounded-md bg-amber-600 py-1 text-center font-bold text-[9px] text-white shadow-sm">
+          Baixar na Loja Web
+        </div>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 text-xs text-white font-bold transition-opacity backdrop-blur-[2px]"
+        >
+          <ExternalLink className="h-3.5 w-3.5 text-amber-400" /> Visualizar Tela Completa
+        </button>
+      </div>
+    );
+  }
+
+  // direct_binary
+  return (
+    <div className="relative group w-full h-32 rounded-xl bg-zinc-950 p-2.5 text-white overflow-hidden border border-zinc-800 shadow-inner flex flex-col justify-between">
+      <div className="flex items-center justify-between border-b border-zinc-800 pb-1 text-[9px]">
+        <div className="flex items-center gap-1 text-zinc-300 font-bold">
+          <Smartphone className="h-3 w-3 text-emerald-400" /> Binário Direto .APK
+        </div>
+        <span className="rounded bg-zinc-800 text-zinc-400 px-1 py-0.5 text-[8px]">Sem Tela</span>
+      </div>
+      <div className="my-auto text-center py-1">
+        <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+          <Download className="h-4 w-4 animate-bounce" />
+        </div>
+        <p className="text-[10px] font-bold text-zinc-200 mt-1">Download Imediato</p>
+      </div>
+      <div className="rounded-md bg-emerald-700 py-1 text-center font-bold text-[9px] text-white shadow-sm">
+        Instalação Automática
+      </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 text-xs text-white font-bold transition-opacity backdrop-blur-[2px]"
+      >
+        <Download className="h-3.5 w-3.5 text-emerald-400" /> Testar Download
+      </button>
+    </div>
+  );
+}
+
 export default function AdminAppMetrics() {
   const navigate = useNavigate();
   const { activeStoreId } = useStore();
@@ -237,6 +404,7 @@ export default function AdminAppMetrics() {
     store_downloads: "downloads",
     direct_binary: "apk-direto",
   });
+  const [screenTargetModeMap, setScreenTargetModeMap] = useState<Record<string, "screen" | "direct_apk" | "encrypted">>({});
   const [creatingScreenLinkId, setCreatingScreenLinkId] = useState<string | null>(null);
   const [savingDefaultScreen, setSavingDefaultScreen] = useState(false);
 
@@ -448,18 +616,68 @@ export default function AdminAppMetrics() {
       return;
     }
     const screen = CREATED_APP_SCREENS.find((s) => s.id === screenId) || CREATED_APP_SCREENS[0];
-    const rawSlug = screenSlugMap[screenId] || screen.id;
-    const slug = sanitizeSlug(rawSlug) || randomSlug();
-    const targetUrl = getTargetUrlForScreen(screen.id, apkToken) || (apkToken ? apkDownloadUrlFor(apkToken) : "");
+    const mode = screenTargetModeMap[screenId] || (screen.id === "direct_binary" ? "direct_apk" : "screen");
+    const activeDownloadToken = selectedApkToken || apkToken;
+
+    let targetUrl = "";
+    let isBinary = false;
+
+    if (mode === "direct_apk" || screen.id === "direct_binary") {
+      targetUrl = activeDownloadToken ? apkDownloadUrlFor(activeDownloadToken) : (apkUrl || "");
+      isBinary = true;
+    } else {
+      targetUrl = getTargetUrlForScreen(screen.id, activeDownloadToken) || (activeDownloadToken ? apkDownloadUrlFor(activeDownloadToken) : "");
+    }
 
     if (!targetUrl) {
-      toast.error("Envie um APK antes de gerar link para esta tela");
+      toast.error("Envie ou selecione um APK antes de gerar link para esta tela");
       return;
     }
 
     setCreatingScreenLinkId(screenId);
     try {
-      const isBinary = screen.id === "direct_binary";
+      if (mode === "encrypted") {
+        const encryptedPath = encodeEncryptedLink(targetUrl, {
+          source: "/admin_screen_card",
+          label: screen.name,
+          channel: "app",
+        });
+        const encryptedSlug = encryptedPath.replace(/^\/r\//, "");
+        const encryptedFullUrl = `https://materialdecontrucao.online${encryptedPath}`;
+
+        const { data: encRow, error: encError } = await cloud
+          .from("app_short_links")
+          .upsert({
+            store_id: activeStoreId,
+            slug: encryptedSlug,
+            original_url: targetUrl,
+            created_via: "admin_screen_card_enc",
+            link_type: isBinary ? "apk" : "page",
+            campaign_origin: "encrypted_screen_card",
+            metadata: {
+              apk_token: activeDownloadToken,
+              screen_id: screen.id,
+              screen_name: screen.name,
+              screen_path: screen.path,
+              is_encrypted: true,
+            },
+            active: true,
+          }, { onConflict: "slug" })
+          .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
+          .single();
+
+        if (encError) throw encError;
+        if (encRow) {
+          setShortLinks((prev) => [encRow as ShortLinkRow, ...prev.filter((l) => l.slug !== encryptedSlug)]);
+        }
+        await copyText(encryptedFullUrl, "Link Criptografado");
+        toast.success(`Link criptografado criado e copiado!`);
+        return;
+      }
+
+      const rawSlug = screenSlugMap[screenId] || (mode === "direct_apk" ? `${screen.id}-apk` : screen.id);
+      let slug = sanitizeSlug(rawSlug) || randomSlug();
+
       const { data, error } = await cloud
         .from("app_short_links")
         .insert({
@@ -468,12 +686,13 @@ export default function AdminAppMetrics() {
           original_url: targetUrl,
           created_via: "admin",
           link_type: isBinary ? "apk" : "page",
-          campaign_origin: "apk_screen_binding",
+          campaign_origin: mode === "direct_apk" ? "direct_apk_download" : "apk_screen_binding",
           metadata: {
             screen_id: screen.id,
             screen_name: screen.name,
             screen_path: screen.path,
-            apk_token: apkToken,
+            apk_token: activeDownloadToken,
+            mode,
           },
           active: true,
         })
@@ -482,14 +701,46 @@ export default function AdminAppMetrics() {
 
       if (error) {
         if ((error as { code?: string }).code === "23505") {
-          toast.error(`O slug /r/${slug} já está em uso. Altere o slug para continuar.`);
+          const suffixed = `${slug}-${randomSlug(4)}`;
+          const { data: retryRow, error: retryError } = await cloud
+            .from("app_short_links")
+            .insert({
+              store_id: activeStoreId,
+              slug: suffixed,
+              original_url: targetUrl,
+              created_via: "admin",
+              link_type: isBinary ? "apk" : "page",
+              campaign_origin: mode === "direct_apk" ? "direct_apk_download" : "apk_screen_binding",
+              metadata: {
+                screen_id: screen.id,
+                screen_name: screen.name,
+                screen_path: screen.path,
+                apk_token: activeDownloadToken,
+                mode,
+              },
+              active: true,
+            })
+            .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
+            .single();
+
+          if (retryError) throw retryError;
+          if (retryRow) {
+            setShortLinks((prev) => [retryRow as ShortLinkRow, ...prev]);
+            const finalLink = `${shortBaseUrl}/${suffixed}`;
+            await copyText(finalLink, "Link curto");
+            toast.success(`Link /r/${suffixed} criado e copiado!`);
+          }
           return;
         }
         throw error;
       }
 
-      setShortLinks((prev) => [data as ShortLinkRow, ...prev]);
-      toast.success(`Link /r/${slug} criado vinculado a ${screen.name}`);
+      if (data) {
+        setShortLinks((prev) => [data as ShortLinkRow, ...prev]);
+        const finalLink = `${shortBaseUrl}/${slug}`;
+        await copyText(finalLink, "Link curto");
+        toast.success(`Link /r/${slug} criado e copiado! (${mode === "direct_apk" ? "Download Direto" : "Direciona para Tela"})`);
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "falha desconhecida";
       toast.error(`Erro ao criar link: ${message}`);
@@ -2502,127 +2753,212 @@ export default function AdminAppMetrics() {
           </p>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-2">
+          <div className="grid gap-3.5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {CREATED_APP_SCREENS.map((screen) => {
               const isDefault = selectedScreenId === screen.id;
               const screenSlug = screenSlugMap[screen.id] || "";
-              const fullUrl = getTargetUrlForScreen(screen.id, apkToken);
+              const activeMode = screenTargetModeMap[screen.id] || (screen.id === "direct_binary" ? "direct_apk" : "screen");
+              const fullUrl = getTargetUrlForScreen(screen.id, selectedApkToken || apkToken);
 
               return (
                 <div
                   key={screen.id}
-                  className={`rounded-xl border p-3.5 space-y-3 transition-colors ${
+                  className={`rounded-2xl border p-3.5 space-y-3 transition-all flex flex-col justify-between ${
                     isDefault
-                      ? "border-primary/60 bg-primary/[0.04] shadow-sm ring-1 ring-primary/20"
-                      : "border-border bg-card hover:border-border/80"
+                      ? "border-primary/60 bg-primary/[0.04] shadow-sm ring-1 ring-primary/25"
+                      : "border-border bg-card hover:border-primary/30 hover:shadow-sm"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${screen.badgeColor}`}>
-                          {screen.badge}
-                        </span>
-                        {isDefault && (
-                          <span className="text-[10px] font-bold text-primary flex items-center gap-1">
-                            <Check className="h-3 w-3" /> Padrão Ativo
-                          </span>
+                  <div className="space-y-2.5">
+                    {/* Topo: Badge + Botão Padrão */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${screen.badgeColor}`}>
+                        {screen.badge}
+                      </span>
+                      <Button
+                        variant={isDefault ? "secondary" : "outline"}
+                        size="sm"
+                        disabled={savingDefaultScreen || isDefault}
+                        onClick={() => void handleSaveDefaultScreen(screen.id)}
+                        className="h-6 text-[10px] gap-1 shrink-0 font-bold px-2"
+                      >
+                        {isDefault ? (
+                          <>
+                            <Check className="h-3 w-3 text-emerald-600" /> Padrão Ativo
+                          </>
+                        ) : (
+                          "Definir Padrão"
                         )}
-                      </div>
-                      <h5 className="text-sm font-bold text-foreground">{screen.name}</h5>
+                      </Button>
                     </div>
 
-                    <Button
-                      variant={isDefault ? "secondary" : "outline"}
-                      size="sm"
-                      disabled={savingDefaultScreen || isDefault}
-                      onClick={() => void handleSaveDefaultScreen(screen.id)}
-                      className="h-7 text-[11px] gap-1 shrink-0"
-                    >
-                      {isDefault ? "Padrão" : "Definir Padrão"}
-                    </Button>
-                  </div>
+                    {/* Título da Tela */}
+                    <h5 className="text-sm font-bold text-foreground leading-snug line-clamp-2" title={screen.name}>
+                      {screen.name}
+                    </h5>
 
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {screen.description}
-                  </p>
+                    {/* Preview Visual da Tela (Mini Mockup 1/3) */}
+                    <ScreenMiniPreview
+                      screenId={screen.id}
+                      onOpen={() => {
+                        if (screen.path.startsWith("/")) {
+                          window.open(screen.path, "_blank");
+                        } else {
+                          const directUrl = apkDownloadUrlFor(selectedApkToken || apkToken || "");
+                          if (directUrl) window.open(directUrl, "_blank");
+                        }
+                      }}
+                    />
 
-                  {/* Link de Destino & Ações */}
-                  <div className="space-y-1.5 pt-1 border-t border-border/40">
-                    <Label className="text-[11px] font-medium text-muted-foreground">URL de destino da tela:</Label>
-                    <div className="flex items-center gap-2">
+                    {/* Descrição Curta */}
+                    <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2" title={screen.description}>
+                      {screen.description}
+                    </p>
+
+                    {/* URL de destino da tela */}
+                    <div className="space-y-1 pt-1 border-t border-border/40 text-[11px]">
+                      <div className="flex items-center justify-between text-muted-foreground font-medium">
+                        <span>Destino base:</span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-5 px-1.5 text-[10px] gap-1 text-primary hover:underline"
+                            onClick={() => void copyText(fullUrl || screen.path, screen.name)}
+                            title="Copiar URL de Destino"
+                          >
+                            <Copy className="h-2.5 w-2.5" /> Copiar
+                          </Button>
+                          {screen.path.startsWith("/") && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 px-1.5 text-[10px] gap-1 text-primary hover:underline"
+                              onClick={() => window.open(screen.path, "_blank")}
+                              title="Abrir no Navegador"
+                            >
+                              <ExternalLink className="h-2.5 w-2.5" /> Abrir
+                            </Button>
+                          )}
+                          {(screen.type === "studio_preset" || screen.type === "studio_custom") && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 px-1.5 text-[10px] gap-1 text-primary hover:underline"
+                              onClick={() => window.open("/google-play-studio", "_blank")}
+                              title="Editar no APK Studio"
+                            >
+                              <Palette className="h-2.5 w-2.5" /> Studio
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                       <Input
                         readOnly
-                        value={fullUrl || (screen.path.startsWith("/") ? screen.path : "Download Direto do Binário")}
-                        className="h-7 text-xs bg-background/80 font-mono"
+                        value={fullUrl || (screen.path.startsWith("/") ? screen.path : "Download Direto do Binário .APK")}
+                        className="h-6 text-[10px] bg-background/80 font-mono px-2"
                       />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => void copyText(fullUrl || screen.path, screen.name)}
-                        title="Copiar URL"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                      {screen.path.startsWith("/") && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => window.open(screen.path, "_blank")}
-                          title="Abrir no Navegador"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </Button>
-                      )}
-                      {(screen.type === "studio_preset" || screen.type === "studio_custom") && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => window.open("/google-play-studio", "_blank")}
-                          title="Editar no Studio"
-                        >
-                          <Palette className="h-3 w-3" />
-                        </Button>
-                      )}
                     </div>
                   </div>
 
-                  {/* Gerador de Link Curto com Slug para Esta Tela */}
-                  <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 space-y-2">
-                    <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1">
-                      <Link2 className="h-3 w-3 text-primary" /> Criar link curto /r/slug para esta tela:
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        placeholder={`Ex: ${screen.id === "jadlog_clean" ? "rastreio-jadlog" : "baixar-app"}`}
-                        value={screenSlug}
-                        onChange={(e) =>
-                          setScreenSlugMap((prev) => ({
-                            ...prev,
-                            [screen.id]: e.target.value,
-                          }))
-                        }
-                        className="h-8 text-xs flex-1"
-                      />
-                      <Button
-                        size="sm"
-                        disabled={creatingScreenLinkId === screen.id || !screenSlug.trim()}
-                        onClick={() => void handleCreateScreenShortLink(screen.id)}
-                        className="h-8 text-xs gap-1 shrink-0"
+                  {/* Caixa de Múltiplas Opções de Encurtador */}
+                  <div className="rounded-xl bg-background/90 border border-border/70 p-2.5 space-y-2 mt-2">
+                    <span className="text-[10px] font-bold text-foreground flex items-center gap-1">
+                      <Link2 className="h-3 w-3 text-primary" /> Opções de Encurtador:
+                    </span>
+
+                    {/* Chips de Opções: Tela | APK Direto | Criptografado */}
+                    <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg bg-muted/60 text-[10px] font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => setScreenTargetModeMap((prev) => ({ ...prev, [screen.id]: "screen" }))}
+                        className={`py-1 rounded px-1 transition-all text-center truncate ${
+                          activeMode === "screen"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="Redireciona para a tela visual configurada"
                       >
-                        {creatingScreenLinkId === screen.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Link2 className="h-3 w-3" />
-                        )}
-                        Gerar Link
-                      </Button>
+                        📱 Tela
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScreenTargetModeMap((prev) => ({ ...prev, [screen.id]: "direct_apk" }))}
+                        className={`py-1 rounded px-1 transition-all text-center truncate ${
+                          activeMode === "direct_apk"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="Redireciona diretamente para baixar o arquivo .apk"
+                      >
+                        ⚡ APK Direto
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScreenTargetModeMap((prev) => ({ ...prev, [screen.id]: "encrypted" }))}
+                        className={`py-1 rounded px-1 transition-all text-center truncate ${
+                          activeMode === "encrypted"
+                            ? "bg-purple-600 text-white shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="Gera link criptografado com anti-cloaker e rastreio de IP"
+                      >
+                        🔒 Cloaker
+                      </button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground font-mono">
-                      {shortBaseUrl}/{sanitizeSlug(screenSlug) || "seu-slug"} ➔ {screen.badge}
+
+                    {/* Formulário de Geração */}
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      {activeMode !== "encrypted" ? (
+                        <>
+                          <Input
+                            placeholder={`slug: ${screen.id === "jadlog_clean" ? "jadlog" : "app"}`}
+                            value={screenSlug}
+                            onChange={(e) =>
+                              setScreenSlugMap((prev) => ({
+                                ...prev,
+                                [screen.id]: e.target.value,
+                              }))
+                            }
+                            className="h-7 text-xs flex-1 font-mono"
+                          />
+                          <Button
+                            size="sm"
+                            disabled={creatingScreenLinkId === screen.id}
+                            onClick={() => void handleCreateScreenShortLink(screen.id)}
+                            className="h-7 text-xs gap-1 px-2.5 font-bold shrink-0"
+                          >
+                            {creatingScreenLinkId === screen.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Link2 className="h-3 w-3" />
+                            )}
+                            Gerar
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="sm"
+                          disabled={creatingScreenLinkId === screen.id}
+                          onClick={() => void handleCreateScreenShortLink(screen.id)}
+                          className="h-7 text-xs gap-1 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold"
+                        >
+                          {creatingScreenLinkId === screen.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Lock className="h-3 w-3" />
+                          )}
+                          Gerar Link Criptografado Anti-Cloaker
+                        </Button>
+                      )}
+                    </div>
+
+                    <p className="text-[10px] text-muted-foreground font-mono truncate">
+                      {activeMode === "encrypted"
+                        ? "Destino seguro: FNV-1a + anti-bot e track IP"
+                        : `${shortBaseUrl}/${sanitizeSlug(screenSlug) || "slug"} ➔ ${
+                            activeMode === "direct_apk" ? "Download direto .APK" : screen.name
+                          }`}
                     </p>
                   </div>
                 </div>

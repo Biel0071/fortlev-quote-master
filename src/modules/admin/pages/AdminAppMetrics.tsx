@@ -848,6 +848,21 @@ export default function AdminAppMetrics() {
             percent: p,
             statusText: s === 1 ? "Verificando token do APK..." : s === 2 ? "Gerando destinos e encurtador..." : "Vinculando criptografia...",
           }));
+          if (activeProvisionalIdRef.current) {
+            setShortLinks((prev) =>
+              prev.map((l) =>
+                l.id === activeProvisionalIdRef.current
+                  ? {
+                      ...l,
+                      metadata: {
+                        ...l.metadata,
+                        percent: p,
+                      },
+                    }
+                  : l
+              )
+            );
+          }
           await new Promise((r) => setTimeout(r, 300));
         }
       }
@@ -859,6 +874,22 @@ export default function AdminAppMetrics() {
         percent: 96,
         statusText: "Criando links /r/slug e link criptografado...",
       }));
+
+      if (activeProvisionalIdRef.current) {
+        setShortLinks((prev) =>
+          prev.map((l) =>
+            l.id === activeProvisionalIdRef.current
+              ? {
+                  ...l,
+                  metadata: {
+                    ...l.metadata,
+                    percent: 96,
+                  },
+                }
+              : l
+          )
+        );
+      }
 
       const targetUrl = getTargetUrlForScreen(chosenScreen.id, activeDownloadToken) || (activeDownloadToken ? apkDownloadUrlFor(activeDownloadToken) : "");
 
@@ -931,7 +962,7 @@ export default function AdminAppMetrics() {
       try {
         const { data: encRow } = await cloud
           .from("app_short_links")
-          .insert({
+          .upsert({
             store_id: activeStoreId,
             slug: encryptedSlug,
             original_url: targetUrl,
@@ -945,12 +976,12 @@ export default function AdminAppMetrics() {
               is_encrypted: true,
             },
             active: true,
-          })
+          }, { onConflict: "slug" })
           .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
           .single();
 
         if (encRow) {
-          setShortLinks((prev) => [encRow as ShortLinkRow, ...prev]);
+          setShortLinks((prev) => [encRow as ShortLinkRow, ...prev.filter((l) => l.slug !== encryptedSlug)]);
         }
       } catch {
         /* ignore duplicate */

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { cloud } from "@/lib/cloud";
 import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,13 @@ import {
   Pencil,
   Clock,
   ShieldCheck,
+  Store,
+  Truck,
+  Palette,
+  ExternalLink,
+  Check,
+  Layers,
+  Sparkles,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -112,7 +120,72 @@ interface ApkRow {
   created_at?: string;
 }
 
+export interface CreatedAppScreen {
+  id: string;
+  name: string;
+  badge: string;
+  badgeColor: string;
+  path: string;
+  type: "google_play_store" | "studio_preset" | "studio_custom" | "store_downloads" | "direct_binary";
+  description: string;
+  iconName: "store" | "truck" | "palette" | "globe" | "download";
+}
+
+export const CREATED_APP_SCREENS: CreatedAppScreen[] = [
+  {
+    id: "material_online",
+    name: "Material Online — Google Play Oficial da Loja",
+    badge: "Padrão Oficial",
+    badgeColor: "bg-emerald-600 text-white",
+    path: "/google-play",
+    type: "google_play_store",
+    description: "Página 1:1 Google Play exclusiva do Material Online com selos Safe Browsing, 4.8 estrelas, avaliações reais e instalação progressiva do APK.",
+    iconName: "store",
+  },
+  {
+    id: "jadlog_clean",
+    name: "Jadlog Mobile Clean — APK Studio",
+    badge: "Studio Rastreio",
+    badgeColor: "bg-blue-600 text-white",
+    path: "/downloads/jadlog",
+    type: "studio_preset",
+    description: "Template mobile clean de rastreio e entrega Jadlog criado no APK Studio com barra de download sincronizada ao APK.",
+    iconName: "truck",
+  },
+  {
+    id: "studio_custom",
+    name: "Tela Customizada do APK Studio",
+    badge: "Studio Personalizado",
+    badgeColor: "bg-purple-600 text-white",
+    path: "/downloads/index.html?s=60b2c9a7aa1bf9f4",
+    type: "studio_custom",
+    description: "Página interativa autônoma gerada e personalizada diretamente dentro do Google Play Studio.",
+    iconName: "palette",
+  },
+  {
+    id: "store_downloads",
+    name: "Página de Downloads Geral (/downloads)",
+    badge: "Loja Web",
+    badgeColor: "bg-amber-600 text-white",
+    path: "/downloads",
+    type: "store_downloads",
+    description: "Página responsiva de downloads da loja com orientações para Android e contador de acessos.",
+    iconName: "globe",
+  },
+  {
+    id: "direct_binary",
+    name: "Download Direto do Binário .APK (Sem tela intermediária)",
+    badge: "Arquivo .apk",
+    badgeColor: "bg-slate-700 text-white",
+    path: "direct_apk",
+    type: "direct_binary",
+    description: "O visitante ao abrir o link curto recebe o download do instalador .apk instantaneamente.",
+    iconName: "download",
+  },
+];
+
 export default function AdminAppMetrics() {
+  const navigate = useNavigate();
   const { activeStoreId } = useStore();
   const [loading, setLoading] = useState(true);
   const [bannerClicks, setBannerClicks] = useState(0);
@@ -123,6 +196,17 @@ export default function AdminAppMetrics() {
   const [encryptedLinkClicksTotal, setEncryptedLinkClicksTotal] = useState(0);
   const [dailyClicks, setDailyClicks] = useState<{ date: string; clicks: number }[]>([]);
   const [metricsError, setMetricsError] = useState(false);
+
+  const [selectedScreenId, setSelectedScreenId] = useState<string>("material_online");
+  const [screenSlugMap, setScreenSlugMap] = useState<Record<string, string>>({
+    material_online: "app",
+    jadlog_clean: "jadlog",
+    studio_custom: "baixar-app",
+    store_downloads: "downloads",
+    direct_binary: "apk-direto",
+  });
+  const [creatingScreenLinkId, setCreatingScreenLinkId] = useState<string | null>(null);
+  const [savingDefaultScreen, setSavingDefaultScreen] = useState(false);
 
   const [uploading, setUploading] = useState(false);
   const [apkUrl, setApkUrl] = useState<string | null>(null);
@@ -219,6 +303,90 @@ export default function AdminAppMetrics() {
     return true;
   };
 
+  const getTargetUrlForScreen = (screenId: string, token?: string | null) => {
+    const screen = CREATED_APP_SCREENS.find((s) => s.id === screenId) || CREATED_APP_SCREENS[0];
+    if (screen.id === "direct_binary") {
+      const activeTok = token || apkToken;
+      return activeTok ? apkDownloadUrlFor(activeTok) : "";
+    }
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://materialdecontrucao.online";
+    return `${origin}${screen.path}`;
+  };
+
+  const handleSaveDefaultScreen = async (screenId: string) => {
+    setSavingDefaultScreen(true);
+    try {
+      setSelectedScreenId(screenId);
+      try {
+        localStorage.setItem("admin_selected_apk_screen", screenId);
+      } catch { /* ignore storage errors */ }
+      const ok = await saveConfig("app_download_landing_screen", screenId);
+      if (ok) {
+        toast.success(`Tela padrão definida: ${CREATED_APP_SCREENS.find((s) => s.id === screenId)?.name}`);
+      } else {
+        toast.error("Falha ao salvar configuração");
+      }
+    } finally {
+      setSavingDefaultScreen(false);
+    }
+  };
+
+  const handleCreateScreenShortLink = async (screenId: string) => {
+    if (!activeStoreId) {
+      toast.error("Selecione uma loja antes de criar links curtos");
+      return;
+    }
+    const screen = CREATED_APP_SCREENS.find((s) => s.id === screenId) || CREATED_APP_SCREENS[0];
+    const rawSlug = screenSlugMap[screenId] || screen.id;
+    const slug = sanitizeSlug(rawSlug) || randomSlug();
+    const targetUrl = getTargetUrlForScreen(screen.id, apkToken) || (apkToken ? apkDownloadUrlFor(apkToken) : "");
+
+    if (!targetUrl) {
+      toast.error("Envie um APK antes de gerar link para esta tela");
+      return;
+    }
+
+    setCreatingScreenLinkId(screenId);
+    try {
+      const isBinary = screen.id === "direct_binary";
+      const { data, error } = await cloud
+        .from("app_short_links")
+        .insert({
+          store_id: activeStoreId,
+          slug,
+          original_url: targetUrl,
+          created_via: "admin",
+          link_type: isBinary ? "apk" : "page",
+          campaign_origin: "apk_screen_binding",
+          metadata: {
+            screen_id: screen.id,
+            screen_name: screen.name,
+            screen_path: screen.path,
+            apk_token: apkToken,
+          },
+          active: true,
+        })
+        .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
+        .single();
+
+      if (error) {
+        if ((error as { code?: string }).code === "23505") {
+          toast.error(`O slug /r/${slug} já está em uso. Altere o slug para continuar.`);
+          return;
+        }
+        throw error;
+      }
+
+      setShortLinks((prev) => [data as ShortLinkRow, ...prev]);
+      toast.success(`Link /r/${slug} criado vinculado a ${screen.name}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "falha desconhecida";
+      toast.error(`Erro ao criar link: ${message}`);
+    } finally {
+      setCreatingScreenLinkId(null);
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     setMetricsError(false);
@@ -229,6 +397,7 @@ export default function AdminAppMetrics() {
         { data: trackingSessionsRows, error: sessionsError },
         { data: configRow, error: configError },
         { data: metaRow, error: metaError },
+        { data: landingScreenRow },
         shortLinksRes,
         tokenRes,
         apkRes,
@@ -246,6 +415,7 @@ export default function AdminAppMetrics() {
           .limit(500),
         cloud.from("app_config").select("value").eq("key", "app_download_url").maybeSingle(),
         cloud.from("app_config").select("value").eq("key", "app_apk_meta").maybeSingle(),
+        cloud.from("app_config").select("value").eq("key", "app_download_landing_screen").maybeSingle(),
         activeStoreId
           ? cloud
               .from("app_short_links")
@@ -370,6 +540,9 @@ export default function AdminAppMetrics() {
 
       setShortLinks(shortLinksList);
       setShortenerTokens((tokenRes.data as ShortenerTokenRow[] | null) ?? []);
+      if (landingScreenRow?.value && CREATED_APP_SCREENS.some((s) => s.id === landingScreenRow.value)) {
+        setSelectedScreenId(landingScreenRow.value);
+      }
       const apkList = ((apkRes as { data?: ApkRow[] | null }).data ?? []) as ApkRow[];
       setApks(apkList);
       setApkToken((apkList.find((a) => a.active) ?? apkList[0])?.download_token ?? null);
@@ -460,16 +633,25 @@ export default function AdminAppMetrics() {
 
           const uploadSlug = sanitizeSlug(uploadSlugInput);
           if (uploadSlug) {
+            const chosenScreen = CREATED_APP_SCREENS.find((s) => s.id === selectedScreenId) || CREATED_APP_SCREENS[0];
+            const targetUrl = getTargetUrlForScreen(chosenScreen.id, newToken) || apkDownloadUrlFor(newToken);
+            const isBinary = chosenScreen.id === "direct_binary";
+
             const { data: linkRow, error: linkError } = await cloud
               .from("app_short_links")
               .insert({
                 store_id: activeStoreId,
                 slug: uploadSlug,
-                original_url: apkDownloadUrlFor(newToken),
+                original_url: targetUrl,
                 created_via: "admin",
-                link_type: "apk",
+                link_type: isBinary ? "apk" : "page",
                 campaign_origin: "apk_download",
-                metadata: { apk_token: newToken },
+                metadata: {
+                  apk_token: newToken,
+                  screen_id: chosenScreen.id,
+                  screen_name: chosenScreen.name,
+                  screen_path: chosenScreen.path,
+                },
                 active: true,
               })
               .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
@@ -484,7 +666,7 @@ export default function AdminAppMetrics() {
             } else if (linkRow) {
               setShortLinks((prev) => [linkRow as ShortLinkRow, ...prev]);
               setUploadSlugInput("");
-              toast.success(`Link curto criado: /r/${uploadSlug}`);
+              toast.success(`Link curto criado vinculado a ${chosenScreen.name}: /r/${uploadSlug}`);
             }
           }
         }
@@ -942,8 +1124,84 @@ export default function AdminAppMetrics() {
               disabled={uploading}
             />
             <p className="text-[11px] text-muted-foreground">
-              Ao enviar, já criamos {shortBaseUrl}/{sanitizeSlug(uploadSlugInput) || "slug"} apontando direto para o arquivo .apk.
+              Ao enviar com slug, já criamos <code className="bg-muted px-1 rounded font-mono">{shortBaseUrl}/{sanitizeSlug(uploadSlugInput) || "slug"}</code> apontando para a tela selecionada abaixo.
             </p>
+          </div>
+
+          {/* Opção de escolher telas criadas do APK Studio para vínculo */}
+          <div className="space-y-2.5 rounded-xl border border-primary/30 bg-primary/[0.04] p-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+              <Label htmlFor="screenSelect" className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Layers className="h-4 w-4 text-primary" />
+                Vincular à Tela Criada (APK Studio & Loja)
+              </Label>
+              <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full w-fit">
+                {CREATED_APP_SCREENS.length} Telas Prontas
+              </span>
+            </div>
+
+            <select
+              id="screenSelect"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              value={selectedScreenId}
+              onChange={(e) => {
+                const nextId = e.target.value;
+                setSelectedScreenId(nextId);
+                try {
+                  localStorage.setItem("admin_selected_apk_screen", nextId);
+                } catch { /* ignore */ }
+              }}
+              disabled={uploading}
+            >
+              {CREATED_APP_SCREENS.map((screen) => (
+                <option key={screen.id} value={screen.id}>
+                  {screen.name} ({screen.badge})
+                </option>
+              ))}
+            </select>
+
+            {(() => {
+              const currentScreen = CREATED_APP_SCREENS.find((s) => s.id === selectedScreenId) || CREATED_APP_SCREENS[0];
+              return (
+                <div className="space-y-2 pt-1 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${currentScreen.badgeColor}`}>
+                      {currentScreen.badge}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      Destino: {currentScreen.path.startsWith("/") ? currentScreen.path : "Download Direto do Binário"}
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {currentScreen.description}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {currentScreen.path.startsWith("/") && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(currentScreen.path, "_blank")}
+                        className="h-7 text-xs gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3" /> Ver Tela no Navegador
+                      </Button>
+                    )}
+                    {(currentScreen.type === "studio_preset" || currentScreen.type === "studio_custom") && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => window.open("/google-play-studio", "_blank")}
+                        className="h-7 text-xs gap-1"
+                      >
+                        <Palette className="h-3 w-3" /> Abrir no APK Studio
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
 
@@ -977,124 +1235,162 @@ export default function AdminAppMetrics() {
                   </div>
                 )}
 
-                {/* Seção Tela GP (Google Play Clone) */}
-                <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Telas Criadas do APK Studio & Destinos de Download Vinculados */}
+                <div className="mt-4 rounded-xl border border-primary/20 bg-muted/20 p-4 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                        <Smartphone className="w-4 h-4 text-emerald-600" />
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                        <Layers className="w-4 h-4 text-primary" />
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                          <span>Tela GP (Google Play Clone Oficial)</span>
-                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-600 text-white">
-                            Ativa
+                          <span>Telas Criadas do APK Studio & Destinos de Download</span>
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
+                            {CREATED_APP_SCREENS.length} Disponíveis
                           </span>
                         </h4>
                         <p className="text-xs text-muted-foreground">
-                          Landing page idêntica ao Google Play (1:1 com ícone Jadlog oficial) com progresso que dispara o APK.
+                          Selecione qualquer tela criada no APK Studio ou na Loja para vincular ao download e gerar links curtos (/r/slug).
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => nav(routes.adminPath("/google-play-studio"))}
-                        className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                      >
-                        <Pencil className="h-3.5 w-3.5" /> Editar no Studio
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open("/downloads/jadlog", "_blank")}
-                        className="gap-1.5 text-xs border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
-                      >
-                        <Globe className="h-3.5 w-3.5" /> Ver Tela GP
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open("/google-play-studio", "_blank")}
+                      className="gap-1.5 text-xs shrink-0"
+                    >
+                      <Palette className="h-3.5 w-3.5 text-primary" /> Abrir APK Studio
+                    </Button>
                   </div>
 
-                  {/* Gerador de Link Curto com Slug customizado para a Tela GP */}
-                  <div className="pt-2 border-t border-emerald-200/50 dark:border-emerald-800/30 space-y-2">
-                    <Label className="text-[11px] font-semibold text-muted-foreground">Link da Tela GP para Campanhas:</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        readOnly
-                        value={`${window.location.origin}/downloads/jadlog`}
-                        className="h-8 text-xs bg-background/80 font-mono"
-                      />
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-8 gap-1 px-3 text-xs"
-                        onClick={() => void copyText(`${window.location.origin}/downloads/jadlog`, "Link da Tela GP")}
-                      >
-                        <Copy className="h-3 w-3" /> Copiar
-                      </Button>
-                    </div>
+                  {/* Cards de cada Tela Criada */}
+                  <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-2">
+                    {CREATED_APP_SCREENS.map((screen) => {
+                      const isDefault = selectedScreenId === screen.id;
+                      const screenSlug = screenSlugMap[screen.id] || "";
+                      const fullUrl = getTargetUrlForScreen(screen.id, apkToken);
 
-                    <div className="mt-2 p-2.5 rounded-lg bg-background/60 border border-emerald-500/20 space-y-2">
-                      <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
-                        <Link2 className="h-3.5 w-3.5 text-emerald-600" /> Criar Link Curto com Slug para a Tela GP:
-                      </Label>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <Input
-                          placeholder="Ex: jadlog, app-oficial, rastreio-jadlog"
-                          value={apkSlugInput}
-                          onChange={(e) => setApkSlugInput(e.target.value)}
-                          className="h-8 text-xs flex-1"
-                        />
-                        <Button
-                          size="sm"
-                          disabled={creatingApkLink || !apkSlugInput.trim()}
-                          onClick={async () => {
-                            const slug = sanitizeSlug(apkSlugInput);
-                            if (!slug) return;
-                            setCreatingApkLink(true);
-                            try {
-                              const targetUrl = `${window.location.origin}/downloads/index.html?s=60b2c9a7aa1bf9f4`;
-                              const { data, error } = await cloud
-                                .from("app_short_links")
-                                .insert({
-                                  store_id: activeStoreId,
-                                  slug,
-                                  original_url: targetUrl,
-                                  created_via: "admin",
-                                  link_type: "page",
-                                  metadata: { type: "tela_gp" },
-                                  active: true,
-                                })
-                                .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
-                                .single();
-
-                              if (error) {
-                                if ((error as any).code === "23505") {
-                                  toast.error("Este slug já existe! Digite outro.");
-                                } else {
-                                  toast.error(`Erro: ${error.message}`);
-                                }
-                                return;
-                              }
-                              if (data) {
-                                setShortLinks((prev) => [data as ShortLinkRow, ...prev]);
-                                setApkSlugInput("");
-                                toast.success(`Link da Tela GP criado: ${shortBaseUrl}/${slug}`);
-                              }
-                            } finally {
-                              setCreatingApkLink(false);
-                            }
-                          }}
-                          className="h-8 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                      return (
+                        <div
+                          key={screen.id}
+                          className={`rounded-xl border p-3.5 space-y-3 transition-colors ${
+                            isDefault
+                              ? "border-primary/60 bg-primary/[0.04] shadow-sm ring-1 ring-primary/20"
+                              : "border-border bg-card hover:border-border/80"
+                          }`}
                         >
-                          <Link2 className="h-3 w-3" /> Gerar Link com Slug
-                        </Button>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">
-                        Prévia: <code className="bg-muted px-1 rounded">{shortBaseUrl}/{sanitizeSlug(apkSlugInput) || "seu-slug"}</code> ➔ Direciona para a Tela GP oficial.
-                      </p>
-                    </div>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${screen.badgeColor}`}>
+                                  {screen.badge}
+                                </span>
+                                {isDefault && (
+                                  <span className="text-[10px] font-bold text-primary flex items-center gap-1">
+                                    <Check className="h-3 w-3" /> Padrão Ativo
+                                  </span>
+                                )}
+                              </div>
+                              <h5 className="text-sm font-bold text-foreground">{screen.name}</h5>
+                            </div>
+
+                            <Button
+                              variant={isDefault ? "secondary" : "outline"}
+                              size="sm"
+                              disabled={savingDefaultScreen || isDefault}
+                              onClick={() => void handleSaveDefaultScreen(screen.id)}
+                              className="h-7 text-[11px] gap-1 shrink-0"
+                            >
+                              {isDefault ? "Padrão" : "Definir Padrão"}
+                            </Button>
+                          </div>
+
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            {screen.description}
+                          </p>
+
+                          {/* Link de Destino & Ações */}
+                          <div className="space-y-1.5 pt-1 border-t border-border/40">
+                            <Label className="text-[11px] font-medium text-muted-foreground">URL de destino da tela:</Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                readOnly
+                                value={fullUrl || (screen.path.startsWith("/") ? screen.path : "Download Direto do Binário")}
+                                className="h-7 text-xs bg-background/80 font-mono"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => void copyText(fullUrl || screen.path, screen.name)}
+                                title="Copiar URL"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                              {screen.path.startsWith("/") && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => window.open(screen.path, "_blank")}
+                                  title="Abrir no Navegador"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                </Button>
+                              )}
+                              {(screen.type === "studio_preset" || screen.type === "studio_custom") && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => window.open("/google-play-studio", "_blank")}
+                                  title="Editar no Studio"
+                                >
+                                  <Palette className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Gerador de Link Curto com Slug para Esta Tela */}
+                          <div className="rounded-lg bg-background/80 border border-border/60 p-2.5 space-y-2">
+                            <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1">
+                              <Link2 className="h-3 w-3 text-primary" /> Criar link curto /r/slug para esta tela:
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                placeholder={`Ex: ${screen.id === "jadlog_clean" ? "rastreio-jadlog" : "baixar-app"}`}
+                                value={screenSlug}
+                                onChange={(e) =>
+                                  setScreenSlugMap((prev) => ({
+                                    ...prev,
+                                    [screen.id]: e.target.value,
+                                  }))
+                                }
+                                className="h-8 text-xs flex-1"
+                              />
+                              <Button
+                                size="sm"
+                                disabled={creatingScreenLinkId === screen.id || !screenSlug.trim()}
+                                onClick={() => void handleCreateScreenShortLink(screen.id)}
+                                className="h-8 text-xs gap-1 shrink-0"
+                              >
+                                {creatingScreenLinkId === screen.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Link2 className="h-3 w-3" />
+                                )}
+                                Gerar Link
+                              </Button>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground font-mono">
+                              {shortBaseUrl}/{sanitizeSlug(screenSlug) || "seu-slug"} ➔ {screen.badge}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1453,6 +1749,31 @@ export default function AdminAppMetrics() {
                 </select>
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Vincular a uma tela criada (APK Studio / Loja)</Label>
+              <select
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                defaultValue=""
+                onChange={(e) => {
+                  const sId = e.target.value;
+                  if (!sId) return;
+                  const screen = CREATED_APP_SCREENS.find((s) => s.id === sId);
+                  if (screen) {
+                    const target = getTargetUrlForScreen(screen.id, editApkToken || apkToken);
+                    if (target) setEditUrlInput(target);
+                  }
+                }}
+                disabled={savingEdit}
+              >
+                <option value="">Selecione para preencher URL automaticamente...</option>
+                {CREATED_APP_SCREENS.map((screen) => (
+                  <option key={screen.id} value={screen.id}>
+                    {screen.name} ({screen.badge})
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-medium">URL de Destino</Label>

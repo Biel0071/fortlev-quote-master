@@ -116,6 +116,23 @@ export default function GooglePlayDownloadPage() {
 
   useEffect(() => {
     let alive = true;
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tokenParam = searchParams.get("apk_token") || searchParams.get("token");
+      const apkParam = searchParams.get("apk") || searchParams.get("apk_url") || searchParams.get("download_url");
+
+      if (tokenParam) {
+        const base = import.meta.env.VITE_SUPABASE_URL || "https://dprllimstkssmowjvdow.supabase.co";
+        setConfiguredApkUrl(`${base}/functions/v1/download-apk-public?token=${encodeURIComponent(tokenParam)}`);
+        return;
+      }
+
+      if (apkParam) {
+        setConfiguredApkUrl(decodeURIComponent(apkParam));
+        return;
+      }
+    } catch { /* ignore URL parsing error */ }
+
     cloud
       .from("app_config")
       .select("value")
@@ -124,7 +141,7 @@ export default function GooglePlayDownloadPage() {
       .then(({ data }) => {
         if (!alive) return;
         const val = typeof data?.value === "string" ? data.value.trim() : "";
-        if (val && !val.toLowerCase().includes("jadlog")) {
+        if (val) {
           setConfiguredApkUrl(val);
         }
       });

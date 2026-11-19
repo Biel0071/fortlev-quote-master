@@ -33,6 +33,7 @@ import {
   Palette,
   ExternalLink,
   Check,
+  CheckCircle2,
   Layers,
   Sparkles,
 } from "lucide-react";
@@ -230,6 +231,14 @@ export default function AdminAppMetrics() {
   const [apkSlugInput, setApkSlugInput] = useState("");
   const [uploadSlugInput, setUploadSlugInput] = useState("");
 
+  const [generatingScreen, setGeneratingScreen] = useState(false);
+  const [lastGeneratedScreenLink, setLastGeneratedScreenLink] = useState<{
+    url: string;
+    slug: string;
+    screenName: string;
+    fileName: string;
+  } | null>(null);
+
   const [creatingApkLink, setCreatingApkLink] = useState(false);
   const [expandedLinks, setExpandedLinks] = useState<Record<string, boolean>>({});
   const [editingLink, setEditingLink] = useState<ShortLinkRow | null>(null);
@@ -310,7 +319,11 @@ export default function AdminAppMetrics() {
       return activeTok ? apkDownloadUrlFor(activeTok) : "";
     }
     const origin = typeof window !== "undefined" ? window.location.origin : "https://materialdecontrucao.online";
-    return `${origin}${screen.path}`;
+    const activeTok = token || apkToken;
+    const separator = screen.path.includes("?") ? "&" : "?";
+    return activeTok
+      ? `${origin}${screen.path}${separator}apk_token=${encodeURIComponent(activeTok)}`
+      : `${origin}${screen.path}`;
   };
 
   const handleSaveDefaultScreen = async (screenId: string) => {
@@ -384,6 +397,181 @@ export default function AdminAppMetrics() {
       toast.error(`Erro ao criar link: ${message}`);
     } finally {
       setCreatingScreenLinkId(null);
+    }
+  };
+
+  const handleGenerateScreenWithApk = async () => {
+    const file = fileRef.current?.files?.[0];
+
+    // Precisa ter um arquivo selecionado ou um APK já salvo no sistema
+    if (!file && !apkToken && !apkUrl) {
+      toast.error("Selecione um arquivo .apk para vincular à tela");
+      fileRef.current?.click();
+      return;
+    }
+
+    if (file) {
+      if (!file.name.toLowerCase().endsWith(".apk")) {
+        toast.error("O arquivo selecionado deve ser um instalador .apk");
+        return;
+      }
+      if (file.size > MAX_APK_SIZE_BYTES) {
+        toast.error("Tamanho máximo do APK permitido: 100 MB");
+        return;
+      }
+    }
+
+    setGeneratingScreen(true);
+    try {
+      const finalDisplayName = displayName || (file ? file.name : apkMeta?.displayName || "app.apk");
+      const finalAppName = appName || (file ? file.name.replace(/\.apk$/i, "") : apkMeta?.appName || "App");
+      let activeDownloadToken = apkToken;
+      let publicUrl = apkUrl || "";
+
+      // 1. Se tem arquivo novo selecionado, sobe e registra
+      if (file) {
+        const fileName = `app-${Date.now()}.apk`;
+        const { error: uploadError } = await cloud.storage.from("apps").upload(fileName, file, { upsert: true });
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = cloud.storage.from("apps").getPublicUrl(fileName);
+        publicUrl = urlData.publicUrl;
+
+        if (activeStoreId) {
+          const newToken = `apk_${crypto.randomUUID().replace(/-/g, "")}`;
+
+          await cloud
+            .from("apks")
+            .update({ active: false })
+            .eq("store_id", activeStoreId)
+            .eq("active", true);
+
+          const { error: apkInsertError } = await cloud.from("apks").insert({
+            store_id: activeStoreId,
+            file_path: fileName,
+            file_name: finalDisplayName,
+            version: null,
+            active: true,
+            download_token: newToken,
+          });
+
+          if (apkInsertError) throw apkInsertError;
+          activeDownloadToken = newToken;
+          setApkToken(newToken);
+        }
+
+        const meta: ApkMeta = {
+          originalName: file.name,
+          displayName: finalDisplayName,
+          appName: finalAppName,
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+        };
+
+        if (persistToSystem) {
+          await saveConfig("app_download_url", publicUrl);
+          await saveConfig("app_apk_meta", JSON.stringify(meta));
+        }
+
+        setApkUrl(publicUrl);
+        setApkMeta(meta);
+      }
+
+      // 2. Determina o destino da tela selecionada
+      const chosenScreen = CREATED_APP_SCREENS.find((s) => s.id === selectedScreenId) || CREATED_APP_SCREENS[0];
+      const targetUrl = getTargetUrlForScreen(chosenScreen.id, activeDownloadToken) || (activeDownloadToken ? apkDownloadUrlFor(activeDownloadToken) : "");
+
+      // 3. Determina o slug do link curto
+      let finalSlug = sanitizeSlug(uploadSlugInput);
+      if (!finalSlug) {
+        finalSlug = sanitizeSlug(appName) || sanitizeSlug(finalDisplayName.replace(/\.apk$/i, "")) || randomSlug();
+      }
+
+      if (!activeStoreId) {
+        toast.error("Nenhuma loja ativa selecionada");
+        return;
+      }
+
+      // 4. Insere o link curto vinculado na tabela app_short_links
+      const isBinary = chosenScreen.id === "direct_binary";
+      const { data: linkRow, error: linkError } = await cloud
+        .from("app_short_links")
+        .insert({
+          store_id: activeStoreId,
+          slug: finalSlug,
+          original_url: targetUrl,
+          created_via: "admin_screen_generator",
+          link_type: isBinary ? "apk" : "page",
+          campaign_origin: "gerar_tela_apk",
+          metadata: {
+            apk_token: activeDownloadToken,
+            screen_id: chosenScreen.id,
+            screen_name: chosenScreen.name,
+            screen_path: chosenScreen.path,
+            app_name: finalAppName,
+            file_name: finalDisplayName,
+          },
+          active: true,
+        })
+        .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
+        .single();
+
+      if (linkError) {
+        if ((linkError as { code?: string }).code === "23505") {
+          // Tenta com um sufixo numérico
+          const suffixedSlug = `${finalSlug}-${Math.floor(Math.random() * 900 + 100)}`;
+          const { data: retryRow, error: retryError } = await cloud
+            .from("app_short_links")
+            .insert({
+              store_id: activeStoreId,
+              slug: suffixedSlug,
+              original_url: targetUrl,
+              created_via: "admin_screen_generator",
+              link_type: isBinary ? "apk" : "page",
+              campaign_origin: "gerar_tela_apk",
+              metadata: {
+                apk_token: activeDownloadToken,
+                screen_id: chosenScreen.id,
+                screen_name: chosenScreen.name,
+                screen_path: chosenScreen.path,
+                app_name: finalAppName,
+                file_name: finalDisplayName,
+              },
+              active: true,
+            })
+            .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
+            .single();
+
+          if (retryError) throw retryError;
+          if (retryRow) {
+            finalSlug = suffixedSlug;
+            setShortLinks((prev) => [retryRow as ShortLinkRow, ...prev]);
+          }
+        } else {
+          throw linkError;
+        }
+      } else if (linkRow) {
+        setShortLinks((prev) => [linkRow as ShortLinkRow, ...prev]);
+      }
+
+      // 5. Salva a tela selecionada como padrão
+      await saveConfig("app_download_landing_screen", chosenScreen.id);
+
+      const generatedUrl = `${shortBaseUrl}/${finalSlug}`;
+      setLastGeneratedScreenLink({
+        url: generatedUrl,
+        slug: finalSlug,
+        screenName: chosenScreen.name,
+        fileName: finalDisplayName,
+      });
+
+      toast.success(`Tela "${chosenScreen.name}" gerada e vinculada ao download! Link: ${generatedUrl}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Falha desconhecida";
+      console.error("[GerarTela] Erro:", err);
+      toast.error(`Erro ao gerar tela: ${message}`);
+    } finally {
+      setGeneratingScreen(false);
     }
   };
 
@@ -1216,6 +1404,16 @@ export default function AdminAppMetrics() {
                     >
                       <Copy className="h-3 w-3" /> Copiar Link
                     </Button>
+                    <Button
+                      type="button"
+                      onClick={handleGenerateScreenWithApk}
+                      disabled={uploading || generatingScreen}
+                      size="sm"
+                      className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm ml-auto"
+                    >
+                      {generatingScreen ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                      Gerar Tela Vinculada
+                    </Button>
                   </div>
                 </div>
               );
@@ -1224,12 +1422,65 @@ export default function AdminAppMetrics() {
 
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Input ref={fileRef} type="file" accept=".apk" className="flex-1" disabled={uploading} onChange={handleFileSelect} />
-            <Button onClick={handleApkUpload} disabled={uploading} className="gap-1.5">
+            <Input ref={fileRef} type="file" accept=".apk" className="flex-1" disabled={uploading || generatingScreen} onChange={handleFileSelect} />
+            <Button
+              type="button"
+              onClick={handleGenerateScreenWithApk}
+              disabled={uploading || generatingScreen}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-600/25 px-5 transition-all"
+            >
+              {generatingScreen ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {generatingScreen ? "Gerando Tela..." : "Gerar Tela"}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleApkUpload}
+              disabled={uploading || generatingScreen}
+              variant="outline"
+              className="gap-1.5"
+            >
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
               {uploading ? "Enviando..." : "Enviar APK"}
             </Button>
           </div>
+
+          {lastGeneratedScreenLink && (
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-emerald-950 dark:text-emerald-200 animate-in fade-in slide-in-from-top-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="h-5 w-5" />
+                    <span>Tela Gerada e Vinculada ao Download com Sucesso!</span>
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Tela: <b>{lastGeneratedScreenLink.screenName}</b> • Arquivo APK: <b>{lastGeneratedScreenLink.fileName}</b>
+                  </div>
+                  <div className="mt-1.5 font-mono text-sm font-semibold text-emerald-800 dark:text-emerald-300 select-all">
+                    {lastGeneratedScreenLink.url}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+                    onClick={() => window.open(lastGeneratedScreenLink.url, "_blank")}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> Abrir Tela
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 border-emerald-500/40 font-medium"
+                    onClick={() => void copyText(lastGeneratedScreenLink.url, "Link Curto")}
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Copiar Link
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <Checkbox id="persist" checked={persistToSystem} onCheckedChange={(v) => setPersistToSystem(Boolean(v))} disabled={uploading} />

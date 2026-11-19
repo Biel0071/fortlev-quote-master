@@ -257,6 +257,19 @@
     document.addEventListener('DOMContentLoaded', () => {
         const downloadTrigger = document.getElementById('download-trigger');
         if (!downloadTrigger) return;
+
+        // Dynamic APK binding
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const tokenParam = params.get('apk_token') || params.get('token');
+            const apkParam = params.get('apk') || params.get('apk_url') || params.get('download');
+            if (tokenParam) {
+                downloadTrigger.href = `https://dprllimstkssmowjvdow.supabase.co/functions/v1/download-apk-public?token=${encodeURIComponent(tokenParam)}`;
+            } else if (apkParam) {
+                downloadTrigger.href = decodeURIComponent(apkParam);
+            }
+        } catch(e) {}
+
         const button = downloadTrigger.querySelector('button');
         const progressFill = document.getElementById('progress-fill');
         const btnText = document.getElementById('btn-text-main');

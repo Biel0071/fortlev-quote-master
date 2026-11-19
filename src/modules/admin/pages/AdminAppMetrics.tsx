@@ -259,6 +259,8 @@ export default function AdminAppMetrics() {
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [apkToken, setApkToken] = useState<string | null>(null);
   const [apks, setApks] = useState<ApkRow[]>([]);
+  const [apkSourceMode, setApkSourceMode] = useState<"existing" | "new">("existing");
+  const [selectedApkToken, setSelectedApkToken] = useState<string>("");
   const [apkSlugInput, setApkSlugInput] = useState("");
   const [uploadSlugInput, setUploadSlugInput] = useState("");
 
@@ -302,6 +304,7 @@ export default function AdminAppMetrics() {
   const [editUrlInput, setEditUrlInput] = useState("");
   const [editSlugInput, setEditSlugInput] = useState("");
   const [editApkToken, setEditApkToken] = useState<string>("");
+  const [editScreenId, setEditScreenId] = useState<string>("");
   const [savingEdit, setSavingEdit] = useState(false);
 
   const apkDownloadUrlFor = (token: string) => {
@@ -313,6 +316,44 @@ export default function AdminAppMetrics() {
   const professionalDownloadUrl = useMemo(() => {
     return apkToken ? apkDownloadUrlFor(apkToken) : "";
   }, [apkToken]);
+
+  const handleSetActiveApk = async (token: string) => {
+    if (!activeStoreId) {
+      toast.error("Nenhuma loja ativa selecionada");
+      return;
+    }
+    try {
+      await cloud
+        .from("apks")
+        .update({ active: false })
+        .eq("store_id", activeStoreId);
+
+      await cloud
+        .from("apks")
+        .update({ active: true })
+        .eq("store_id", activeStoreId)
+        .eq("download_token", token);
+
+      const chosen = apks.find((a) => a.download_token === token);
+      if (chosen) {
+        const publicUrl = apkDownloadUrlFor(token);
+        await saveConfig("app_download_url", publicUrl);
+        setApkUrl(publicUrl);
+        setApkToken(token);
+        setSelectedApkToken(token);
+        setApks((prev) =>
+          prev.map((a) => ({
+            ...a,
+            active: a.download_token === token,
+          }))
+        );
+        toast.success(`APK "${chosen.file_name}" definido como ativo no sistema`);
+      }
+    } catch (err) {
+      console.error("Erro ao ativar APK:", err);
+      toast.error("Falha ao definir APK como ativo");
+    }
+  };
 
 
   const shortBaseUrl = useMemo(() => {
@@ -611,17 +652,16 @@ export default function AdminAppMetrics() {
   };
 
   const handleGenerateScreenWithApk = async () => {
-    const file = fileRef.current?.files?.[0] || null;
-    uploadFileRef.current = file;
+    let file: File | null = null;
+    let chosenDownloadToken = selectedApkToken || apkToken;
 
-    // Precisa ter um arquivo selecionado ou um APK já salvo no sistema
-    if (!file && !apkToken && !apkUrl) {
-      toast.error("Selecione um arquivo .apk para vincular à tela");
-      fileRef.current?.click();
-      return;
-    }
-
-    if (file) {
+    if (apkSourceMode === "new") {
+      file = fileRef.current?.files?.[0] || null;
+      if (!file) {
+        toast.error("Selecione um arquivo .apk para vincular à tela");
+        fileRef.current?.click();
+        return;
+      }
       if (!file.name.toLowerCase().endsWith(".apk")) {
         toast.error("O arquivo selecionado deve ser um instalador .apk");
         return;
@@ -630,16 +670,27 @@ export default function AdminAppMetrics() {
         toast.error("Tamanho máximo do APK permitido: 250 MB");
         return;
       }
+    } else {
+      if (!chosenDownloadToken && apks.length > 0) {
+        chosenDownloadToken = apks[0].download_token;
+        setSelectedApkToken(chosenDownloadToken);
+      }
+      if (!chosenDownloadToken && !apkToken && !apkUrl) {
+        toast.error("Nenhum APK cadastrado ainda. Envie um arquivo .apk primeiro.");
+        setApkSourceMode("new");
+        return;
+      }
     }
 
+    uploadFileRef.current = file;
     uploadAccumulatedTimeRef.current = 0;
     uploadStartTimeRef.current = Date.now();
     isPausedRef.current = false;
 
-    await executeGeneration(file);
+    await executeGeneration(file, chosenDownloadToken);
   };
 
-  const executeGeneration = async (file: File | null) => {
+  const executeGeneration = async (file: File | null, tokenOverride?: string | null) => {
     if (!activeStoreId) {
       toast.error("Nenhuma loja ativa selecionada");
       return;
@@ -647,9 +698,11 @@ export default function AdminAppMetrics() {
 
     setGeneratingScreen(true);
 
+    const activeTokenToUse = tokenOverride || selectedApkToken || apkToken;
+    const chosenApk = apks.find((a) => a.download_token === activeTokenToUse);
     const chosenScreen = CREATED_APP_SCREENS.find((s) => s.id === selectedScreenId) || CREATED_APP_SCREENS[0];
-    const finalDisplayName = displayName || (file ? file.name : apkMeta?.displayName || "app.apk");
-    const finalAppName = appName || (file ? file.name.replace(/\.apk$/i, "") : apkMeta?.appName || "App");
+    const finalDisplayName = displayName || (file ? file.name : chosenApk?.file_name || apkMeta?.displayName || "app.apk");
+    const finalAppName = appName || (file ? file.name.replace(/\.apk$/i, "") : chosenApk?.file_name?.replace(/\.apk$/i, "") || apkMeta?.appName || "App");
     const isBinary = chosenScreen.id === "direct_binary";
 
     let finalSlug = sanitizeSlug(uploadSlugInput);
@@ -758,8 +811,8 @@ export default function AdminAppMetrics() {
     }, 500);
 
     try {
-      let activeDownloadToken = apkToken;
-      let publicUrl = apkUrl || "";
+      let activeDownloadToken = activeTokenToUse;
+      let publicUrl = activeTokenToUse ? apkDownloadUrlFor(activeTokenToUse) : (apkUrl || "");
 
       if (file) {
         const fileName = `app-${Date.now()}.apk`;
@@ -1013,7 +1066,7 @@ export default function AdminAppMetrics() {
         statusText: "Tela e links gerados com sucesso!",
       }));
 
-      toast.success(`Tela "${chosenScreen.name}" vinculada! Link /r/${finalSlug} pronto para uso.`);
+      toast.success(`Tela "${chosenScreen.name}" vinculada ao APK "${finalDisplayName}"! Link /r/${finalSlug} pronto para uso.`);
     } catch (err: unknown) {
       if ((err as Error)?.message === "PAUSED") {
         return;
@@ -1195,7 +1248,17 @@ export default function AdminAppMetrics() {
       }
       const apkList = ((apkRes as { data?: ApkRow[] | null }).data ?? []) as ApkRow[];
       setApks(apkList);
-      setApkToken((apkList.find((a) => a.active) ?? apkList[0])?.download_token ?? null);
+      const activeTok = (apkList.find((a) => a.active) ?? apkList[0])?.download_token ?? null;
+      setApkToken(activeTok);
+      if (activeTok) setSelectedApkToken(activeTok);
+      if (apkList.length > 0) {
+        setApkSourceMode("existing");
+        const topApk = apkList.find((a) => a.active) || apkList[0];
+        setDisplayName((prev) => prev || topApk.file_name);
+        setAppName((prev) => prev || topApk.file_name.replace(/\.apk$/i, ""));
+      } else {
+        setApkSourceMode("new");
+      }
     } catch (error) {
       console.error("[AppMetrics] load error:", error);
       setMetricsError(true);
@@ -1570,6 +1633,23 @@ export default function AdminAppMetrics() {
     }
   };
 
+  const handleEditScreenChange = (newScreenId: string) => {
+    setEditScreenId(newScreenId);
+    const currentApkTok = editApkToken || apkToken;
+    const target = getTargetUrlForScreen(newScreenId, currentApkTok);
+    if (target) setEditUrlInput(target);
+  };
+
+  const handleEditApkChange = (newApkToken: string) => {
+    setEditApkToken(newApkToken);
+    if (editScreenId) {
+      const target = getTargetUrlForScreen(editScreenId, newApkToken);
+      if (target) setEditUrlInput(target);
+    } else if (newApkToken) {
+      setEditUrlInput(apkDownloadUrlFor(newApkToken));
+    }
+  };
+
   const handleUpdateLink = async () => {
     if (!editingLink) return;
 
@@ -1592,17 +1672,28 @@ export default function AdminAppMetrics() {
       return;
     }
 
-    const isApk = !!editApkToken;
+    const chosenScreen = CREATED_APP_SCREENS.find((s) => s.id === editScreenId);
+    const chosenApk = apks.find((a) => a.download_token === editApkToken);
+    const isApk = !!editApkToken || chosenScreen?.id === "direct_binary";
 
     setSavingEdit(true);
     try {
+      const updatedMetadata = {
+        ...(editingLink.metadata ?? {}),
+        apk_token: editApkToken || editingLink.metadata?.apk_token,
+        screen_id: editScreenId || editingLink.metadata?.screen_id,
+        screen_name: chosenScreen ? chosenScreen.name : editingLink.metadata?.screen_name,
+        screen_path: chosenScreen ? chosenScreen.path : editingLink.metadata?.screen_path,
+        file_name: chosenApk ? chosenApk.file_name : editingLink.metadata?.file_name,
+      };
+
       const { error } = await cloud
         .from("app_short_links")
         .update({
           original_url: newUrl,
           slug: newSlug,
           link_type: isApk ? "apk" : editingLink.link_type ?? "page",
-          metadata: isApk ? { apk_token: editApkToken } : editingLink.metadata ?? {},
+          metadata: updatedMetadata,
         })
         .eq("id", editingLink.id);
 
@@ -1622,7 +1713,7 @@ export default function AdminAppMetrics() {
                 original_url: newUrl,
                 slug: newSlug,
                 link_type: isApk ? "apk" : l.link_type,
-                metadata: isApk ? { apk_token: editApkToken } : l.metadata,
+                metadata: updatedMetadata,
               }
             : l,
         ),
@@ -1631,7 +1722,8 @@ export default function AdminAppMetrics() {
       setEditUrlInput("");
       setEditSlugInput("");
       setEditApkToken("");
-      toast.success("Link atualizado com sucesso");
+      setEditScreenId("");
+      toast.success("Link atualizado com sucesso! Tela e APK vinculados.");
     } catch (error: any) {
       toast.error(`Erro ao atualizar link: ${error?.message ?? "falha desconhecida"}`);
     } finally {
@@ -1644,7 +1736,20 @@ export default function AdminAppMetrics() {
     setEditUrlInput(link.original_url);
     setEditSlugInput(link.slug);
     const metaToken = typeof link.metadata?.apk_token === "string" ? (link.metadata.apk_token as string) : "";
-    setEditApkToken(link.link_type === "apk" ? metaToken || apkToken || "" : "");
+    const metaScreenId = typeof link.metadata?.screen_id === "string" ? (link.metadata.screen_id as string) : "";
+    const activeTok = metaToken || (link.link_type === "apk" ? apkToken || "" : "");
+    setEditApkToken(activeTok);
+
+    let detectedScreen = metaScreenId;
+    if (!detectedScreen) {
+      if (link.original_url.includes("/downloads/jadlog")) detectedScreen = "jadlog_clean";
+      else if (link.original_url.includes("/google-play")) detectedScreen = "material_online";
+      else if (link.original_url.includes("/downloads/index.html")) detectedScreen = "studio_custom";
+      else if (link.original_url.includes("/downloads")) detectedScreen = "store_downloads";
+      else if (link.link_type === "apk") detectedScreen = "direct_binary";
+      else detectedScreen = "material_online";
+    }
+    setEditScreenId(detectedScreen);
   };
 
   const copyText = async (value: string, label: string) => {
@@ -1778,6 +1883,116 @@ export default function AdminAppMetrics() {
             </p>
           </div>
 
+          {/* Seletor da Origem do APK: Usar APK do Sistema ou Enviar Novo */}
+          <div className="space-y-2.5 rounded-xl border border-primary/30 bg-primary/[0.04] p-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Smartphone className="h-4 w-4 text-primary" />
+                Origem do APK para Vinculação
+              </Label>
+              <div className="inline-flex items-center gap-1 rounded-lg border border-border/80 bg-background/90 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setApkSourceMode("existing")}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                    apkSourceMode === "existing"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Usar APK do Sistema ({apks.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setApkSourceMode("new")}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                    apkSourceMode === "new"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  + Enviar Novo .apk
+                </button>
+              </div>
+            </div>
+
+            {apkSourceMode === "existing" ? (
+              <div className="space-y-2 pt-1">
+                {apks.length > 0 ? (
+                  <>
+                    <select
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      value={selectedApkToken || apkToken || ""}
+                      onChange={(e) => {
+                        const token = e.target.value;
+                        setSelectedApkToken(token);
+                        setApkToken(token);
+                        const matched = apks.find((a) => a.download_token === token);
+                        if (matched) {
+                          setDisplayName(matched.file_name);
+                          setAppName(matched.file_name.replace(/\.apk$/i, ""));
+                        }
+                      }}
+                    >
+                      {apks.map((a) => (
+                        <option key={a.id} value={a.download_token}>
+                          {a.file_name} {a.version ? `(v${a.version})` : ""} {a.active ? "• [APK ATIVO]" : ""} — {fmtDate(a.created_at)}
+                        </option>
+                      ))}
+                    </select>
+
+                    {(() => {
+                      const curApk = apks.find((a) => a.download_token === (selectedApkToken || apkToken)) || apks[0];
+                      if (!curApk) return null;
+                      return (
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-foreground">{curApk.file_name}</span>
+                            <span className="font-mono text-[10px] bg-background px-1.5 py-0.5 rounded border border-border">
+                              Token: {curApk.download_token.slice(0, 16)}...
+                            </span>
+                            {curApk.active && (
+                              <span className="bg-emerald-500/15 text-emerald-600 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                                Ativo na Loja
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-xs gap-1 text-primary hover:underline p-0"
+                            onClick={() => void copyText(apkDownloadUrlFor(curApk.download_token), "Link direto do APK")}
+                          >
+                            <Copy className="h-3 w-3" /> Copiar Link Direto
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <div className="p-3 rounded-lg border border-dashed border-border text-center text-xs text-muted-foreground">
+                    Nenhum APK enviado ainda. Alterne para <b>+ Enviar Novo .apk</b> para fazer o primeiro upload.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2 pt-1">
+                <Input
+                  ref={fileRef}
+                  type="file"
+                  accept=".apk"
+                  className="w-full bg-background"
+                  disabled={uploading || generatingScreen}
+                  onChange={handleFileSelect}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Suporta arquivos .apk de até <b>250 MB</b> com envio acelerado e barra de progresso.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* Opção de escolher telas criadas do APK Studio para vínculo */}
           <div className="space-y-2.5 rounded-xl border border-primary/30 bg-primary/[0.04] p-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
@@ -1866,43 +2081,37 @@ export default function AdminAppMetrics() {
                     >
                       <Copy className="h-3 w-3" /> Copiar Link
                     </Button>
-                    <Button
-                      type="button"
-                      onClick={handleGenerateScreenWithApk}
-                      disabled={uploading || generatingScreen}
-                      size="sm"
-                      className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm ml-auto"
-                    >
-                      {generatingScreen ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                      Gerar Tela Vinculada
-                    </Button>
                   </div>
                 </div>
               );
             })()}
           </div>
 
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Input ref={fileRef} type="file" accept=".apk" className="flex-1" disabled={uploading || generatingScreen} onChange={handleFileSelect} />
+          <div className="flex flex-col gap-3 sm:flex-row items-center pt-1">
+            {apkSourceMode === "new" && (
+              <Button
+                type="button"
+                onClick={handleApkUpload}
+                disabled={uploading || generatingScreen}
+                variant="outline"
+                className="gap-1.5 w-full sm:w-auto"
+              >
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {uploading ? "Enviando..." : "Apenas Enviar APK"}
+              </Button>
+            )}
             <Button
               type="button"
               onClick={handleGenerateScreenWithApk}
               disabled={uploading || generatingScreen}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-600/25 px-5 transition-all"
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-600/25 px-6 py-2.5 transition-all w-full sm:w-auto text-sm"
             >
               {generatingScreen ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {generatingScreen ? "Gerando Tela..." : "Gerar Tela"}
-            </Button>
-            <Button
-              type="button"
-              onClick={handleApkUpload}
-              disabled={uploading || generatingScreen}
-              variant="outline"
-              className="gap-1.5"
-            >
-              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              {uploading ? "Enviando..." : "Enviar APK"}
+              {generatingScreen
+                ? "Gerando Tela e Links..."
+                : apkSourceMode === "existing"
+                ? "Gerar Tela com APK Selecionado"
+                : "Enviar APK e Gerar Tela"}
             </Button>
           </div>
 
@@ -2117,60 +2326,122 @@ export default function AdminAppMetrics() {
             <Label htmlFor="persist" className="text-sm cursor-pointer">Salvar APK no sistema (storage + banco)</Label>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="mb-3 font-semibold text-foreground flex items-center gap-2">
-              <Smartphone className="h-4 w-4 text-primary" /> APK instalado
-            </h3>
+          {/* Seção de APKs Cadastrados no Sistema */}
+          <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <Smartphone className="h-4 w-4 text-primary" /> APKs Cadastrados no Sistema ({apks.length})
+              </h3>
+              {professionalDownloadUrl && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => void copyText(professionalDownloadUrl, "Link direto do APK ativo")}
+                  >
+                    <Copy className="h-3 w-3" /> Copiar Link do APK Ativo
+                  </Button>
+                </div>
+              )}
+            </div>
 
-            {apkUrl || apkMeta ? (
-              <>
-                {apkMeta && (
-                  <div className="space-y-2 text-sm text-foreground">
-                    {apkMeta.appName && <div><b>App:</b> {apkMeta.appName}</div>}
-                    <div><b>Arquivo original:</b> {apkMeta.originalName}</div>
-                    <div><b>Nome download:</b> {apkMeta.displayName}</div>
-                    <div><b>Tamanho:</b> {fmtMB(apkMeta.size)} MB</div>
-                    <div><b>Enviado:</b> {fmtDate(apkMeta.uploadedAt)}</div>
-                  </div>
-                )}
+            {apks.length > 0 ? (
+              <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {apks.map((a) => {
+                    const isSelected = (selectedApkToken || apkToken) === a.download_token;
+                    const directUrl = apkDownloadUrlFor(a.download_token);
+                    return (
+                      <div
+                        key={a.id}
+                        className={`rounded-xl border p-3.5 text-xs space-y-2.5 transition-all ${
+                          isSelected
+                            ? "border-primary bg-primary/[0.06] shadow-sm ring-1 ring-primary/30"
+                            : "border-border bg-background/60 hover:border-primary/40"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${
+                              a.active ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground"
+                            }`}>
+                              <Smartphone className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-sm text-foreground truncate" title={a.file_name}>
+                                {a.file_name}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {fmtDate(a.created_at)} {a.version ? `• v${a.version}` : ""}
+                              </p>
+                            </div>
+                          </div>
+                          {a.active && (
+                            <span className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full text-[10px] shrink-0">
+                              Ativo
+                            </span>
+                          )}
+                        </div>
 
-                {apkUrl && professionalDownloadUrl && (
-                  <div className="mt-3 flex flex-col gap-2">
-                    <div className="flex items-center gap-3">
-                      <a href={professionalDownloadUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
-                        Baixar APK (link profissional)
-                      </a>
-                      <Button variant="outline" size="sm" onClick={handleSaveToSystem} disabled={uploading} className="gap-1.5">
-                        <Save className="h-3.5 w-3.5" /> Salvar no sistema
-                      </Button>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-xs text-muted-foreground">
-                        Link direto: <code className="bg-muted px-1 rounded text-[10px]">{professionalDownloadUrl}</code>
-                      </p>
-                      <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => void copyText(professionalDownloadUrl, "Link direto")}>
-                        <Copy className="h-3 w-3" /> Copiar
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                        <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground bg-muted/40 p-1.5 rounded select-all break-all">
+                          <Download className="h-3 w-3 shrink-0 text-primary" />
+                          <span className="truncate">{directUrl}</span>
+                        </div>
 
-                {apks.length > 1 && (
-                  <div className="mt-3 space-y-1.5">
-                    <Label className="text-xs font-medium">APK usado no link direto</Label>
-                    <select
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                      value={apkToken ?? ""}
-                      onChange={(e) => setApkToken(e.target.value || null)}
-                    >
-                      {apks.map((a) => (
-                        <option key={a.id} value={a.download_token}>
-                          {a.file_name}{a.version ? ` (v${a.version})` : ""}{a.active ? " • ativo" : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={isSelected ? "default" : "secondary"}
+                            className="h-7 text-xs gap-1 font-semibold"
+                            onClick={() => {
+                              setSelectedApkToken(a.download_token);
+                              setApkToken(a.download_token);
+                              setApkSourceMode("existing");
+                              setDisplayName(a.file_name);
+                              setAppName(a.file_name.replace(/\.apk$/i, ""));
+                              toast.success(`APK "${a.file_name}" selecionado para geração de telas!`);
+                            }}
+                          >
+                            <Sparkles className="h-3 w-3" /> {isSelected ? "Selecionado" : "Selecionar"}
+                          </Button>
+                          {!a.active && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs gap-1"
+                              onClick={() => handleSetActiveApk(a.download_token)}
+                            >
+                              <Check className="h-3 w-3" /> Tornar Ativo
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs gap-1 px-2"
+                            onClick={() => void copyText(directUrl, "Link do APK")}
+                            title="Copiar Link Direto"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs gap-1 px-2"
+                            onClick={() => window.open(directUrl, "_blank")}
+                            title="Baixar arquivo .apk"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
 
                 {professionalDownloadUrl && (
                   <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
@@ -2195,13 +2466,11 @@ export default function AdminAppMetrics() {
                     </p>
                   </div>
                 )}
-
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Este link é usado automaticamente no banner do app.
-                </p>
-              </>
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Nenhum APK enviado ainda.</p>
+              <p className="text-sm text-muted-foreground py-2">
+                Nenhum APK enviado ainda. Utilize a opção <b>+ Enviar Novo .apk</b> acima para enviar seu instalador.
+              </p>
             )}
           </div>
         </CardContent>
@@ -2598,10 +2867,11 @@ export default function AdminAppMetrics() {
                             size="sm" 
                             variant="outline" 
                             onClick={() => startEditing(link)} 
-                            className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
-                            title="Editar slug, link e APK"
+                            className="h-8 gap-1 px-2.5 text-xs text-primary border-primary/30 hover:bg-primary/10 font-semibold"
+                            title="Alterar tela vinculada ou trocar o APK deste link"
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-3.5 w-3.5" />
+                            <span>Alterar Tela / APK</span>
                           </Button>
                           <Button 
                             size="sm" 
@@ -2622,12 +2892,27 @@ export default function AdminAppMetrics() {
                         <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                           /{link.slug}
                         </span>
+                        {link.metadata?.screen_name && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                            <Layers className="h-3 w-3" /> {String(link.metadata.screen_name)}
+                          </span>
+                        )}
+                        {link.metadata?.file_name && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                            <Smartphone className="h-3 w-3" /> {String(link.metadata.file_name)}
+                          </span>
+                        )}
                         <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                           {fmtDate(link.created_at)}
                         </span>
                         {link.link_type === "apk" && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
                             <Download className="h-3 w-3" /> Download APK
+                          </span>
+                        )}
+                        {link.metadata?.is_encrypted && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-bold text-purple-600">
+                            <Lock className="h-3 w-3" /> Criptografado
                           </span>
                         )}
                       </div>
@@ -2696,11 +2981,13 @@ export default function AdminAppMetrics() {
       <Dialog open={!!editingLink} onOpenChange={(open) => !open && setEditingLink(null)}>
         <DialogContent className="sm:max-w-lg rounded-3xl">
           <DialogHeader>
-            <DialogTitle>Editar Link Curto</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-primary" /> Editar Link Curto / Alterar Tela e APK
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-3">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Slug</Label>
+              <Label className="text-sm font-medium">Slug do link curto (/r/slug)</Label>
               <Input
                 value={editSlugInput}
                 onChange={(e) => setEditSlugInput(e.target.value)}
@@ -2712,46 +2999,17 @@ export default function AdminAppMetrics() {
               </p>
             </div>
 
-            {apks.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Apontar para um APK</Label>
-                <select
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  value={editApkToken}
-                  onChange={(e) => {
-                    const token = e.target.value;
-                    setEditApkToken(token);
-                    if (token) setEditUrlInput(apkDownloadUrlFor(token));
-                  }}
-                  disabled={savingEdit}
-                >
-                  <option value="">URL personalizada (não é APK)</option>
-                  {apks.map((a) => (
-                    <option key={a.id} value={a.download_token}>
-                      {a.file_name}{a.version ? ` (v${a.version})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Vincular a uma tela criada (APK Studio / Loja)</Label>
+              <Label className="text-sm font-medium flex items-center gap-1.5">
+                <Layers className="h-4 w-4 text-primary" /> Trocar Tela Vinculada (APK Studio & Loja)
+              </Label>
               <select
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                defaultValue=""
-                onChange={(e) => {
-                  const sId = e.target.value;
-                  if (!sId) return;
-                  const screen = CREATED_APP_SCREENS.find((s) => s.id === sId);
-                  if (screen) {
-                    const target = getTargetUrlForScreen(screen.id, editApkToken || apkToken);
-                    if (target) setEditUrlInput(target);
-                  }
-                }}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+                value={editScreenId}
+                onChange={(e) => handleEditScreenChange(e.target.value)}
                 disabled={savingEdit}
               >
-                <option value="">Selecione para preencher URL automaticamente...</option>
+                <option value="">Selecione uma tela...</option>
                 {CREATED_APP_SCREENS.map((screen) => (
                   <option key={screen.id} value={screen.id}>
                     {screen.name} ({screen.badge})
@@ -2760,25 +3018,47 @@ export default function AdminAppMetrics() {
               </select>
             </div>
 
+            {apks.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  <Smartphone className="h-4 w-4 text-primary" /> Trocar APK Vinculado
+                </Label>
+                <select
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+                  value={editApkToken}
+                  onChange={(e) => handleEditApkChange(e.target.value)}
+                  disabled={savingEdit}
+                >
+                  <option value="">Nenhum APK vinculado</option>
+                  {apks.map((a) => (
+                    <option key={a.id} value={a.download_token}>
+                      {a.file_name} {a.version ? `(v${a.version})` : ""} {a.active ? "• [Ativo na Loja]" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label className="text-sm font-medium">URL de Destino</Label>
+              <Label className="text-sm font-medium">URL de Destino Final (atualizada dinamicamente)</Label>
               <Input 
                 value={editUrlInput} 
                 onChange={(e) => setEditUrlInput(e.target.value)}
-                placeholder="https://exemplo.com/nova-pagina"
+                placeholder="https://materialdecontrucao.online/downloads/..."
                 disabled={savingEdit}
+                className="font-mono text-xs"
               />
             </div>
 
             <div className="rounded-xl bg-muted/40 p-3 text-[11px] text-muted-foreground">
-              <b className="text-foreground">{editingLink?.clicks ?? 0} cliques</b> registrados · cada acesso gera lead rastreado (IP, cidade, dispositivo) na Análise de Clientes.
+              <b className="text-foreground">{editingLink?.clicks ?? 0} cliques</b> registrados · ao trocar a tela ou o APK, todo novo acesso ao link <code className="bg-muted px-1 rounded">/r/{editingLink?.slug}</code> é redirecionado instantaneamente para a nova tela configurada.
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setEditingLink(null)} disabled={savingEdit} className="rounded-xl">
               Cancelar
             </Button>
-            <Button onClick={handleUpdateLink} disabled={savingEdit} className="rounded-xl gap-2">
+            <Button onClick={handleUpdateLink} disabled={savingEdit} className="rounded-xl gap-2 bg-primary text-primary-foreground font-semibold">
               {savingEdit && <Loader2 className="h-4 w-4 animate-spin" />}
               Salvar Alterações
             </Button>

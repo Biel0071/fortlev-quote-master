@@ -8,9 +8,13 @@ import { chooseCatalogProducts, describeCatalogError } from "../catalogResult";
 
 type ProductRow = StoreProduct;
 
+type RawProductRow = ProductRow & {
+  store_product_images?: StoreProductImage[] | null;
+};
+
 type ProductWithImages = ProductRow & { images: StoreProductImage[] };
 
-const PRODUCTS_CACHE_BASE_KEY = "store_products:list:v4";
+const PRODUCTS_CACHE_BASE_KEY = "store_products:list:v5";
 const PRODUCTS_CACHE_TTL_MS = 1000 * 60 * 10;
 const sharedProductsInflight = new Map<string, Promise<ProductWithImages[]>>();
 let lastSilentRefreshAt = 0;
@@ -50,13 +54,13 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
           const PAGE_SIZE = 1500;
-          let allData: any[] = [];
+          let allData: RawProductRow[] = [];
           let from = 0;
           let hasMore = true;
           let safetyCounter = 0;
 
           const SELECT_COLS =
-            "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order, media_type)";
+            "id, source_id, name, description, category, category_id, unit, price, promo_price, stock, min_stock, sku, featured, featured_order, best_seller, views, clicks, sales, active, is_promotion, discount_percentage, promotion_limit_per_customer, store_product_images(id, product_id, path, sort_order, media_type)";
 
           while (hasMore && safetyCounter < 100) {
             safetyCounter++;
@@ -69,15 +73,15 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
 
             if (fetchError) throw fetchError;
 
-            const batch = data ?? [];
+            const batch = (data ?? []) as unknown as RawProductRow[];
             allData = [...allData, ...batch];
             hasMore = batch.length === PAGE_SIZE;
             from += PAGE_SIZE;
           }
 
           return allData
-            .filter((p: any) => p && p.id && p.name)
-            .map((p: any) => ({
+            .filter((p): p is RawProductRow => Boolean(p && p.id && p.name))
+            .map((p) => ({
               ...p,
               id: String(p.id).trim(),
               name: String(p.name).trim(),
@@ -85,10 +89,10 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
               promo_price: Number(p.promo_price ?? 0),
               stock: Number(p.stock ?? 0),
               images: (p.store_product_images ?? [])
-                .filter((im: any) => !!im?.path)
-                .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+                .filter((im): im is StoreProductImage => Boolean(im?.path))
+                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
             })) as ProductWithImages[];
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error(`Attempt ${attempt} failed:`, err);
           if (attempt >= maxRetries) throw err;
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
@@ -112,7 +116,7 @@ export function useStoreProducts(options?: UseStoreProductsOptions) {
       setProducts(resolvedProducts);
       setSmartCache(PRODUCTS_CACHE_KEY, resolvedProducts, PRODUCTS_CACHE_TTL_MS);
       setLoading(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn("[useStoreProducts] Não foi possível carregar produtos do banco:", err);
       setProducts([]);
       setError(describeCatalogError(err));

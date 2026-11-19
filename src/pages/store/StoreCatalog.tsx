@@ -14,6 +14,9 @@ import { StoreProductCard } from "@/components/store/home/StoreProductCard";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { useSearchParams } from "react-router-dom";
 import { expandSearchTerms, smartMatch, smartScore } from "@/utils/smartSearch";
+import type { StoreProduct, StoreProductImage } from "@/types/store";
+
+type CatalogProduct = StoreProduct & { images?: StoreProductImage[] };
 
 const INITIAL_PRODUCT_COUNT = 40;
 const PRODUCT_COUNT_STEP = 40;
@@ -50,7 +53,7 @@ export default function StoreCatalog() {
     const searchTerms = search ? expandSearchTerms(search) : [];
 
     const results = activeProducts
-      .filter((p: any) => {
+      .filter((p) => {
         if (selectedCategoryId && (p.category_id ?? null) !== selectedCategoryId) return false;
 
         if (promoOnly) {
@@ -63,7 +66,7 @@ export default function StoreCatalog() {
         return smartMatch(p, searchTerms);
       })
       .slice()
-      .sort((a: any, b: any) => {
+      .sort((a, b) => {
         if (sortParam === "popular") {
           const av = Number(a.views ?? 0);
           const bv = Number(b.views ?? 0);
@@ -75,11 +78,14 @@ export default function StoreCatalog() {
           const bs = Number(b.sales ?? 0);
           if (bs !== as) return bs - as;
         }
+        const af = a?.featured ? Number(a?.featured_order ?? 999) : 9999;
+        const bf = b?.featured ? Number(b?.featured_order ?? 999) : 9999;
+        if (af !== bf) return af - bf;
         return String(a.name ?? "").localeCompare(String(b.name ?? ""));
       });
 
     if (search && results.length > 0) {
-      results.sort((a: any, b: any) => {
+      results.sort((a, b) => {
         const sa = smartScore(a, searchTerms);
         const sb = smartScore(b, searchTerms);
         if (sb !== sa) return sb - sa;
@@ -89,13 +95,13 @@ export default function StoreCatalog() {
 
     if (results.length === 0 && search) {
       const scored = activeProducts
-        .map((p: any) => ({ p, score: smartScore(p, searchTerms) }))
+        .map((p) => ({ p, score: smartScore(p, searchTerms) }))
         .filter((x) => x.score > 0)
         .sort((a, b) => b.score - a.score)
         .slice(0, 20)
         .map((x) => x.p);
       if (scored.length > 0) return scored;
-      return activeProducts.filter((p: any) => p.featured || p.best_seller).slice(0, 12);
+      return activeProducts.filter((p) => p.featured || p.best_seller).slice(0, 12);
     }
     return results;
   }, [activeProducts, q, selectedSlug, activeCategories, promoParam, sortParam]);
@@ -103,7 +109,7 @@ export default function StoreCatalog() {
   const visibleProducts = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const hasMoreProducts = visibleProducts.length < filtered.length;
 
-  const onAdd = (product: any, qty: number) => {
+  const onAdd = (product: CatalogProduct, qty: number) => {
     const price = Number(product?.price ?? 0);
     const promo = Number(product?.promo_price ?? 0);
     const effectivePrice = promo > 0 && promo < price ? promo : price;
@@ -123,7 +129,7 @@ export default function StoreCatalog() {
       <AppHeader
         cartCount={cart.totalItems}
         onCartClick={() => setCartOpen(true)}
-        categories={activeCategories as any}
+        categories={activeCategories}
       />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
@@ -175,7 +181,7 @@ export default function StoreCatalog() {
         ) : (
           <div className="space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
-              {visibleProducts.map((p: any) => (
+              {visibleProducts.map((p) => (
                 <StoreProductCard
                   key={p.id}
                   product={p}

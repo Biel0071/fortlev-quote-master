@@ -13,7 +13,15 @@ export type StoreProduct = {
   stock: number;
   min_stock?: number;
   featured?: boolean;
+  featured_order?: number | null;
   best_seller?: boolean;
+  views?: number | null;
+  clicks?: number | null;
+  sales?: number | null;
+  is_promotion?: boolean | null;
+  discount_percentage?: number | null;
+  promotion_limit_per_customer?: number | null;
+  status?: string | null;
   active: boolean;
 };
 

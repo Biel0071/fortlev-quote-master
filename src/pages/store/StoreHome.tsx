@@ -108,7 +108,8 @@ export default function StoreHome() {
       .order("sort_order", { ascending: true })
       .then(({ data }) => {
         if (!alive) return;
-        setPageLinks(((data ?? []) as any[]).map((x: any) => ({ title: x.title, slug: x.slug })));
+        const rows = (data ?? []) as Array<{ title: string; slug: string }>;
+        setPageLinks(rows.map((x) => ({ title: x.title, slug: x.slug })));
       });
 
     return () => {
@@ -128,19 +129,28 @@ export default function StoreHome() {
   const loading = (tenantLoading && !tenantStoreData) || (productsLoading && activeProducts.length === 0) || (categoriesLoading && activeCategories.length === 0);
 
   const featuredIds = useMemo(() => {
-    const list = (activeProducts ?? []) as any[];
-    const featured = list.filter((p) => p?.featured && p?.active).map((p) => p.id) as string[];
+    const list = activeProducts ?? [];
+    const featured = list
+      .filter((p) => p?.featured && p?.active)
+      .slice()
+      .sort((a, b) => {
+        const ao = Number(a?.featured_order ?? 999);
+        const bo = Number(b?.featured_order ?? 999);
+        if (ao !== bo) return ao - bo;
+        return String(a?.name ?? "").localeCompare(String(b?.name ?? ""));
+      })
+      .map((p) => p.id);
     if (featured.length === 0) {
-      return list.filter(p => p.active).slice(0, 12).map((p) => p.id);
+      return list.filter((p) => p.active).slice(0, 12).map((p) => p.id);
     }
     return featured;
   }, [activeProducts]);
 
   const topClickedIds = useMemo(() => {
-    const list = ((activeProducts ?? []) as any[]).filter(p => p.active);
-    const taggedBestSellers = list.filter(p => p.best_seller);
+    const list = (activeProducts ?? []).filter((p) => p.active);
+    const taggedBestSellers = list.filter((p) => p.best_seller);
     if (taggedBestSellers.length > 0) {
-      return taggedBestSellers.slice(0, 10).map(p => p.id);
+      return taggedBestSellers.slice(0, 10).map((p) => p.id);
     }
     const bestSellers = [...list]
       .sort((a, b) => {
@@ -149,7 +159,7 @@ export default function StoreHome() {
         return Number(b.clicks ?? 0) - Number(a.clicks ?? 0);
       })
       .slice(0, 20)
-      .map((p) => p.id) as string[];
+      .map((p) => p.id);
     if (bestSellers.length >= 8) return bestSellers.slice(0, 10);
     return list.slice(0, 12).map((p) => p.id);
   }, [activeProducts]);
@@ -180,8 +190,9 @@ export default function StoreHome() {
 
   // Se o tenant carregou mas não há loja ativa, usa o fallback automático da loja padrão em vez de travar
   const onAdd = (productId: string, qty: number) => {
-    const product: any = offerList.find((item: any) => item.id === productId)
-      ?? activeProducts.find((item: any) => item.id === productId);
+    const product =
+      offerList.find((item) => item.id === productId) ??
+      activeProducts.find((item) => item.id === productId);
     
     if (!product) return;
 
@@ -208,7 +219,7 @@ export default function StoreHome() {
         cartCount={cart.totalItems}
         onCartClick={() => setCartOpen(true)}
         footerStoreName={home.footer?.store_name ?? undefined}
-        categories={activeCategories as any}
+        categories={activeCategories}
       />
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <StoreMobileChrome cartCount={cart.totalItems} onCartClick={() => setCartOpen(true)} />
@@ -278,7 +289,7 @@ export default function StoreHome() {
             ) : activeCategories.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhuma categoria cadastrada no banco.</p>
             ) : (
-              <HomeCategoriesCarousel categories={activeCategories as any} hideHeader />
+              <HomeCategoriesCarousel categories={activeCategories} hideHeader />
             )}
 
           </HomeSection>
@@ -303,7 +314,7 @@ export default function StoreHome() {
               <HomeProductsByIds
                 loading={loading && !homeOffers.length}
                 productIds={homeOffers.map((o) => o.id)}
-                products={homeOffers as any}
+                products={homeOffers.map((o) => ({ source_id: null, stock: 0, ...o }))}
                 onAdd={onAdd}
                 limit={8}
               />
@@ -329,7 +340,7 @@ export default function StoreHome() {
             {!phase.featured || (productsLoading && !activeProducts.length) ? (
               <ProductGridSkeleton count={10} />
             ) : (
-              <HomeProductsByIds loading={loading} productIds={featuredIds} products={activeProducts as any} onAdd={onAdd} limit={12} />
+              <HomeProductsByIds loading={loading} productIds={featuredIds} products={activeProducts} onAdd={onAdd} limit={Math.max(12, featuredIds.length)} />
             )}
 
           </HomeSection>
@@ -348,7 +359,7 @@ export default function StoreHome() {
               <HomeProductsByIds
                 loading={loading && !activeProducts.length}
                 productIds={topClickedIds}
-                products={activeProducts as any}
+                products={activeProducts}
                 onAdd={onAdd}
                 limit={8}
               />

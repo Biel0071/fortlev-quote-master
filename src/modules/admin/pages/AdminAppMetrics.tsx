@@ -36,7 +36,10 @@ import {
   CheckCircle2,
   Layers,
   Sparkles,
+  Lock,
+  Shield,
 } from "lucide-react";
+import { encodeEncryptedLink } from "@/utils/encryptedLinks";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -57,7 +60,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 
-const MAX_APK_SIZE_BYTES = 100 * 1024 * 1024;
+const MAX_APK_SIZE_BYTES = 250 * 1024 * 1024;
 
 const fmtMB = (bytes: number) => (bytes / (1024 * 1024)).toFixed(2);
 const fmtDate = (iso: string) =>
@@ -235,6 +238,8 @@ export default function AdminAppMetrics() {
   const [lastGeneratedScreenLink, setLastGeneratedScreenLink] = useState<{
     url: string;
     slug: string;
+    encryptedUrl: string;
+    encryptedSlug: string;
     screenName: string;
     fileName: string;
   } | null>(null);
@@ -416,12 +421,17 @@ export default function AdminAppMetrics() {
         return;
       }
       if (file.size > MAX_APK_SIZE_BYTES) {
-        toast.error("Tamanho máximo do APK permitido: 100 MB");
+        toast.error("Tamanho máximo do APK permitido: 250 MB");
         return;
       }
     }
 
     setGeneratingScreen(true);
+    const loadingToastId = toast.loading(
+      file
+        ? `Enviando ${file.name} (${fmtMB(file.size)} MB) e gerando links vinculados...`
+        : "Gerando links vinculados à tela...",
+    );
     try {
       const finalDisplayName = displayName || (file ? file.name : apkMeta?.displayName || "app.apk");
       const finalAppName = appName || (file ? file.name.replace(/\.apk$/i, "") : apkMeta?.appName || "App");
@@ -488,7 +498,7 @@ export default function AdminAppMetrics() {
       }
 
       if (!activeStoreId) {
-        toast.error("Nenhuma loja ativa selecionada");
+        toast.error("Nenhuma loja ativa selecionada", { id: loadingToastId });
         return;
       }
 
@@ -557,19 +567,60 @@ export default function AdminAppMetrics() {
       // 5. Salva a tela selecionada como padrão
       await saveConfig("app_download_landing_screen", chosenScreen.id);
 
+      // 6. Gera o link criptografado com cloaking e rastreamento completo
+      const encryptedPath = encodeEncryptedLink(targetUrl, {
+        source: "/admin",
+        label: chosenScreen.name,
+        channel: "app",
+      });
+      const encryptedSlug = encryptedPath.replace(/^\/r\//, "");
+      const encryptedUrl = `https://materialdecontrucao.online${encryptedPath}`;
+
+      try {
+        const { data: encRow } = await cloud
+          .from("app_short_links")
+          .insert({
+            store_id: activeStoreId,
+            slug: encryptedSlug,
+            original_url: targetUrl,
+            created_via: "admin_screen_generator_enc",
+            link_type: isBinary ? "apk" : "page",
+            campaign_origin: "encrypted_screen_link",
+            metadata: {
+              apk_token: activeDownloadToken,
+              screen_id: chosenScreen.id,
+              screen_name: chosenScreen.name,
+              is_encrypted: true,
+            },
+            active: true,
+          })
+          .select("id, slug, original_url, clicks, created_at, active, link_type, metadata")
+          .single();
+
+        if (encRow) {
+          setShortLinks((prev) => [encRow as ShortLinkRow, ...prev]);
+        }
+      } catch {
+        /* ignore duplicate */
+      }
+
       const generatedUrl = `${shortBaseUrl}/${finalSlug}`;
       setLastGeneratedScreenLink({
         url: generatedUrl,
         slug: finalSlug,
+        encryptedUrl,
+        encryptedSlug,
         screenName: chosenScreen.name,
         fileName: finalDisplayName,
       });
 
-      toast.success(`Tela "${chosenScreen.name}" gerada e vinculada ao download! Link: ${generatedUrl}`);
+      toast.success(`Tela "${chosenScreen.name}" vinculada! Links gerados: /r/${finalSlug} e link criptografado prontos para uso`, {
+        id: loadingToastId,
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Falha desconhecida";
       console.error("[GerarTela] Erro:", err);
-      toast.error(`Erro ao gerar tela: ${message}`);
+      toast.error(`Erro ao gerar tela: ${message}`, { id: loadingToastId });
     } finally {
       setGeneratingScreen(false);
     }
@@ -778,7 +829,7 @@ export default function AdminAppMetrics() {
     }
 
     if (file.size > MAX_APK_SIZE_BYTES) {
-      toast.error("Tamanho máximo: 100 MB");
+      toast.error("Tamanho máximo: 250 MB");
       return;
     }
 
@@ -1445,40 +1496,92 @@ export default function AdminAppMetrics() {
           </div>
 
           {lastGeneratedScreenLink && (
-            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-emerald-950 dark:text-emerald-200 animate-in fade-in slide-in-from-top-2">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400">
-                    <CheckCircle2 className="h-5 w-5" />
-                    <span>Tela Gerada e Vinculada ao Download com Sucesso!</span>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Tela: <b>{lastGeneratedScreenLink.screenName}</b> • Arquivo APK: <b>{lastGeneratedScreenLink.fileName}</b>
-                  </div>
-                  <div className="mt-1.5 font-mono text-sm font-semibold text-emerald-800 dark:text-emerald-300 select-all">
-                    {lastGeneratedScreenLink.url}
-                  </div>
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-5 text-emerald-950 dark:text-emerald-200 animate-in fade-in slide-in-from-top-2 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-3">
+                <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400 text-base">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span>Tela Vinculada ao APK com Sucesso!</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
-                    onClick={() => window.open(lastGeneratedScreenLink.url, "_blank")}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" /> Abrir Tela
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5 border-emerald-500/40 font-medium"
-                    onClick={() => void copyText(lastGeneratedScreenLink.url, "Link Curto")}
-                  >
-                    <Copy className="h-3.5 w-3.5" /> Copiar Link
-                  </Button>
+                <div className="text-xs text-muted-foreground">
+                  Tela: <b className="text-foreground">{lastGeneratedScreenLink.screenName}</b> • Arquivo: <b className="text-foreground">{lastGeneratedScreenLink.fileName}</b>
                 </div>
               </div>
+
+              {/* Opção 1: Link com Slug Amigável */}
+              <div className="rounded-lg border border-emerald-500/30 bg-background/80 p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                    <Link2 className="h-3.5 w-3.5" />
+                    <span>Link Curto com Slug (/r/{lastGeneratedScreenLink.slug})</span>
+                  </div>
+                  <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                    Slug Direto
+                  </span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="font-mono text-xs sm:text-sm font-semibold text-foreground select-all break-all">
+                    {lastGeneratedScreenLink.url}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+                      onClick={() => window.open(lastGeneratedScreenLink.url, "_blank")}
+                    >
+                      <ExternalLink className="h-3 w-3" /> Abrir
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1.5 border-emerald-500/40 font-medium"
+                      onClick={() => void copyText(lastGeneratedScreenLink.url, "Link com Slug")}
+                    >
+                      <Copy className="h-3 w-3" /> Copiar Link
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Opção 2: Link Criptografado com Anti-Cloaking e Tracking */}
+              {lastGeneratedScreenLink.encryptedUrl && (
+                <div className="rounded-lg border border-purple-500/30 bg-background/80 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">
+                      <Lock className="h-3.5 w-3.5" />
+                      <span>Link Criptografado Anti-Cloaking & Anti-Bot</span>
+                    </div>
+                    <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[11px] font-medium text-purple-700 dark:text-purple-300">
+                      Criptografia FNV-1a + Track IP
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="font-mono text-xs sm:text-sm font-semibold text-foreground select-all break-all">
+                      {lastGeneratedScreenLink.encryptedUrl}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5 bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                        onClick={() => window.open(lastGeneratedScreenLink.encryptedUrl, "_blank")}
+                      >
+                        <ExternalLink className="h-3 w-3" /> Abrir Encrypt
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5 border-purple-500/40 font-medium"
+                        onClick={() => void copyText(lastGeneratedScreenLink.encryptedUrl, "Link Criptografado")}
+                      >
+                        <Copy className="h-3 w-3" /> Copiar Encrypt
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

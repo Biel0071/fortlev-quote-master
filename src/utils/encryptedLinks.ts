@@ -14,7 +14,12 @@ export type EncryptedLinkPayload = {
   channel: TrackingChannel;
 };
 
-const SAFE_EXTERNAL_HOSTS = new Set(["wa.me", "materialdecontrucao.online", "www.materialdecontrucao.online"]);
+const SAFE_EXTERNAL_HOSTS = new Set([
+  "wa.me",
+  "materialdecontrucao.online",
+  "www.materialdecontrucao.online",
+  "loja.209-50-241-22.sslip.io",
+]);
 
 export function detectAppChannel(pathname?: string): TrackingChannel {
   const path =
@@ -53,7 +58,11 @@ export function isSafeRedirectTarget(rawUrl: string): boolean {
 
   try {
     const parsed = new URL(url);
-    return parsed.protocol === "https:" && SAFE_EXTERNAL_HOSTS.has(parsed.hostname.toLowerCase());
+    const host = parsed.hostname.toLowerCase();
+    return (
+      (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+      (SAFE_EXTERNAL_HOSTS.has(host) || host.endsWith(".sslip.io"))
+    );
   } catch {
     return false;
   }
